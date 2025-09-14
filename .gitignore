@@ -1,0 +1,47 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+build/
+DerivedData/
+*.xcworkspace/xcuserdata/
+*.xccheckout
+*.xcuserstate
+*.xcscmblueprint
+
+# SwiftPM
+/.build/
+/Packages/
+*.xcodeproj/project.xcworkspace/
+
+# SwiftPM resolved file noise
+Package.resolved
+
+# Playwright/Vitest outputs (from reference project)
+ReferenceCodeToConvert/**/test-results/
+ReferenceCodeToConvert/**/playwright-report/
+ReferenceCodeToConvert/**/.vite
+ReferenceCodeToConvert/**/node_modules/
+
+# Ignore nested repo content (use submodule if needed)
+ReferenceCodeToConvert/SurvivorTierList/.git
+ReferenceCodeToConvert/SurvivorTierList/.git/**
+
+# Logs
+*.log
+
+# Images and caches
+*.png
+*.jpg
+*.jpeg
+*.gif
+.cache/
+
+# User files
+*.swp
+*.swo
+
+# Ignore Swift build caches
+.build
