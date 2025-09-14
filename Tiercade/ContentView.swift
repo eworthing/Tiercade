@@ -6,7 +6,9 @@
 //
 
 import SwiftUI
+#if os(iOS)
 import UniformTypeIdentifiers
+#endif
 
 struct AppTier: Identifiable, Hashable { let id: String; var name: String }
 
@@ -86,11 +88,13 @@ struct SidebarView: View {
 
 struct ToolbarView: ToolbarContent {
     @EnvironmentObject var app: AppState
-    @State private var showingShare = false
     @State private var exportText: String = ""
+    #if os(iOS)
+    @State private var showingShare = false
     @State private var exportingJSON = false
     @State private var importingJSON = false
     @State private var jsonDoc = TiersDocument()
+    #endif
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarLeading) {
             Button(action: { app.undo() }) { Label("Undo", systemImage: "arrow.uturn.backward") }
@@ -123,7 +127,12 @@ struct ToolbarView: ToolbarContent {
                 #endif
                 Button("Export Text") {
                     exportText = app.exportText()
+                    #if os(iOS)
                     showingShare = true
+                    #else
+                    // tvOS: no share sheet; just log for now
+                    print(exportText)
+                    #endif
                 }
                 .keyboardShortcut("e", modifiers: [.command])
                 Divider()
@@ -301,6 +310,7 @@ struct QuickRankOverlay: View {
 }
 
 // MARK: - JSON FileDocument
+#if os(iOS)
 struct TiersDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.json] }
     var tiers: TLTiers = [:]
@@ -315,6 +325,7 @@ struct TiersDocument: FileDocument {
         return .init(regularFileWithContents: data)
     }
 }
+#endif
 
 // MARK: - Head-to-Head overlay
 struct HeadToHeadOverlay: View {
