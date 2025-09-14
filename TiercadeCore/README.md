@@ -1,6 +1,6 @@
-# SurvivorCore
+# TiercadeCore
 
-Core domain models and logic for the Survivor Tier List native apps. This Swift Package is platform-agnostic and intended to be used by iOS, iPadOS, macOS, and tvOS apps.
+Core domain models and logic for the Tiercade native apps. This Swift Package is platform-agnostic and intended to be used by iOS, iPadOS, macOS, and tvOS apps.
 
 ## Contents
 - Models: Contestant, TierConfig, Tiers, History
@@ -14,12 +14,12 @@ Core domain models and logic for the Survivor Tier List native apps. This Swift 
 
 ## Using in Xcode
 1. In your app project, go to File > Add Packages…
-2. Choose Add Local, select the `SurvivorCore` folder.
+2. Choose Add Local, select the `TiercadeCore` folder.
 3. Add the library to your app target.
 
 ## Quick sample
 ```swift
-import SurvivorCore
+import TiercadeCore
 
 let loader = DataLoader()
 let contestants = try loader.decodeContestants(from: Data(/* … */))
@@ -31,7 +31,7 @@ let moved = TierLogic.moveContestant(tiers, contestantId: "x", targetTierName: "
 ```
 
 ## Tests
-From the `SurvivorCore` directory:
+From the `TiercadeCore` directory:
 
 ```sh
 swift test
