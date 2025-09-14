@@ -2,8 +2,7 @@ import Foundation
 
 #if canImport(TiercadeCore)
 import TiercadeCore
-public typealias TLContestant = TiercadeCore.Contestant
-public typealias TLTiers = TiercadeCore.Tiers
+import TiercadeCore
 public typealias TLTierConfig = TiercadeCore.TierConfig
 public typealias TLHistory<T> = TiercadeCore.History<T>
 public typealias TLHistoryLogic = TiercadeCore.HistoryLogic
