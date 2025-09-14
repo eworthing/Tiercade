@@ -14,6 +14,9 @@ struct AppTier: Identifiable, Hashable { let id: String; var name: String }
 
 struct ContentView: View {
     @StateObject private var app = AppState()
+    #if os(tvOS)
+    private var canStartH2HFromRemote: Bool { app.quickRankTarget == nil && !app.h2hActive }
+    #endif
 
     var body: some View {
         Group {
@@ -41,6 +44,11 @@ struct ContentView: View {
         .toolbar { ToolbarView() }
         .overlay(alignment: .bottom) { QuickRankOverlay() }
         .overlay { HeadToHeadOverlay() }
+        #if os(tvOS)
+        .onPlayPauseCommand(perform: {
+            if canStartH2HFromRemote { app.startH2H() }
+        })
+        #endif
     }
 }
 
@@ -74,8 +82,8 @@ struct SidebarView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Survivor Tier List").font(.largeTitle.bold())
-            TextField("Search unranked…", text: $app.searchQuery)
             #if !os(tvOS)
+            TextField("Search unranked…", text: $app.searchQuery)
                 .textFieldStyle(.roundedBorder)
             #endif
             HStack { Text("Unranked:"); Text("\(app.tiers["unranked"]?.count ?? 0)").bold() }
@@ -242,6 +250,9 @@ struct TierRowView: View {
 
 struct UnrankedView: View {
     @EnvironmentObject var app: AppState
+    #if os(tvOS)
+    @FocusState private var focusedCardId: String?
+    #endif
     var filtered: [TLContestant] {
         let q = app.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return (app.tiers["unranked"] ?? []).filter { q.isEmpty || ($0.name ?? "").lowercased().contains(q) }
@@ -254,6 +265,8 @@ struct UnrankedView: View {
                     CardView(contestant: c)
                     #if !os(tvOS)
                         .draggable(c.id)
+                    #else
+                        .focused($focusedCardId, equals: c.id)
                     #endif
                 }
             }
@@ -262,6 +275,8 @@ struct UnrankedView: View {
         .background(RoundedRectangle(cornerRadius: 12).strokeBorder(.secondary))
     #if !os(tvOS)
     .dropDestination(for: String.self) { _, _ in false }
+    #else
+    .onAppear { focusedCardId = filtered.first?.id }
     #endif
     }
 }
@@ -283,6 +298,7 @@ struct CardView: View {
         .contentShape(Rectangle())
         .onTapGesture { app.beginQuickRank(contestant) }
         #if os(tvOS)
+    .focusEffect(.highlight)
         .focusable(true)
         .onPlayPauseCommand {
             // Show a simple contextual menu using Quick Rank tiers as move targets
