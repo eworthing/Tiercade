@@ -14,14 +14,31 @@ struct ContentView: View {
     @StateObject private var app = AppState()
 
     var body: some View {
-        AdaptiveLayout {
-            SidebarView(tierOrder: app.tierOrder)
-            TierGridView(tierOrder: app.tierOrder)
+        Group {
+            #if os(iOS)
+            if (UIDevice.current.userInterfaceIdiom == .pad) {
+                NavigationSplitView {
+                    SidebarView(tierOrder: app.tierOrder)
+                } detail: {
+                    TierGridView(tierOrder: app.tierOrder)
+                }
+            } else {
+                AdaptiveLayout {
+                    SidebarView(tierOrder: app.tierOrder)
+                    TierGridView(tierOrder: app.tierOrder)
+                }
+            }
+            #else
+            AdaptiveLayout {
+                SidebarView(tierOrder: app.tierOrder)
+                TierGridView(tierOrder: app.tierOrder)
+            }
+            #endif
         }
         .environmentObject(app)
         .toolbar { ToolbarView() }
-    .overlay(alignment: .bottom) { QuickRankOverlay() }
-    .overlay { HeadToHeadOverlay() }
+        .overlay(alignment: .bottom) { QuickRankOverlay() }
+        .overlay { HeadToHeadOverlay() }
     }
 }
 
@@ -76,8 +93,12 @@ struct ToolbarView: ToolbarContent {
     @State private var jsonDoc = TiersDocument()
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarLeading) {
-            Button(action: { app.undo() }) { Label("Undo", systemImage: "arrow.uturn.backward") }.disabled(!app.canUndo)
-            Button(action: { app.redo() }) { Label("Redo", systemImage: "arrow.uturn.forward") }.disabled(!app.canRedo)
+            Button(action: { app.undo() }) { Label("Undo", systemImage: "arrow.uturn.backward") }
+                .disabled(!app.canUndo)
+                .keyboardShortcut("z", modifiers: [.command])
+            Button(action: { app.redo() }) { Label("Redo", systemImage: "arrow.uturn.forward") }
+                .disabled(!app.canRedo)
+                .keyboardShortcut("Z", modifiers: [.command, .shift])
         }
         ToolbarItemGroup(placement: .topBarTrailing) {
             Menu("Actions") {
@@ -90,7 +111,9 @@ struct ToolbarView: ToolbarContent {
                 Divider()
                 Button("Reset All", role: .destructive) { app.reset() }
                 Button("Save Locally") { _ = app.save() }
+                    .keyboardShortcut("s", modifiers: [.command])
                 Button("Load Saved") { _ = app.load() }
+                    .keyboardShortcut("o", modifiers: [.command])
                 #if os(iOS)
                 Button("Export JSON") {
                     jsonDoc = TiersDocument(tiers: app.tiers)
@@ -102,8 +125,10 @@ struct ToolbarView: ToolbarContent {
                     exportText = app.exportText()
                     showingShare = true
                 }
+                .keyboardShortcut("e", modifiers: [.command])
                 Divider()
                 Button("Head-to-Head") { app.startH2H() }
+                    .keyboardShortcut("h", modifiers: [.command])
             }
         }
         #if os(iOS)
@@ -228,10 +253,14 @@ struct CardView: View {
         .onTapGesture { app.beginQuickRank(contestant) }
         #if os(tvOS)
         .focusable(true)
-        .digitalCrownRotation(.constant(0)) // harmless placeholder to retain focus ring shape
         .onPlayPauseCommand {
             // Show a simple contextual menu using Quick Rank tiers as move targets
             app.beginQuickRank(contestant)
+        }
+        .contextMenu {
+            ForEach(app.tierOrder, id: \.self) { t in
+                Button("Move to \(t)") { app.move(contestant.id, to: t) }
+            }
         }
         #endif
     }
