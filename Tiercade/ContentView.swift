@@ -75,7 +75,9 @@ struct SidebarView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Survivor Tier List").font(.largeTitle.bold())
             TextField("Search unranked…", text: $app.searchQuery)
+            #if !os(tvOS)
                 .textFieldStyle(.roundedBorder)
+            #endif
             HStack { Text("Unranked:"); Text("\(app.tiers["unranked"]?.count ?? 0)").bold() }
             Divider()
             ScrollView { VStack(alignment: .leading) { ForEach(tierOrder, id: \.self) { t in Label(t, systemImage: "flag") } } }
@@ -99,10 +101,14 @@ struct ToolbarView: ToolbarContent {
         ToolbarItemGroup(placement: .topBarLeading) {
             Button(action: { app.undo() }) { Label("Undo", systemImage: "arrow.uturn.backward") }
                 .disabled(!app.canUndo)
+            #if !os(tvOS)
                 .keyboardShortcut("z", modifiers: [.command])
+            #endif
             Button(action: { app.redo() }) { Label("Redo", systemImage: "arrow.uturn.forward") }
                 .disabled(!app.canRedo)
+            #if !os(tvOS)
                 .keyboardShortcut("Z", modifiers: [.command, .shift])
+            #endif
         }
         ToolbarItemGroup(placement: .topBarTrailing) {
             Menu("Actions") {
@@ -115,9 +121,13 @@ struct ToolbarView: ToolbarContent {
                 Divider()
                 Button("Reset All", role: .destructive) { app.reset() }
                 Button("Save Locally") { _ = app.save() }
+                #if !os(tvOS)
                     .keyboardShortcut("s", modifiers: [.command])
+                #endif
                 Button("Load Saved") { _ = app.load() }
+                #if !os(tvOS)
                     .keyboardShortcut("o", modifiers: [.command])
+                #endif
                 #if os(iOS)
                 Button("Export JSON") {
                     jsonDoc = TiersDocument(tiers: app.tiers)
@@ -134,10 +144,14 @@ struct ToolbarView: ToolbarContent {
                     print(exportText)
                     #endif
                 }
+                #if !os(tvOS)
                 .keyboardShortcut("e", modifiers: [.command])
+                #endif
                 Divider()
                 Button("Head-to-Head") { app.startH2H() }
+                #if !os(tvOS)
                     .keyboardShortcut("h", modifiers: [.command])
+                #endif
             }
         }
         #if os(iOS)
@@ -207,7 +221,9 @@ struct TierRowView: View {
                 LazyHStack(spacing: 10) {
                     ForEach(cards, id: \.id) { c in
                         CardView(contestant: c)
+                        #if !os(tvOS)
                             .draggable(c.id)
+                        #endif
                     }
                 }
                 .padding(.bottom, 4)
@@ -215,10 +231,12 @@ struct TierRowView: View {
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 12).fill(.ultraThinMaterial))
+        #if !os(tvOS)
         .dropDestination(for: String.self) { items, _ in
             if let id = items.first { app.move(id, to: tier) }
             return true
         }
+        #endif
     }
 }
 
@@ -234,13 +252,17 @@ struct UnrankedView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 10)]) {
                 ForEach(filtered, id: \.id) { c in
                     CardView(contestant: c)
+                    #if !os(tvOS)
                         .draggable(c.id)
+                    #endif
                 }
             }
         }
         .padding(12)
         .background(RoundedRectangle(cornerRadius: 12).strokeBorder(.secondary))
-        .dropDestination(for: String.self) { _, _ in false }
+    #if !os(tvOS)
+    .dropDestination(for: String.self) { _, _ in false }
+    #endif
     }
 }
 
