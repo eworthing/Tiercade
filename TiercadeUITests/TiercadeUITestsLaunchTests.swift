@@ -4,6 +4,14 @@
 //
 //  Created by PL on 9/14/25.
 //
+//
+//  TiercadeUITestsLaunchTests.swift
+//  TiercadeUITests
+//
+//  Created by PL on 9/14/25.
+//
+
+import XCTest
 
 import XCTest
 
