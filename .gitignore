@@ -42,3 +42,6 @@ ReferenceCodeToConvert/SurvivorTierList/.git/**
 # User files
 *.swp
 *.swo
+
+# Ignore Swift build caches
+.build
