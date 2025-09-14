@@ -20,6 +20,7 @@ struct ContentView: View {
         .environmentObject(app)
         .toolbar { ToolbarView() }
     .overlay(alignment: .bottom) { QuickRankOverlay() }
+    .overlay { HeadToHeadOverlay() }
     }
 }
 
@@ -90,6 +91,8 @@ struct ToolbarView: ToolbarContent {
                     exportText = app.exportText()
                     showingShare = true
                 }
+                Divider()
+                Button("Head-to-Head") { app.startH2H() }
             }
         }
         #if os(iOS)
@@ -235,5 +238,57 @@ struct QuickRankOverlay: View {
             .padding()
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
+    }
+}
+
+// MARK: - Head-to-Head overlay
+struct HeadToHeadOverlay: View {
+    @EnvironmentObject var app: AppState
+    var body: some View {
+        if app.h2hActive {
+            ZStack {
+                Color.black.opacity(0.4).ignoresSafeArea()
+                    .onTapGesture { /* block background interaction */ }
+                VStack(spacing: 16) {
+                    Text("Head-to-Head").font(.title2.bold())
+                    if let pair = app.h2hPair {
+                        HStack(spacing: 16) {
+                            H2HButton(contestant: pair.0) { app.voteH2H(winner: pair.0) }
+                            Text("vs").font(.headline)
+                            H2HButton(contestant: pair.1) { app.voteH2H(winner: pair.1) }
+                        }
+                    } else {
+                        Text("No more pairs. Tap Finish.").foregroundStyle(.secondary)
+                    }
+                    HStack {
+                        Button("Finish") { app.finishH2H() }
+                            .buttonStyle(.borderedProminent)
+                        Button("Cancel", role: .cancel) { app.h2hActive = false }
+                    }
+                }
+                .padding()
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .padding()
+            }
+            .transition(.opacity)
+        }
+    }
+}
+
+struct H2HButton: View {
+    let contestant: TLContestant
+    var action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 12).fill(Color.accentColor)
+                    .frame(width: 160, height: 100)
+                    .overlay(Text((contestant.name ?? contestant.id).prefix(14)).font(.headline).foregroundStyle(.white))
+                Text(contestant.season ?? "?").font(.caption)
+            }
+            .padding(8)
+        }
+        .buttonStyle(.bordered)
     }
 }

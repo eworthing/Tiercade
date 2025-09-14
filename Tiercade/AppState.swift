@@ -8,6 +8,11 @@ final class AppState: ObservableObject {
     @Published var searchQuery: String = ""
     @Published var toast: String? = nil
     @Published var quickRankTarget: TLContestant? = nil
+    // Head-to-Head
+    @Published var h2hActive: Bool = false
+    @Published var h2hPool: [TLContestant] = []
+    @Published var h2hPair: (TLContestant, TLContestant)? = nil
+    @Published var h2hRecords: [String: TLH2HRecord] = [:]
     private let storageKey = "Tiercade.tiers.v1"
 
     private var history = TLHistory<TLTiers>(stack: [], index: 0, limit: 80)
@@ -102,5 +107,43 @@ final class AppState: ObservableObject {
         tiers = next
         history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
         quickRankTarget = nil
+    }
+
+    // MARK: - Head to Head
+    func startH2H() {
+        let pool = (tiers["unranked"] ?? []) + tierOrder.flatMap { tiers[$0] ?? [] }
+        h2hPool = pool
+        h2hRecords = [:]
+        h2hActive = true
+        nextH2HPair()
+    }
+
+    func nextH2HPair() {
+        guard h2hActive else { return }
+        if let pair = TLHeadToHeadLogic.pickPair(from: h2hPool, rng: { Double.random(in: 0...1) }) {
+            h2hPair = (pair.0, pair.1)
+        } else {
+            h2hPair = nil
+        }
+    }
+
+    func voteH2H(winner: TLContestant) {
+        guard h2hActive, let pair = h2hPair else { return }
+        let a = pair.0, b = pair.1
+        TLHeadToHeadLogic.vote(a, b, winner: winner, records: &h2hRecords)
+        nextH2HPair()
+    }
+
+    func finishH2H() {
+        guard h2hActive else { return }
+        // build ranking using current pool and records
+        let ranking = TLHeadToHeadLogic.ranking(from: h2hPool, records: h2hRecords)
+        let distributed = TLHeadToHeadLogic.distributeRoundRobin(ranking, into: tierOrder, baseTiers: tiers)
+        tiers = distributed
+        history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+        h2hActive = false
+        h2hPair = nil
+        h2hPool = []
+        h2hRecords = [:]
     }
 }

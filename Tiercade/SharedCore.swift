@@ -15,7 +15,7 @@ public typealias TLQuickRankLogic = SurvivorCore.QuickRankLogic
 public typealias TLHeadToHeadLogic = SurvivorCore.HeadToHeadLogic
 public typealias TLH2HRankingEntry = SurvivorCore.H2HRankingEntry
 #else
-public struct TLContestant: Identifiable, Hashable, Codable {
+public struct TLContestant: Identifiable, Hashable, Codable, Sendable {
 	public let id: String
 	public var name: String?
 	public var season: String?
@@ -110,6 +110,48 @@ public enum TLExportFormatter {
 public enum TLQuickRankLogic {
 	public static func assign(_ t: TLTiers, contestantId: String, to tier: String) -> TLTiers {
 		TLTierLogic.moveContestant(t, contestantId: contestantId, targetTierName: tier)
+	}
+}
+
+public struct TLH2HRecord: Sendable, Codable { public var wins: Int = 0; public var losses: Int = 0 }
+public struct TLH2HRankingEntry: Sendable, Codable { public let contestant: TLContestant; public let winRate: Double }
+public enum TLHeadToHeadLogic {
+	public static func pickPair(from pool: [TLContestant], rng: () -> Double) -> (TLContestant, TLContestant)? {
+		guard pool.count >= 2 else { return nil }
+		let i = Int(rng() * Double(pool.count)) % pool.count
+		var j = Int(rng() * Double(pool.count)) % pool.count
+		if j == i { j = (j + 1) % pool.count }
+		return (pool[i], pool[j])
+	}
+	public static func vote(_ a: TLContestant, _ b: TLContestant, winner: TLContestant, records: inout [String: TLH2HRecord]) {
+		if winner.id == a.id { records[a.id, default: .init()].wins += 1; records[b.id, default: .init()].losses += 1 }
+		else { records[b.id, default: .init()].wins += 1; records[a.id, default: .init()].losses += 1 }
+	}
+	public static func ranking(from pool: [TLContestant], records: [String: TLH2HRecord]) -> [TLH2HRankingEntry] {
+		pool.map { c in
+			let r = records[c.id] ?? TLH2HRecord()
+			let total = max(1, r.wins + r.losses)
+			return TLH2HRankingEntry(contestant: c, winRate: Double(r.wins) / Double(total))
+		}.sorted { l, r in
+			if l.winRate != r.winRate { return l.winRate > r.winRate }
+			let ln = l.contestant.name ?? l.contestant.id
+			let rn = r.contestant.name ?? r.contestant.id
+			return ln.localizedCaseInsensitiveCompare(rn) == .orderedAscending
+		}
+	}
+	public static func distributeRoundRobin(_ ranking: [TLH2HRankingEntry], into tierOrder: [String], baseTiers: TLTiers) -> TLTiers {
+		var newTiers = baseTiers
+		for name in tierOrder { if newTiers[name] == nil { newTiers[name] = [] } }
+		if var unranked = newTiers["unranked"] {
+			let ids = Set(ranking.map { $0.contestant.id })
+			unranked.removeAll { ids.contains($0.id) }
+			newTiers["unranked"] = unranked
+		}
+		for (i, entry) in ranking.enumerated() {
+			let target = tierOrder[i % max(1, tierOrder.count)]
+			newTiers[target, default: []].append(entry.contestant)
+		}
+		return newTiers
 	}
 }
 #endif
