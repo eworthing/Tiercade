@@ -226,6 +226,14 @@ struct CardView: View {
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(.quaternary))
         .contentShape(Rectangle())
         .onTapGesture { app.beginQuickRank(contestant) }
+        #if os(tvOS)
+        .focusable(true)
+        .digitalCrownRotation(.constant(0)) // harmless placeholder to retain focus ring shape
+        .onPlayPauseCommand {
+            // Show a simple contextual menu using Quick Rank tiers as move targets
+            app.beginQuickRank(contestant)
+        }
+        #endif
     }
 }
 
