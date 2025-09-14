@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct AppTier: Identifiable, Hashable { let id: String; var name: String }
 
@@ -70,6 +71,9 @@ struct ToolbarView: ToolbarContent {
     @EnvironmentObject var app: AppState
     @State private var showingShare = false
     @State private var exportText: String = ""
+    @State private var exportingJSON = false
+    @State private var importingJSON = false
+    @State private var jsonDoc = TiersDocument()
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarLeading) {
             Button(action: { app.undo() }) { Label("Undo", systemImage: "arrow.uturn.backward") }.disabled(!app.canUndo)
@@ -87,6 +91,13 @@ struct ToolbarView: ToolbarContent {
                 Button("Reset All", role: .destructive) { app.reset() }
                 Button("Save Locally") { _ = app.save() }
                 Button("Load Saved") { _ = app.load() }
+                #if os(iOS)
+                Button("Export JSON") {
+                    jsonDoc = TiersDocument(tiers: app.tiers)
+                    exportingJSON = true
+                }
+                Button("Import JSON") { importingJSON = true }
+                #endif
                 Button("Export Text") {
                     exportText = app.exportText()
                     showingShare = true
@@ -101,6 +112,17 @@ struct ToolbarView: ToolbarContent {
             EmptyView()
                 .sheet(isPresented: $showingShare) {
                     ShareSheet(activityItems: [exportText])
+                }
+                .fileExporter(isPresented: $exportingJSON, document: jsonDoc, contentType: .json, defaultFilename: "tiers.json") { result in
+                    if case .failure(let err) = result { print("Export failed: \(err)") }
+                }
+                .fileImporter(isPresented: $importingJSON, allowedContentTypes: [.json]) { result in
+                    if case .success(let url) = result {
+                        if let data = try? Data(contentsOf: url),
+                           let tiers = try? JSONDecoder().decode(TLTiers.self, from: data) {
+                            app.tiers = tiers
+                        }
+                    }
                 }
         }
         #endif
@@ -238,6 +260,22 @@ struct QuickRankOverlay: View {
             .padding()
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
+    }
+}
+
+// MARK: - JSON FileDocument
+struct TiersDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
+    var tiers: TLTiers = [:]
+    init() {}
+    init(tiers: TLTiers) { self.tiers = tiers }
+    init(configuration: ReadConfiguration) throws {
+        guard let data = configuration.file.regularFileContents else { throw CocoaError(.fileReadCorruptFile) }
+        self.tiers = try JSONDecoder().decode(TLTiers.self, from: data)
+    }
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        let data = try JSONEncoder().encode(tiers)
+        return .init(regularFileWithContents: data)
     }
 }
 
