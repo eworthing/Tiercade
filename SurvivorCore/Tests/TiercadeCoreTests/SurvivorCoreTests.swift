@@ -1,7 +1,7 @@
 import XCTest
-@testable import SurvivorCore
+@testable import TiercadeCore
 
-final class SurvivorCoreTests: XCTestCase {
+final class TiercadeCoreTests: XCTestCase {
     func testDecodeAndValidate() throws {
         let contestantsJSON = """
         {"c1": {"id":"c1","name":"One","season": 1}, "c2": {"id":"c2","name":"Two","season":"2"}}

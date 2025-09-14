@@ -1,19 +1,19 @@
 import Foundation
 
-#if canImport(SurvivorCore)
-import SurvivorCore
-public typealias TLContestant = SurvivorCore.Contestant
-public typealias TLTiers = SurvivorCore.Tiers
-public typealias TLTierConfig = SurvivorCore.TierConfig
-public typealias TLHistory<T> = SurvivorCore.History<T>
-public typealias TLHistoryLogic = SurvivorCore.HistoryLogic
-public typealias TLTierLogic = SurvivorCore.TierLogic
-public typealias TLExportFormatter = SurvivorCore.ExportFormatter
-public typealias TLAnalysisFormatter = SurvivorCore.AnalysisFormatter
-public typealias TLDataLoader = SurvivorCore.DataLoader
-public typealias TLQuickRankLogic = SurvivorCore.QuickRankLogic
-public typealias TLHeadToHeadLogic = SurvivorCore.HeadToHeadLogic
-public typealias TLH2HRankingEntry = SurvivorCore.H2HRankingEntry
+#if canImport(TiercadeCore)
+import TiercadeCore
+public typealias TLContestant = TiercadeCore.Contestant
+public typealias TLTiers = TiercadeCore.Tiers
+public typealias TLTierConfig = TiercadeCore.TierConfig
+public typealias TLHistory<T> = TiercadeCore.History<T>
+public typealias TLHistoryLogic = TiercadeCore.HistoryLogic
+public typealias TLTierLogic = TiercadeCore.TierLogic
+public typealias TLExportFormatter = TiercadeCore.ExportFormatter
+public typealias TLAnalysisFormatter = TiercadeCore.AnalysisFormatter
+public typealias TLDataLoader = TiercadeCore.DataLoader
+public typealias TLQuickRankLogic = TiercadeCore.QuickRankLogic
+public typealias TLHeadToHeadLogic = TiercadeCore.HeadToHeadLogic
+public typealias TLH2HRankingEntry = TiercadeCore.H2HRankingEntry
 #else
 public struct TLContestant: Identifiable, Hashable, Codable, Sendable {
 	public let id: String

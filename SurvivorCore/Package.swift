@@ -2,17 +2,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "SurvivorCore",
+    name: "TiercadeCore",
     platforms: [
         .iOS(.v17),
         .macOS(.v14),
         .tvOS(.v17)
     ],
     products: [
-        .library(name: "SurvivorCore", targets: ["SurvivorCore"])
+        .library(name: "TiercadeCore", targets: ["TiercadeCore"]),
     ],
     targets: [
-        .target(name: "SurvivorCore"),
-        .testTarget(name: "SurvivorCoreTests", dependencies: ["SurvivorCore"])
+        .target(name: "TiercadeCore"),
+        .testTarget(name: "TiercadeCoreTests", dependencies: ["TiercadeCore"]),
     ]
 )
