@@ -5,6 +5,10 @@
   },
   "layers" : [
     {
+      "filename" : "Back.imagestacklayer",
+      "role" : "background"
+    },
+    {
       "filename" : "Front.imagestacklayer",
       "role" : "foreground"
     }
