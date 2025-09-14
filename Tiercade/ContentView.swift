@@ -19,6 +19,7 @@ struct ContentView: View {
         }
         .environmentObject(app)
         .toolbar { ToolbarView() }
+    .overlay(alignment: .bottom) { QuickRankOverlay() }
     }
 }
 
@@ -186,6 +187,7 @@ struct UnrankedView: View {
 
 struct CardView: View {
     let contestant: TLContestant
+    @EnvironmentObject var app: AppState
     var body: some View {
         VStack(spacing: 8) {
             RoundedRectangle(cornerRadius: 8)
@@ -198,7 +200,7 @@ struct CardView: View {
         .background(RoundedRectangle(cornerRadius: 12).fill(.background))
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(.quaternary))
         .contentShape(Rectangle())
-        .onTapGesture { /* selection or quick rank handling later */ }
+        .onTapGesture { app.beginQuickRank(contestant) }
     }
 }
 
@@ -211,3 +213,27 @@ private extension Gradient {
 #if os(tvOS)
 #Preview("tvOS") { ContentView() }
 #endif
+
+// MARK: - Quick Rank overlay
+struct QuickRankOverlay: View {
+    @EnvironmentObject var app: AppState
+    var body: some View {
+        if let c = app.quickRankTarget {
+            VStack(spacing: 12) {
+                Text("Quick Rank: \(c.name ?? c.id)").font(.headline)
+                HStack(spacing: 8) {
+                    ForEach(app.tierOrder, id: \.self) { t in
+                        Button(t) { app.commitQuickRank(to: t) }
+                            .buttonStyle(.borderedProminent)
+                    }
+                    Button("Cancel", role: .cancel) { app.cancelQuickRank() }
+                }
+            }
+            .padding(12)
+            .background(.thinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding()
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+}

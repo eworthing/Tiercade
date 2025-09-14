@@ -7,6 +7,7 @@ final class AppState: ObservableObject {
     @Published var tierOrder: [String] = ["S","A","B","C","D","F"]
     @Published var searchQuery: String = ""
     @Published var toast: String? = nil
+    @Published var quickRankTarget: TLContestant? = nil
     private let storageKey = "Tiercade.tiers.v1"
 
     private var history = TLHistory<TLTiers>(stack: [], index: 0, limit: 80)
@@ -89,5 +90,17 @@ final class AppState: ObservableObject {
             "F": (name: "F", description: nil)
         ]
         return TLExportFormatter.generate(group: group, date: .now, themeName: themeName, tiers: tiers, tierConfig: cfg)
+    }
+
+    // MARK: - Quick Rank
+    func beginQuickRank(_ contestant: TLContestant) { quickRankTarget = contestant }
+    func cancelQuickRank() { quickRankTarget = nil }
+    func commitQuickRank(to tier: String) {
+        guard let c = quickRankTarget else { return }
+        let next = TLQuickRankLogic.assign(tiers, contestantId: c.id, to: tier)
+        guard next != tiers else { quickRankTarget = nil; return }
+        tiers = next
+        history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+        quickRankTarget = nil
     }
 }
