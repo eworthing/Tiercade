@@ -28,7 +28,7 @@ public enum TierLogic {
 
     /// Reorder within one tier from index to index; bounds-safe no-op on invalid.
     public static func reorderWithin(_ tiers: Tiers, tierName: String, from: Int, to: Int) -> Tiers {
-        guard var arr = tiers[tierName], from >= 0, from < arr.count, to >= 0, to < arr.count else { return tiers }
+        guard let arr = tiers[tierName], from >= 0, from < arr.count, to >= 0, to < arr.count else { return tiers }
         var copy = arr
         let item = copy.remove(at: from)
         copy.insert(item, at: to)
