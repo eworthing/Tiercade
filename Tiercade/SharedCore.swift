@@ -1,23 +1,18 @@
 import Foundation
 
-#if canImport(TiercadeCore)
-import TiercadeCore
-import TiercadeCore
-public typealias TLTierConfig = TiercadeCore.TierConfig
-public typealias TLHistory<T> = TiercadeCore.History<T>
-public typealias TLHistoryLogic = TiercadeCore.HistoryLogic
-public typealias TLTierLogic = TiercadeCore.TierLogic
-public typealias TLExportFormatter = TiercadeCore.ExportFormatter
-public typealias TLAnalysisFormatter = TiercadeCore.AnalysisFormatter
-public typealias TLDataLoader = TiercadeCore.DataLoader
-public typealias TLQuickRankLogic = TiercadeCore.QuickRankLogic
-public typealias TLHeadToHeadLogic = TiercadeCore.HeadToHeadLogic
-public typealias TLH2HRankingEntry = TiercadeCore.H2HRankingEntry
-#else
+// Fallback definitions - using standalone implementations for development
+// TODO: Add conditional import when TiercadeCore is integrated as dependency
+// Fallback definitions when TiercadeCore is not available
 public struct TLContestant: Identifiable, Hashable, Codable, Sendable {
 	public let id: String
 	public var name: String?
 	public var season: String?
+	
+	public init(id: String, name: String? = nil, season: String? = nil) {
+		self.id = id
+		self.name = name
+		self.season = season
+	}
 }
 
 public typealias TLTiers = [String: [TLContestant]]
@@ -27,6 +22,12 @@ public struct TLHistory<T> {
 	public var stack: [T]
 	public var index: Int
 	public var limit: Int
+	
+	public init(stack: [T], index: Int, limit: Int) {
+		self.stack = stack
+		self.index = index
+		self.limit = limit
+	}
 }
 
 public enum TLHistoryLogic {
@@ -153,4 +154,3 @@ public enum TLHeadToHeadLogic {
 		return newTiers
 	}
 }
-#endif

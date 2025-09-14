@@ -1,6 +1,9 @@
 import Foundation
 import SwiftUI
 
+// Ensure SharedCore types are accessible
+// TL* types defined in SharedCore.swift should be available in same module
+
 @MainActor
 final class AppState: ObservableObject {
     @Published var tiers: TLTiers = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
