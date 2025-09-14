@@ -40,10 +40,10 @@ struct ContentView: View {
             }
             #endif
         }
-        .environmentObject(app)
-        .toolbar { ToolbarView() }
-        .overlay(alignment: .bottom) { QuickRankOverlay() }
-        .overlay { HeadToHeadOverlay() }
+    .environmentObject(app)
+    .toolbar { ToolbarView(app: app) }
+    .overlay(alignment: .bottom) { QuickRankOverlay(app: app) }
+    .overlay { HeadToHeadOverlay(app: app) }
         #if os(tvOS)
         .onPlayPauseCommand(perform: {
             if canStartH2HFromRemote { app.startH2H() }
@@ -97,7 +97,7 @@ struct SidebarView: View {
 }
 
 struct ToolbarView: ToolbarContent {
-    @EnvironmentObject var app: AppState
+    @ObservedObject var app: AppState
     @State private var exportText: String = ""
     #if os(iOS)
     @State private var showingShare = false
@@ -298,7 +298,6 @@ struct CardView: View {
         .contentShape(Rectangle())
         .onTapGesture { app.beginQuickRank(contestant) }
         #if os(tvOS)
-    .focusEffect(.highlight)
         .focusable(true)
         .onPlayPauseCommand {
             // Show a simple contextual menu using Quick Rank tiers as move targets
@@ -325,7 +324,7 @@ private extension Gradient {
 
 // MARK: - Quick Rank overlay
 struct QuickRankOverlay: View {
-    @EnvironmentObject var app: AppState
+    @ObservedObject var app: AppState
     var body: some View {
         if let c = app.quickRankTarget {
             VStack(spacing: 12) {
@@ -367,14 +366,14 @@ struct TiersDocument: FileDocument {
 
 // MARK: - Head-to-Head overlay
 struct HeadToHeadOverlay: View {
-    @EnvironmentObject var app: AppState
+    @ObservedObject var app: AppState
     var body: some View {
         if app.h2hActive {
             ZStack {
                 Color.black.opacity(0.4).ignoresSafeArea()
                     .onTapGesture { /* block background interaction */ }
                 VStack(spacing: 16) {
-                    Text("Head-to-Head").font(.title2.bold())
+                    Text("Head-to-Head").font(.headline)
                     if let pair = app.h2hPair {
                         HStack(spacing: 16) {
                             H2HButton(contestant: pair.0) { app.voteH2H(winner: pair.0) }
