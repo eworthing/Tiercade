@@ -10,7 +10,7 @@ final class AppState: ObservableObject {
     @Published var tierOrder: [String] = ["S","A","B","C","D","F"]
     @Published var searchQuery: String = ""
     @Published var activeFilter: FilterType = .all
-    @Published var toast: String? = nil
+    @Published var currentToast: ToastMessage? = nil
     @Published var quickRankTarget: TLContestant? = nil
     // Head-to-Head
     @Published var h2hActive: Bool = false
@@ -80,6 +80,7 @@ final class AppState: ObservableObject {
         tiers = next
         history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
+        showInfoToast("Tier Cleared", message: "Moved all contestants from \(tier) tier to unranked")
     }
 
     func undo() { 
@@ -87,6 +88,7 @@ final class AppState: ObservableObject {
         history = TLHistoryLogic.undo(history)
         tiers = TLHistoryLogic.current(history)
         markAsChanged()
+        showInfoToast("Undone", message: "Last action has been undone")
     }
     
     func redo() { 
@@ -94,6 +96,7 @@ final class AppState: ObservableObject {
         history = TLHistoryLogic.redo(history)
         tiers = TLHistoryLogic.current(history)
         markAsChanged()
+        showInfoToast("Redone", message: "Action has been redone")
     }
     var canUndo: Bool { TLHistoryLogic.canUndo(history) }
     var canRedo: Bool { TLHistoryLogic.canRedo(history) }
@@ -130,6 +133,41 @@ final class AppState: ObservableObject {
             return name.contains(query) || season.contains(query) || id.contains(query)
         }
     }
+    
+    // MARK: - Toast System
+    
+    func showToast(type: ToastType, title: String, message: String? = nil, duration: TimeInterval = 3.0) {
+        let toast = ToastMessage(type: type, title: title, message: message, duration: duration)
+        currentToast = toast
+        
+        // Auto-dismiss after duration
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
+            guard let self = self else { return }
+            if self.currentToast?.id == toast.id {
+                self.dismissToast()
+            }
+        }
+    }
+    
+    func dismissToast() {
+        currentToast = nil
+    }
+    
+    func showSuccessToast(_ title: String, message: String? = nil) {
+        showToast(type: .success, title: title, message: message)
+    }
+    
+    func showErrorToast(_ title: String, message: String? = nil) {
+        showToast(type: .error, title: title, message: message)
+    }
+    
+    func showInfoToast(_ title: String, message: String? = nil) {
+        showToast(type: .info, title: title, message: message)
+    }
+    
+    func showWarningToast(_ title: String, message: String? = nil) {
+        showToast(type: .warning, title: title, message: message)
+    }
 
     func reset() {
         tiers = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
@@ -165,6 +203,8 @@ final class AppState: ObservableObject {
         tiers = newTiers
         history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
+        
+        showSuccessToast("Tiers Randomized", message: "All contestants have been redistributed randomly")
     }
 
     // MARK: - Enhanced Persistence
@@ -176,9 +216,11 @@ final class AppState: ObservableObject {
             UserDefaults.standard.set(data, forKey: storageKey)
             hasUnsavedChanges = false
             lastSavedTime = Date()
+            showSuccessToast("Saved", message: "Tier list saved successfully")
             return true
         } catch {
             print("Save failed: \(error)")
+            showErrorToast("Save Failed", message: "Could not save tier list")
             return false
         }
     }
@@ -211,9 +253,11 @@ final class AppState: ObservableObject {
             hasUnsavedChanges = false
             lastSavedTime = Date()
             
+            showSuccessToast("File Saved", message: "Saved as \(fileName).json")
             return true
         } catch {
             print("File save failed: \(error)")
+            showErrorToast("Save Failed", message: "Could not save \(fileName).json")
             return false
         }
     }
@@ -227,9 +271,11 @@ final class AppState: ObservableObject {
             history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
             hasUnsavedChanges = false
             lastSavedTime = UserDefaults.standard.object(forKey: "\(storageKey).timestamp") as? Date
+            showSuccessToast("Loaded", message: "Tier list loaded successfully")
             return true
         } catch {
             print("Load failed: \(error)")
+            showErrorToast("Load Failed", message: "Could not load tier list")
             return false
         }
     }
@@ -249,9 +295,11 @@ final class AppState: ObservableObject {
             hasUnsavedChanges = false
             lastSavedTime = saveData.createdDate
             
+            showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
             return true
         } catch {
             print("File load failed: \(error)")
+            showErrorToast("Load Failed", message: "Could not load \(fileName).json")
             return false
         }
     }

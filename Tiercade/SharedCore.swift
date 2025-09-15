@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // Fallback definitions - using standalone implementations for development
 // TODO: Add conditional import when TiercadeCore is integrated as dependency
@@ -8,6 +9,56 @@ public enum FilterType: String, CaseIterable {
     case all = "All"
     case ranked = "Ranked"
     case unranked = "Unranked"
+}
+
+// MARK: - Toast System
+
+enum ToastType {
+    case success
+    case error
+    case info
+    case warning
+    
+    var color: Color {
+        switch self {
+        case .success:
+            return .green
+        case .error:
+            return .red
+        case .info:
+            return .blue
+        case .warning:
+            return .orange
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .success:
+            return "checkmark.circle.fill"
+        case .error:
+            return "xmark.circle.fill"
+        case .info:
+            return "info.circle.fill"
+        case .warning:
+            return "exclamationmark.triangle.fill"
+        }
+    }
+}
+
+struct ToastMessage: Identifiable, Equatable {
+    let id = UUID()
+    let type: ToastType
+    let title: String
+    let message: String?
+    let duration: TimeInterval
+    
+    init(type: ToastType, title: String, message: String? = nil, duration: TimeInterval = 3.0) {
+        self.type = type
+        self.title = title
+        self.message = message
+        self.duration = duration
+    }
 }
 
 // Fallback definitions when TiercadeCore is not available

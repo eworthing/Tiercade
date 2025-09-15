@@ -12,6 +12,56 @@ import UniformTypeIdentifiers
 
 struct AppTier: Identifiable, Hashable { let id: String; var name: String }
 
+// MARK: - Toast View
+
+struct ToastView: View {
+    let toast: ToastMessage
+    @State private var isVisible = false
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: toast.type.icon)
+                .foregroundColor(toast.type.color)
+                .font(.title2)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(toast.title)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                if let message = toast.message {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(toast.type.color.opacity(0.3), lineWidth: 1)
+        )
+        .scaleEffect(isVisible ? 1.0 : 0.8)
+        .opacity(isVisible ? 1.0 : 0.0)
+        .onAppear {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                isVisible = true
+            }
+        }
+        .onDisappear {
+            isVisible = false
+        }
+    }
+}
+
 struct ContentView: View {
     @StateObject private var app = AppState()
     #if os(tvOS)
@@ -44,6 +94,17 @@ struct ContentView: View {
     .toolbar { ToolbarView(app: app) }
     .overlay(alignment: .bottom) { QuickRankOverlay(app: app) }
     .overlay { HeadToHeadOverlay(app: app) }
+    .overlay(alignment: .top) {
+        if let toast = app.currentToast {
+            ToastView(toast: toast)
+                .padding(.top, 80) // Account for toolbar
+                .padding(.horizontal, 20)
+                .onTapGesture {
+                    app.dismissToast()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
     .overlay(alignment: .topTrailing) { 
         PersistenceStatusView(app: app)
             .padding(.top, 60) // Account for toolbar
