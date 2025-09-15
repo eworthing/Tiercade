@@ -44,6 +44,11 @@ struct ContentView: View {
     .toolbar { ToolbarView(app: app) }
     .overlay(alignment: .bottom) { QuickRankOverlay(app: app) }
     .overlay { HeadToHeadOverlay(app: app) }
+    .overlay(alignment: .topTrailing) { 
+        PersistenceStatusView(app: app)
+            .padding(.top, 60) // Account for toolbar
+            .padding(.trailing, 20)
+    }
         #if os(tvOS)
         .onPlayPauseCommand(perform: {
             if canStartH2HFromRemote { app.startH2H() }
@@ -96,9 +101,58 @@ struct SidebarView: View {
     }
 }
 
+// MARK: - Persistence Status
+struct PersistenceStatusView: View {
+    @ObservedObject var app: AppState
+    
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            if let fileName = app.currentFileName {
+                Text(fileName)
+                    .font(.caption)
+                    .foregroundColor(.primary)
+            }
+            
+            HStack(spacing: 4) {
+                if app.hasUnsavedChanges {
+                    Circle()
+                        .fill(Color.orange)
+                        .frame(width: 8, height: 8)
+                    Text("Unsaved")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                } else {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 8, height: 8)
+                    Text("Saved")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                }
+            }
+            
+            if let lastSaved = app.lastSavedTime {
+                Text("Last saved: \(lastSaved, style: .time)")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(8)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .opacity(app.hasUnsavedChanges || app.currentFileName != nil ? 1.0 : 0.0)
+        .animation(.easeInOut(duration: 0.2), value: app.hasUnsavedChanges)
+        .animation(.easeInOut(duration: 0.2), value: app.currentFileName)
+    }
+}
+
+// MARK: - Toolbar
 struct ToolbarView: ToolbarContent {
     @ObservedObject var app: AppState
     @State private var exportText: String = ""
+    @State private var showingSaveDialog = false
+    @State private var showingLoadDialog = false
+    @State private var saveFileName = ""
+    @State private var selectedLoadFile = ""
     #if os(iOS)
     @State private var showingShare = false
     @State private var exportingJSON = false
@@ -129,14 +183,31 @@ struct ToolbarView: ToolbarContent {
                 Divider()
                 Button("Randomize") { app.randomize() }
                 Button("Reset All", role: .destructive) { app.reset() }
-                Button("Save Locally") { _ = app.save() }
-                #if !os(tvOS)
-                    .keyboardShortcut("s", modifiers: [.command])
-                #endif
-                Button("Load Saved") { _ = app.load() }
-                #if !os(tvOS)
-                    .keyboardShortcut("o", modifiers: [.command])
-                #endif
+                Divider()
+                Menu("File Operations") {
+                    Button("Save Locally") { _ = app.save() }
+                    #if !os(tvOS)
+                        .keyboardShortcut("s", modifiers: [.command])
+                    #endif
+                    Button("Load Saved") { _ = app.load() }
+                    #if !os(tvOS)
+                        .keyboardShortcut("o", modifiers: [.command])
+                    #endif
+                    Divider()
+                    Button("Save to File...") { 
+                        saveFileName = app.currentFileName ?? "MyTierList"
+                        showingSaveDialog = true 
+                    }
+                    #if !os(tvOS)
+                        .keyboardShortcut("S", modifiers: [.command, .shift])
+                    #endif
+                    Button("Load from File...") { 
+                        showingLoadDialog = true 
+                    }
+                    #if !os(tvOS)
+                        .keyboardShortcut("O", modifiers: [.command, .shift])
+                    #endif
+                }
                 #if os(iOS)
                 Button("Export JSON") {
                     jsonDoc = TiersDocument(tiers: app.tiers)
@@ -180,6 +251,61 @@ struct ToolbarView: ToolbarContent {
                             app.tiers = tiers
                         }
                     }
+                }
+                .alert("Save Tier List", isPresented: $showingSaveDialog) {
+                    TextField("File Name", text: $saveFileName)
+                    Button("Save") {
+                        if !saveFileName.isEmpty {
+                            if app.saveToFile(named: saveFileName) {
+                                // Success feedback could be added here
+                            }
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Enter a name for your tier list file.")
+                }
+                .alert("Load Tier List", isPresented: $showingLoadDialog) {
+                    ForEach(app.getAvailableSaveFiles(), id: \.self) { fileName in
+                        Button(fileName) {
+                            if app.loadFromFile(named: fileName) {
+                                // Success feedback could be added here
+                            }
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Select a tier list file to load.")
+                }
+        }
+        #else
+        // For macOS and tvOS
+        ToolbarItem(placement: .automatic) {
+            EmptyView()
+                .alert("Save Tier List", isPresented: $showingSaveDialog) {
+                    TextField("File Name", text: $saveFileName)
+                    Button("Save") {
+                        if !saveFileName.isEmpty {
+                            if app.saveToFile(named: saveFileName) {
+                                // Success feedback could be added here
+                            }
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Enter a name for your tier list file.")
+                }
+                .alert("Load Tier List", isPresented: $showingLoadDialog) {
+                    ForEach(app.getAvailableSaveFiles(), id: \.self) { fileName in
+                        Button(fileName) {
+                            if app.loadFromFile(named: fileName) {
+                                // Success feedback could be added here
+                            }
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Select a tier list file to load.")
                 }
         }
         #endif

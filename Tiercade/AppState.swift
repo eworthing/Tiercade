@@ -16,7 +16,15 @@ final class AppState: ObservableObject {
     @Published var h2hPool: [TLContestant] = []
     @Published var h2hPair: (TLContestant, TLContestant)? = nil
     @Published var h2hRecords: [String: TLH2HRecord] = [:]
+    
+    // Enhanced Persistence
+    @Published var hasUnsavedChanges: Bool = false
+    @Published var lastSavedTime: Date? = nil
+    @Published var currentFileName: String? = nil
+    
     private let storageKey = "Tiercade.tiers.v1"
+    private var autosaveTimer: Timer?
+    private let autosaveInterval: TimeInterval = 30.0 // Auto-save every 30 seconds
 
     private var history = TLHistory<TLTiers>(stack: [], index: 0, limit: 80)
 
@@ -25,6 +33,26 @@ final class AppState: ObservableObject {
             seed()
         }
         history = TLHistoryLogic.initHistory(tiers, limit: 80)
+        setupAutosave()
+    }
+    
+    deinit {
+        autosaveTimer?.invalidate()
+    }
+    
+    private func setupAutosave() {
+        autosaveTimer = Timer.scheduledTimer(withTimeInterval: autosaveInterval, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            Task { @MainActor in
+                if self.hasUnsavedChanges {
+                    self.autoSave()
+                }
+            }
+        }
+    }
+    
+    private func markAsChanged() {
+        hasUnsavedChanges = true
     }
 
     func seed() {
@@ -40,6 +68,7 @@ final class AppState: ObservableObject {
         guard next != tiers else { return }
         tiers = next
         history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+        markAsChanged()
     }
 
     func clearTier(_ tier: String) {
@@ -49,10 +78,22 @@ final class AppState: ObservableObject {
         next["unranked", default: []].append(contentsOf: moving)
         tiers = next
         history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+        markAsChanged()
     }
 
-    func undo() { guard TLHistoryLogic.canUndo(history) else { return }; history = TLHistoryLogic.undo(history); tiers = TLHistoryLogic.current(history) }
-    func redo() { guard TLHistoryLogic.canRedo(history) else { return }; history = TLHistoryLogic.redo(history); tiers = TLHistoryLogic.current(history) }
+    func undo() { 
+        guard TLHistoryLogic.canUndo(history) else { return }
+        history = TLHistoryLogic.undo(history)
+        tiers = TLHistoryLogic.current(history)
+        markAsChanged()
+    }
+    
+    func redo() { 
+        guard TLHistoryLogic.canRedo(history) else { return }
+        history = TLHistoryLogic.redo(history)
+        tiers = TLHistoryLogic.current(history)
+        markAsChanged()
+    }
     var canUndo: Bool { TLHistoryLogic.canUndo(history) }
     var canRedo: Bool { TLHistoryLogic.canRedo(history) }
 
@@ -60,6 +101,7 @@ final class AppState: ObservableObject {
         tiers = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
         seed()
         history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
+        markAsChanged()
     }
     
     func randomize() {
@@ -88,16 +130,56 @@ final class AppState: ObservableObject {
         
         tiers = newTiers
         history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+        markAsChanged()
     }
 
+    // MARK: - Enhanced Persistence
+    
     @discardableResult
     func save() -> Bool {
         do {
             let data = try JSONEncoder().encode(tiers)
             UserDefaults.standard.set(data, forKey: storageKey)
+            hasUnsavedChanges = false
+            lastSavedTime = Date()
             return true
         } catch {
             print("Save failed: \(error)")
+            return false
+        }
+    }
+    
+    @discardableResult
+    func autoSave() -> Bool {
+        guard hasUnsavedChanges else { return true }
+        return save()
+    }
+    
+    @discardableResult
+    func saveToFile(named fileName: String) -> Bool {
+        do {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            
+            let saveData = TierListSaveData(
+                tiers: tiers,
+                createdDate: Date(),
+                appVersion: "1.0"
+            )
+            
+            let data = try encoder.encode(saveData)
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
+            
+            try data.write(to: fileURL)
+            
+            currentFileName = fileName
+            hasUnsavedChanges = false
+            lastSavedTime = Date()
+            
+            return true
+        } catch {
+            print("File save failed: \(error)")
             return false
         }
     }
@@ -109,9 +191,59 @@ final class AppState: ObservableObject {
             let decoded = try JSONDecoder().decode(TLTiers.self, from: data)
             tiers = decoded
             history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
+            hasUnsavedChanges = false
+            lastSavedTime = UserDefaults.standard.object(forKey: "\(storageKey).timestamp") as? Date
             return true
         } catch {
             print("Load failed: \(error)")
+            return false
+        }
+    }
+    
+    @discardableResult
+    func loadFromFile(named fileName: String) -> Bool {
+        do {
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
+            
+            let data = try Data(contentsOf: fileURL)
+            let saveData = try JSONDecoder().decode(TierListSaveData.self, from: data)
+            
+            tiers = saveData.tiers
+            history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
+            currentFileName = fileName
+            hasUnsavedChanges = false
+            lastSavedTime = saveData.createdDate
+            
+            return true
+        } catch {
+            print("File load failed: \(error)")
+            return false
+        }
+    }
+    
+    func getAvailableSaveFiles() -> [String] {
+        do {
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileURLs = try FileManager.default.contentsOfDirectory(at: documentsPath, includingPropertiesForKeys: nil)
+            return fileURLs
+                .filter { $0.pathExtension == "json" }
+                .map { $0.deletingPathExtension().lastPathComponent }
+                .sorted()
+        } catch {
+            print("Error listing save files: \(error)")
+            return []
+        }
+    }
+    
+    func deleteSaveFile(named fileName: String) -> Bool {
+        do {
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
+            try FileManager.default.removeItem(at: fileURL)
+            return true
+        } catch {
+            print("Error deleting save file: \(error)")
             return false
         }
     }
@@ -137,6 +269,7 @@ final class AppState: ObservableObject {
         guard next != tiers else { quickRankTarget = nil; return }
         tiers = next
         history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+        markAsChanged()
         quickRankTarget = nil
     }
 
@@ -172,6 +305,7 @@ final class AppState: ObservableObject {
         let distributed = TLHeadToHeadLogic.distributeRoundRobin(ranking, into: tierOrder, baseTiers: tiers)
         tiers = distributed
         history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+        markAsChanged()
         h2hActive = false
         h2hPair = nil
         h2hPool = []

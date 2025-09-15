@@ -18,6 +18,18 @@ public struct TLContestant: Identifiable, Hashable, Codable, Sendable {
 public typealias TLTiers = [String: [TLContestant]]
 public typealias TLTierConfig = [String: (name: String, description: String?)]
 
+public struct TierListSaveData: Codable {
+	public let tiers: TLTiers
+	public let createdDate: Date
+	public let appVersion: String
+	
+	public init(tiers: TLTiers, createdDate: Date, appVersion: String) {
+		self.tiers = tiers
+		self.createdDate = createdDate
+		self.appVersion = appVersion
+	}
+}
+
 public struct TLHistory<T> {
 	public var stack: [T]
 	public var index: Int
