@@ -2,6 +2,14 @@ import Foundation
 
 // Fallback definitions - using standalone implementations for development
 // TODO: Add conditional import when TiercadeCore is integrated as dependency
+
+// MARK: - Filter Types
+public enum FilterType: String, CaseIterable {
+    case all = "All"
+    case ranked = "Ranked"
+    case unranked = "Unranked"
+}
+
 // Fallback definitions when TiercadeCore is not available
 public struct TLContestant: Identifiable, Hashable, Codable, Sendable {
 	public let id: String

@@ -2,13 +2,14 @@ import Foundation
 import SwiftUI
 
 // Ensure SharedCore types are accessible
-// TL* types defined in SharedCore.swift should be available in same module
+// TL* types defined in SharedCore.swift sho    func applySearchFilter(to contestants: [TLContestant]) -> [TLContestant] {ld be available in same module
 
 @MainActor
 final class AppState: ObservableObject {
     @Published var tiers: TLTiers = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
     @Published var tierOrder: [String] = ["S","A","B","C","D","F"]
     @Published var searchQuery: String = ""
+    @Published var activeFilter: FilterType = .all
     @Published var toast: String? = nil
     @Published var quickRankTarget: TLContestant? = nil
     // Head-to-Head
@@ -96,6 +97,39 @@ final class AppState: ObservableObject {
     }
     var canUndo: Bool { TLHistoryLogic.canUndo(history) }
     var canRedo: Bool { TLHistoryLogic.canRedo(history) }
+    
+    // MARK: - Search & Filter
+    func filteredContestants(for tier: String) -> [TLContestant] {
+        let contestants = tiers[tier] ?? []
+        return applySearchFilter(to: contestants)
+    }
+    
+    func allContestants() -> [TLContestant] {
+        switch activeFilter {
+        case .all:
+            let all = tierOrder.flatMap { tiers[$0] ?? [] } + (tiers["unranked"] ?? [])
+            return applySearchFilter(to: all)
+        case .ranked:
+            let ranked = tierOrder.flatMap { tiers[$0] ?? [] }
+            return applySearchFilter(to: ranked)
+        case .unranked:
+            let unranked = tiers["unranked"] ?? []
+            return applySearchFilter(to: unranked)
+        }
+    }
+    
+    func applySearchFilter(to contestants: [TLContestant]) -> [TLContestant] {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else { return contestants }
+        
+        return contestants.filter { contestant in
+            let name = (contestant.name ?? "").lowercased()
+            let season = (contestant.season ?? "").lowercased()
+            let id = contestant.id.lowercased()
+            
+            return name.contains(query) || season.contains(query) || id.contains(query)
+        }
+    }
 
     func reset() {
         tiers = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]

@@ -85,18 +85,83 @@ struct SidebarView: View {
     @EnvironmentObject var app: AppState
     let tierOrder: [String]
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             Text("Survivor Tier List").font(.largeTitle.bold())
-            #if !os(tvOS)
-            TextField("Search unranked…", text: $app.searchQuery)
-                .textFieldStyle(.roundedBorder)
-            #endif
-            HStack { Text("Unranked:"); Text("\(app.tiers["unranked"]?.count ?? 0)").bold() }
+            
+            // Enhanced Search Section
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Search & Filter").font(.headline)
+                
+                #if !os(tvOS)
+                TextField("Search contestants...", text: $app.searchQuery)
+                    .textFieldStyle(.roundedBorder)
+                #endif
+                
+                // Quick Filter Buttons
+                HStack(spacing: 8) {
+                    ForEach(FilterType.allCases, id: \.self) { filter in
+                        Button(filter.rawValue) {
+                            app.activeFilter = filter
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .background(app.activeFilter == filter ? Color.accentColor.opacity(0.2) : Color.clear)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(app.activeFilter == filter ? Color.accentColor : Color.clear, lineWidth: 2)
+                        )
+                    }
+                }
+            }
+            
             Divider()
-            ScrollView { VStack(alignment: .leading) { ForEach(tierOrder, id: \.self) { t in Label(t, systemImage: "flag") } } }
+            
+            // Stats Section
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Statistics").font(.headline)
+                HStack { 
+                    Text("Total:"); 
+                    Spacer()
+                    Text("\(tierOrder.flatMap { app.tiers[$0] ?? [] }.count + (app.tiers["unranked"]?.count ?? 0))").bold() 
+                }
+                HStack { 
+                    Text("Ranked:"); 
+                    Spacer()
+                    Text("\(tierOrder.flatMap { app.tiers[$0] ?? [] }.count)").bold() 
+                }
+                HStack { 
+                    Text("Unranked:"); 
+                    Spacer()
+                    Text("\(app.tiers["unranked"]?.count ?? 0)").bold() 
+                }
+                if !app.searchQuery.isEmpty {
+                    HStack { 
+                        Text("Filtered:"); 
+                        Spacer()
+                        Text("\(app.allContestants().count)").bold().foregroundColor(.accentColor)
+                    }
+                }
+            }
+            
+            Divider()
+            
+            // Tier List
+            ScrollView { 
+                VStack(alignment: .leading, spacing: 4) { 
+                    ForEach(tierOrder, id: \.self) { t in 
+                        HStack {
+                            Label(t, systemImage: "flag")
+                            Spacer()
+                            Text("\(app.tiers[t]?.count ?? 0)")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    } 
+                } 
+            }
         }
         .padding()
-        .frame(minWidth: 260)
+        .frame(minWidth: 280)
         .background(.thinMaterial)
     }
 }
@@ -348,30 +413,57 @@ struct TierGridView: View {
 struct TierRowView: View {
     @EnvironmentObject var app: AppState
     let tier: String
-    var cards: [TLContestant] { app.tiers[tier] ?? [] }
+    
+    var filteredCards: [TLContestant] {
+        let allCards = app.tiers[tier] ?? []
+        
+        // Apply global filter
+        switch app.activeFilter {
+        case .all:
+            break // Show all from this tier
+        case .ranked:
+            if tier == "unranked" { return [] } // Hide unranked when filter is "ranked"
+        case .unranked:
+            if tier != "unranked" { return [] } // Hide ranked tiers when filter is "unranked"
+        }
+        
+        // Apply search filter
+        return app.applySearchFilter(to: allCards)
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(tier).font(.title2.bold())
-            ScrollView(.horizontal) {
-                LazyHStack(spacing: 10) {
-                    ForEach(cards, id: \.id) { c in
-                        CardView(contestant: c)
-                        #if !os(tvOS)
-                            .draggable(c.id)
-                        #endif
+        if !filteredCards.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(tier).font(.title2.bold())
+                    Spacer()
+                    if !app.searchQuery.isEmpty || app.activeFilter != .all {
+                        Text("\(filteredCards.count)/\(app.tiers[tier]?.count ?? 0)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
-                .padding(.bottom, 4)
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 10) {
+                        ForEach(filteredCards, id: \.id) { c in
+                            CardView(contestant: c)
+                            #if !os(tvOS)
+                                .draggable(c.id)
+                            #endif
+                        }
+                    }
+                    .padding(.bottom, 4)
+                }
             }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 12).fill(.ultraThinMaterial))
+            #if !os(tvOS)
+            .dropDestination(for: String.self) { items, _ in
+                if let id = items.first { app.move(id, to: tier) }
+                return true
+            }
+            #endif
         }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12).fill(.ultraThinMaterial))
-        #if !os(tvOS)
-        .dropDestination(for: String.self) { items, _ in
-            if let id = items.first { app.move(id, to: tier) }
-            return true
-        }
-        #endif
     }
 }
 
@@ -380,31 +472,57 @@ struct UnrankedView: View {
     #if os(tvOS)
     @FocusState private var focusedCardId: String?
     #endif
-    var filtered: [TLContestant] {
-        let q = app.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return (app.tiers["unranked"] ?? []).filter { q.isEmpty || ($0.name ?? "").lowercased().contains(q) }
+    
+    var filteredContestants: [TLContestant] {
+        let allUnranked = app.tiers["unranked"] ?? []
+        
+        // Apply global filter
+        switch app.activeFilter {
+        case .all, .unranked:
+            break // Show unranked
+        case .ranked:
+            return [] // Hide unranked when filter is "ranked"
+        }
+        
+        // Apply search filter
+        return app.applySearchFilter(to: allUnranked)
     }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack { Text("Unranked").font(.title2.bold()); Spacer(); Text("\(filtered.count)") }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 10)]) {
-                ForEach(filtered, id: \.id) { c in
-                    CardView(contestant: c)
-                    #if !os(tvOS)
-                        .draggable(c.id)
-                    #else
-                        .focused($focusedCardId, equals: c.id)
-                    #endif
+        if !filteredContestants.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack { 
+                    Text("Unranked").font(.title2.bold())
+                    Spacer()
+                    if !app.searchQuery.isEmpty || app.activeFilter != .all {
+                        Text("\(filteredContestants.count)/\(app.tiers["unranked"]?.count ?? 0)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("\(filteredContestants.count)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 10)]) {
+                    ForEach(filteredContestants, id: \.id) { c in
+                        CardView(contestant: c)
+                        #if !os(tvOS)
+                            .draggable(c.id)
+                        #else
+                            .focused($focusedCardId, equals: c.id)
+                        #endif
+                    }
                 }
             }
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 12).strokeBorder(.secondary))
+            #if !os(tvOS)
+            .dropDestination(for: String.self) { _, _ in false }
+            #else
+            .onAppear { focusedCardId = filteredContestants.first?.id }
+            #endif
         }
-        .padding(12)
-        .background(RoundedRectangle(cornerRadius: 12).strokeBorder(.secondary))
-    #if !os(tvOS)
-    .dropDestination(for: String.self) { _, _ in false }
-    #else
-    .onAppear { focusedCardId = filtered.first?.id }
-    #endif
     }
 }
 
