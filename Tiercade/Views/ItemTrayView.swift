@@ -3,12 +3,13 @@ import SwiftUI
 struct ItemTrayView: View {
     @EnvironmentObject var app: AppState
     @State private var query: String = ""
+    @State private var showingAdd = false
     var body: some View {
         VStack(alignment: .leading, spacing: Metrics.grid) {
             HStack {
                 Text("Items").font(TypeScale.h3).foregroundColor(Palette.text)
                 Spacer()
-                Button("Add") { /* show add UI */ }
+                Button("Add") { showingAdd = true }
                     .buttonStyle(PrimaryButtonStyle())
             }
 
@@ -71,5 +72,45 @@ struct ItemTrayView: View {
         .panel()
         .frame(minWidth: Metrics.paneLeft)
         .padding(.horizontal, Metrics.grid)
+        .sheet(isPresented: $showingAdd) {
+            AddItemsView(isPresented: $showingAdd)
+                .environmentObject(app)
+        }
+    }
+}
+
+// Simple modal for adding items
+struct AddItemsView: View {
+    @EnvironmentObject var app: AppState
+    @Binding var isPresented: Bool
+    @State private var name: String = ""
+    @State private var id: String = ""
+    @State private var season: String = ""
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("New Item")) {
+                    TextField("ID (unique)", text: $id)
+                    TextField("Name", text: $name)
+                    TextField("Season (optional)", text: $season)
+                }
+            }
+            .navigationTitle("Add Item")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") { isPresented = false }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Add") {
+                        let finalId = id.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !finalId.isEmpty else { return }
+                        app.addContestant(id: finalId, name: name.isEmpty ? nil : name, season: season.isEmpty ? nil : season)
+                        isPresented = false
+                    }
+                    .disabled(id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
     }
 }

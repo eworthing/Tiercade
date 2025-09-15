@@ -127,6 +127,7 @@ struct DragTargetHighlight: View {
 
 struct ContentView: View {
     @StateObject private var app = AppState()
+    @State private var showingAddItems = false
     #if os(tvOS)
     private var canStartH2HFromRemote: Bool { app.quickRankTarget == nil && !app.h2hActive }
     #endif
@@ -189,6 +190,10 @@ struct ContentView: View {
     }
     .sheet(isPresented: $app.showingAnalysis) {
         AnalysisView(app: app)
+    }
+    .sheet(isPresented: $showingAddItems) {
+        AddItemsView(isPresented: $showingAddItems)
+            .environmentObject(app)
     }
         #if os(tvOS)
         .onPlayPauseCommand(perform: {

@@ -247,6 +247,17 @@ final class AppState: ObservableObject {
         history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
         markAsChanged()
     }
+
+    // MARK: - Add Contestant
+    func addContestant(id: String, name: String? = nil, season: String? = nil, thumbUri: String? = nil) {
+        let c = TLContestant(id: id, name: name, season: season, thumbUri: thumbUri)
+        var next = tiers
+        next["unranked", default: []].append(c)
+        tiers = next
+        history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+        markAsChanged()
+        showSuccessToast("Added", message: "Added \(name ?? id) to Unranked")
+    }
     
     func randomize() {
         // Collect all contestants from all tiers
