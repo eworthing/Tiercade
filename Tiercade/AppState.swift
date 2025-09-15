@@ -61,6 +61,34 @@ final class AppState: ObservableObject {
         seed()
         history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
     }
+    
+    func randomize() {
+        // Collect all contestants from all tiers
+        var allContestants: [TLContestant] = []
+        for tierName in tierOrder + ["unranked"] {
+            allContestants.append(contentsOf: tiers[tierName] ?? [])
+        }
+        
+        // Clear all tiers
+        var newTiers = tiers
+        for tierName in tierOrder + ["unranked"] {
+            newTiers[tierName] = []
+        }
+        
+        // Shuffle and redistribute
+        allContestants.shuffle()
+        let tiersToFill = tierOrder // Don't include unranked in randomization
+        let contestantsPerTier = max(1, allContestants.count / tiersToFill.count)
+        
+        for (index, contestant) in allContestants.enumerated() {
+            let tierIndex = min(index / contestantsPerTier, tiersToFill.count - 1)
+            let tierName = tiersToFill[tierIndex]
+            newTiers[tierName, default: []].append(contestant)
+        }
+        
+        tiers = newTiers
+        history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+    }
 
     @discardableResult
     func save() -> Bool {

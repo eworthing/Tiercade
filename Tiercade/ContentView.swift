@@ -106,7 +106,7 @@ struct ToolbarView: ToolbarContent {
     @State private var jsonDoc = TiersDocument()
     #endif
     var body: some ToolbarContent {
-        ToolbarItemGroup(placement: .topBarLeading) {
+        ToolbarItemGroup(placement: .primaryAction) {
             Button(action: { app.undo() }) { Label("Undo", systemImage: "arrow.uturn.backward") }
                 .disabled(!app.canUndo)
             #if !os(tvOS)
@@ -118,7 +118,7 @@ struct ToolbarView: ToolbarContent {
                 .keyboardShortcut("Z", modifiers: [.command, .shift])
             #endif
         }
-        ToolbarItemGroup(placement: .topBarTrailing) {
+        ToolbarItemGroup(placement: .secondaryAction) {
             Menu("Actions") {
                 Button("Clear S Tier") { app.clearTier("S") }
                 Button("Clear A Tier") { app.clearTier("A") }
@@ -127,6 +127,7 @@ struct ToolbarView: ToolbarContent {
                 Button("Clear D Tier") { app.clearTier("D") }
                 Button("Clear F Tier") { app.clearTier("F") }
                 Divider()
+                Button("Randomize") { app.randomize() }
                 Button("Reset All", role: .destructive) { app.reset() }
                 Button("Save Locally") { _ = app.save() }
                 #if !os(tvOS)
