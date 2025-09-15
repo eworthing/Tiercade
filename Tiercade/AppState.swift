@@ -23,6 +23,13 @@ final class AppState: ObservableObject {
     @Published var lastSavedTime: Date? = nil
     @Published var currentFileName: String? = nil
     
+    // Progress Tracking & Visual Feedback
+    @Published var isLoading: Bool = false
+    @Published var loadingMessage: String = ""
+    @Published var operationProgress: Double = 0.0
+    @Published var dragTargetTier: String? = nil
+    @Published var isProcessingSearch: Bool = false
+    
     private let storageKey = "Tiercade.tiers.v1"
     private var autosaveTimer: Timer?
     private let autosaveInterval: TimeInterval = 30.0 // Auto-save every 30 seconds
@@ -125,13 +132,24 @@ final class AppState: ObservableObject {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !query.isEmpty else { return contestants }
         
-        return contestants.filter { contestant in
+        // Show processing indicator for large datasets
+        if contestants.count > 50 {
+            setSearchProcessing(true)
+        }
+        
+        let filteredResults = contestants.filter { contestant in
             let name = (contestant.name ?? "").lowercased()
             let season = (contestant.season ?? "").lowercased()
             let id = contestant.id.lowercased()
             
             return name.contains(query) || season.contains(query) || id.contains(query)
         }
+        
+        if contestants.count > 50 {
+            setSearchProcessing(false)
+        }
+        
+        return filteredResults
     }
     
     // MARK: - Toast System
@@ -205,6 +223,35 @@ final class AppState: ObservableObject {
         markAsChanged()
         
         showSuccessToast("Tiers Randomized", message: "All contestants have been redistributed randomly")
+    }
+
+    // MARK: - Progress Tracking & Visual Feedback
+    
+    func setLoading(_ loading: Bool, message: String = "") {
+        isLoading = loading
+        loadingMessage = message
+        if loading {
+            operationProgress = 0.0
+        }
+    }
+    
+    func updateProgress(_ progress: Double) {
+        operationProgress = min(max(progress, 0.0), 1.0)
+    }
+    
+    func setDragTarget(_ tierName: String?) {
+        dragTargetTier = tierName
+    }
+    
+    func setSearchProcessing(_ processing: Bool) {
+        isProcessingSearch = processing
+    }
+    
+    // Helper method to wrap async operations with loading indicators
+    func withLoadingIndicator<T>(message: String, operation: () async throws -> T) async rethrows -> T {
+        setLoading(true, message: message)
+        defer { setLoading(false) }
+        return try await operation()
     }
 
     // MARK: - Enhanced Persistence
@@ -327,6 +374,80 @@ final class AppState: ObservableObject {
         } catch {
             print("Error deleting save file: \(error)")
             return false
+        }
+    }
+    
+    // MARK: - Async File Operations with Progress Tracking
+    
+    func saveToFileAsync(named fileName: String) async -> Bool {
+        return await withLoadingIndicator(message: "Saving \(fileName)...") {
+            updateProgress(0.2)
+            
+            do {
+                let saveData = TierListSaveData(
+                    tiers: tiers,
+                    createdDate: Date(),
+                    appVersion: "1.0"
+                )
+                updateProgress(0.4)
+                
+                let data = try JSONEncoder().encode(saveData)
+                updateProgress(0.6)
+                
+                let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
+                updateProgress(0.8)
+                
+                try data.write(to: fileURL)
+                
+                await MainActor.run {
+                    currentFileName = fileName
+                    hasUnsavedChanges = false
+                    lastSavedTime = Date()
+                }
+                updateProgress(1.0)
+                
+                showSuccessToast("File Saved", message: "Saved \(fileName).json")
+                return true
+            } catch {
+                print("File save failed: \(error)")
+                showErrorToast("Save Failed", message: "Could not save \(fileName).json")
+                return false
+            }
+        }
+    }
+    
+    func loadFromFileAsync(named fileName: String) async -> Bool {
+        return await withLoadingIndicator(message: "Loading \(fileName)...") {
+            updateProgress(0.2)
+            
+            do {
+                let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
+                updateProgress(0.4)
+                
+                let data = try Data(contentsOf: fileURL)
+                updateProgress(0.6)
+                
+                let saveData = try JSONDecoder().decode(TierListSaveData.self, from: data)
+                updateProgress(0.8)
+                
+                await MainActor.run {
+                    tiers = saveData.tiers
+                    history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
+                    currentFileName = fileName
+                    hasUnsavedChanges = false
+                    lastSavedTime = saveData.createdDate
+                }
+                updateProgress(1.0)
+                
+                showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
+                return true
+            } catch {
+                print("File load failed: \(error)")
+                showErrorToast("Load Failed", message: "Could not load \(fileName).json")
+                return false
+            }
         }
     }
 

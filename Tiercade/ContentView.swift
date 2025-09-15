@@ -62,6 +62,62 @@ struct ToastView: View {
     }
 }
 
+// MARK: - Progress Indicator View
+
+struct ProgressIndicatorView: View {
+    let isLoading: Bool
+    let message: String
+    let progress: Double
+    
+    var body: some View {
+        if isLoading {
+            VStack(spacing: 16) {
+                HStack(spacing: 12) {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(message)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        ProgressView(value: progress)
+                            .progressViewStyle(LinearProgressViewStyle())
+                            .frame(width: 200)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(.regularMaterial)
+                        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                )
+            }
+            .transition(.opacity.combined(with: .scale(scale: 0.9)))
+        }
+    }
+}
+
+// MARK: - Drag Target Highlight
+
+struct DragTargetHighlight: View {
+    let isTarget: Bool
+    
+    var body: some View {
+        if isTarget {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.blue, lineWidth: 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.blue.opacity(0.1))
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isTarget)
+        }
+    }
+}
+
 struct ContentView: View {
     @StateObject private var app = AppState()
     #if os(tvOS)
@@ -104,6 +160,13 @@ struct ContentView: View {
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
         }
+    }
+    .overlay(alignment: .center) {
+        ProgressIndicatorView(
+            isLoading: app.isLoading,
+            message: app.loadingMessage,
+            progress: app.operationProgress
+        )
     }
     .overlay(alignment: .topTrailing) { 
         PersistenceStatusView(app: app)
@@ -156,6 +219,18 @@ struct SidebarView: View {
                 #if !os(tvOS)
                 TextField("Search contestants...", text: $app.searchQuery)
                     .textFieldStyle(.roundedBorder)
+                
+                // Search processing indicator
+                if app.isProcessingSearch {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                        Text("Processing search...")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .transition(.opacity)
+                }
                 #endif
                 
                 // Quick Filter Buttons
@@ -518,10 +593,16 @@ struct TierRowView: View {
             }
             .padding(12)
             .background(RoundedRectangle(cornerRadius: 12).fill(.ultraThinMaterial))
+            .overlay {
+                DragTargetHighlight(isTarget: app.dragTargetTier == tier)
+            }
             #if !os(tvOS)
             .dropDestination(for: String.self) { items, _ in
                 if let id = items.first { app.move(id, to: tier) }
+                app.setDragTarget(nil) // Clear drag target
                 return true
+            } isTargeted: { isTargeted in
+                app.setDragTarget(isTargeted ? tier : nil)
             }
             #endif
         }
@@ -578,8 +659,17 @@ struct UnrankedView: View {
             }
             .padding(12)
             .background(RoundedRectangle(cornerRadius: 12).strokeBorder(.secondary))
+            .overlay {
+                DragTargetHighlight(isTarget: app.dragTargetTier == "unranked")
+            }
             #if !os(tvOS)
-            .dropDestination(for: String.self) { _, _ in false }
+            .dropDestination(for: String.self) { items, _ in
+                if let id = items.first { app.move(id, to: "unranked") }
+                app.setDragTarget(nil) // Clear drag target
+                return true
+            } isTargeted: { isTargeted in
+                app.setDragTarget(isTargeted ? "unranked" : nil)
+            }
             #else
             .onAppear { focusedCardId = filteredContestants.first?.id }
             #endif
