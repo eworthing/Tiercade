@@ -953,9 +953,30 @@ struct CardView: View {
         Button(action: { app.beginQuickRank(contestant) }) {
             VStack(spacing: 8) {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Palette.brand)
                     .frame(minWidth: 120, idealWidth: 140, minHeight: 72, idealHeight: 88)
-                    .overlay(Text((contestant.name ?? contestant.id).prefix(12)).font(.headline).foregroundStyle(.white))
+                    .overlay(
+                        Group {
+                            if let thumb = contestant.thumbUri, let url = URL(string: thumb) {
+                                AsyncImage(url: url) { phase in
+                                    switch phase {
+                                    case .empty:
+                                        ProgressView()
+                                    case .success(let img):
+                                        img.resizable().scaledToFill()
+                                    case .failure:
+                                        RoundedRectangle(cornerRadius: 8).fill(Palette.brand)
+                                            .overlay(Text((contestant.name ?? contestant.id).prefix(12)).font(.headline).foregroundStyle(.white))
+                                    @unknown default:
+                                        RoundedRectangle(cornerRadius: 8).fill(Palette.brand)
+                                    }
+                                }
+                                .clipped()
+                            } else {
+                                RoundedRectangle(cornerRadius: 8).fill(Palette.brand)
+                                    .overlay(Text((contestant.name ?? contestant.id).prefix(12)).font(.headline).foregroundStyle(.white))
+                            }
+                        }
+                    )
                 Text("S \(contestant.season ?? "?")").font(.caption2).foregroundStyle(.secondary)
             }
             .padding(Metrics.grid)

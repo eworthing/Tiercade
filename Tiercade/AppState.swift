@@ -119,9 +119,9 @@ final class AppState: ObservableObject {
 
     func seed() {
         tiers["unranked"] = [
-            TLContestant(id: "kyle48", name: "Kyle Fraser", season: "48"),
-            TLContestant(id: "parvati", name: "Parvati Shallow", season: "Multiple"),
-            TLContestant(id: "sandra", name: "Sandra Diaz-Twine", season: "Multiple")
+            TLContestant(id: "kyle48", name: "Kyle Fraser", season: "48", thumbUri: nil),
+            TLContestant(id: "parvati", name: "Parvati Shallow", season: "Multiple", thumbUri: nil),
+            TLContestant(id: "sandra", name: "Sandra Diaz-Twine", season: "Multiple", thumbUri: nil)
         ]
     }
 
@@ -673,7 +673,8 @@ final class AppState: ObservableObject {
                         return TLContestant(
                             id: id,
                             name: data["name"]?.isEmpty == false ? data["name"] : nil,
-                            season: data["season"]?.isEmpty == false ? data["season"] : nil
+                            season: data["season"]?.isEmpty == false ? data["season"] : nil,
+                            thumbUri: nil
                         )
                     }
                 }
@@ -724,7 +725,8 @@ final class AppState: ObservableObject {
                 let contestant = TLContestant(
                     id: name.lowercased().replacingOccurrences(of: " ", with: "_"),
                     name: name,
-                    season: season.isEmpty ? nil : season
+                    season: season.isEmpty ? nil : season,
+                    thumbUri: nil
                 )
                 
                 let tierKey = tier.lowercased() == "unranked" ? "unranked" : tier.uppercased()
@@ -779,7 +781,7 @@ final class AppState: ObservableObject {
             for rt in resolved {
                 newOrder.append(rt.label)
                 newTiers[rt.label] = rt.items.map { ri in
-                    TLContestant(id: ri.id, name: ri.title, season: nil)
+                    TLContestant(id: ri.id, name: ri.title, season: nil, thumbUri: ri.thumbUri)
                 }
             }
             await MainActor.run {

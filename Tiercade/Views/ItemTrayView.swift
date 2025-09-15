@@ -21,15 +21,36 @@ struct ItemTrayView: View {
                         Button(action: { app.beginQuickRank(contestant) }) {
                             VStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: Metrics.rSm)
-                                    .fill(Palette.brand)
                                     .frame(minHeight: 72, idealHeight: 88)
                                     .overlay(
-                                        Text((contestant.name ?? contestant.id).prefix(18))
-                                            .font(.headline)
-                                            .foregroundColor(.white)
-                                            .padding(Metrics.grid)
-                                        , alignment: .bottomLeading
-                                    )
+                                        Group {
+                                            if let thumb = contestant.thumbUri, let url = URL(string: thumb) {
+                                                AsyncImage(url: url) { phase in
+                                                    switch phase {
+                                                    case .empty:
+                                                        ProgressView()
+                                                    case .success(let img):
+                                                        img.resizable().scaledToFill()
+                                                    case .failure:
+                                                        RoundedRectangle(cornerRadius: Metrics.rSm).fill(Palette.brand)
+                                                            .overlay(Text((contestant.name ?? contestant.id).prefix(18))
+                                                                        .font(.headline)
+                                                                        .foregroundColor(.white)
+                                                                        .padding(Metrics.grid))
+                                                    @unknown default:
+                                                        RoundedRectangle(cornerRadius: Metrics.rSm).fill(Palette.brand)
+                                                    }
+                                                }
+                                                .clipped()
+                                            } else {
+                                                RoundedRectangle(cornerRadius: Metrics.rSm).fill(Palette.brand)
+                                                    .overlay(Text((contestant.name ?? contestant.id).prefix(18))
+                                                                .font(.headline)
+                                                                .foregroundColor(.white)
+                                                                .padding(Metrics.grid))
+                                            }
+                                        }
+                                    , alignment: .bottomLeading)
                             }
                             .card()
                         }

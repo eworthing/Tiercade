@@ -66,11 +66,13 @@ public struct TLContestant: Identifiable, Hashable, Codable, Sendable {
 	public let id: String
 	public var name: String?
 	public var season: String?
+	public var thumbUri: String?
 	
-	public init(id: String, name: String? = nil, season: String? = nil) {
+	public init(id: String, name: String? = nil, season: String? = nil, thumbUri: String? = nil) {
 		self.id = id
 		self.name = name
 		self.season = season
+		self.thumbUri = thumbUri
 	}
 }
 
