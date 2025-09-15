@@ -770,13 +770,36 @@ final class AppState: ObservableObject {
     
     // URL-based import methods for file handling
     func importFromJSON(url: URL) async -> Bool {
+        // Try to load as a full project JSON (new schema) and resolve tiers/items
         do {
-            let data = try Data(contentsOf: url)
-            let content = String(data: data, encoding: .utf8) ?? ""
-            return await importFromJSON(content)
+            let dict = try ModelResolver.loadProject(from: url)
+            let resolved = ModelResolver.resolveTiers(from: dict)
+            var newTiers: TLTiers = [:]
+            var newOrder: [String] = []
+            for rt in resolved {
+                newOrder.append(rt.label)
+                newTiers[rt.label] = rt.items.map { ri in
+                    TLContestant(id: ri.id, name: ri.title, season: nil)
+                }
+            }
+            await MainActor.run {
+                self.tierOrder = newOrder
+                self.tiers = newTiers
+                self.history = TLHistoryLogic.initHistory(self.tiers, limit: self.history.limit)
+                self.markAsChanged()
+            }
+            showSuccessToast("Import Complete", message: "Project loaded successfully")
+            return true
         } catch {
-            showErrorToast("Import Failed", message: "Could not read JSON file: \(error.localizedDescription)")
-            return false
+            // Fallback to previous simple JSON import
+            do {
+                let data = try Data(contentsOf: url)
+                let content = String(data: data, encoding: .utf8) ?? ""
+                return await importFromJSON(content)
+            } catch {
+                showErrorToast("Import Failed", message: "Could not read JSON file: \(error.localizedDescription)")
+                return false
+            }
         }
     }
     
