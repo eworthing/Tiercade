@@ -81,6 +81,7 @@ final class AppState: ObservableObject {
     @Published var loadingMessage: String = ""
     @Published var operationProgress: Double = 0.0
     @Published var dragTargetTier: String? = nil
+    @Published var draggingId: String? = nil
     @Published var isProcessingSearch: Bool = false
     
     private let storageKey = "Tiercade.tiers.v1"
@@ -294,6 +295,10 @@ final class AppState: ObservableObject {
     
     func setDragTarget(_ tierName: String?) {
         dragTargetTier = tierName
+    }
+
+    func setDragging(_ id: String?) {
+        draggingId = id
     }
     
     func setSearchProcessing(_ processing: Bool) {

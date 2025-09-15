@@ -23,6 +23,7 @@ struct ToastView: View {
             Image(systemName: toast.type.icon)
                 .foregroundColor(toast.type.color)
                 .font(.title2)
+                .accessibilityHidden(true)
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(toast.title)
@@ -38,8 +39,8 @@ struct ToastView: View {
             
             Spacer()
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+    .padding(.horizontal, Metrics.grid * 2)
+    .padding(.vertical, Metrics.grid * 1.5)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(.regularMaterial)
@@ -59,6 +60,10 @@ struct ToastView: View {
         .onDisappear {
             isVisible = false
         }
+        #if os(macOS)
+        .focusable(true)
+        .accessibilityAddTraits(.isModal)
+        #endif
     }
 }
 
@@ -86,8 +91,8 @@ struct ProgressIndicatorView: View {
                             .frame(width: 200)
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                .padding(.horizontal, Metrics.grid * 2)
+                .padding(.vertical, Metrics.grid * 2)
                 .background(
                     RoundedRectangle(cornerRadius: 12)
                         .fill(.regularMaterial)
@@ -103,15 +108,17 @@ struct ProgressIndicatorView: View {
 
 struct DragTargetHighlight: View {
     let isTarget: Bool
-    
+    let color: Color
+
     var body: some View {
         if isTarget {
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.blue, lineWidth: 3)
+                .stroke(color, lineWidth: 3)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.blue.opacity(0.1))
+                        .fill(color.opacity(0.12))
                 )
+                .shadow(color: color.opacity(0.45), radius: 20)
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isTarget)
         }
@@ -131,18 +138,23 @@ struct ContentView: View {
                 NavigationSplitView {
                     SidebarView(tierOrder: app.tierOrder)
                 } detail: {
-                    TierGridView(tierOrder: app.tierOrder)
+                    HStack(spacing: 0) {
+                        TierGridView(tierOrder: app.tierOrder)
+                        InspectorView()
+                    }
                 }
             } else {
                 AdaptiveLayout {
                     SidebarView(tierOrder: app.tierOrder)
                     TierGridView(tierOrder: app.tierOrder)
+                    InspectorView()
                 }
             }
             #else
             AdaptiveLayout {
                 SidebarView(tierOrder: app.tierOrder)
                 TierGridView(tierOrder: app.tierOrder)
+                InspectorView()
             }
             #endif
         }
@@ -152,12 +164,14 @@ struct ContentView: View {
     .overlay { HeadToHeadOverlay(app: app) }
     .overlay(alignment: .top) {
         if let toast = app.currentToast {
-            ToastView(toast: toast)
-                .padding(.top, 80) // Account for toolbar
-                .padding(.horizontal, 20)
-                .onTapGesture {
-                    app.dismissToast()
+                Button(action: { app.dismissToast() }) {
+                    ToastView(toast: toast)
+                        .padding(.top, Metrics.toolbarH + Metrics.grid * 2) // Account for toolbar
+                        .padding(.horizontal, Metrics.grid * 2)
                 }
+                .buttonStyle(PlainButtonStyle())
+                .accessibilityLabel(toast.title)
+                .accessibilityHint("Dismiss toast")
                 .transition(.move(edge: .top).combined(with: .opacity))
         }
     }
@@ -170,8 +184,8 @@ struct ContentView: View {
     }
     .overlay(alignment: .topTrailing) { 
         PersistenceStatusView(app: app)
-            .padding(.top, 60) // Account for toolbar
-            .padding(.trailing, 20)
+            .padding(.top, Metrics.toolbarH + Metrics.grid)
+            .padding(.trailing, Metrics.grid * 2)
     }
     .sheet(isPresented: $app.showingAnalysis) {
         AnalysisView(app: app)
@@ -213,7 +227,14 @@ struct SidebarView: View {
     let tierOrder: [String]
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Survivor Tier List").font(.largeTitle.bold())
+            HStack {
+                Text("Survivor Tier List").font(.largeTitle.bold())
+                Spacer()
+                Button(action: { /* stub: show add dialog */ }) {
+                    Label("Add Items", systemImage: "plus")
+                }
+                .buttonStyle(PrimaryButtonStyle())
+            }
             
             // Enhanced Search Section
             VStack(alignment: .leading, spacing: 8) {
@@ -242,7 +263,7 @@ struct SidebarView: View {
                         Button(filter.rawValue) {
                             app.activeFilter = filter
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(GhostButtonStyle())
                         .controlSize(.small)
                         .background(app.activeFilter == filter ? Color.accentColor.opacity(0.2) : Color.clear)
                         .overlay(
@@ -298,10 +319,12 @@ struct SidebarView: View {
                     } 
                 } 
             }
+            Divider()
+            ItemTrayView()
         }
-        .padding()
-        .frame(minWidth: 280)
-        .background(.thinMaterial)
+        .padding(Metrics.grid * 2)
+    .frame(minWidth: 280)
+    .panel()
     }
 }
 
@@ -322,6 +345,7 @@ struct PersistenceStatusView: View {
                     Circle()
                         .fill(Color.orange)
                         .frame(width: 8, height: 8)
+                        .accessibilityHidden(true)
                     Text("Unsaved")
                         .font(.caption)
                         .foregroundColor(.orange)
@@ -329,6 +353,7 @@ struct PersistenceStatusView: View {
                     Circle()
                         .fill(Color.green)
                         .frame(width: 8, height: 8)
+                        .accessibilityHidden(true)
                     Text("Saved")
                         .font(.caption)
                         .foregroundColor(.green)
@@ -341,7 +366,7 @@ struct PersistenceStatusView: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding(8)
+    .padding(Metrics.grid)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
         .opacity(app.hasUnsavedChanges || app.currentFileName != nil ? 1.0 : 0.0)
         .animation(.easeInOut(duration: 0.2), value: app.hasUnsavedChanges)
@@ -366,15 +391,18 @@ struct ToolbarView: ToolbarContent {
     @State private var importingJSON = false
     @State private var jsonDoc = TiersDocument()
     #endif
+    @State private var showingSettings = false
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
             Button(action: { app.undo() }) { Label("Undo", systemImage: "arrow.uturn.backward") }
                 .disabled(!app.canUndo)
+                .buttonStyle(GhostButtonStyle())
             #if !os(tvOS)
                 .keyboardShortcut("z", modifiers: [.command])
             #endif
             Button(action: { app.redo() }) { Label("Redo", systemImage: "arrow.uturn.forward") }
                 .disabled(!app.canRedo)
+                .buttonStyle(GhostButtonStyle())
             #if !os(tvOS)
                 .keyboardShortcut("Z", modifiers: [.command, .shift])
             #endif
@@ -472,6 +500,7 @@ struct ToolbarView: ToolbarContent {
                 #if !os(tvOS)
                     .keyboardShortcut("a", modifiers: [.command])
                 #endif
+                Button("Settings") { showingSettings = true }
             }
         }
         #if os(iOS)
@@ -481,6 +510,9 @@ struct ToolbarView: ToolbarContent {
                 .sheet(isPresented: $showingShare) {
                     ShareSheet(activityItems: [exportText])
                 }
+                        .sheet(isPresented: $showingSettings) {
+                            SettingsView()
+                        }
                 .sheet(isPresented: $showingExportFormatSheet) {
                     ExportFormatSheetView(
                         app: app,
@@ -564,6 +596,9 @@ struct ToolbarView: ToolbarContent {
                 } message: {
                     Text("Select a tier list file to load.")
                 }
+                .sheet(isPresented: $showingSettings) {
+                    SettingsView()
+                }
         }
         #endif
     }
@@ -592,7 +627,7 @@ struct ExportFormatSheetView: View {
                         .font(.body)
                         .foregroundColor(.secondary)
                 }
-                .padding()
+                .padding(Metrics.grid)
                 
                 if app.isLoading {
                     ProgressView("Preparing export...")
@@ -604,7 +639,7 @@ struct ExportFormatSheetView: View {
                                 await exportToFiles()
                             }
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(PrimaryButtonStyle())
                         .disabled(isExporting)
                         
                         Button("Share") {
@@ -612,14 +647,15 @@ struct ExportFormatSheetView: View {
                                 await shareExport()
                             }
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(GhostButtonStyle())
                         .disabled(isExporting)
                     }
-                    .padding()
+                    .padding(Metrics.grid)
                 }
                 
                 Spacer()
             }
+            .padding(Metrics.grid * 2)
             .navigationTitle("Export Tier List")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -757,7 +793,7 @@ struct TierGridView: View {
                 }
                 UnrankedView()
             }
-            .padding()
+            .padding(Metrics.grid * 2)
         }
         .background(
             LinearGradient(gradient: .survivorBackground, startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -768,6 +804,9 @@ struct TierGridView: View {
 struct TierRowView: View {
     @EnvironmentObject var app: AppState
     let tier: String
+    #if os(tvOS)
+    @FocusState private var focusedCardId: String?
+    #endif
     
     var filteredCards: [TLContestant] {
         let allCards = app.tiers[tier] ?? []
@@ -788,14 +827,16 @@ struct TierRowView: View {
     
     var body: some View {
         if !filteredCards.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Metrics.grid) {
                 HStack {
-                    Text(tier).font(.title2.bold())
+                    Text(tier)
+                        .font(TypeScale.h3)
+                        .foregroundColor(Palette.text)
                     Spacer()
                     if !app.searchQuery.isEmpty || app.activeFilter != .all {
                         Text("\(filteredCards.count)/\(app.tiers[tier]?.count ?? 0)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(TypeScale.label)
+                            .foregroundColor(Palette.textDim)
                     }
                 }
                 ScrollView(.horizontal) {
@@ -804,21 +845,27 @@ struct TierRowView: View {
                             CardView(contestant: c)
                             #if !os(tvOS)
                                 .draggable(c.id)
+                            #else
+                                .focused($focusedCardId, equals: c.id)
                             #endif
                         }
                     }
-                    .padding(.bottom, 4)
+                    .padding(.bottom, Metrics.grid * 0.5)
                 }
+                #if os(tvOS)
+                .onAppear { focusedCardId = filteredCards.first?.id }
+                #endif
             }
-            .padding(12)
+            .padding(Metrics.grid * 1.5)
             .background(RoundedRectangle(cornerRadius: 12).fill(.ultraThinMaterial))
             .overlay {
-                DragTargetHighlight(isTarget: app.dragTargetTier == tier)
+                DragTargetHighlight(isTarget: app.dragTargetTier == tier, color: Palette.tierColor(tier))
             }
             #if !os(tvOS)
             .dropDestination(for: String.self) { items, _ in
                 if let id = items.first { app.move(id, to: tier) }
                 app.setDragTarget(nil) // Clear drag target
+                app.setDragging(nil)
                 return true
             } isTargeted: { isTargeted in
                 app.setDragTarget(isTargeted ? tier : nil)
@@ -851,18 +898,20 @@ struct UnrankedView: View {
     
     var body: some View {
         if !filteredContestants.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Metrics.grid) {
                 HStack { 
-                    Text("Unranked").font(.title2.bold())
+                    Text("Unranked")
+                        .font(TypeScale.h3)
+                        .foregroundColor(Palette.text)
                     Spacer()
                     if !app.searchQuery.isEmpty || app.activeFilter != .all {
                         Text("\(filteredContestants.count)/\(app.tiers["unranked"]?.count ?? 0)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(TypeScale.label)
+                            .foregroundColor(Palette.textDim)
                     } else {
                         Text("\(filteredContestants.count)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(TypeScale.label)
+                            .foregroundColor(Palette.textDim)
                     }
                 }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 10)]) {
@@ -876,15 +925,16 @@ struct UnrankedView: View {
                     }
                 }
             }
-            .padding(12)
+        .padding(Metrics.grid * 1.5)
             .background(RoundedRectangle(cornerRadius: 12).strokeBorder(.secondary))
             .overlay {
-                DragTargetHighlight(isTarget: app.dragTargetTier == "unranked")
+                DragTargetHighlight(isTarget: app.dragTargetTier == "unranked", color: Palette.tierColor("F"))
             }
             #if !os(tvOS)
             .dropDestination(for: String.self) { items, _ in
                 if let id = items.first { app.move(id, to: "unranked") }
                 app.setDragTarget(nil) // Clear drag target
+                app.setDragging(nil)
                 return true
             } isTargeted: { isTargeted in
                 app.setDragTarget(isTargeted ? "unranked" : nil)
@@ -900,19 +950,33 @@ struct CardView: View {
     let contestant: TLContestant
     @EnvironmentObject var app: AppState
     var body: some View {
-        VStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.accentColor)
-                .frame(width: 140, height: 88)
-                .overlay(Text((contestant.name ?? contestant.id).prefix(12)).font(.headline).foregroundStyle(.white))
-            Text("S \(contestant.season ?? "?")").font(.caption2).foregroundStyle(.secondary)
+        Button(action: { app.beginQuickRank(contestant) }) {
+            VStack(spacing: 8) {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Palette.brand)
+                    .frame(minWidth: 120, idealWidth: 140, minHeight: 72, idealHeight: 88)
+                    .overlay(Text((contestant.name ?? contestant.id).prefix(12)).font(.headline).foregroundStyle(.white))
+                Text("S \(contestant.season ?? "?")").font(.caption2).foregroundStyle(.secondary)
+            }
+            .padding(Metrics.grid)
+            .card()
         }
-        .padding(8)
-        .background(RoundedRectangle(cornerRadius: 12).fill(.background))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.quaternary))
+        .buttonStyle(PlainButtonStyle())
+        .scaleEffect(app.draggingId == contestant.id ? 0.98 : 1.0)
+        .shadow(color: Color.black.opacity(app.draggingId == contestant.id ? 0.45 : 0.1), radius: app.draggingId == contestant.id ? 20 : 6, x: 0, y: app.draggingId == contestant.id ? 12 : 4)
         .contentShape(Rectangle())
-        .onTapGesture { app.beginQuickRank(contestant) }
-        #if os(tvOS)
+        .accessibilityLabel(contestant.name ?? contestant.id)
+#if os(macOS)
+        .focusable(true)
+        .accessibilityAddTraits(.isButton)
+#endif
+#if !os(tvOS)
+        .onDrag {
+            app.setDragging(contestant.id)
+            return NSItemProvider(object: NSString(string: contestant.id))
+        }
+#endif
+#if os(tvOS)
         .focusable(true)
         .onPlayPauseCommand {
             // Show a simple contextual menu using Quick Rank tiers as move targets
@@ -923,7 +987,7 @@ struct CardView: View {
                 Button("Move to \(t)") { app.move(contestant.id, to: t) }
             }
         }
-        #endif
+#endif
     }
 }
 
@@ -947,16 +1011,22 @@ struct QuickRankOverlay: View {
                 HStack(spacing: 8) {
                     ForEach(app.tierOrder, id: \.self) { t in
                         Button(t) { app.commitQuickRank(to: t) }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(PrimaryButtonStyle())
                     }
                     Button("Cancel", role: .cancel) { app.cancelQuickRank() }
+                        .accessibilityHint("Cancel quick rank")
                 }
             }
-            .padding(12)
+            .padding(Metrics.grid * 1.5)
             .background(.thinMaterial)
             .clipShape(RoundedRectangle(cornerRadius: 12))
-            .padding()
+                    .padding(Metrics.grid)
             .transition(.move(edge: .bottom).combined(with: .opacity))
+            // Make the Quick Rank overlay focusable and treated as a modal for accessibility
+            #if os(macOS) || os(tvOS)
+            .focusable(true)
+            .accessibilityAddTraits(.isModal)
+            #endif
         }
     }
 }
@@ -987,6 +1057,7 @@ struct HeadToHeadOverlay: View {
             ZStack {
                 Color.black.opacity(0.4).ignoresSafeArea()
                     .onTapGesture { /* block background interaction */ }
+                    .accessibilityHidden(true)
                 VStack(spacing: 16) {
                     Text("Head-to-Head").font(.headline)
                     if let pair = app.h2hPair {
@@ -1000,14 +1071,23 @@ struct HeadToHeadOverlay: View {
                     }
                     HStack {
                         Button("Finish") { app.finishH2H() }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(PrimaryButtonStyle())
                         Button("Cancel", role: .cancel) { app.h2hActive = false }
+                            .accessibilityHint("Cancel head to head and return to the main view")
                     }
                 }
-                .padding()
+                .padding(Metrics.grid)
                 .background(.thinMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
-                .padding()
+                .padding(Metrics.grid * 2)
+                .accessibilityElement(children: .contain)
+                // Ensure the modal captures focus on macOS/tvOS
+                #if os(macOS) || os(tvOS)
+                .focusable(true)
+                .accessibilityAddTraits(.isModal)
+                #else
+                .accessibilityAddTraits(.isModal)
+                #endif
             }
             .transition(.opacity)
         }
@@ -1021,15 +1101,19 @@ struct H2HButton: View {
         Button(action: action) {
             VStack(spacing: 8) {
                 RoundedRectangle(cornerRadius: 12).fill(Color.accentColor)
-                    .frame(width: 160, height: 100)
+                    .frame(minWidth: 140, idealWidth: 160, minHeight: 88, idealHeight: 100)
                     .overlay(Text((contestant.name ?? contestant.id).prefix(14)).font(.headline).foregroundStyle(.white))
                 Text(contestant.season ?? "?").font(.caption)
             }
-            .padding(8)
+            .padding(Metrics.grid)
+            .contentShape(Rectangle())
+            .frame(minWidth: 44, minHeight: 44)
         }
-        .buttonStyle(.bordered)
+        .accessibilityLabel(contestant.name ?? contestant.id)
+        .buttonStyle(GhostButtonStyle())
     }
 }
+
 
 // MARK: - Analysis & Statistics Views
 
@@ -1049,8 +1133,9 @@ struct AnalysisView: View {
                     } else {
                         VStack(spacing: 16) {
                             Image(systemName: "chart.bar.fill")
-                                .font(.system(size: 60))
+                                .font(TypeScale.h2)
                                 .foregroundColor(.secondary)
+                                .accessibilityHidden(true)
                             Text("No Analysis Available")
                                 .font(.title2)
                                 .fontWeight(.semibold)
@@ -1063,15 +1148,16 @@ struct AnalysisView: View {
                                     await app.generateAnalysis()
                                 }
                             }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(PrimaryButtonStyle())
                             .controlSize(.large)
                         }
-                        .padding()
+                        .padding(Metrics.grid * 2)
                     }
                 }
-                .padding()
+                .padding(Metrics.grid * 2)
             }
             .navigationTitle("Tier Analysis")
+#if !os(macOS)
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -1088,6 +1174,7 @@ struct AnalysisView: View {
                     .disabled(app.isLoading)
                 }
             }
+#endif
         }
     }
 }
@@ -1145,9 +1232,8 @@ struct OverallStatsView: View {
                 )
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+    .padding(Metrics.grid * 2)
+    .panel()
     }
 }
 
@@ -1160,7 +1246,8 @@ struct StatCardView: View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundColor(.accentColor)
+                .foregroundColor(Palette.text)
+                .accessibilityHidden(true)
             
             Text(value)
                 .font(.title3)
@@ -1171,9 +1258,8 @@ struct StatCardView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(8)
+    .padding(Metrics.grid)
+        .card()
     }
 }
 
@@ -1192,9 +1278,8 @@ struct TierDistributionChartView: View {
                 }
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+    .padding(Metrics.grid * 2)
+    .panel()
     }
 }
 
@@ -1230,8 +1315,8 @@ struct TierBarView: View {
                 }
             }
             .frame(height: 8)
-        }
-        .padding(.horizontal)
+    }
+    .padding(.horizontal, Metrics.grid * 2)
     }
     
     private func tierColor(for tier: String) -> Color {
@@ -1258,8 +1343,16 @@ struct BalanceScoreView: View {
             
             VStack(spacing: 12) {
                 ZStack {
+                    let strokeColor: Color = {
+#if canImport(UIKit)
+                        return Color(UIColor.systemGray4)
+#else
+                        return Palette.surfHi
+#endif
+                    }()
+
                     Circle()
-                        .stroke(Color(.systemGray4), lineWidth: 8)
+                        .stroke(strokeColor, lineWidth: 8)
                         .frame(width: 120, height: 120)
                     
                     Circle()
@@ -1286,9 +1379,8 @@ struct BalanceScoreView: View {
                     .multilineTextAlignment(.center)
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+                .padding(Metrics.grid * 2)
+    .panel()
     }
     
     private var scoreColor: Color {
@@ -1315,26 +1407,25 @@ struct InsightsView: View {
             
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(insights, id: \.self) { insight in
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .top, spacing: Metrics.grid) {
                         Image(systemName: "lightbulb.fill")
                             .foregroundColor(.yellow)
                             .frame(width: 20)
-                        
+                            .accessibilityHidden(true)
+
                         Text(insight)
-                            .font(.body)
+                            .font(TypeScale.body)
                             .fixedSize(horizontal: false, vertical: true)
-                        
+
                         Spacer()
                     }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(Color(.systemBackground))
-                    .cornerRadius(8)
+                    .padding(.horizontal, Metrics.grid)
+                    .padding(.vertical, Metrics.grid * 0.5)
+                    .card()
                 }
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
+            .padding(Metrics.grid * 2)
+    .panel()
     }
 }
