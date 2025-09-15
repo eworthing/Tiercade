@@ -30,14 +30,14 @@ enum ExportFormat: CaseIterable {
 
 // MARK: - Analysis & Statistics Types
 
-struct TierDistributionData: Identifiable {
+struct TierDistributionData: Identifiable, Sendable {
     let id = UUID()
     let tier: String
     let count: Int
     let percentage: Double
 }
 
-struct TierAnalysisData {
+struct TierAnalysisData: Sendable {
     let totalContestants: Int
     let tierDistribution: [TierDistributionData]
     let mostPopulatedTier: String?
@@ -84,7 +84,7 @@ final class AppState: ObservableObject {
     @Published var isProcessingSearch: Bool = false
     
     private let storageKey = "Tiercade.tiers.v1"
-    private var autosaveTimer: Timer?
+    nonisolated(unsafe) private var autosaveTimer: Timer?
     private let autosaveInterval: TimeInterval = 30.0 // Auto-save every 30 seconds
 
     private var history = TLHistory<TLTiers>(stack: [], index: 0, limit: 80)
@@ -301,7 +301,7 @@ final class AppState: ObservableObject {
     }
     
     // Helper method to wrap async operations with loading indicators
-    func withLoadingIndicator<T>(message: String, operation: () async throws -> T) async rethrows -> T {
+    func withLoadingIndicator<T: Sendable>(message: String, operation: () async throws -> T) async rethrows -> T {
         setLoading(true, message: message)
         defer { setLoading(false) }
         return try await operation()

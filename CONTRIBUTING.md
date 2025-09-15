@@ -10,9 +10,11 @@
 - Feature work on short-lived branches: `feat/<area>-<short-name>`; PR into `main`.
 
 ## Code quality
-- Swift: build and run unit tests (`swift test`) in `SurvivorCore` before pushing.
+- Swift: build and run unit tests (`swift test`) in `TiercadeCore` before pushing.
 - iOS/tvOS app: build for iPhone and Apple TV simulators.
 - Keep views platform-agnostic; use `#if os(...)` for platform specifics.
+
+Tip: from the repo root, run `cd TiercadeCore && swift test` to validate the core package.
 
 ## Git hygiene
 - Don’t commit build artifacts, DerivedData, or .DS_Store.
