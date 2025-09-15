@@ -4,6 +4,59 @@ import SwiftUI
 // Ensure SharedCore types are accessible
 // TL* types defined in SharedCore.swift sho    func applySearchFilter(to contestants: [TLContestant]) -> [TLContestant] {ld be available in same module
 
+// MARK: - Export & Import System Types
+
+enum ExportFormat: CaseIterable {
+    case text, json, markdown, csv
+    
+    var fileExtension: String {
+        switch self {
+        case .text: return "txt"
+        case .json: return "json"
+        case .markdown: return "md"
+        case .csv: return "csv"
+        }
+    }
+    
+    var displayName: String {
+        switch self {
+        case .text: return "Plain Text"
+        case .json: return "JSON"
+        case .markdown: return "Markdown"
+        case .csv: return "CSV"
+        }
+    }
+}
+
+// MARK: - Analysis & Statistics Types
+
+struct TierDistributionData: Identifiable {
+    let id = UUID()
+    let tier: String
+    let count: Int
+    let percentage: Double
+}
+
+struct TierAnalysisData {
+    let totalContestants: Int
+    let tierDistribution: [TierDistributionData]
+    let mostPopulatedTier: String?
+    let leastPopulatedTier: String?
+    let balanceScore: Double
+    let insights: [String]
+    let unrankedCount: Int
+    
+    static let empty = TierAnalysisData(
+        totalContestants: 0,
+        tierDistribution: [],
+        mostPopulatedTier: nil,
+        leastPopulatedTier: nil,
+        balanceScore: 0,
+        insights: ["No contestants found - add some contestants to see analysis"],
+        unrankedCount: 0
+    )
+}
+
 @MainActor
 final class AppState: ObservableObject {
     @Published var tiers: TLTiers = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
@@ -447,6 +500,370 @@ final class AppState: ObservableObject {
                 print("File load failed: \(error)")
                 showErrorToast("Load Failed", message: "Could not load \(fileName).json")
                 return false
+            }
+        }
+    }
+
+    // MARK: - Export & Import System
+    
+    func exportToFormat(_ format: ExportFormat, group: String = "All", themeName: String = "Default") async -> (Data, String)? {
+        return await withLoadingIndicator(message: "Exporting \(format.displayName)...") {
+            updateProgress(0.2)
+            
+            let cfg: TLTierConfig = [
+                "S": (name: "S", description: nil),
+                "A": (name: "A", description: nil),
+                "B": (name: "B", description: nil),
+                "C": (name: "C", description: nil),
+                "D": (name: "D", description: nil),
+                "F": (name: "F", description: nil)
+            ]
+            updateProgress(0.4)
+            
+            let result: String
+            let fileName: String
+            switch format {
+            case .text:
+                result = TLExportFormatter.generate(group: group, date: .now, themeName: themeName, tiers: tiers, tierConfig: cfg)
+                fileName = "tier_list.txt"
+            case .json:
+                result = exportToJSON(group: group, themeName: themeName)
+                fileName = "tier_list.json"
+            case .markdown:
+                result = exportToMarkdown(group: group, themeName: themeName, tierConfig: cfg)
+                fileName = "tier_list.md"
+            case .csv:
+                result = exportToCSV(group: group, themeName: themeName)
+                fileName = "tier_list.csv"
+            }
+            updateProgress(0.8)
+            
+            guard let data = result.data(using: .utf8) else {
+                showErrorToast("Export Failed", message: "Could not convert content to data")
+                return nil
+            }
+            
+            updateProgress(1.0)
+            showSuccessToast("Export Complete", message: "Exported as \(format.displayName)")
+            return (data, fileName)
+        }
+    }
+    
+    private func exportToJSON(group: String, themeName: String) -> String {
+        let exportData = [
+            "metadata": [
+                "group": group,
+                "theme": themeName,
+                "exportDate": ISO8601DateFormatter().string(from: Date()),
+                "appVersion": "1.0"
+            ],
+            "tierOrder": tierOrder,
+            "tiers": tiers.mapValues { contestants in
+                contestants.map { ["id": $0.id, "name": $0.name ?? "", "season": $0.season ?? ""] }
+            }
+        ] as [String: Any]
+        
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: exportData, options: .prettyPrinted)
+            return String(data: jsonData, encoding: .utf8) ?? "{}"
+        } catch {
+            return "{}"
+        }
+    }
+    
+    private func exportToMarkdown(group: String, themeName: String, tierConfig: TLTierConfig) -> String {
+        var markdown = "# My Survivor Tier Ranking - \(group)\n\n"
+        markdown += "**Theme:** \(themeName)  \n"
+        markdown += "**Date:** \(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .none))\n\n"
+        
+        for tierName in tierOrder {
+            guard let contestants = tiers[tierName], !contestants.isEmpty,
+                  let cfg = tierConfig[tierName] else { continue }
+            
+            markdown += "## \(cfg.name) Tier\n\n"
+            for contestant in contestants {
+                markdown += "- **\(contestant.name ?? contestant.id)** (Season \(contestant.season ?? "?"))\n"
+            }
+            markdown += "\n"
+        }
+        
+        if let unranked = tiers["unranked"], !unranked.isEmpty {
+            markdown += "## Unranked\n\n"
+            for contestant in unranked {
+                markdown += "- \(contestant.name ?? contestant.id) (Season \(contestant.season ?? "?"))\n"
+            }
+        }
+        
+        return markdown
+    }
+    
+    private func exportToCSV(group: String, themeName: String) -> String {
+        var csv = "Name,Season,Tier\n"
+        
+        for tierName in tierOrder {
+            guard let contestants = tiers[tierName] else { continue }
+            for contestant in contestants {
+                let name = (contestant.name ?? contestant.id).replacingOccurrences(of: ",", with: ";")
+                let season = contestant.season ?? "?"
+                csv += "\"\(name)\",\"\(season)\",\"\(tierName)\"\n"
+            }
+        }
+        
+        if let unranked = tiers["unranked"] {
+            for contestant in unranked {
+                let name = (contestant.name ?? contestant.id).replacingOccurrences(of: ",", with: ";")
+                let season = contestant.season ?? "?"
+                csv += "\"\(name)\",\"\(season)\",\"Unranked\"\n"
+            }
+        }
+        
+        return csv
+    }
+    
+    func saveExportToFile(_ content: String, format: ExportFormat, fileName: String) async -> Bool {
+        return await withLoadingIndicator(message: "Saving \(format.displayName) file...") {
+            updateProgress(0.3)
+            
+            do {
+                let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                let fullFileName = "\(fileName).\(format.fileExtension)"
+                let fileURL = documentsPath.appendingPathComponent(fullFileName)
+                updateProgress(0.7)
+                
+                try content.write(to: fileURL, atomically: true, encoding: .utf8)
+                updateProgress(1.0)
+                
+                showSuccessToast("File Saved", message: "Saved \(fullFileName)")
+                return true
+            } catch {
+                showErrorToast("Save Failed", message: "Could not save \(format.displayName) file")
+                return false
+            }
+        }
+    }
+    
+    func importFromJSON(_ jsonString: String) async -> Bool {
+        return await withLoadingIndicator(message: "Importing JSON data...") {
+            updateProgress(0.2)
+            
+            do {
+                guard let jsonData = jsonString.data(using: .utf8) else {
+                    showErrorToast("Import Failed", message: "Invalid JSON format")
+                    return false
+                }
+                updateProgress(0.4)
+                
+                let importData = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+                guard let tierData = importData?["tiers"] as? [String: [[String: String]]] else {
+                    showErrorToast("Import Failed", message: "Invalid tier data format")
+                    return false
+                }
+                updateProgress(0.6)
+                
+                var newTiers: TLTiers = [:]
+                
+                for (tierName, contestantData) in tierData {
+                    newTiers[tierName] = contestantData.compactMap { data in
+                        guard let id = data["id"], !id.isEmpty else { return nil }
+                        return TLContestant(
+                            id: id,
+                            name: data["name"]?.isEmpty == false ? data["name"] : nil,
+                            season: data["season"]?.isEmpty == false ? data["season"] : nil
+                        )
+                    }
+                }
+                updateProgress(0.8)
+                
+                await MainActor.run {
+                    tiers = newTiers
+                    history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
+                    markAsChanged()
+                }
+                updateProgress(1.0)
+                
+                showSuccessToast("Import Complete", message: "Successfully imported tier list")
+                return true
+            } catch {
+                showErrorToast("Import Failed", message: "Could not parse JSON data")
+                return false
+            }
+        }
+    }
+    
+    func importFromCSV(_ csvString: String) async -> Bool {
+        return await withLoadingIndicator(message: "Importing CSV data...") {
+            updateProgress(0.2)
+            
+            let lines = csvString.components(separatedBy: .newlines)
+            guard lines.count > 1 else {
+                showErrorToast("Import Failed", message: "CSV file appears to be empty")
+                return false
+            }
+            updateProgress(0.4)
+            
+            var newTiers: TLTiers = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
+            
+            // Skip header row
+            for line in lines.dropFirst() {
+                guard !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+                
+                let components = parseCSVLine(line)
+                guard components.count >= 3 else { continue }
+                
+                let name = components[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                let season = components[1].trimmingCharacters(in: .whitespacesAndNewlines)
+                let tier = components[2].trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                guard !name.isEmpty else { continue }
+                
+                let contestant = TLContestant(
+                    id: name.lowercased().replacingOccurrences(of: " ", with: "_"),
+                    name: name,
+                    season: season.isEmpty ? nil : season
+                )
+                
+                let tierKey = tier.lowercased() == "unranked" ? "unranked" : tier.uppercased()
+                if newTiers[tierKey] != nil {
+                    newTiers[tierKey]?.append(contestant)
+                } else {
+                    newTiers["unranked"]?.append(contestant)
+                }
+            }
+            updateProgress(0.8)
+            
+            await MainActor.run {
+                tiers = newTiers
+                history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
+                markAsChanged()
+            }
+            updateProgress(1.0)
+            
+            showSuccessToast("Import Complete", message: "Successfully imported CSV data")
+            return true
+        }
+    }
+    
+    private func parseCSVLine(_ line: String) -> [String] {
+        var components: [String] = []
+        var currentComponent = ""
+        var insideQuotes = false
+        
+        for char in line {
+            if char == "\"" {
+                insideQuotes.toggle()
+            } else if char == "," && !insideQuotes {
+                components.append(currentComponent)
+                currentComponent = ""
+            } else {
+                currentComponent.append(char)
+            }
+        }
+        components.append(currentComponent)
+        
+        return components.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\"", with: "") }
+    }
+    
+    // URL-based import methods for file handling
+    func importFromJSON(url: URL) async -> Bool {
+        do {
+            let data = try Data(contentsOf: url)
+            let content = String(data: data, encoding: .utf8) ?? ""
+            return await importFromJSON(content)
+        } catch {
+            showErrorToast("Import Failed", message: "Could not read JSON file: \(error.localizedDescription)")
+            return false
+        }
+    }
+    
+    func importFromCSV(url: URL) async -> Bool {
+        do {
+            let data = try Data(contentsOf: url)
+            let content = String(data: data, encoding: .utf8) ?? ""
+            return await importFromCSV(content)
+        } catch {
+            showErrorToast("Import Failed", message: "Could not read CSV file: \(error.localizedDescription)")
+            return false
+        }
+    }
+    
+    // MARK: - Analysis & Statistics System
+    
+    @Published var showingAnalysis = false
+    @Published var analysisData: TierAnalysisData?
+    
+    func generateAnalysis() async {
+        analysisData = await withLoadingIndicator(message: "Generating analysis...") {
+            updateProgress(0.1)
+            
+            let totalContestants = tiers.values.flatMap { $0 }.count
+            guard totalContestants > 0 else {
+                updateProgress(1.0)
+                return TierAnalysisData.empty
+            }
+            
+            updateProgress(0.3)
+            
+            // Calculate tier distribution
+            let tierDistribution = tierOrder.compactMap { tier in
+                let count = tiers[tier]?.count ?? 0
+                let percentage = totalContestants > 0 ? Double(count) / Double(totalContestants) * 100 : 0
+                return TierDistributionData(tier: tier, count: count, percentage: percentage)
+            }
+            
+            updateProgress(0.5)
+            
+            // Find tier with most/least contestants
+            let mostPopulatedTier = tierDistribution.max(by: { $0.count < $1.count })
+            let leastPopulatedTier = tierDistribution.min(by: { $0.count < $1.count })
+            
+            updateProgress(0.7)
+            
+            // Calculate tier balance score (how evenly distributed)
+            let idealPercentage = 100.0 / Double(tierOrder.count)
+            let balanceScore = 100.0 - tierDistribution.reduce(0) { acc, tier in
+                acc + abs(tier.percentage - idealPercentage)
+            } / Double(tierOrder.count)
+            
+            updateProgress(0.9)
+            
+            // Generate insights
+            var insights: [String] = []
+            
+            if let mostPopulated = mostPopulatedTier, mostPopulated.percentage > 40 {
+                insights.append("Tier \(mostPopulated.tier) contains \(String(format: "%.1f", mostPopulated.percentage))% of all contestants")
+            }
+            
+            if balanceScore < 50 {
+                insights.append("Tiers are unevenly distributed - consider rebalancing")
+            } else if balanceScore > 80 {
+                insights.append("Tiers are well-balanced across all categories")
+            }
+            
+            let unrankedCount = tiers["unranked"]?.count ?? 0
+            if unrankedCount > 0 {
+                let unrankedPercentage = Double(unrankedCount) / Double(totalContestants + unrankedCount) * 100
+                insights.append("\(String(format: "%.1f", unrankedPercentage))% of contestants remain unranked")
+            }
+            
+            updateProgress(1.0)
+            
+            return TierAnalysisData(
+                totalContestants: totalContestants,
+                tierDistribution: tierDistribution,
+                mostPopulatedTier: mostPopulatedTier?.tier,
+                leastPopulatedTier: leastPopulatedTier?.tier,
+                balanceScore: balanceScore,
+                insights: insights,
+                unrankedCount: unrankedCount
+            )
+        }
+    }
+    
+    func toggleAnalysis() {
+        showingAnalysis.toggle()
+        if showingAnalysis && analysisData == nil {
+            Task {
+                await generateAnalysis()
             }
         }
     }

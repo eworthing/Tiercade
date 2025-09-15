@@ -173,6 +173,9 @@ struct ContentView: View {
             .padding(.top, 60) // Account for toolbar
             .padding(.trailing, 20)
     }
+    .sheet(isPresented: $app.showingAnalysis) {
+        AnalysisView(app: app)
+    }
         #if os(tvOS)
         .onPlayPauseCommand(perform: {
             if canStartH2HFromRemote { app.startH2H() }
@@ -354,6 +357,9 @@ struct ToolbarView: ToolbarContent {
     @State private var showingLoadDialog = false
     @State private var saveFileName = ""
     @State private var selectedLoadFile = ""
+    @State private var showingExportFormatSheet = false
+    @State private var showingImportSheet = false
+    @State private var selectedExportFormat = ExportFormat.text
     #if os(iOS)
     @State private var showingShare = false
     @State private var exportingJSON = false
@@ -409,29 +415,62 @@ struct ToolbarView: ToolbarContent {
                         .keyboardShortcut("O", modifiers: [.command, .shift])
                     #endif
                 }
-                #if os(iOS)
-                Button("Export JSON") {
-                    jsonDoc = TiersDocument(tiers: app.tiers)
-                    exportingJSON = true
+                Menu("Export & Import") {
+                    Menu("Export As...") {
+                        Button("Text Format") { 
+                            selectedExportFormat = .text
+                            showingExportFormatSheet = true 
+                        }
+                        Button("JSON Format") { 
+                            selectedExportFormat = .json
+                            showingExportFormatSheet = true 
+                        }
+                        Button("Markdown Format") { 
+                            selectedExportFormat = .markdown
+                            showingExportFormatSheet = true 
+                        }
+                        Button("CSV Format") { 
+                            selectedExportFormat = .csv
+                            showingExportFormatSheet = true 
+                        }
+                    }
+                    #if os(iOS)
+                    Menu("Import From...") {
+                        Button("JSON File") { 
+                            importingJSON = true 
+                        }
+                        Button("CSV File") { 
+                            showingImportSheet = true 
+                        }
+                    }
+                    #endif
                 }
-                Button("Import JSON") { importingJSON = true }
-                #endif
+                #if os(iOS)
+                // Legacy export for backwards compatibility
                 Button("Export Text") {
                     exportText = app.exportText()
-                    #if os(iOS)
                     showingShare = true
-                    #else
-                    // tvOS: no share sheet; just log for now
-                    print(exportText)
-                    #endif
                 }
                 #if !os(tvOS)
                 .keyboardShortcut("e", modifiers: [.command])
+                #endif
+                #else
+                Button("Export Text") {
+                    exportText = app.exportText()
+                    print(exportText)
+                }
+                #if !os(tvOS)
+                .keyboardShortcut("e", modifiers: [.command])
+                #endif
                 #endif
                 Divider()
                 Button("Head-to-Head") { app.startH2H() }
                 #if !os(tvOS)
                     .keyboardShortcut("h", modifiers: [.command])
+                #endif
+                Button("Analysis") { app.toggleAnalysis() }
+                #if !os(tvOS)
+                    .keyboardShortcut("a", modifiers: [.command])
                 #endif
             }
         }
@@ -442,14 +481,31 @@ struct ToolbarView: ToolbarContent {
                 .sheet(isPresented: $showingShare) {
                     ShareSheet(activityItems: [exportText])
                 }
+                .sheet(isPresented: $showingExportFormatSheet) {
+                    ExportFormatSheetView(
+                        app: app,
+                        exportFormat: selectedExportFormat,
+                        isPresented: $showingExportFormatSheet
+                    )
+                }
                 .fileExporter(isPresented: $exportingJSON, document: jsonDoc, contentType: .json, defaultFilename: "tiers.json") { result in
-                    if case .failure(let err) = result { print("Export failed: \(err)") }
+                    if case .failure(let err) = result { 
+                        app.showToast(type: .error, title: "JSON Export Failed", message: err.localizedDescription)
+                    } else {
+                        app.showToast(type: .success, title: "JSON Export Complete", message: "File saved successfully")
+                    }
                 }
                 .fileImporter(isPresented: $importingJSON, allowedContentTypes: [.json]) { result in
                     if case .success(let url) = result {
-                        if let data = try? Data(contentsOf: url),
-                           let tiers = try? JSONDecoder().decode(TLTiers.self, from: data) {
-                            app.tiers = tiers
+                        Task {
+                            await app.importFromJSON(url: url)
+                        }
+                    }
+                }
+                .fileImporter(isPresented: $showingImportSheet, allowedContentTypes: [.commaSeparatedText, .text]) { result in
+                    if case .success(let url) = result {
+                        Task {
+                            await app.importFromCSV(url: url)
                         }
                     }
                 }
@@ -514,6 +570,169 @@ struct ToolbarView: ToolbarContent {
 }
 
 #if os(iOS)
+// Export format selection sheet for iOS
+struct ExportFormatSheetView: View {
+    @ObservedObject var app: AppState
+    let exportFormat: ExportFormat
+    @Binding var isPresented: Bool
+    @State private var isExporting = false
+    @State private var exportedData: Data?
+    @State private var exportFileName: String = ""
+    @State private var showingFileExporter = false
+    @State private var showingShareSheet = false
+    @State private var shareItems: [Any] = []
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Export Format")
+                        .font(.headline)
+                    Text(formatDescription)
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+                
+                if app.isLoading {
+                    ProgressView("Preparing export...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    VStack(spacing: 16) {
+                        Button("Export to Files") {
+                            Task {
+                                await exportToFiles()
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isExporting)
+                        
+                        Button("Share") {
+                            Task {
+                                await shareExport()
+                            }
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled(isExporting)
+                    }
+                    .padding()
+                }
+                
+                Spacer()
+            }
+            .navigationTitle("Export Tier List")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                }
+            }
+        }
+        .fileExporter(
+            isPresented: $showingFileExporter,
+            document: ExportDocument(data: exportedData ?? Data(), filename: exportFileName),
+            contentType: contentType,
+            defaultFilename: exportFileName
+        ) { result in
+            switch result {
+            case .success(_):
+                app.showToast(type: .success, title: "Export Complete", message: "File saved successfully")
+            case .failure(let error):
+                app.showToast(type: .error, title: "Export Failed", message: error.localizedDescription)
+            }
+            isPresented = false
+        }
+        .sheet(isPresented: $showingShareSheet) {
+            ShareSheet(activityItems: shareItems)
+        }
+    }
+    
+    private var formatDescription: String {
+        switch exportFormat {
+        case .text:
+            return "Plain text format with tiers and contestants listed in readable format"
+        case .json:
+            return "JSON format with complete data structure, perfect for importing back later"
+        case .markdown:
+            return "Markdown format with formatted tables and headers, great for documentation"
+        case .csv:
+            return "CSV format suitable for spreadsheets and data analysis"
+        }
+    }
+    
+    private var contentType: UTType {
+        switch exportFormat {
+        case .text:
+            return .plainText
+        case .json:
+            return .json
+        case .markdown:
+            return .plainText
+        case .csv:
+            return .commaSeparatedText
+        }
+    }
+    
+    private func exportToFiles() async {
+        guard !isExporting else { return }
+        isExporting = true
+        defer { isExporting = false }
+        
+        if let (data, filename) = await app.exportToFormat(exportFormat) {
+            await MainActor.run {
+                exportedData = data
+                exportFileName = filename
+                showingFileExporter = true
+            }
+        }
+    }
+    
+    private func shareExport() async {
+        guard !isExporting else { return }
+        isExporting = true
+        defer { isExporting = false }
+        
+        if let (data, filename) = await app.exportToFormat(exportFormat) {
+            await MainActor.run {
+                // Create temporary file for sharing
+                let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+                do {
+                    try data.write(to: tempURL)
+                    shareItems = [tempURL]
+                    showingShareSheet = true
+                } catch {
+                    app.showToast(type: .error, title: "Export Failed", message: "Could not prepare file: \(error.localizedDescription)")
+                }
+                isPresented = false
+            }
+        }
+    }
+}
+
+// Document wrapper for file export
+struct ExportDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.data] }
+    
+    let data: Data
+    let filename: String
+    
+    init(data: Data, filename: String) {
+        self.data = data
+        self.filename = filename
+    }
+    
+    init(configuration: ReadConfiguration) throws {
+        self.data = configuration.file.regularFileContents ?? Data()
+        self.filename = "export"
+    }
+    
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        return FileWrapper(regularFileWithContents: data)
+    }
+}
+
 // UIKit share sheet wrapper for iOS/iPadOS
 struct ShareSheet: UIViewControllerRepresentable {
     var activityItems: [Any]
@@ -809,5 +1028,313 @@ struct H2HButton: View {
             .padding(8)
         }
         .buttonStyle(.bordered)
+    }
+}
+
+// MARK: - Analysis & Statistics Views
+
+struct AnalysisView: View {
+    @ObservedObject var app: AppState
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 20) {
+                    if let analysis = app.analysisData {
+                        AnalysisContentView(analysis: analysis)
+                    } else if app.isLoading {
+                        ProgressView("Generating analysis...")
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        VStack(spacing: 16) {
+                            Image(systemName: "chart.bar.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.secondary)
+                            Text("No Analysis Available")
+                                .font(.title2)
+                                .fontWeight(.semibold)
+                            Text("Generate analysis to see tier distribution and insights")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                            Button("Generate Analysis") {
+                                Task {
+                                    await app.generateAnalysis()
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.large)
+                        }
+                        .padding()
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Tier Analysis")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Refresh") {
+                        Task {
+                            await app.generateAnalysis()
+                        }
+                    }
+                    .disabled(app.isLoading)
+                }
+            }
+        }
+    }
+}
+
+struct AnalysisContentView: View {
+    let analysis: TierAnalysisData
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            // Overall Statistics
+            OverallStatsView(analysis: analysis)
+            
+            // Tier Distribution Chart
+            TierDistributionChartView(distribution: analysis.tierDistribution)
+            
+            // Balance Score
+            BalanceScoreView(score: analysis.balanceScore)
+            
+            // Insights
+            InsightsView(insights: analysis.insights)
+        }
+    }
+}
+
+struct OverallStatsView: View {
+    let analysis: TierAnalysisData
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Overall Statistics")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 16) {
+                StatCardView(
+                    title: "Total Contestants", 
+                    value: "\(analysis.totalContestants)",
+                    icon: "person.3.fill"
+                )
+                
+                StatCardView(
+                    title: "Most Populated",
+                    value: analysis.mostPopulatedTier ?? "—",
+                    icon: "arrow.up.circle.fill"
+                )
+                
+                StatCardView(
+                    title: "Unranked",
+                    value: "\(analysis.unrankedCount)",
+                    icon: "questionmark.circle.fill"
+                )
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+}
+
+struct StatCardView: View {
+    let title: String
+    let value: String
+    let icon: String
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(.accentColor)
+            
+            Text(value)
+                .font(.title3)
+                .fontWeight(.bold)
+            
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(8)
+    }
+}
+
+struct TierDistributionChartView: View {
+    let distribution: [TierDistributionData]
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Tier Distribution")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            VStack(spacing: 12) {
+                ForEach(distribution) { tier in
+                    TierBarView(tierData: tier)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+}
+
+struct TierBarView: View {
+    let tierData: TierDistributionData
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack {
+                Text("Tier \(tierData.tier)")
+                    .font(.headline)
+                    .frame(width: 80, alignment: .leading)
+                
+                Spacer()
+                
+                Text("\(tierData.count) contestants")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                
+                Text("(\(tierData.percentage, specifier: "%.1f")%)")
+                    .font(.body)
+                    .fontWeight(.medium)
+            }
+            
+            GeometryReader { geometry in
+                HStack {
+                    Rectangle()
+                        .fill(tierColor(for: tierData.tier))
+                        .frame(width: max(geometry.size.width * (tierData.percentage / 100), 4))
+                        .animation(.easeInOut(duration: 0.6), value: tierData.percentage)
+                    
+                    Spacer()
+                }
+            }
+            .frame(height: 8)
+        }
+        .padding(.horizontal)
+    }
+    
+    private func tierColor(for tier: String) -> Color {
+        switch tier {
+        case "S": return .red
+        case "A": return .orange
+        case "B": return .yellow
+        case "C": return .green
+        case "D": return .blue
+        case "F": return .purple
+        default: return .gray
+        }
+    }
+}
+
+struct BalanceScoreView: View {
+    let score: Double
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Balance Score")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            VStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .stroke(Color(.systemGray4), lineWidth: 8)
+                        .frame(width: 120, height: 120)
+                    
+                    Circle()
+                        .trim(from: 0, to: score / 100)
+                        .stroke(scoreColor, lineWidth: 8)
+                        .frame(width: 120, height: 120)
+                        .rotationEffect(.degrees(-90))
+                        .animation(.easeInOut(duration: 1), value: score)
+                    
+                    VStack {
+                        Text("\(score, specifier: "%.0f")")
+                            .font(.title)
+                            .fontWeight(.bold)
+                            .foregroundColor(scoreColor)
+                        Text("/ 100")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Text(scoreDescription)
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+    
+    private var scoreColor: Color {
+        if score >= 80 { return .green }
+        else if score >= 60 { return .orange }
+        else { return .red }
+    }
+    
+    private var scoreDescription: String {
+        if score >= 80 { return "Excellent balance across all tiers" }
+        else if score >= 60 { return "Good distribution with room for improvement" }
+        else { return "Uneven distribution - consider rebalancing" }
+    }
+}
+
+struct InsightsView: View {
+    let insights: [String]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Insights & Recommendations")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(insights, id: \.self) { insight in
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "lightbulb.fill")
+                            .foregroundColor(.yellow)
+                            .frame(width: 20)
+                        
+                        Text(insight)
+                            .font(.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(8)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
     }
 }
