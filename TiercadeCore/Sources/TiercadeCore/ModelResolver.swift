@@ -1,9 +1,7 @@
 import Foundation
-import Foundation
-import SwiftUI
 
 // Minimal resolver utilities to load a tierlist project JSON (matching referencedocs schema)
-// and produce resolved tiers for the UI (apply overrides to items).
+// and produce resolved tiers for consumers (apply overrides to items).
 
 public struct ResolvedItem: Identifiable {
     public let id: String
@@ -13,12 +11,27 @@ public struct ResolvedItem: Identifiable {
     public var thumbUri: String?
     // Generic attributes bag for consumers that expect attributes-style items
     public var attributes: [String: String]?
+
+    public init(id: String, title: String, subtitle: String? = nil, description: String? = nil, thumbUri: String? = nil, attributes: [String: String]? = nil) {
+        self.id = id
+        self.title = title
+        self.subtitle = subtitle
+        self.description = description
+        self.thumbUri = thumbUri
+        self.attributes = attributes
+    }
 }
 
 public struct ResolvedTier {
     public let id: String
     public let label: String
     public var items: [ResolvedItem]
+
+    public init(id: String, label: String, items: [ResolvedItem]) {
+        self.id = id
+        self.label = label
+        self.items = items
+    }
 }
 
 public enum ModelResolver {
