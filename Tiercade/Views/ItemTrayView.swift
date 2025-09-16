@@ -1,8 +1,6 @@
 import SwiftUI
 
-#if canImport(TiercadeCore)
 import TiercadeCore
-#endif
 
 struct ItemTrayView: View {
     @EnvironmentObject var app: AppState
@@ -15,10 +13,13 @@ struct ItemTrayView: View {
                 Spacer()
                 Button("Add") { showingAdd = true }
                     .buttonStyle(PrimaryButtonStyle())
+                    .accessibilityIdentifier("Items_AddButton")
             }
 
             TextField("Search items...", text: $app.searchQuery)
+                #if !os(tvOS)
                 .textFieldStyle(.roundedBorder)
+                #endif
 
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: Metrics.grid)]) {
@@ -29,8 +30,9 @@ struct ItemTrayView: View {
                                     .frame(minHeight: 72, idealHeight: 88)
                                     .overlay(
                                         Group {
-                                            // Prefer canonical imageUrl; fall back to legacy thumbUri if available
-                                            let thumbSrc = item.imageUrl ?? item.thumbUri
+                                            // Use canonical imageUrl only (legacy thumbUri removed).
+                                            let thumbSrc = item.imageUrl
+                                            let titleText = String((item.name ?? item.id).prefix(18))
                                             if let thumb = thumbSrc, let url = URL(string: thumb) {
                                                 AsyncImage(url: url) { phase in
                                                     switch phase {
@@ -38,20 +40,18 @@ struct ItemTrayView: View {
                                                         ProgressView()
                                                     case .success(let img):
                                                         img.resizable().scaledToFill()
-                                                    case .failure:
+                                                    default:
                                                         RoundedRectangle(cornerRadius: Metrics.rSm).fill(Palette.brand)
-                                                            .overlay(Text((item.name ?? item.id).prefix(18))
+                                                            .overlay(Text(titleText)
                                                                         .font(.headline)
                                                                         .foregroundColor(.white)
                                                                         .padding(Metrics.grid))
-                                                    @unknown default:
-                                                        RoundedRectangle(cornerRadius: Metrics.rSm).fill(Palette.brand)
                                                     }
                                                 }
                                                 .clipped()
                                             } else {
                                                 RoundedRectangle(cornerRadius: Metrics.rSm).fill(Palette.brand)
-                                                    .overlay(Text((item.name ?? item.id).prefix(18))
+                                                    .overlay(Text(titleText)
                                                                 .font(.headline)
                                                                 .foregroundColor(.white)
                                                                 .padding(Metrics.grid))
@@ -64,6 +64,7 @@ struct ItemTrayView: View {
                         .buttonStyle(PlainButtonStyle())
                         .contentShape(Rectangle())
                         .accessibilityLabel(item.name ?? item.id)
+                        .accessibilityIdentifier("ItemButton_\(item.id)")
                     }
                 }
             }

@@ -7,6 +7,7 @@
 
 import XCTest
 @testable import Tiercade
+import TiercadeCore
 
 final class TiercadeTests: XCTestCase {
 

@@ -64,78 +64,9 @@ struct ToastMessage: Identifiable, Equatable {
 // Item to provide a convenient attributes bag for code that prefers that view
 // of the model, but we do not create alias types or TL* fallbacks.
 
-import TiercadeCore
-
-// Provide a small TierListSaveData type so AppState's save/load helpers keep working.
-public struct TierListSaveData: Codable {
-    public let tiers: TiercadeCore.Items
-    public let createdDate: Date
-    public let appVersion: String
-
-    public init(tiers: TiercadeCore.Items, createdDate: Date, appVersion: String) {
-        self.tiers = tiers
-        self.createdDate = createdDate
-        self.appVersion = appVersion
-    }
-}
-
-// Extend the core Item to expose a legacy-style attributes bag and some
-// convenience properties used by the app UI. This is a targeted compatibility
-// surface (not a typealias/shim) to ease migration of callers to the canonical
-// Item's typed properties.
-// Extend the core Item directly (no local typealias). This exposes a
-// small, legacy-compatible attributes bag and a few convenience accessors
-// used by the app UI during migration. Call sites should import
-// `TiercadeCore` and reference the canonical types directly.
-public extension TiercadeCore.Item {
-    // Backwards-compatible attributes bag (computed)
-    var attributes: [String: String]? {
-        get {
-            var dict: [String: String] = [:]
-            if let n = name { dict["name"] = n }
-            if let s = seasonString { dict["season"] = s }
-            if let sn = seasonNumber { dict["seasonNumber"] = String(sn) }
-            if let img = imageUrl { dict["imageUrl"] = img }
-            if let v = videoUrl { dict["videoUrl"] = v }
-            if let st = status { dict["status"] = st }
-            if let d = description { dict["description"] = d }
-            return dict.isEmpty ? nil : dict
-        }
-        set {
-            guard let a = newValue else {
-                name = nil
-                seasonString = nil
-                seasonNumber = nil
-                imageUrl = nil
-                videoUrl = nil
-                status = nil
-                description = nil
-                return
-            }
-            name = a["name"] ?? name
-            if let sn = a["seasonNumber"], let n = Int(sn) {
-                seasonNumber = n
-                seasonString = String(n)
-            } else if let s = a["season"] {
-                seasonString = s
-                seasonNumber = Int(s)
-            }
-            imageUrl = a["thumbUri"] ?? a["imageUrl"] ?? imageUrl
-            videoUrl = a["videoUrl"] ?? videoUrl
-            status = a["status"] ?? status
-            description = a["description"] ?? description
-        }
-    }
-
-    // Legacy-season property (string) used throughout the app
-    var season: String? {
-        get { seasonString }
-        set { seasonString = newValue }
-    }
-
-    // Legacy thumbnail alias
-    var thumbUri: String? {
-        get { imageUrl }
-        set { imageUrl = newValue }
-    }
-}
+// Intentionally keep this file focused on UI helpers and small app-only types.
+// The compatibility extensions that exposed a legacy `attributes` bag and
+// aliases for `season`/`thumbUri` have been removed in favor of using the
+// canonical `TiercadeCore.Item` API directly (name, seasonString/seasonNumber,
+// imageUrl, videoUrl, etc.). This repository is in a migration phase and the
+// app code has been updated to reference the canonical fields.
