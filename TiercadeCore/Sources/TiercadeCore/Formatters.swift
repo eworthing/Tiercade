@@ -23,10 +23,10 @@ public enum ExportFormatter {
 }
 
 public enum AnalysisFormatter {
-    public static func generateTierAnalysis(tierName: String, tierInfo: TierConfigEntry, contestants: [Item]) -> String {
+    public static func generateTierAnalysis(tierName: String, tierInfo: TierConfigEntry, items: [Item]) -> String {
         var s = "\(tierInfo.name) Tier Analysis - \(tierInfo.description ?? "")\n\n"
-    s += "You've placed \(contestants.count) item\(contestants.count == 1 ? "" : "s") in this tier:\n\n"
-        for c in contestants {
+    s += "You've placed \(items.count) item\(items.count == 1 ? "" : "s") in this tier:\n\n"
+        for c in items {
             let season = c.seasonString ?? (c.seasonNumber.map(String.init) ?? "?")
             let status = c.status ?? ""
             s += "• \(c.name ?? c.id) (Season \(season), \(status))\n"

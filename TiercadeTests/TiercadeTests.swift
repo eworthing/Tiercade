@@ -14,7 +14,7 @@ final class TiercadeTests: XCTestCase {
     func testRandomize() throws {
         let appState = AppState()
         
-        // Set up initial state with contestants in different tiers
+    // Set up initial state with items in different tiers
         appState.tiers = [
             "S": [Item(id: "1", attributes: ["name": "Player 1", "season": "1"])],
             "A": [Item(id: "2", attributes: ["name": "Player 2", "season": "2"])],
@@ -28,7 +28,7 @@ final class TiercadeTests: XCTestCase {
             ]
         ]
         
-    // Count contestants before randomize
+    // Count items before randomize
     let sTierCount = appState.tierCount("S")
     let aTierCount = appState.tierCount("A")
     let bTierCount = appState.tierCount("B")
@@ -41,7 +41,7 @@ final class TiercadeTests: XCTestCase {
         // Call randomize
         appState.randomize()
         
-    // Count contestants after randomize
+    // Count items after randomize
     let newSTierCount = appState.tierCount("S")
     let newATierCount = appState.tierCount("A")
     let newBTierCount = appState.tierCount("B")
@@ -51,21 +51,21 @@ final class TiercadeTests: XCTestCase {
     let newUnrankedCount = appState.unrankedCount()
         let newCount = newSTierCount + newATierCount + newBTierCount + newCTierCount + newDTierCount + newFTierCount + newUnrankedCount
         
-        XCTAssertEqual(originalCount, newCount, "Randomize should preserve total contestant count")
+    XCTAssertEqual(originalCount, newCount, "Randomize should preserve total item count")
         
-        // Check that unranked should be empty after randomize (contestants distributed to tiers)
+    // Check that unranked should be empty after randomize (items distributed to tiers)
         XCTAssertEqual(newUnrankedCount, 0, "Unranked should be empty after randomize")
         
-        // Check that contestants are distributed across tiers
-        var tiersWithContestants = 0
+    // Check that items are distributed across tiers
+        var tiersWithItems = 0
         for tier in appState.tierOrder {
             let tierCount = appState.tierCount(tier)
             if tierCount > 0 {
-                tiersWithContestants += 1
+                tiersWithItems += 1
             }
         }
-        
-        XCTAssertGreaterThan(tiersWithContestants, 0, "At least one tier should have contestants after randomize")
+    
+    XCTAssertGreaterThan(tiersWithItems, 0, "At least one tier should have items after randomize")
     }
     
     @MainActor
@@ -93,9 +93,9 @@ final class TiercadeTests: XCTestCase {
     let sCount = appState.tierCount("S")
         XCTAssertEqual(sCount, 0, "S tier should be empty after clearing")
         
-        // Check that contestants moved to unranked
+    // Check that items moved to unranked
     let unrankedCount = appState.unrankedCount()
-    XCTAssertEqual(unrankedCount, originalUnrankedCount + originalSCount, "Unranked should contain the moved contestants")
+    XCTAssertEqual(unrankedCount, originalUnrankedCount + originalSCount, "Unranked should contain the moved items")
         
         // Check that A tier was not affected
     let aCount = appState.tierCount("A")

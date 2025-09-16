@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "projectId": "8685a932-2111-4e6f-bbc5-33f286f5d78c",
-  "title": "Survivor Season 5 Contestants",
+  "title": "Season 5 Items",
   "tiers": [
     { "id": "t1", "label": "Winner", "color": "#4CAF50", "order": 0, "itemIds": ["p1"] },
     { "id": "t2", "label": "Runner-Up", "color": "#FF9800", "order": 1, "itemIds": ["p2"] }

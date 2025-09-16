@@ -1,5 +1,9 @@
 import SwiftUI
 
+#if canImport(TiercadeCore)
+import TiercadeCore
+#endif
+
 struct ItemTrayView: View {
     @EnvironmentObject var app: AppState
     // Use AppState.searchQuery so filtering is centralized
@@ -100,10 +104,10 @@ struct AddItemsView: View {
             }
             .navigationTitle("Add Item")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { isPresented = false }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
                         let finalId = id.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !finalId.isEmpty else { return }

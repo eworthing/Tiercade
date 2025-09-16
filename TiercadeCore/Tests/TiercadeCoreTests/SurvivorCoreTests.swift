@@ -3,18 +3,18 @@ import XCTest
 
 final class TiercadeCoreTests: XCTestCase {
     func testDecodeAndValidate() throws {
-        let contestantsJSON = """
-        {"c1": {"id":"c1","name":"One","season": 1}, "c2": {"id":"c2","name":"Two","season":"2"}}
-        """.data(using: .utf8)!
+    let itemsJSON = """
+    {"c1": {"id":"c1","name":"One","season": 1}, "c2": {"id":"c2","name":"Two","season":"2"}}
+    """.data(using: .utf8)!
         let groupsJSON = """
         {"All": ["c1", "c2"]}
         """.data(using: .utf8)!
         let loader = DataLoader()
-        let contestants = try loader.decodeItems(from: contestantsJSON)
-        let groups = try loader.decodeGroups(from: groupsJSON)
-        XCTAssertTrue(loader.validate(groups: groups, items: contestants))
-        XCTAssertEqual(contestants["c1"]?.seasonNumber, 1)
-        XCTAssertEqual(contestants["c2"]?.seasonString, "2")
+        let items = try loader.decodeItems(from: itemsJSON)
+            let groups = try loader.decodeGroups(from: groupsJSON)
+        XCTAssertTrue(loader.validate(groups: groups, items: items))
+            XCTAssertEqual(items["c1"]?.seasonNumber, 1)
+            XCTAssertEqual(items["c2"]?.seasonString, "2")
     }
 
     func testHistory() {
@@ -38,7 +38,7 @@ final class TiercadeCoreTests: XCTestCase {
         let a = Item(id: "a", name: "A")
         let b = Item(id: "b", name: "B")
         let c = Item(id: "c", name: "C")
-        let ranking = [H2HRankingEntry(contestant: a, winRate: 0.9), H2HRankingEntry(contestant: b, winRate: 0.8), H2HRankingEntry(contestant: c, winRate: 0.7)]
+    let ranking = [H2HRankingEntry(item: a, winRate: 0.9), H2HRankingEntry(item: b, winRate: 0.8), H2HRankingEntry(item: c, winRate: 0.7)]
         let tiers: Items = ["S": [], "A": [], "B": [], "unranked": [a,b,c]]
         let distributed = HeadToHeadLogic.distributeRoundRobin(ranking, into: ["S","A","B"], baseTiers: tiers)
         XCTAssertEqual(distributed["S"]?.map { $0.id }, ["a"])

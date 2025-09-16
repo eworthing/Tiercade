@@ -41,7 +41,7 @@ struct TierDistributionData: Identifiable, Sendable {
 }
 
 struct TierAnalysisData: Sendable {
-    let totalContestants: Int
+    let totalItems: Int
     let tierDistribution: [TierDistributionData]
     let mostPopulatedTier: String?
     let leastPopulatedTier: String?
@@ -50,7 +50,7 @@ struct TierAnalysisData: Sendable {
     let unrankedCount: Int
     
     static let empty = TierAnalysisData(
-        totalContestants: 0,
+        totalItems: 0,
         tierDistribution: [],
         mostPopulatedTier: nil,
         leastPopulatedTier: nil,
@@ -407,8 +407,8 @@ final class AppState: ObservableObject {
                 if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                    let tierData = json["tiers"] as? [String: [[String: Any]]] {
                     var newTiers: Items = [:]
-                    for (tierName, contestantData) in tierData {
-                        newTiers[tierName] = contestantData.compactMap { dict in
+                    for (tierName, itemData) in tierData {
+                        newTiers[tierName] = itemData.compactMap { dict in
                             guard let id = dict["id"] as? String else { return nil }
                             if let attrs = dict["attributes"] as? [String: String] {
                                 return Item(id: id, attributes: attrs)
@@ -462,8 +462,8 @@ final class AppState: ObservableObject {
             if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                let tierData = json["tiers"] as? [String: [[String: Any]]] {
                 var newTiers: Items = [:]
-                for (tierName, contestantData) in tierData {
-                    newTiers[tierName] = contestantData.compactMap { dict in
+                for (tierName, itemData) in tierData {
+                    newTiers[tierName] = itemData.compactMap { dict in
                         guard let id = dict["id"] as? String else { return nil }
                         if let attrs = dict["attributes"] as? [String: String] {
                             return Item(id: id, attributes: attrs)
@@ -591,8 +591,8 @@ final class AppState: ObservableObject {
                           let tierData = json["tiers"] as? [String: [[String: Any]]] {
                     // Legacy fallback
                     var newTiers: Items = [:]
-                    for (tierName, contestantData) in tierData {
-                        newTiers[tierName] = contestantData.compactMap { dict in
+                    for (tierName, itemData) in tierData {
+                        newTiers[tierName] = itemData.compactMap { dict in
                             guard let id = dict["id"] as? String else { return nil }
                             if let attrs = dict["attributes"] as? [String: String] {
                                 return Item(id: id, attributes: attrs)
@@ -791,8 +791,8 @@ final class AppState: ObservableObject {
                 
                 var newTiers: Items = [:]
                 
-                for (tierName, contestantData) in tierData {
-                    newTiers[tierName] = contestantData.compactMap { data in
+                for (tierName, itemData) in tierData {
+                    newTiers[tierName] = itemData.compactMap { data in
                         guard let id = data["id"], !id.isEmpty else { return nil }
                         // Build attributes bag where possible
                         var attrs: [String: String] = [:]
@@ -847,13 +847,13 @@ final class AppState: ObservableObject {
                 let id = name.lowercased().replacingOccurrences(of: " ", with: "_")
                 var attrs: [String: String] = ["name": name]
                 if !season.isEmpty { attrs["season"] = season }
-                let contestant = Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
-                
+                let item = Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
+
                 let tierKey = tier.lowercased() == "unranked" ? "unranked" : tier.uppercased()
                 if newTiers[tierKey] != nil {
-                    newTiers[tierKey]?.append(contestant)
+                    newTiers[tierKey]?.append(item)
                 } else {
-                    newTiers["unranked"]?.append(contestant)
+                    newTiers["unranked"]?.append(item)
                 }
             }
             updateProgress(0.8)
@@ -952,8 +952,8 @@ final class AppState: ObservableObject {
         analysisData = await withLoadingIndicator(message: "Generating analysis...") {
             updateProgress(0.1)
             
-            let totalContestants = tiers.values.flatMap { $0 }.count
-            guard totalContestants > 0 else {
+            let totalItems = tiers.values.flatMap { $0 }.count
+            guard totalItems > 0 else {
                 updateProgress(1.0)
                 return TierAnalysisData.empty
             }
@@ -963,13 +963,13 @@ final class AppState: ObservableObject {
             // Calculate tier distribution
             let tierDistribution = tierOrder.compactMap { tier in
                 let count = tiers[tier]?.count ?? 0
-                let percentage = totalContestants > 0 ? Double(count) / Double(totalContestants) * 100 : 0
+                let percentage = totalItems > 0 ? Double(count) / Double(totalItems) * 100 : 0
                 return TierDistributionData(tier: tier, count: count, percentage: percentage)
             }
             
             updateProgress(0.5)
             
-            // Find tier with most/least contestants
+            // Find tier with most/least items
             let mostPopulatedTier = tierDistribution.max(by: { $0.count < $1.count })
             let leastPopulatedTier = tierDistribution.min(by: { $0.count < $1.count })
             
@@ -987,7 +987,7 @@ final class AppState: ObservableObject {
             var insights: [String] = []
             
             if let mostPopulated = mostPopulatedTier, mostPopulated.percentage > 40 {
-                insights.append("Tier \(mostPopulated.tier) contains \(String(format: "%.1f", mostPopulated.percentage))% of all contestants")
+                insights.append("Tier \(mostPopulated.tier) contains \(String(format: "%.1f", mostPopulated.percentage))% of all items")
             }
             
             if balanceScore < 50 {
@@ -998,14 +998,14 @@ final class AppState: ObservableObject {
             
             let unrankedCount = tiers["unranked"]?.count ?? 0
             if unrankedCount > 0 {
-                let unrankedPercentage = Double(unrankedCount) / Double(totalContestants + unrankedCount) * 100
-                insights.append("\(String(format: "%.1f", unrankedPercentage))% of contestants remain unranked")
+                let unrankedPercentage = Double(unrankedCount) / Double(totalItems + unrankedCount) * 100
+                insights.append("\(String(format: "%.1f", unrankedPercentage))% of items remain unranked")
             }
             
             updateProgress(1.0)
             
             return TierAnalysisData(
-                totalContestants: totalContestants,
+                totalItems: totalItems,
                 tierDistribution: tierDistribution,
                 mostPopulatedTier: mostPopulatedTier?.tier,
                 leastPopulatedTier: leastPopulatedTier?.tier,
@@ -1091,7 +1091,7 @@ final class AppState: ObservableObject {
 
     // MARK: - Data Normalization / Migration Helpers
 
-    /// Ensure every contestant has an attributes bag; migrate legacy top-level fields into attributes.
+    /// Ensure every item has an attributes bag; migrate legacy top-level fields into attributes.
     static func normalizedTiers(from tiers: Items) -> Items {
         var out: Items = [:]
         for (k, v) in tiers {

@@ -26,8 +26,8 @@ ReferenceCodeToConvert/**/.vite
 ReferenceCodeToConvert/**/node_modules/
 
 # Ignore nested repo content (use submodule if needed)
-ReferenceCodeToConvert/SurvivorTierList/.git
-ReferenceCodeToConvert/SurvivorTierList/.git/**
+ReferenceCodeToConvert/ReferenceTierList/.git
+ReferenceCodeToConvert/ReferenceTierList/.git/**
 
 # Logs
 *.log

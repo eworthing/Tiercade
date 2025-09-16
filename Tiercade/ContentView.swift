@@ -10,6 +10,10 @@ import SwiftUI
 import UniformTypeIdentifiers
 #endif
 
+#if canImport(TiercadeCore)
+import TiercadeCore
+#endif
+
 struct AppTier: Identifiable, Hashable { let id: String; var name: String }
 
 // MARK: - Toast View
@@ -416,9 +420,9 @@ struct ToolbarView: ToolbarContent {
     #if os(iOS)
     @State private var showingShare = false
     @State private var exportingJSON = false
-    @State private var importingJSON = false
     @State private var jsonDoc = TiersDocument()
     #endif
+    @State private var importingJSON = false
     @State private var showingSettings = false
     var body: some ToolbarContent {
         PrimaryToolbarActions(app: app)
@@ -901,7 +905,7 @@ struct UnrankedView: View {
     @FocusState private var focusedCardId: String?
     #endif
     
-    var filteredContestants: [Item] {
+    var filteredItems: [Item] {
     let allUnranked = app.items(for: "unranked")
         
         // Apply global filter
@@ -917,7 +921,7 @@ struct UnrankedView: View {
     }
     
     var body: some View {
-        if !filteredContestants.isEmpty {
+        if !filteredItems.isEmpty {
             VStack(alignment: .leading, spacing: Metrics.grid) {
                 HStack { 
                     Text("Unranked")
@@ -925,17 +929,17 @@ struct UnrankedView: View {
                         .foregroundColor(Palette.text)
                     Spacer()
                     if !app.searchQuery.isEmpty || app.activeFilter != .all {
-                        Text("\(filteredContestants.count)/\(app.unrankedCount())")
+                        Text("\(filteredItems.count)/\(app.unrankedCount())")
                             .font(TypeScale.label)
                             .foregroundColor(Palette.textDim)
                     } else {
-                        Text("\(filteredContestants.count)")
+                        Text("\(filteredItems.count)")
                             .font(TypeScale.label)
                             .foregroundColor(Palette.textDim)
                     }
                 }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 10)]) {
-                    ForEach(filteredContestants, id: \.id) { item in
+                    ForEach(filteredItems, id: \.id) { item in
                         CardView(item: item)
                         #if !os(tvOS)
                             .draggable(item.id)
@@ -960,7 +964,7 @@ struct UnrankedView: View {
                 app.setDragTarget(isTargeted ? "unranked" : nil)
             }
             #else
-            .onAppear { focusedCardId = filteredContestants.first?.id }
+            .onAppear { focusedCardId = filteredItems.first?.id }
             #endif
         }
     }
@@ -1261,8 +1265,8 @@ struct OverallStatsView: View {
                 GridItem(.flexible())
             ], spacing: 16) {
                 StatCardView(
-                    title: "Total Contestants", 
-                    value: "\(analysis.totalContestants)",
+                    title: "Total Items", 
+                    value: "\(analysis.totalItems)",
                     icon: "person.3.fill"
                 )
                 
@@ -1342,7 +1346,7 @@ struct TierBarView: View {
                 
                 Spacer()
                 
-                Text("\(tierData.count) contestants")
+                Text("\(tierData.count) items")
                     .font(.body)
                     .foregroundColor(.secondary)
                 
