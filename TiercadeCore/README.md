@@ -3,10 +3,10 @@
 Core domain models and logic for the Tiercade native apps. This Swift Package is platform-agnostic and intended to be used by iOS, iPadOS, macOS, and tvOS apps.
 
 ## Contents
-- Models: Contestant, TierConfig, Tiers, History
+- Models: Item, TierConfig, Tiers, History
 - Logic: TierLogic (move/reorder), HistoryLogic, RandomUtils
 - Formatters: ExportFormatter, AnalysisFormatter
-- Data: DataLoader for decoding JSON resources (contestants, groups)
+- Data: DataLoader for decoding JSON resources (items, groups)
 
 ## Requirements
 - Swift 6 toolchain
@@ -22,12 +22,12 @@ Core domain models and logic for the Tiercade native apps. This Swift Package is
 import TiercadeCore
 
 let loader = DataLoader()
-let contestants = try loader.decodeContestants(from: Data(/* … */))
+let items = try loader.decodeItems(from: Data(/* … */))
 let groups = try loader.decodeGroups(from: Data(/* … */))
-precondition(loader.validate(groups: groups, contestants: contestants))
+precondition(loader.validate(groups: groups, items: items))
 
-let tiers: Tiers = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": [Contestant(id: "x", name: "X")]]
-let moved = TierLogic.moveContestant(tiers, contestantId: "x", targetTierName: "S")
+let tiers: Tiers = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": [Item(id: "x", name: "X")]]
+let moved = TierLogic.moveItem(tiers, itemId: "x", targetTierName: "S")
 ```
 
 ## Tests

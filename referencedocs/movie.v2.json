@@ -1,0 +1,133 @@
+{
+  "schemaVersion": 2,
+  "projectId": "4c2c9815-caf4-46a6-81aa-da102f376c42",
+  "title": "Sci-Fi Movies Ranking",
+  "description": "Tier list of science fiction movies.",
+  "settings": {
+    "theme": "dark",
+    "tierSortOrder": "S-F",
+    "gridSnap": true
+  },
+  "tiers": [
+    {
+      "id": "tier1",
+      "label": "S",
+      "color": "#FFD700",
+      "order": 0,
+      "itemIds": [
+        "movie1",
+        "movie2"
+      ]
+    },
+    {
+      "id": "tier2",
+      "label": "A",
+      "color": "#C0C0C0",
+      "order": 1,
+      "itemIds": [
+        "movie3"
+      ]
+    }
+  ],
+  "items": {
+    "movie1": {
+      "id": "movie1",
+      "title": "Interstellar",
+      "subtitle": "Directed by Christopher Nolan",
+      "media": [
+        {
+          "id": "m1-poster",
+          "kind": "image",
+          "uri": "https://example.com/interstellar.jpg",
+          "mime": "image/jpeg",
+          "w": 1600,
+          "h": 900,
+          "alt": "Interstellar poster"
+        },
+        {
+          "id": "m1-trailer",
+          "kind": "video",
+          "uri": "https://example.com/interstellar_trailer.mp4",
+          "mime": "video/mp4",
+          "posterUri": "https://example.com/interstellar_thumb.jpg",
+          "durationMs": 150000
+        }
+      ],
+      "attributes": {
+        "year": 2014,
+        "genres": [
+          "Sci-Fi",
+          "Drama"
+        ]
+      },
+      "tags": [
+        "Nolan",
+        "space"
+      ],
+      "rating": 95,
+      "sources": [
+        {
+          "href": "https://en.wikipedia.org/wiki/Interstellar_(film)",
+          "rel": "wikipedia",
+          "title": "Interstellar"
+        }
+      ],
+      "description": "A team of explorers travel through a wormhole..."
+    },
+    "movie2": {
+      "id": "movie2",
+      "title": "The Matrix",
+      "attributes": {
+        "year": 1999,
+        "genres": [
+          "Sci-Fi",
+          "Action"
+        ]
+      },
+      "media": [
+        {
+          "id": "m2-poster",
+          "kind": "image",
+          "uri": "https://example.com/matrix.jpg",
+          "mime": "image/jpeg",
+          "w": 1200,
+          "h": 1800
+        }
+      ],
+      "rating": 93
+    },
+    "movie3": {
+      "id": "movie3",
+      "title": "Blade Runner 2049",
+      "attributes": {
+        "year": 2017,
+        "genres": [
+          "Sci-Fi",
+          "Drama"
+        ]
+      },
+      "media": [
+        {
+          "id": "m3-poster",
+          "kind": "image",
+          "uri": "https://example.com/br2049.jpg",
+          "mime": "image/jpeg"
+        }
+      ],
+      "rating": 90
+    }
+  },
+  "overrides": {
+    "movie3": {
+      "displayTitle": "Blade Runner II",
+      "notes": "Rewatched - holds up.",
+      "rating": 91
+    }
+  },
+  "audit": {
+    "createdAt": "2025-09-15T17:38:49.967Z",
+    "updatedAt": "2025-09-15T17:38:49.967Z",
+    "createdBy": "user123",
+    "updatedBy": "user123"
+  }
+}

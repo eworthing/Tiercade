@@ -12,7 +12,7 @@ A comprehensive tier list management application for iOS, built with SwiftUI. Cr
 ### **Core Tier Management**
 - **Drag & Drop Interface** - Native SwiftUI drag and drop with visual feedback
 - **Multiple Tier Support** - Customizable tier structure (S, A, B, C, D, F tiers)
-- **Contestant Management** - Add, remove, and organize contestants across tiers
+- **Item Management** - Add, remove, and organize items across tiers
 - **Real-time Updates** - Instant visual feedback for all operations
 
 ### **Advanced Operations**
@@ -189,7 +189,7 @@ Comprehensive statistical analysis with balance scoring algorithm:
 
 ```swift
 struct TierAnalysisData {
-    let totalContestants: Int
+    let totalItems: Int
     let tierDistribution: [TierDistributionData]
     let mostPopulatedTier: String?
     let leastPopulatedTier: String?
@@ -251,7 +251,7 @@ func updateProgress(_ value: Double) { /* 0.0 ... 1.0 */ }
 ### **Memory Management**
 - @MainActor ensures UI updates on main thread
 - Weak references where appropriate to prevent retain cycles
-- Efficient data structures for large contestant lists
+- Efficient data structures for large item lists
 
 ### **UI Responsiveness**
 - SwiftUI's declarative updates for smooth animations

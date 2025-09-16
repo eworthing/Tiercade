@@ -10,6 +10,10 @@ import SwiftUI
 import UniformTypeIdentifiers
 #endif
 
+#if canImport(TiercadeCore)
+import TiercadeCore
+#endif
+
 struct AppTier: Identifiable, Hashable { let id: String; var name: String }
 
 // MARK: - Toast View
@@ -127,10 +131,60 @@ struct DragTargetHighlight: View {
 
 struct ContentView: View {
     @StateObject private var app = AppState()
+    @State private var showingAddItems = false
     #if os(tvOS)
     private var canStartH2HFromRemote: Bool { app.quickRankTarget == nil && !app.h2hActive }
     #endif
 
+    var body: some View {
+        MainAppView()
+            .environmentObject(app)
+            .toolbar { ToolbarView(app: app) }
+            .overlay(alignment: .bottom) { QuickRankOverlay(app: app) }
+            .overlay { HeadToHeadOverlay(app: app) }
+            .overlay(alignment: .top) {
+                if let toast = app.currentToast {
+                    Button(action: { app.dismissToast() }) {
+                        ToastView(toast: toast)
+                            .padding(.top, Metrics.toolbarH + Metrics.grid * 2) // Account for toolbar
+                            .padding(.horizontal, Metrics.grid * 2)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .accessibilityLabel(toast.title)
+                    .accessibilityHint("Dismiss toast")
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .overlay(alignment: .center) {
+                ProgressIndicatorView(
+                    isLoading: app.isLoading,
+                    message: app.loadingMessage,
+                    progress: app.operationProgress
+                )
+            }
+            .overlay(alignment: .topTrailing) { 
+                PersistenceStatusView(app: app)
+                    .padding(.top, Metrics.toolbarH + Metrics.grid)
+                    .padding(.trailing, Metrics.grid * 2)
+            }
+            .sheet(isPresented: $app.showingAnalysis) {
+                AnalysisView(app: app)
+            }
+            .sheet(isPresented: $showingAddItems) {
+                AddItemsView(isPresented: $showingAddItems)
+                    .environmentObject(app)
+            }
+            #if os(tvOS)
+            .onPlayPauseCommand(perform: {
+                if canStartH2HFromRemote { app.startH2H() }
+            })
+            #endif
+    }
+}
+
+// Extracted main app view to simplify ContentView body for compiler
+struct MainAppView: View {
+    @EnvironmentObject var app: AppState
     var body: some View {
         Group {
             #if os(iOS)
@@ -144,59 +198,23 @@ struct ContentView: View {
                     }
                 }
             } else {
-                AdaptiveLayout {
+                AdaptiveBox {
                     SidebarView(tierOrder: app.tierOrder)
                     TierGridView(tierOrder: app.tierOrder)
                     InspectorView()
                 }
             }
             #else
-            AdaptiveLayout {
+            AdaptiveBox {
                 SidebarView(tierOrder: app.tierOrder)
                 TierGridView(tierOrder: app.tierOrder)
                 InspectorView()
             }
             #endif
         }
-    .environmentObject(app)
-    .toolbar { ToolbarView(app: app) }
-    .overlay(alignment: .bottom) { QuickRankOverlay(app: app) }
-    .overlay { HeadToHeadOverlay(app: app) }
-    .overlay(alignment: .top) {
-        if let toast = app.currentToast {
-                Button(action: { app.dismissToast() }) {
-                    ToastView(toast: toast)
-                        .padding(.top, Metrics.toolbarH + Metrics.grid * 2) // Account for toolbar
-                        .padding(.horizontal, Metrics.grid * 2)
-                }
-                .buttonStyle(PlainButtonStyle())
-                .accessibilityLabel(toast.title)
-                .accessibilityHint("Dismiss toast")
-                .transition(.move(edge: .top).combined(with: .opacity))
-        }
-    }
-    .overlay(alignment: .center) {
-        ProgressIndicatorView(
-            isLoading: app.isLoading,
-            message: app.loadingMessage,
-            progress: app.operationProgress
-        )
-    }
-    .overlay(alignment: .topTrailing) { 
-        PersistenceStatusView(app: app)
-            .padding(.top, Metrics.toolbarH + Metrics.grid)
-            .padding(.trailing, Metrics.grid * 2)
-    }
-    .sheet(isPresented: $app.showingAnalysis) {
-        AnalysisView(app: app)
-    }
-        #if os(tvOS)
-        .onPlayPauseCommand(perform: {
-            if canStartH2HFromRemote { app.startH2H() }
-        })
-        #endif
     }
 }
+
 
 // MARK: - Adaptive container for iPhone/iPad/tvOS
 struct AdaptiveLayout<Content: View>: View {
@@ -208,11 +226,37 @@ struct AdaptiveLayout<Content: View>: View {
     var body: some View {
         GeometryReader { geo in
             let isWide = geo.size.width > 700 || hSize == .regular
+            let boxed = AnyView(content())
             Group {
                 if isWide {
-                    HStack(spacing: 0) { content() }
+                    HStack(spacing: 0) { boxed }
                 } else {
-                    VStack(spacing: 0) { content() }
+                    VStack(spacing: 0) { boxed }
+                }
+            }
+            .animation(.snappy, value: isWide)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
+        }
+    }
+}
+
+/// Non-generic boxed alternative to reduce compiler specialization cost
+struct AdaptiveBox: View {
+    private let content: AnyView
+    @Environment(\.horizontalSizeClass) private var hSize
+
+    init<Content: View>(@ViewBuilder content: () -> Content) {
+        self.content = AnyView(content())
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let isWide = geo.size.width > 700 || hSize == .regular
+            Group {
+                if isWide {
+                    HStack(spacing: 0) { content }
+                } else {
+                    VStack(spacing: 0) { content }
                 }
             }
             .animation(.snappy, value: isWide)
@@ -228,103 +272,91 @@ struct SidebarView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Survivor Tier List").font(.largeTitle.bold())
+                Text("Tier List").font(.largeTitle.bold())
                 Spacer()
                 Button(action: { /* stub: show add dialog */ }) {
                     Label("Add Items", systemImage: "plus")
                 }
                 .buttonStyle(PrimaryButtonStyle())
             }
-            
-            // Enhanced Search Section
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Search & Filter").font(.headline)
-                
-                #if !os(tvOS)
-                TextField("Search contestants...", text: $app.searchQuery)
-                    .textFieldStyle(.roundedBorder)
-                
-                // Search processing indicator
-                if app.isProcessingSearch {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                        Text("Processing search...")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .transition(.opacity)
-                }
-                #endif
-                
-                // Quick Filter Buttons
-                HStack(spacing: 8) {
-                    ForEach(FilterType.allCases, id: \.self) { filter in
-                        Button(filter.rawValue) {
-                            app.activeFilter = filter
-                        }
-                        .buttonStyle(GhostButtonStyle())
-                        .controlSize(.small)
-                        .background(app.activeFilter == filter ? Color.accentColor.opacity(0.2) : Color.clear)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(app.activeFilter == filter ? Color.accentColor : Color.clear, lineWidth: 2)
-                        )
-                    }
-                }
-            }
-            
+
+            SidebarSearchView()
             Divider()
-            
-            // Stats Section
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Statistics").font(.headline)
-                HStack { 
-                    Text("Total:"); 
-                    Spacer()
-                    Text("\(tierOrder.flatMap { app.tiers[$0] ?? [] }.count + (app.tiers["unranked"]?.count ?? 0))").bold() 
-                }
-                HStack { 
-                    Text("Ranked:"); 
-                    Spacer()
-                    Text("\(tierOrder.flatMap { app.tiers[$0] ?? [] }.count)").bold() 
-                }
-                HStack { 
-                    Text("Unranked:"); 
-                    Spacer()
-                    Text("\(app.tiers["unranked"]?.count ?? 0)").bold() 
-                }
-                if !app.searchQuery.isEmpty {
-                    HStack { 
-                        Text("Filtered:"); 
-                        Spacer()
-                        Text("\(app.allContestants().count)").bold().foregroundColor(.accentColor)
-                    }
-                }
-            }
-            
+            SidebarStatsView(tierOrder: tierOrder)
             Divider()
-            
-            // Tier List
-            ScrollView { 
-                VStack(alignment: .leading, spacing: 4) { 
-                    ForEach(tierOrder, id: \.self) { t in 
-                        HStack {
-                            Label(t, systemImage: "flag")
-                            Spacer()
-                            Text("\(app.tiers[t]?.count ?? 0)")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                    } 
-                } 
-            }
+            SidebarTierListView(tierOrder: tierOrder)
             Divider()
             ItemTrayView()
         }
         .padding(Metrics.grid * 2)
-    .frame(minWidth: 280)
-    .panel()
+        .frame(minWidth: 280)
+        .panel()
+    }
+}
+
+struct SidebarSearchView: View {
+    @EnvironmentObject var app: AppState
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Search & Filter").font(.headline)
+
+            #if !os(tvOS)
+            TextField("Search items...", text: $app.searchQuery)
+                .textFieldStyle(.roundedBorder)
+
+            if app.isProcessingSearch {
+                HStack(spacing: 8) {
+                    ProgressView().scaleEffect(0.7)
+                    Text("Processing search...").font(.caption).foregroundColor(.secondary)
+                }
+                .transition(.opacity)
+            }
+            #endif
+
+            HStack(spacing: 8) {
+                ForEach(FilterType.allCases, id: \.self) { filter in
+                    Button(filter.rawValue) { app.activeFilter = filter }
+                        .buttonStyle(GhostButtonStyle())
+                        .controlSize(.small)
+                        .background(app.activeFilter == filter ? Color.accentColor.opacity(0.2) : Color.clear)
+                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(app.activeFilter == filter ? Color.accentColor : Color.clear, lineWidth: 2))
+                }
+            }
+        }
+    }
+}
+
+struct SidebarStatsView: View {
+    @EnvironmentObject var app: AppState
+    let tierOrder: [String]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Statistics").font(.headline)
+            HStack { Text("Total:"); Spacer(); Text("\(app.allItems().count)").bold() }
+            HStack { Text("Ranked:"); Spacer(); Text("\(app.rankedCount())").bold() }
+            HStack { Text("Unranked:"); Spacer(); Text("\(app.unrankedCount())").bold() }
+            if !app.searchQuery.isEmpty { HStack { Text("Filtered:"); Spacer(); Text("\(app.allItems().count)").bold().foregroundColor(.accentColor) } }
+        }
+    }
+}
+
+struct SidebarTierListView: View {
+    @EnvironmentObject var app: AppState
+    let tierOrder: [String]
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(tierOrder, id: \.self) { t in
+                    HStack {
+                        Label(t, systemImage: "flag")
+                        Spacer()
+                        Text("\(app.tierCount(t))")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -388,25 +420,83 @@ struct ToolbarView: ToolbarContent {
     #if os(iOS)
     @State private var showingShare = false
     @State private var exportingJSON = false
-    @State private var importingJSON = false
     @State private var jsonDoc = TiersDocument()
     #endif
+    @State private var importingJSON = false
     @State private var showingSettings = false
+    var body: some ToolbarContent {
+        PrimaryToolbarActions(app: app)
+        SecondaryToolbarActions(app: app,
+                                onShowSave: {
+                                    saveFileName = app.currentFileName ?? "MyTierList"
+                                    showingSaveDialog = true
+                                },
+                                onShowLoad: {
+                                    showingLoadDialog = true
+                                },
+                                onShowExportFormat: { fmt in
+                                    selectedExportFormat = fmt
+                                    showingExportFormatSheet = true
+                                },
+                                onImportJSON: {
+                                    importingJSON = true
+                                },
+                                onImportCSV: {
+                                    showingImportSheet = true
+                                },
+                                onShowSettings: {
+                                    showingSettings = true
+                                })
+        #if os(iOS)
+        BottomToolbarSheets(app: app,
+                           exportText: $exportText,
+                           showingShare: $showingShare,
+                           showingSettings: $showingSettings,
+                           showingExportFormatSheet: $showingExportFormatSheet,
+                           exportingJSON: $exportingJSON,
+                           importingJSON: $importingJSON,
+                           jsonDoc: $jsonDoc,
+                           showingImportSheet: $showingImportSheet,
+                           showingSaveDialog: $showingSaveDialog,
+                           showingLoadDialog: $showingLoadDialog,
+                           saveFileName: $saveFileName)
+        #else
+        MacAndTVToolbarSheets(app: app, showingSaveDialog: $showingSaveDialog, showingLoadDialog: $showingLoadDialog, saveFileName: $saveFileName, showingSettings: $showingSettings)
+        #endif
+    }
+}
+
+// Small toolbar pieces extracted to aid compiler type-checking
+struct PrimaryToolbarActions: ToolbarContent {
+    @ObservedObject var app: AppState
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
             Button(action: { app.undo() }) { Label("Undo", systemImage: "arrow.uturn.backward") }
                 .disabled(!app.canUndo)
                 .buttonStyle(GhostButtonStyle())
-            #if !os(tvOS)
+                #if !os(tvOS)
                 .keyboardShortcut("z", modifiers: [.command])
-            #endif
+                #endif
             Button(action: { app.redo() }) { Label("Redo", systemImage: "arrow.uturn.forward") }
                 .disabled(!app.canRedo)
                 .buttonStyle(GhostButtonStyle())
-            #if !os(tvOS)
+                #if !os(tvOS)
                 .keyboardShortcut("Z", modifiers: [.command, .shift])
-            #endif
+                #endif
         }
+    }
+}
+
+struct SecondaryToolbarActions: ToolbarContent {
+    @ObservedObject var app: AppState
+    var onShowSave: () -> Void = {}
+    var onShowLoad: () -> Void = {}
+    var onShowExportFormat: (ExportFormat) -> Void = { _ in }
+    var onImportJSON: () -> Void = {}
+    var onImportCSV: () -> Void = {}
+    var onShowSettings: () -> Void = {}
+
+    var body: some ToolbarContent {
         ToolbarItemGroup(placement: .secondaryAction) {
             Menu("Actions") {
                 Button("Clear S Tier") { app.clearTier("S") }
@@ -429,69 +519,29 @@ struct ToolbarView: ToolbarContent {
                         .keyboardShortcut("o", modifiers: [.command])
                     #endif
                     Divider()
-                    Button("Save to File...") { 
-                        saveFileName = app.currentFileName ?? "MyTierList"
-                        showingSaveDialog = true 
-                    }
+                    Button("Save to File...") { onShowSave() }
                     #if !os(tvOS)
                         .keyboardShortcut("S", modifiers: [.command, .shift])
                     #endif
-                    Button("Load from File...") { 
-                        showingLoadDialog = true 
-                    }
+                    Button("Load from File...") { onShowLoad() }
                     #if !os(tvOS)
                         .keyboardShortcut("O", modifiers: [.command, .shift])
                     #endif
                 }
                 Menu("Export & Import") {
                     Menu("Export As...") {
-                        Button("Text Format") { 
-                            selectedExportFormat = .text
-                            showingExportFormatSheet = true 
-                        }
-                        Button("JSON Format") { 
-                            selectedExportFormat = .json
-                            showingExportFormatSheet = true 
-                        }
-                        Button("Markdown Format") { 
-                            selectedExportFormat = .markdown
-                            showingExportFormatSheet = true 
-                        }
-                        Button("CSV Format") { 
-                            selectedExportFormat = .csv
-                            showingExportFormatSheet = true 
-                        }
+                        Button("Text Format") { onShowExportFormat(.text) }
+                        Button("JSON Format") { onShowExportFormat(.json) }
+                        Button("Markdown Format") { onShowExportFormat(.markdown) }
+                        Button("CSV Format") { onShowExportFormat(.csv) }
                     }
                     #if os(iOS)
                     Menu("Import From...") {
-                        Button("JSON File") { 
-                            importingJSON = true 
-                        }
-                        Button("CSV File") { 
-                            showingImportSheet = true 
-                        }
+                        Button("JSON File") { onImportJSON() }
+                        Button("CSV File") { onImportCSV() }
                     }
                     #endif
                 }
-                #if os(iOS)
-                // Legacy export for backwards compatibility
-                Button("Export Text") {
-                    exportText = app.exportText()
-                    showingShare = true
-                }
-                #if !os(tvOS)
-                .keyboardShortcut("e", modifiers: [.command])
-                #endif
-                #else
-                Button("Export Text") {
-                    exportText = app.exportText()
-                    print(exportText)
-                }
-                #if !os(tvOS)
-                .keyboardShortcut("e", modifiers: [.command])
-                #endif
-                #endif
-                Divider()
                 Button("Head-to-Head") { app.startH2H() }
                 #if !os(tvOS)
                     .keyboardShortcut("h", modifiers: [.command])
@@ -500,109 +550,83 @@ struct ToolbarView: ToolbarContent {
                 #if !os(tvOS)
                     .keyboardShortcut("a", modifiers: [.command])
                 #endif
-                Button("Settings") { showingSettings = true }
+                Button("Settings") { onShowSettings() }
             }
         }
-        #if os(iOS)
-        // For iOS/iPadOS quick text export
+    }
+}
+
+#if os(iOS)
+struct BottomToolbarSheets: ToolbarContent {
+    @ObservedObject var app: AppState
+    @Binding var exportText: String
+    @Binding var showingShare: Bool
+    @Binding var showingSettings: Bool
+    @Binding var showingExportFormatSheet: Bool
+    @Binding var exportingJSON: Bool
+    @Binding var importingJSON: Bool
+    @Binding var jsonDoc: TiersDocument
+    @Binding var showingImportSheet: Bool
+    @Binding var showingSaveDialog: Bool
+    @Binding var showingLoadDialog: Bool
+    @Binding var saveFileName: String
+
+    var body: some ToolbarContent {
         ToolbarItem(placement: .bottomBar) {
             EmptyView()
-                .sheet(isPresented: $showingShare) {
-                    ShareSheet(activityItems: [exportText])
-                }
-                        .sheet(isPresented: $showingSettings) {
-                            SettingsView()
-                        }
-                .sheet(isPresented: $showingExportFormatSheet) {
-                    ExportFormatSheetView(
-                        app: app,
-                        exportFormat: selectedExportFormat,
-                        isPresented: $showingExportFormatSheet
-                    )
-                }
+                .sheet(isPresented: $showingShare) { ShareSheet(activityItems: [exportText]) }
+                .sheet(isPresented: $showingSettings) { SettingsView() }
+                .sheet(isPresented: $showingExportFormatSheet) { ExportFormatSheetView(app: app, exportFormat: .text, isPresented: $showingExportFormatSheet) }
                 .fileExporter(isPresented: $exportingJSON, document: jsonDoc, contentType: .json, defaultFilename: "tiers.json") { result in
-                    if case .failure(let err) = result { 
-                        app.showToast(type: .error, title: "JSON Export Failed", message: err.localizedDescription)
-                    } else {
-                        app.showToast(type: .success, title: "JSON Export Complete", message: "File saved successfully")
-                    }
+                    if case .failure(let err) = result { app.showToast(type: .error, title: "JSON Export Failed", message: err.localizedDescription) }
+                    else { app.showToast(type: .success, title: "JSON Export Complete", message: "File saved successfully") }
                 }
                 .fileImporter(isPresented: $importingJSON, allowedContentTypes: [.json]) { result in
-                    if case .success(let url) = result {
-                        Task {
-                            await app.importFromJSON(url: url)
-                        }
-                    }
+                    if case .success(let url) = result { Task { await app.importFromJSON(url: url) } }
                 }
                 .fileImporter(isPresented: $showingImportSheet, allowedContentTypes: [.commaSeparatedText, .text]) { result in
-                    if case .success(let url) = result {
-                        Task {
-                            await app.importFromCSV(url: url)
-                        }
-                    }
+                    if case .success(let url) = result { Task { await app.importFromCSV(url: url) } }
                 }
                 .alert("Save Tier List", isPresented: $showingSaveDialog) {
                     TextField("File Name", text: $saveFileName)
-                    Button("Save") {
-                        if !saveFileName.isEmpty {
-                            if app.saveToFile(named: saveFileName) {
-                                // Success feedback could be added here
-                            }
-                        }
-                    }
+                    Button("Save") { if !saveFileName.isEmpty { _ = app.saveToFile(named: saveFileName) } }
                     Button("Cancel", role: .cancel) { }
-                } message: {
-                    Text("Enter a name for your tier list file.")
-                }
+                } message: { Text("Enter a name for your tier list file.") }
                 .alert("Load Tier List", isPresented: $showingLoadDialog) {
                     ForEach(app.getAvailableSaveFiles(), id: \.self) { fileName in
-                        Button(fileName) {
-                            if app.loadFromFile(named: fileName) {
-                                // Success feedback could be added here
-                            }
-                        }
+                        Button(fileName) { if app.loadFromFile(named: fileName) { } }
                     }
                     Button("Cancel", role: .cancel) { }
-                } message: {
-                    Text("Select a tier list file to load.")
-                }
+                } message: { Text("Select a tier list file to load.") }
         }
-        #else
-        // For macOS and tvOS
+    }
+}
+#else
+struct MacAndTVToolbarSheets: ToolbarContent {
+    @ObservedObject var app: AppState
+    @Binding var showingSaveDialog: Bool
+    @Binding var showingLoadDialog: Bool
+    @Binding var saveFileName: String
+    @Binding var showingSettings: Bool
+    var body: some ToolbarContent {
         ToolbarItem(placement: .automatic) {
             EmptyView()
                 .alert("Save Tier List", isPresented: $showingSaveDialog) {
                     TextField("File Name", text: $saveFileName)
-                    Button("Save") {
-                        if !saveFileName.isEmpty {
-                            if app.saveToFile(named: saveFileName) {
-                                // Success feedback could be added here
-                            }
-                        }
-                    }
+                    Button("Save") { if !saveFileName.isEmpty { _ = app.saveToFile(named: saveFileName) } }
                     Button("Cancel", role: .cancel) { }
-                } message: {
-                    Text("Enter a name for your tier list file.")
-                }
+                } message: { Text("Enter a name for your tier list file.") }
                 .alert("Load Tier List", isPresented: $showingLoadDialog) {
                     ForEach(app.getAvailableSaveFiles(), id: \.self) { fileName in
-                        Button(fileName) {
-                            if app.loadFromFile(named: fileName) {
-                                // Success feedback could be added here
-                            }
-                        }
+                        Button(fileName) { if app.loadFromFile(named: fileName) { } }
                     }
                     Button("Cancel", role: .cancel) { }
-                } message: {
-                    Text("Select a tier list file to load.")
-                }
-                .sheet(isPresented: $showingSettings) {
-                    SettingsView()
-                }
+                } message: { Text("Select a tier list file to load.") }
+                .sheet(isPresented: $showingSettings) { SettingsView() }
         }
-        #endif
     }
 }
+#endif
 
 #if os(iOS)
 // Export format selection sheet for iOS
@@ -688,7 +712,7 @@ struct ExportFormatSheetView: View {
     private var formatDescription: String {
         switch exportFormat {
         case .text:
-            return "Plain text format with tiers and contestants listed in readable format"
+            return "Plain text format with tiers and items listed in readable format"
         case .json:
             return "JSON format with complete data structure, perfect for importing back later"
         case .markdown:
@@ -796,7 +820,7 @@ struct TierGridView: View {
             .padding(Metrics.grid * 2)
         }
         .background(
-            LinearGradient(gradient: .survivorBackground, startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(gradient: .tierListBackground, startPoint: .topLeading, endPoint: .bottomTrailing)
         )
     }
 }
@@ -808,8 +832,8 @@ struct TierRowView: View {
     @FocusState private var focusedCardId: String?
     #endif
     
-    var filteredCards: [TLContestant] {
-        let allCards = app.tiers[tier] ?? []
+    var filteredCards: [Item] {
+    let allCards = app.items(for: tier)
         
         // Apply global filter
         switch app.activeFilter {
@@ -834,19 +858,19 @@ struct TierRowView: View {
                         .foregroundColor(Palette.text)
                     Spacer()
                     if !app.searchQuery.isEmpty || app.activeFilter != .all {
-                        Text("\(filteredCards.count)/\(app.tiers[tier]?.count ?? 0)")
+                        Text("\(filteredCards.count)/\(app.tierCount(tier))")
                             .font(TypeScale.label)
                             .foregroundColor(Palette.textDim)
                     }
                 }
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 10) {
-                        ForEach(filteredCards, id: \.id) { c in
-                            CardView(contestant: c)
+                        ForEach(filteredCards, id: \.id) { item in
+                            CardView(item: item)
                             #if !os(tvOS)
-                                .draggable(c.id)
+                                .draggable(item.id)
                             #else
-                                .focused($focusedCardId, equals: c.id)
+                                .focused($focusedCardId, equals: item.id)
                             #endif
                         }
                     }
@@ -881,8 +905,8 @@ struct UnrankedView: View {
     @FocusState private var focusedCardId: String?
     #endif
     
-    var filteredContestants: [TLContestant] {
-        let allUnranked = app.tiers["unranked"] ?? []
+    var filteredItems: [Item] {
+    let allUnranked = app.items(for: "unranked")
         
         // Apply global filter
         switch app.activeFilter {
@@ -897,7 +921,7 @@ struct UnrankedView: View {
     }
     
     var body: some View {
-        if !filteredContestants.isEmpty {
+        if !filteredItems.isEmpty {
             VStack(alignment: .leading, spacing: Metrics.grid) {
                 HStack { 
                     Text("Unranked")
@@ -905,22 +929,22 @@ struct UnrankedView: View {
                         .foregroundColor(Palette.text)
                     Spacer()
                     if !app.searchQuery.isEmpty || app.activeFilter != .all {
-                        Text("\(filteredContestants.count)/\(app.tiers["unranked"]?.count ?? 0)")
+                        Text("\(filteredItems.count)/\(app.unrankedCount())")
                             .font(TypeScale.label)
                             .foregroundColor(Palette.textDim)
                     } else {
-                        Text("\(filteredContestants.count)")
+                        Text("\(filteredItems.count)")
                             .font(TypeScale.label)
                             .foregroundColor(Palette.textDim)
                     }
                 }
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 10)]) {
-                    ForEach(filteredContestants, id: \.id) { c in
-                        CardView(contestant: c)
+                    ForEach(filteredItems, id: \.id) { item in
+                        CardView(item: item)
                         #if !os(tvOS)
-                            .draggable(c.id)
+                            .draggable(item.id)
                         #else
-                            .focused($focusedCardId, equals: c.id)
+                            .focused($focusedCardId, equals: item.id)
                         #endif
                     }
                 }
@@ -940,59 +964,86 @@ struct UnrankedView: View {
                 app.setDragTarget(isTargeted ? "unranked" : nil)
             }
             #else
-            .onAppear { focusedCardId = filteredContestants.first?.id }
+            .onAppear { focusedCardId = filteredItems.first?.id }
             #endif
         }
     }
 }
 
 struct CardView: View {
-    let contestant: TLContestant
+    let item: Item
     @EnvironmentObject var app: AppState
     var body: some View {
-        Button(action: { app.beginQuickRank(contestant) }) {
+        Button(action: { app.beginQuickRank(item) }) {
             VStack(spacing: 8) {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Palette.brand)
-                    .frame(minWidth: 120, idealWidth: 140, minHeight: 72, idealHeight: 88)
-                    .overlay(Text((contestant.name ?? contestant.id).prefix(12)).font(.headline).foregroundStyle(.white))
-                Text("S \(contestant.season ?? "?")").font(.caption2).foregroundStyle(.secondary)
+                ThumbnailView(item: item)
+                Text("S \(item.seasonString ?? "?")").font(.caption2).foregroundStyle(.secondary)
             }
             .padding(Metrics.grid)
             .card()
         }
         .buttonStyle(PlainButtonStyle())
-        .scaleEffect(app.draggingId == contestant.id ? 0.98 : 1.0)
-        .shadow(color: Color.black.opacity(app.draggingId == contestant.id ? 0.45 : 0.1), radius: app.draggingId == contestant.id ? 20 : 6, x: 0, y: app.draggingId == contestant.id ? 12 : 4)
+        .scaleEffect(app.draggingId == item.id ? 0.98 : 1.0)
+        .shadow(color: Color.black.opacity(app.draggingId == item.id ? 0.45 : 0.1), radius: app.draggingId == item.id ? 20 : 6, x: 0, y: app.draggingId == item.id ? 12 : 4)
         .contentShape(Rectangle())
-        .accessibilityLabel(contestant.name ?? contestant.id)
+        .accessibilityLabel(item.name ?? item.id)
 #if os(macOS)
         .focusable(true)
         .accessibilityAddTraits(.isButton)
 #endif
 #if !os(tvOS)
         .onDrag {
-            app.setDragging(contestant.id)
-            return NSItemProvider(object: NSString(string: contestant.id))
+            app.setDragging(item.id)
+            return NSItemProvider(object: NSString(string: item.id))
         }
 #endif
 #if os(tvOS)
         .focusable(true)
         .onPlayPauseCommand {
-            // Show a simple contextual menu using Quick Rank tiers as move targets
-            app.beginQuickRank(contestant)
+            app.beginQuickRank(item)
         }
         .contextMenu {
             ForEach(app.tierOrder, id: \.self) { t in
-                Button("Move to \(t)") { app.move(contestant.id, to: t) }
+                Button("Move to \(t)") { app.move(item.id, to: t) }
             }
         }
 #endif
     }
 }
 
+struct ThumbnailView: View {
+    let item: Item
+    var body: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .frame(minWidth: 120, idealWidth: 140, minHeight: 72, idealHeight: 88)
+            .overlay(
+                Group {
+                    if let thumb = item.imageUrl ?? item.videoUrl, let url = URL(string: thumb) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                            case .success(let img):
+                                img.resizable().scaledToFill()
+                            case .failure:
+                                RoundedRectangle(cornerRadius: 8).fill(Palette.brand)
+                                    .overlay(Text((item.name ?? item.id).prefix(12)).font(.headline).foregroundStyle(.white))
+                            @unknown default:
+                                RoundedRectangle(cornerRadius: 8).fill(Palette.brand)
+                            }
+                        }
+                        .clipped()
+                    } else {
+                        RoundedRectangle(cornerRadius: 8).fill(Palette.brand)
+                            .overlay(Text((item.name ?? item.id).prefix(12)).font(.headline).foregroundStyle(.white))
+                    }
+                }
+            )
+    }
+}
+
 private extension Gradient {
-    static var survivorBackground: Gradient { .init(colors: [Color.black.opacity(0.6), Color.blue.opacity(0.2)]) }
+    static var tierListBackground: Gradient { .init(colors: [Color.black.opacity(0.6), Color.blue.opacity(0.2)]) }
 }
 
 #Preview("iPhone") { ContentView() }
@@ -1005,9 +1056,9 @@ private extension Gradient {
 struct QuickRankOverlay: View {
     @ObservedObject var app: AppState
     var body: some View {
-        if let c = app.quickRankTarget {
-            VStack(spacing: 12) {
-                Text("Quick Rank: \(c.name ?? c.id)").font(.headline)
+        if let item = app.quickRankTarget {
+                VStack(spacing: 12) {
+                    Text("Quick Rank: \(item.name ?? item.id)").font(.headline)
                 HStack(spacing: 8) {
                     ForEach(app.tierOrder, id: \.self) { t in
                         Button(t) { app.commitQuickRank(to: t) }
@@ -1035,12 +1086,12 @@ struct QuickRankOverlay: View {
 #if os(iOS)
 struct TiersDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.json] }
-    var tiers: TLTiers = [:]
+    var tiers: Items = [:]
     init() {}
-    init(tiers: TLTiers) { self.tiers = tiers }
+    init(tiers: Items) { self.tiers = tiers }
     init(configuration: ReadConfiguration) throws {
         guard let data = configuration.file.regularFileContents else { throw CocoaError(.fileReadCorruptFile) }
-        self.tiers = try JSONDecoder().decode(TLTiers.self, from: data)
+        self.tiers = try JSONDecoder().decode(Items.self, from: data)
     }
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         let data = try JSONEncoder().encode(tiers)
@@ -1062,9 +1113,9 @@ struct HeadToHeadOverlay: View {
                     Text("Head-to-Head").font(.headline)
                     if let pair = app.h2hPair {
                         HStack(spacing: 16) {
-                            H2HButton(contestant: pair.0) { app.voteH2H(winner: pair.0) }
+                            H2HButton(item: pair.0) { app.voteH2H(winner: pair.0) }
                             Text("vs").font(.headline)
-                            H2HButton(contestant: pair.1) { app.voteH2H(winner: pair.1) }
+                            H2HButton(item: pair.1) { app.voteH2H(winner: pair.1) }
                         }
                     } else {
                         Text("No more pairs. Tap Finish.").foregroundStyle(.secondary)
@@ -1095,21 +1146,21 @@ struct HeadToHeadOverlay: View {
 }
 
 struct H2HButton: View {
-    let contestant: TLContestant
+    let item: Item
     var action: () -> Void
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
                 RoundedRectangle(cornerRadius: 12).fill(Color.accentColor)
                     .frame(minWidth: 140, idealWidth: 160, minHeight: 88, idealHeight: 100)
-                    .overlay(Text((contestant.name ?? contestant.id).prefix(14)).font(.headline).foregroundStyle(.white))
-                Text(contestant.season ?? "?").font(.caption)
+                    .overlay(Text((item.name ?? item.id).prefix(14)).font(.headline).foregroundStyle(.white))
+                Text(item.seasonString ?? "?").font(.caption)
             }
             .padding(Metrics.grid)
             .contentShape(Rectangle())
             .frame(minWidth: 44, minHeight: 44)
         }
-        .accessibilityLabel(contestant.name ?? contestant.id)
+        .accessibilityLabel(item.name ?? item.id)
         .buttonStyle(GhostButtonStyle())
     }
 }
@@ -1214,8 +1265,8 @@ struct OverallStatsView: View {
                 GridItem(.flexible())
             ], spacing: 16) {
                 StatCardView(
-                    title: "Total Contestants", 
-                    value: "\(analysis.totalContestants)",
+                    title: "Total Items", 
+                    value: "\(analysis.totalItems)",
                     icon: "person.3.fill"
                 )
                 
@@ -1295,7 +1346,7 @@ struct TierBarView: View {
                 
                 Spacer()
                 
-                Text("\(tierData.count) contestants")
+                Text("\(tierData.count) items")
                     .font(.body)
                     .foregroundColor(.secondary)
                 

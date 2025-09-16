@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		6E166BF72E78EE7100E74DA5 /* TiercadeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6E166BF62E78EE7100E74DA5 /* TiercadeCore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		6EB443762E77178B005B024E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6E166BF72E78EE7100E74DA5 /* TiercadeCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = Tiercade;
 			packageProductDependencies = (
+				6E166BF62E78EE7100E74DA5 /* TiercadeCore */,
 			);
 			productName = Tiercade;
 			productReference = 6EB443672E77178A005B024E /* Tiercade.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = 6EB4435E2E77178A005B024E;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6E166BF52E78EE7100E74DA5 /* XCLocalSwiftPackageReference "TiercadeCore" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6EB443682E77178A005B024E /* Products */;
 			projectDirPath = "";
@@ -585,6 +594,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		6E166BF52E78EE7100E74DA5 /* XCLocalSwiftPackageReference "TiercadeCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = TiercadeCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6E166BF62E78EE7100E74DA5 /* TiercadeCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TiercadeCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 6EB4435F2E77178A005B024E /* Project object */;
 }

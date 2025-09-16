@@ -1,9 +1,7 @@
 import Foundation
 import SwiftUI
 
-// Fallback definitions - using standalone implementations for development
-// TODO: Add conditional import when TiercadeCore is integrated as dependency
-
+// Common UI support types (available regardless of core package presence)
 // MARK: - Filter Types
 public enum FilterType: String, CaseIterable {
     case all = "All"
@@ -18,7 +16,7 @@ enum ToastType {
     case error
     case info
     case warning
-    
+
     var color: Color {
         switch self {
         case .success:
@@ -31,7 +29,7 @@ enum ToastType {
             return .orange
         }
     }
-    
+
     var icon: String {
         switch self {
         case .success:
@@ -52,7 +50,7 @@ struct ToastMessage: Identifiable, Equatable {
     let title: String
     let message: String?
     let duration: TimeInterval
-    
+
     init(type: ToastType, title: String, message: String? = nil, duration: TimeInterval = 3.0) {
         self.type = type
         self.title = title
@@ -61,167 +59,83 @@ struct ToastMessage: Identifiable, Equatable {
     }
 }
 
-// Fallback definitions when TiercadeCore is not available
-public struct TLContestant: Identifiable, Hashable, Codable, Sendable {
-	public let id: String
-	public var name: String?
-	public var season: String?
-	
-	public init(id: String, name: String? = nil, season: String? = nil) {
-		self.id = id
-		self.name = name
-		self.season = season
-	}
-}
+// Use the canonical core package types directly - no TL-prefixed fallbacks or
+// typealias shims. This file retains a small, explicit extension on the core
+// Item to provide a convenient attributes bag for code that prefers that view
+// of the model, but we do not create alias types or TL* fallbacks.
 
-public typealias TLTiers = [String: [TLContestant]]
-public typealias TLTierConfig = [String: (name: String, description: String?)]
+import TiercadeCore
 
+// Provide a small TierListSaveData type so AppState's save/load helpers keep working.
 public struct TierListSaveData: Codable {
-	public let tiers: TLTiers
-	public let createdDate: Date
-	public let appVersion: String
-	
-	public init(tiers: TLTiers, createdDate: Date, appVersion: String) {
-		self.tiers = tiers
-		self.createdDate = createdDate
-		self.appVersion = appVersion
-	}
+    public let tiers: TiercadeCore.Items
+    public let createdDate: Date
+    public let appVersion: String
+
+    public init(tiers: TiercadeCore.Items, createdDate: Date, appVersion: String) {
+        self.tiers = tiers
+        self.createdDate = createdDate
+        self.appVersion = appVersion
+    }
 }
 
-public struct TLHistory<T> {
-	public var stack: [T]
-	public var index: Int
-	public var limit: Int
-	
-	public init(stack: [T], index: Int, limit: Int) {
-		self.stack = stack
-		self.index = index
-		self.limit = limit
-	}
-}
+// Extend the core Item to expose a legacy-style attributes bag and some
+// convenience properties used by the app UI. This is a targeted compatibility
+// surface (not a typealias/shim) to ease migration of callers to the canonical
+// Item's typed properties.
+// Extend the core Item directly (no local typealias). This exposes a
+// small, legacy-compatible attributes bag and a few convenience accessors
+// used by the app UI during migration. Call sites should import
+// `TiercadeCore` and reference the canonical types directly.
+public extension TiercadeCore.Item {
+    // Backwards-compatible attributes bag (computed)
+    var attributes: [String: String]? {
+        get {
+            var dict: [String: String] = [:]
+            if let n = name { dict["name"] = n }
+            if let s = seasonString { dict["season"] = s }
+            if let sn = seasonNumber { dict["seasonNumber"] = String(sn) }
+            if let img = imageUrl { dict["imageUrl"] = img }
+            if let v = videoUrl { dict["videoUrl"] = v }
+            if let st = status { dict["status"] = st }
+            if let d = description { dict["description"] = d }
+            return dict.isEmpty ? nil : dict
+        }
+        set {
+            guard let a = newValue else {
+                name = nil
+                seasonString = nil
+                seasonNumber = nil
+                imageUrl = nil
+                videoUrl = nil
+                status = nil
+                description = nil
+                return
+            }
+            name = a["name"] ?? name
+            if let sn = a["seasonNumber"], let n = Int(sn) {
+                seasonNumber = n
+                seasonString = String(n)
+            } else if let s = a["season"] {
+                seasonString = s
+                seasonNumber = Int(s)
+            }
+            imageUrl = a["thumbUri"] ?? a["imageUrl"] ?? imageUrl
+            videoUrl = a["videoUrl"] ?? videoUrl
+            status = a["status"] ?? status
+            description = a["description"] ?? description
+        }
+    }
 
-public enum TLHistoryLogic {
-	public static func initHistory<T>(_ t: T, limit: Int = 50) -> TLHistory<T> {
-		.init(stack: [t], index: 0, limit: limit)
-	}
+    // Legacy-season property (string) used throughout the app
+    var season: String? {
+        get { seasonString }
+        set { seasonString = newValue }
+    }
 
-	public static func saveSnapshot<T>(_ h: TLHistory<T>, snapshot: T) -> TLHistory<T> {
-		var s = Array(h.stack.prefix(h.index + 1))
-		s.append(snapshot)
-		let overflow = max(0, s.count - h.limit)
-		let ns = overflow > 0 ? Array(s.suffix(h.limit)) : s
-		return .init(stack: ns, index: ns.count - 1, limit: h.limit)
-	}
-
-	public static func canUndo<T>(_ h: TLHistory<T>) -> Bool { h.index > 0 }
-	public static func canRedo<T>(_ h: TLHistory<T>) -> Bool { h.index < h.stack.count - 1 }
-
-	public static func undo<T>(_ h: TLHistory<T>) -> TLHistory<T> {
-		canUndo(h) ? .init(stack: h.stack, index: h.index - 1, limit: h.limit) : h
-	}
-
-	public static func redo<T>(_ h: TLHistory<T>) -> TLHistory<T> {
-		canRedo(h) ? .init(stack: h.stack, index: h.index + 1, limit: h.limit) : h
-	}
-
-	public static func current<T>(_ h: TLHistory<T>) -> T { h.stack[h.index] }
-}
-
-public enum TLTierLogic {
-	public static func moveContestant(
-		_ tiers: TLTiers,
-		contestantId: String,
-		targetTierName: String
-	) -> TLTiers {
-		var nt = tiers
-		var found: TLContestant?
-		var src: String?
-
-		for (k, v) in nt {
-			if let i = v.firstIndex(where: { $0.id == contestantId }) {
-				found = v[i]
-				src = k
-				var c = v
-				c.remove(at: i)
-				nt[k] = c
-				break
-			}
-		}
-		guard let f = found else { return tiers }
-		if src == targetTierName { return tiers }
-		var t = nt[targetTierName] ?? []
-		t.append(f)
-		nt[targetTierName] = t
-		return nt
-	}
-}
-
-public enum TLExportFormatter {
-	public static func generate(
-		group: String,
-		date: Date,
-		themeName: String,
-		tiers: TLTiers,
-		tierConfig: TLTierConfig
-	) -> String {
-		var s = "My Survivor Tier Ranking - \(group)\n"
-		s += "Theme: \(themeName)\n\n"
-		s += tiers
-			.filter { $0.key != "unranked" }
-			.compactMap { (k, v) in
-				guard let cfg = tierConfig[k], !v.isEmpty else { return nil }
-				return "\(cfg.name): \(v.map { $0.name ?? $0.id }.joined(separator: ", "))"
-			}
-			.joined(separator: "\n\n")
-		return s
-	}
-}
-
-public enum TLQuickRankLogic {
-	public static func assign(_ t: TLTiers, contestantId: String, to tier: String) -> TLTiers {
-		TLTierLogic.moveContestant(t, contestantId: contestantId, targetTierName: tier)
-	}
-}
-
-public struct TLH2HRecord: Sendable, Codable { public var wins: Int = 0; public var losses: Int = 0 }
-public struct TLH2HRankingEntry: Sendable, Codable { public let contestant: TLContestant; public let winRate: Double }
-public enum TLHeadToHeadLogic {
-	public static func pickPair(from pool: [TLContestant], rng: () -> Double) -> (TLContestant, TLContestant)? {
-		guard pool.count >= 2 else { return nil }
-		let i = Int(rng() * Double(pool.count)) % pool.count
-		var j = Int(rng() * Double(pool.count)) % pool.count
-		if j == i { j = (j + 1) % pool.count }
-		return (pool[i], pool[j])
-	}
-	public static func vote(_ a: TLContestant, _ b: TLContestant, winner: TLContestant, records: inout [String: TLH2HRecord]) {
-		if winner.id == a.id { records[a.id, default: .init()].wins += 1; records[b.id, default: .init()].losses += 1 }
-		else { records[b.id, default: .init()].wins += 1; records[a.id, default: .init()].losses += 1 }
-	}
-	public static func ranking(from pool: [TLContestant], records: [String: TLH2HRecord]) -> [TLH2HRankingEntry] {
-		pool.map { c in
-			let r = records[c.id] ?? TLH2HRecord()
-			let total = max(1, r.wins + r.losses)
-			return TLH2HRankingEntry(contestant: c, winRate: Double(r.wins) / Double(total))
-		}.sorted { l, r in
-			if l.winRate != r.winRate { return l.winRate > r.winRate }
-			let ln = l.contestant.name ?? l.contestant.id
-			let rn = r.contestant.name ?? r.contestant.id
-			return ln.localizedCaseInsensitiveCompare(rn) == .orderedAscending
-		}
-	}
-	public static func distributeRoundRobin(_ ranking: [TLH2HRankingEntry], into tierOrder: [String], baseTiers: TLTiers) -> TLTiers {
-		var newTiers = baseTiers
-		for name in tierOrder { if newTiers[name] == nil { newTiers[name] = [] } }
-		if var unranked = newTiers["unranked"] {
-			let ids = Set(ranking.map { $0.contestant.id })
-			unranked.removeAll { ids.contains($0.id) }
-			newTiers["unranked"] = unranked
-		}
-		for (i, entry) in ranking.enumerated() {
-			let target = tierOrder[i % max(1, tierOrder.count)]
-			newTiers[target, default: []].append(entry.contestant)
-		}
-		return newTiers
-	}
+    // Legacy thumbnail alias
+    var thumbUri: String? {
+        get { imageUrl }
+        set { imageUrl = newValue }
+    }
 }

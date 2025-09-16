@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "projectId": "8685a932-2111-4e6f-bbc5-33f286f5d78c",
+  "title": "Season 5 Items",
+  "tiers": [
+    { "id": "t1", "label": "Winner", "color": "#4CAF50", "order": 0, "itemIds": ["p1"] },
+    { "id": "t2", "label": "Runner-Up", "color": "#FF9800", "order": 1, "itemIds": ["p2"] }
+  ],
+  "items": {
+    "p1": {
+      "id": "p1",
+      "title": "Sandra Diaz-Twine",
+      "attributes": { "season": 7, "tribe": "Aitutaki", "placement": 1 },
+      "media": [
+        { "id": "p1-head", "kind": "image", "uri": "https://example.com/sandra.jpg", "mime": "image/jpeg", "w": 800, "h": 600, "alt": "Sandra headshot" },
+        { "id": "p1-gif", "kind": "gif", "uri": "https://example.com/sandra.gif", "mime": "image/gif" }
+      ],
+      "tags": ["Winner","Strategist"],
+      "rating": 88
+    },
+    "p2": { "id": "p2", "title": "Tony Vlachos", "attributes": { "season": 28, "tribe": "Aparri", "placement": 1 }, "media": [ { "id": "p2-head", "kind": "image", "uri": "https://example.com/tony.jpg", "mime": "image/jpeg" } ], "rating": 92 }
+  },
+  "overrides": { "p2": { "notes": "Fun playstyle", "tags": ["chaotic-good"] } },
+  "audit": { "createdAt": "2025-09-15T17:39:11.608Z", "updatedAt": "2025-09-15T17:39:11.608Z" }
+}

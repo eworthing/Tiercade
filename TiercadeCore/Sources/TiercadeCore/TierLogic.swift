@@ -1,15 +1,15 @@
 import Foundation
 
 public enum TierLogic {
-    /// Move contestant with id to target tier; returns new tiers or original if no-op.
-    public static func moveContestant(_ tiers: Tiers, contestantId: String, targetTierName: String) -> Tiers {
-        guard !contestantId.isEmpty, !targetTierName.isEmpty else { return tiers }
+    /// Move item with id to target tier; returns new tiers or original if no-op.
+    public static func moveItem(_ tiers: Items, itemId: String, targetTierName: String) -> Items {
+        guard !itemId.isEmpty, !targetTierName.isEmpty else { return tiers }
         var newTiers = tiers
 
         var sourceTier: String?
-        var found: Contestant?
+        var found: Item?
         for (name, arr) in newTiers {
-            if let idx = arr.firstIndex(where: { $0.id == contestantId }) {
+            if let idx = arr.firstIndex(where: { $0.id == itemId }) {
                 sourceTier = name
                 found = arr[idx]
                 var copy = arr
@@ -27,7 +27,7 @@ public enum TierLogic {
     }
 
     /// Reorder within one tier from index to index; bounds-safe no-op on invalid.
-    public static func reorderWithin(_ tiers: Tiers, tierName: String, from: Int, to: Int) -> Tiers {
+    public static func reorderWithin(_ tiers: Items, tierName: String, from: Int, to: Int) -> Items {
         guard let arr = tiers[tierName], from >= 0, from < arr.count, to >= 0, to < arr.count else { return tiers }
         var copy = arr
         let item = copy.remove(at: from)
@@ -37,7 +37,7 @@ public enum TierLogic {
         return new
     }
 
-    public static func validateTiersShape(_ tiers: Tiers) -> Bool {
+    public static func validateTiersShape(_ tiers: Items) -> Bool {
         // In Swift typing already constrains shape, but keep parity placeholder
         true
     }
