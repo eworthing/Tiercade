@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "projectId": "dccf0dfe-618e-4977-bfff-4feef2714bd6",
+  "title": "GPU Performance Tierlist",
+  "tiers": [
+    { "id": "t1", "label": "S", "color": "#FFD700", "order": 0, "itemIds": ["gpu1"] },
+    { "id": "t2", "label": "A", "color": "#C0C0C0", "order": 1, "itemIds": ["gpu2"] }
+  ],
+  "items": {
+    "gpu1": { "id": "gpu1", "title": "NVIDIA RTX 4090", "attributes": { "chipset": "AD102", "vramGB": 24, "benchmarks": [50.0,55.2,60.1] }, "media": [ { "id": "gpu1-img", "kind": "image", "uri": "https://example.com/rtx4090.jpg", "mime": "image/jpeg" } ], "rating": 99 },
+    "gpu2": { "id": "gpu2", "title": "AMD RX 7900 XTX", "attributes": { "chipset": "Navi 31", "vramGB": 24 }, "media": [ { "id": "gpu2-img", "kind": "image", "uri": "https://example.com/rx7900.jpg", "mime": "image/jpeg" } ], "rating": 95 }
+  },
+  "overrides": { "gpu2": { "notes": "Excellent price/perf." } },
+  "audit": { "createdAt": "2025-09-15T17:39:48.291Z", "updatedAt": "2025-09-15T17:39:48.291Z" }
+}

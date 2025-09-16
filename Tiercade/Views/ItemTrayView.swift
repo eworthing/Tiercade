@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ItemTrayView: View {
     @EnvironmentObject var app: AppState
-    @State private var query: String = ""
+    // Use AppState.searchQuery so filtering is centralized
     @State private var showingAdd = false
     var body: some View {
         VStack(alignment: .leading, spacing: Metrics.grid) {
@@ -13,19 +13,21 @@ struct ItemTrayView: View {
                     .buttonStyle(PrimaryButtonStyle())
             }
 
-            TextField("Search items...", text: $query)
+            TextField("Search items...", text: $app.searchQuery)
                 .textFieldStyle(.roundedBorder)
 
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: Metrics.grid)]) {
-                    ForEach(app.tierOrder.flatMap { app.tiers[$0] ?? [] }, id: \.id) { contestant in
-                        Button(action: { app.beginQuickRank(contestant) }) {
+                    ForEach(app.allItems(), id: \.id) { item in
+                        Button(action: { app.beginQuickRank(item) }) {
                             VStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: Metrics.rSm)
                                     .frame(minHeight: 72, idealHeight: 88)
                                     .overlay(
                                         Group {
-                                            if let thumb = contestant.thumbUri, let url = URL(string: thumb) {
+                                            // Prefer canonical imageUrl; fall back to legacy thumbUri if available
+                                            let thumbSrc = item.imageUrl ?? item.thumbUri
+                                            if let thumb = thumbSrc, let url = URL(string: thumb) {
                                                 AsyncImage(url: url) { phase in
                                                     switch phase {
                                                     case .empty:
@@ -34,7 +36,7 @@ struct ItemTrayView: View {
                                                         img.resizable().scaledToFill()
                                                     case .failure:
                                                         RoundedRectangle(cornerRadius: Metrics.rSm).fill(Palette.brand)
-                                                            .overlay(Text((contestant.name ?? contestant.id).prefix(18))
+                                                            .overlay(Text((item.name ?? item.id).prefix(18))
                                                                         .font(.headline)
                                                                         .foregroundColor(.white)
                                                                         .padding(Metrics.grid))
@@ -45,7 +47,7 @@ struct ItemTrayView: View {
                                                 .clipped()
                                             } else {
                                                 RoundedRectangle(cornerRadius: Metrics.rSm).fill(Palette.brand)
-                                                    .overlay(Text((contestant.name ?? contestant.id).prefix(18))
+                                                    .overlay(Text((item.name ?? item.id).prefix(18))
                                                                 .font(.headline)
                                                                 .foregroundColor(.white)
                                                                 .padding(Metrics.grid))
@@ -57,7 +59,7 @@ struct ItemTrayView: View {
                         }
                         .buttonStyle(PlainButtonStyle())
                         .contentShape(Rectangle())
-                        .accessibilityLabel(contestant.name ?? contestant.id)
+                        .accessibilityLabel(item.name ?? item.id)
                     }
                 }
             }
@@ -105,7 +107,10 @@ struct AddItemsView: View {
                     Button("Add") {
                         let finalId = id.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !finalId.isEmpty else { return }
-                        app.addContestant(id: finalId, name: name.isEmpty ? nil : name, season: season.isEmpty ? nil : season)
+                        var attrs: [String: String] = [:]
+                        if !name.isEmpty { attrs["name"] = name }
+                        if !season.isEmpty { attrs["season"] = season }
+                        app.addItem(id: finalId, attributes: attrs.isEmpty ? nil : attrs)
                         isPresented = false
                     }
                     .disabled(id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)

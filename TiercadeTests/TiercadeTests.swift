@@ -16,39 +16,39 @@ final class TiercadeTests: XCTestCase {
         
         // Set up initial state with contestants in different tiers
         appState.tiers = [
-            "S": [TLContestant(id: "1", name: "Player 1", season: "1")],
-            "A": [TLContestant(id: "2", name: "Player 2", season: "2")],
+            "S": [Item(id: "1", attributes: ["name": "Player 1", "season": "1"])],
+            "A": [Item(id: "2", attributes: ["name": "Player 2", "season": "2"])],
             "B": [],
-            "C": [TLContestant(id: "3", name: "Player 3", season: "3")],
+               "C": [Item(id: "3", attributes: ["name": "Player 3", "season": "3"])],
             "D": [],
             "F": [],
             "unranked": [
-                TLContestant(id: "4", name: "Player 4", season: "4"),
-                TLContestant(id: "5", name: "Player 5", season: "5")
+                     Item(id: "4", attributes: ["name": "Player 4", "season": "4"]),
+                         Item(id: "5", attributes: ["name": "Player 5", "season": "5"])
             ]
         ]
         
-        // Count contestants before randomize
-        let sTierCount = appState.tiers["S"]?.count ?? 0
-        let aTierCount = appState.tiers["A"]?.count ?? 0
-        let bTierCount = appState.tiers["B"]?.count ?? 0
-        let cTierCount = appState.tiers["C"]?.count ?? 0
-        let dTierCount = appState.tiers["D"]?.count ?? 0
-        let fTierCount = appState.tiers["F"]?.count ?? 0
-        let unrankedCount = appState.tiers["unranked"]?.count ?? 0
+    // Count contestants before randomize
+    let sTierCount = appState.tierCount("S")
+    let aTierCount = appState.tierCount("A")
+    let bTierCount = appState.tierCount("B")
+    let cTierCount = appState.tierCount("C")
+    let dTierCount = appState.tierCount("D")
+    let fTierCount = appState.tierCount("F")
+    let unrankedCount = appState.unrankedCount()
         let originalCount = sTierCount + aTierCount + bTierCount + cTierCount + dTierCount + fTierCount + unrankedCount
         
         // Call randomize
         appState.randomize()
         
-        // Count contestants after randomize
-        let newSTierCount = appState.tiers["S"]?.count ?? 0
-        let newATierCount = appState.tiers["A"]?.count ?? 0
-        let newBTierCount = appState.tiers["B"]?.count ?? 0
-        let newCTierCount = appState.tiers["C"]?.count ?? 0
-        let newDTierCount = appState.tiers["D"]?.count ?? 0
-        let newFTierCount = appState.tiers["F"]?.count ?? 0
-        let newUnrankedCount = appState.tiers["unranked"]?.count ?? 0
+    // Count contestants after randomize
+    let newSTierCount = appState.tierCount("S")
+    let newATierCount = appState.tierCount("A")
+    let newBTierCount = appState.tierCount("B")
+    let newCTierCount = appState.tierCount("C")
+    let newDTierCount = appState.tierCount("D")
+    let newFTierCount = appState.tierCount("F")
+    let newUnrankedCount = appState.unrankedCount()
         let newCount = newSTierCount + newATierCount + newBTierCount + newCTierCount + newDTierCount + newFTierCount + newUnrankedCount
         
         XCTAssertEqual(originalCount, newCount, "Randomize should preserve total contestant count")
@@ -59,7 +59,7 @@ final class TiercadeTests: XCTestCase {
         // Check that contestants are distributed across tiers
         var tiersWithContestants = 0
         for tier in appState.tierOrder {
-            let tierCount = appState.tiers[tier]?.count ?? 0
+            let tierCount = appState.tierCount(tier)
             if tierCount > 0 {
                 tiersWithContestants += 1
             }
@@ -75,31 +75,31 @@ final class TiercadeTests: XCTestCase {
         // Set up initial state
         appState.tiers = [
             "S": [
-                TLContestant(id: "1", name: "Player 1", season: "1"),
-                TLContestant(id: "2", name: "Player 2", season: "2")
+                Item(id: "1", attributes: ["name": "Player 1", "season": "1"]),
+                Item(id: "2", attributes: ["name": "Player 2", "season": "2"]) 
             ],
-            "A": [TLContestant(id: "3", name: "Player 3", season: "3")],
+            "A": [Item(id: "3", attributes: ["name": "Player 3", "season": "3"])],
             "B": [], "C": [], "D": [], "F": [],
             "unranked": []
         ]
         
-        let originalSCount = appState.tiers["S"]?.count ?? 0
-        let originalUnrankedCount = appState.tiers["unranked"]?.count ?? 0
+    let originalSCount = appState.tierCount("S")
+    let originalUnrankedCount = appState.unrankedCount()
         
         // Clear S tier
         appState.clearTier("S")
         
         // Check that S tier is now empty
-        let sCount = appState.tiers["S"]?.count ?? 0
+    let sCount = appState.tierCount("S")
         XCTAssertEqual(sCount, 0, "S tier should be empty after clearing")
         
         // Check that contestants moved to unranked
-        let unrankedCount = appState.tiers["unranked"]?.count ?? 0
-        XCTAssertEqual(unrankedCount, originalUnrankedCount + originalSCount, "Unranked should contain the moved contestants")
+    let unrankedCount = appState.unrankedCount()
+    XCTAssertEqual(unrankedCount, originalUnrankedCount + originalSCount, "Unranked should contain the moved contestants")
         
         // Check that A tier was not affected
-        let aCount = appState.tiers["A"]?.count ?? 0
-        XCTAssertEqual(aCount, 1, "A tier should remain unchanged")
+    let aCount = appState.tierCount("A")
+    XCTAssertEqual(aCount, 1, "A tier should remain unchanged")
     }
 
     func testExample() throws {

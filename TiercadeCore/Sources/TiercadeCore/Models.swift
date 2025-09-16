@@ -1,6 +1,6 @@
 import Foundation
 
-public struct Contestant: Codable, Identifiable, Sendable, Hashable {
+public struct Item: Codable, Identifiable, Sendable, Hashable {
     public let id: String
     public var name: String?
     public var seasonString: String?
@@ -30,6 +30,43 @@ public struct Contestant: Codable, Identifiable, Sendable, Hashable {
         self.description = description
         self.imageUrl = imageUrl
         self.videoUrl = videoUrl
+    }
+
+    /// Convenience initializer to build an Item from a generic attributes bag.
+    /// Recognized keys: "name", "season", "seasonNumber", "imageUrl", "thumbUri", "status", "description", "videoUrl"
+    public init(id: String, attributes: [String: String]?) {
+        self.id = id
+        guard let a = attributes else {
+            self.name = nil
+            self.seasonString = nil
+            self.seasonNumber = nil
+            self.status = nil
+            self.description = nil
+            self.imageUrl = nil
+            self.videoUrl = nil
+            return
+        }
+        self.name = a["name"]
+        // season may be stored as string or number; prefer explicit seasonNumber key if present
+        if let sn = a["seasonNumber"], let n = Int(sn) {
+            self.seasonNumber = n
+            self.seasonString = String(n)
+        } else if let s = a["season"] {
+            self.seasonString = s
+            self.seasonNumber = Int(s)
+        } else {
+            self.seasonString = nil
+            self.seasonNumber = nil
+        }
+        // image keys
+        if let thumb = a["thumbUri"] ?? a["imageUrl"] {
+            self.imageUrl = thumb
+        } else {
+            self.imageUrl = nil
+        }
+        self.status = a["status"]
+        self.description = a["description"]
+        self.videoUrl = a["videoUrl"]
     }
 
     public init(from decoder: any Decoder) throws {
@@ -74,9 +111,15 @@ public struct TierConfigEntry: Codable, Sendable, Equatable {
     public var name: String
     public var colorHex: String?
     public var description: String?
+
+    public init(name: String, colorHex: String? = nil, description: String? = nil) {
+        self.name = name
+        self.colorHex = colorHex
+        self.description = description
+    }
 }
 
-public typealias Tiers = [String: [Contestant]]
+public typealias Items = [String: [Item]]
 public typealias TierConfig = [String: TierConfigEntry]
 
 public struct History<T: Sendable>: Sendable {

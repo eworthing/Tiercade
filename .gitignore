@@ -45,3 +45,21 @@ ReferenceCodeToConvert/SurvivorTierList/.git/**
 
 # Ignore Swift build caches
 .build
+
+# Node / JavaScript
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.*
+
+# Editor directories
+.vscode/
+.idea/
+
+# CocoaPods / Carthage / fastlane
+Pods/
+Carthage/
+fastlane/report.xml

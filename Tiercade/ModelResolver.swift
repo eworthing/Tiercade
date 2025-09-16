@@ -11,6 +11,8 @@ public struct ResolvedItem: Identifiable {
     public var subtitle: String?
     public var description: String?
     public var thumbUri: String?
+    // Generic attributes bag for consumers that expect attributes-style items
+    public var attributes: [String: String]?
 }
 
 public struct ResolvedTier {
@@ -51,7 +53,32 @@ public enum ModelResolver {
                 thumb = (first["thumbUri"] as? String) ?? (first["posterUri"] as? String)
             }
 
-            return ResolvedItem(id: itemId, title: title, subtitle: subtitle, description: description, thumbUri: thumb)
+            // Build attributes bag mapping common fields into the generic schema
+            var attrs: [String: String] = [:]
+            // Prefer override values when present
+            if let o = override {
+                if let dt = o["displayTitle"] as? String { attrs["name"] = dt }
+                if let s = o["season"] as? String { attrs["season"] = s }
+                if let media = o["media"] as? [[String: Any]], let first = media.first {
+                    if let t = (first["thumbUri"] as? String) ?? (first["posterUri"] as? String) { attrs["thumbUri"] = t }
+                }
+            }
+            // Fallback to item fields
+            if attrs["name"] == nil, let it = item["title"] as? String { attrs["name"] = it }
+            if attrs["season"] == nil {
+                if let s = item["season"] as? String { attrs["season"] = s }
+                else if let n = item["season"] as? Int { attrs["season"] = String(n) }
+            }
+            if attrs["thumbUri"] == nil {
+                if let media = item["media"] as? [[String: Any]], let first = media.first {
+                    if let t = (first["thumbUri"] as? String) ?? (first["posterUri"] as? String) { attrs["thumbUri"] = t }
+                }
+                if attrs["thumbUri"] == nil, let poster = item["posterUri"] as? String { attrs["thumbUri"] = poster }
+            }
+
+            let attributes = attrs.isEmpty ? nil : attrs
+
+            return ResolvedItem(id: itemId, title: title, subtitle: subtitle, description: description, thumbUri: thumb, attributes: attributes)
         }
 
         var resolved: [ResolvedTier] = []

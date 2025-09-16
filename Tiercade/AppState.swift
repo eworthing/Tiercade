@@ -1,8 +1,11 @@
 import Foundation
 import SwiftUI
 
-// Ensure SharedCore types are accessible
-// TL* types defined in SharedCore.swift sho    func applySearchFilter(to contestants: [TLContestant]) -> [TLContestant] {ld be available in same module
+#if canImport(TiercadeCore)
+import TiercadeCore
+#endif
+
+// Use core Item/Items and core logic directly (breaking change)
 
 // MARK: - Export & Import System Types
 
@@ -52,24 +55,24 @@ struct TierAnalysisData: Sendable {
         mostPopulatedTier: nil,
         leastPopulatedTier: nil,
         balanceScore: 0,
-        insights: ["No contestants found - add some contestants to see analysis"],
+    insights: ["No items found - add some items to see analysis"],
         unrankedCount: 0
     )
 }
 
 @MainActor
 final class AppState: ObservableObject {
-    @Published var tiers: TLTiers = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
+    @Published var tiers: Items = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
     @Published var tierOrder: [String] = ["S","A","B","C","D","F"]
     @Published var searchQuery: String = ""
     @Published var activeFilter: FilterType = .all
     @Published var currentToast: ToastMessage? = nil
-    @Published var quickRankTarget: TLContestant? = nil
+    @Published var quickRankTarget: Item? = nil
     // Head-to-Head
     @Published var h2hActive: Bool = false
-    @Published var h2hPool: [TLContestant] = []
-    @Published var h2hPair: (TLContestant, TLContestant)? = nil
-    @Published var h2hRecords: [String: TLH2HRecord] = [:]
+    @Published var h2hPool: [Item] = []
+    @Published var h2hPair: (Item, Item)? = nil
+    @Published var h2hRecords: [String: H2HRecord] = [:]
     
     // Enhanced Persistence
     @Published var hasUnsavedChanges: Bool = false
@@ -88,13 +91,13 @@ final class AppState: ObservableObject {
     nonisolated(unsafe) private var autosaveTimer: Timer?
     private let autosaveInterval: TimeInterval = 30.0 // Auto-save every 30 seconds
 
-    private var history = TLHistory<TLTiers>(stack: [], index: 0, limit: 80)
+    private var history = History<Items>(stack: [], index: 0, limit: 80)
 
     init() {
         if !load() {
             seed()
         }
-        history = TLHistoryLogic.initHistory(tiers, limit: 80)
+    history = HistoryLogic.initHistory(tiers, limit: 80)
         setupAutosave()
     }
     
@@ -119,17 +122,17 @@ final class AppState: ObservableObject {
 
     func seed() {
         tiers["unranked"] = [
-            TLContestant(id: "kyle48", name: "Kyle Fraser", season: "48", thumbUri: nil),
-            TLContestant(id: "parvati", name: "Parvati Shallow", season: "Multiple", thumbUri: nil),
-            TLContestant(id: "sandra", name: "Sandra Diaz-Twine", season: "Multiple", thumbUri: nil)
+            Item(id: "kyle48", attributes: ["name": "Kyle Fraser", "season": "48"]),
+            Item(id: "parvati", attributes: ["name": "Parvati Shallow", "season": "Multiple"]),
+            Item(id: "sandra", attributes: ["name": "Sandra Diaz-Twine", "season": "Multiple"])
         ]
     }
 
     func move(_ id: String, to tier: String) {
-        let next = TLTierLogic.moveContestant(tiers, contestantId: id, targetTierName: tier)
+    let next = TierLogic.moveItem(tiers, itemId: id, targetTierName: tier)
         guard next != tiers else { return }
         tiers = next
-        history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+    history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
     }
 
@@ -139,36 +142,36 @@ final class AppState: ObservableObject {
         next[tier] = []
         next["unranked", default: []].append(contentsOf: moving)
         tiers = next
-        history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+    history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
-        showInfoToast("Tier Cleared", message: "Moved all contestants from \(tier) tier to unranked")
+    showInfoToast("Tier Cleared", message: "Moved all items from \(tier) tier to unranked")
     }
 
     func undo() { 
-        guard TLHistoryLogic.canUndo(history) else { return }
-        history = TLHistoryLogic.undo(history)
-        tiers = TLHistoryLogic.current(history)
+    guard HistoryLogic.canUndo(history) else { return }
+    history = HistoryLogic.undo(history)
+    tiers = HistoryLogic.current(history)
         markAsChanged()
         showInfoToast("Undone", message: "Last action has been undone")
     }
     
     func redo() { 
-        guard TLHistoryLogic.canRedo(history) else { return }
-        history = TLHistoryLogic.redo(history)
-        tiers = TLHistoryLogic.current(history)
+    guard HistoryLogic.canRedo(history) else { return }
+    history = HistoryLogic.redo(history)
+    tiers = HistoryLogic.current(history)
         markAsChanged()
         showInfoToast("Redone", message: "Action has been redone")
     }
-    var canUndo: Bool { TLHistoryLogic.canUndo(history) }
-    var canRedo: Bool { TLHistoryLogic.canRedo(history) }
+    var canUndo: Bool { HistoryLogic.canUndo(history) }
+    var canRedo: Bool { HistoryLogic.canRedo(history) }
     
     // MARK: - Search & Filter
-    func filteredContestants(for tier: String) -> [TLContestant] {
-        let contestants = tiers[tier] ?? []
-        return applySearchFilter(to: contestants)
+    func filteredItems(for tier: String) -> [Item] {
+        let items = tiers[tier] ?? []
+        return applySearchFilter(to: items)
     }
-    
-    func allContestants() -> [TLContestant] {
+
+    func allItems() -> [Item] {
         switch activeFilter {
         case .all:
             let all = tierOrder.flatMap { tiers[$0] ?? [] } + (tiers["unranked"] ?? [])
@@ -181,28 +184,34 @@ final class AppState: ObservableObject {
             return applySearchFilter(to: unranked)
         }
     }
+
+    // Convenience count helpers to centralize tier counting logic
+    func tierCount(_ tier: String) -> Int { tiers[tier]?.count ?? 0 }
+    func rankedCount() -> Int { tierOrder.flatMap { tiers[$0] ?? [] }.count }
+    func unrankedCount() -> Int { tiers["unranked"]?.count ?? 0 }
+    func items(for tier: String) -> [Item] { tiers[tier] ?? [] }
     
-    func applySearchFilter(to contestants: [TLContestant]) -> [TLContestant] {
+    func applySearchFilter(to items: [Item]) -> [Item] {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !query.isEmpty else { return contestants }
-        
+        guard !query.isEmpty else { return items }
+
         // Show processing indicator for large datasets
-        if contestants.count > 50 {
+        if items.count > 50 {
             setSearchProcessing(true)
         }
-        
-        let filteredResults = contestants.filter { contestant in
-            let name = (contestant.name ?? "").lowercased()
-            let season = (contestant.season ?? "").lowercased()
-            let id = contestant.id.lowercased()
-            
+
+        let filteredResults = items.filter { item in
+            let name = (item.name ?? "").lowercased()
+            let season = (item.seasonString ?? "").lowercased()
+            let id = item.id.lowercased()
+
             return name.contains(query) || season.contains(query) || id.contains(query)
         }
-        
-        if contestants.count > 50 {
+
+        if items.count > 50 {
             setSearchProcessing(false)
         }
-        
+
         return filteredResults
     }
     
@@ -244,50 +253,51 @@ final class AppState: ObservableObject {
     func reset() {
         tiers = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
         seed()
-        history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
+        history = HistoryLogic.initHistory(tiers, limit: history.limit)
         markAsChanged()
     }
 
-    // MARK: - Add Contestant
-    func addContestant(id: String, name: String? = nil, season: String? = nil, thumbUri: String? = nil) {
-        let c = TLContestant(id: id, name: name, season: season, thumbUri: thumbUri)
+    // MARK: - Add Item
+    func addItem(id: String, attributes: [String: String]? = nil) {
+        let c = Item(id: id, attributes: attributes)
         var next = tiers
         next["unranked", default: []].append(c)
         tiers = next
-        history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
-        showSuccessToast("Added", message: "Added \(name ?? id) to Unranked")
+        let display = attributes?[("name")] ?? id
+        showSuccessToast("Added", message: "Added \(display) to Unranked")
     }
     
     func randomize() {
-        // Collect all contestants from all tiers
-        var allContestants: [TLContestant] = []
+        // Collect all items from all tiers
+        var allItems: [Item] = []
         for tierName in tierOrder + ["unranked"] {
-            allContestants.append(contentsOf: tiers[tierName] ?? [])
+            allItems.append(contentsOf: tiers[tierName] ?? [])
         }
-        
+
         // Clear all tiers
         var newTiers = tiers
         for tierName in tierOrder + ["unranked"] {
             newTiers[tierName] = []
         }
-        
+
         // Shuffle and redistribute
-        allContestants.shuffle()
+        allItems.shuffle()
         let tiersToFill = tierOrder // Don't include unranked in randomization
-        let contestantsPerTier = max(1, allContestants.count / tiersToFill.count)
-        
-        for (index, contestant) in allContestants.enumerated() {
-            let tierIndex = min(index / contestantsPerTier, tiersToFill.count - 1)
+        let itemsPerTier = max(1, allItems.count / tiersToFill.count)
+
+        for (index, item) in allItems.enumerated() {
+            let tierIndex = min(index / itemsPerTier, tiersToFill.count - 1)
             let tierName = tiersToFill[tierIndex]
-            newTiers[tierName, default: []].append(contestant)
+            newTiers[tierName, default: []].append(item)
         }
-        
+
         tiers = newTiers
-        history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
-        
-        showSuccessToast("Tiers Randomized", message: "All contestants have been redistributed randomly")
+
+        showSuccessToast("Tiers Randomized", message: "All items have been redistributed randomly")
     }
 
     // MARK: - Progress Tracking & Visual Feedback
@@ -352,13 +362,14 @@ final class AppState: ObservableObject {
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = .prettyPrinted
-            
-            let saveData = TierListSaveData(
-                tiers: tiers,
-                createdDate: Date(),
-                appVersion: "1.0"
-            )
-            
+            struct AppSaveFile: Codable {
+                let tiers: Items
+                let createdDate: Date
+                let appVersion: String
+            }
+
+            let saveData = AppSaveFile(tiers: tiers, createdDate: Date(), appVersion: "1.0")
+
             let data = try encoder.encode(saveData)
             let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
@@ -381,15 +392,46 @@ final class AppState: ObservableObject {
     @discardableResult
     func load() -> Bool {
         guard let data = UserDefaults.standard.data(forKey: storageKey) else { return false }
+        // Try to decode Items directly; if that fails, attempt legacy JSON fallbacks.
         do {
-            let decoded = try JSONDecoder().decode(TLTiers.self, from: data)
+            let decoded = try JSONDecoder().decode(Items.self, from: data)
             tiers = decoded
-            history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
+            history = HistoryLogic.initHistory(tiers, limit: history.limit)
             hasUnsavedChanges = false
             lastSavedTime = UserDefaults.standard.object(forKey: "\(storageKey).timestamp") as? Date
             showSuccessToast("Loaded", message: "Tier list loaded successfully")
             return true
         } catch {
+            // Fallback: try to parse as legacy JSON structure with attributes bags
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let tierData = json["tiers"] as? [String: [[String: Any]]] {
+                    var newTiers: Items = [:]
+                    for (tierName, contestantData) in tierData {
+                        newTiers[tierName] = contestantData.compactMap { dict in
+                            guard let id = dict["id"] as? String else { return nil }
+                            if let attrs = dict["attributes"] as? [String: String] {
+                                return Item(id: id, attributes: attrs)
+                            } else {
+                                // Build attributes from top-level keys
+                                var attrs: [String: String] = [:]
+                                for (k, v) in dict where k != "id" {
+                                    attrs[k] = String(describing: v)
+                                }
+                                return Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
+                            }
+                        }
+                    }
+                    tiers = newTiers
+                    history = HistoryLogic.initHistory(tiers, limit: history.limit)
+                    hasUnsavedChanges = false
+                    lastSavedTime = UserDefaults.standard.object(forKey: "\(storageKey).timestamp") as? Date
+                    showSuccessToast("Loaded", message: "Tier list loaded (legacy) successfully")
+                    return true
+                }
+            } catch {
+                print("Legacy load failed: \(error)")
+            }
             print("Load failed: \(error)")
             showErrorToast("Load Failed", message: "Could not load tier list")
             return false
@@ -403,14 +445,50 @@ final class AppState: ObservableObject {
             let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
             
             let data = try Data(contentsOf: fileURL)
-            let saveData = try JSONDecoder().decode(TierListSaveData.self, from: data)
-            
-            tiers = saveData.tiers
-            history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
+            // Try to decode the modern app save file, fall back to legacy structures
+            struct AppSaveFile: Codable { let tiers: Items; let createdDate: Date; let appVersion: String }
+
+            if let saveData = try? JSONDecoder().decode(AppSaveFile.self, from: data) {
+                tiers = saveData.tiers
+                history = HistoryLogic.initHistory(tiers, limit: history.limit)
+                currentFileName = fileName
+                hasUnsavedChanges = false
+                lastSavedTime = saveData.createdDate
+                showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
+                return true
+            }
+
+            // Legacy fallback: parse JSON and build Items from attributes
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let tierData = json["tiers"] as? [String: [[String: Any]]] {
+                var newTiers: Items = [:]
+                for (tierName, contestantData) in tierData {
+                    newTiers[tierName] = contestantData.compactMap { dict in
+                        guard let id = dict["id"] as? String else { return nil }
+                        if let attrs = dict["attributes"] as? [String: String] {
+                            return Item(id: id, attributes: attrs)
+                        } else {
+                            var attrs: [String: String] = [:]
+                            for (k, v) in dict where k != "id" {
+                                attrs[k] = String(describing: v)
+                            }
+                            return Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
+                        }
+                    }
+                }
+                tiers = newTiers
+                history = HistoryLogic.initHistory(tiers, limit: history.limit)
+                currentFileName = fileName
+                hasUnsavedChanges = false
+                lastSavedTime = Date()
+                showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
+                return true
+            }
+            history = HistoryLogic.initHistory(tiers, limit: history.limit)
             currentFileName = fileName
             hasUnsavedChanges = false
-            lastSavedTime = saveData.createdDate
-            
+            lastSavedTime = Date()
+
             showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
             return true
         } catch {
@@ -453,11 +531,12 @@ final class AppState: ObservableObject {
             updateProgress(0.2)
             
             do {
-                let saveData = TierListSaveData(
-                    tiers: tiers,
-                    createdDate: Date(),
-                    appVersion: "1.0"
-                )
+                struct AppSaveFile: Codable {
+                    let tiers: Items
+                    let createdDate: Date
+                    let appVersion: String
+                }
+                let saveData = AppSaveFile(tiers: tiers, createdDate: Date(), appVersion: "1.0")
                 updateProgress(0.4)
                 
                 let data = try JSONEncoder().encode(saveData)
@@ -497,16 +576,45 @@ final class AppState: ObservableObject {
                 
                 let data = try Data(contentsOf: fileURL)
                 updateProgress(0.6)
-                
-                let saveData = try JSONDecoder().decode(TierListSaveData.self, from: data)
-                updateProgress(0.8)
-                
-                await MainActor.run {
-                    tiers = saveData.tiers
-                    history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
-                    currentFileName = fileName
-                    hasUnsavedChanges = false
-                    lastSavedTime = saveData.createdDate
+                // Try modern save format first
+                struct AppSaveFile: Codable { let tiers: Items; let createdDate: Date; let appVersion: String }
+                if let saveData = try? JSONDecoder().decode(AppSaveFile.self, from: data) {
+                    updateProgress(0.8)
+                    await MainActor.run {
+                        tiers = saveData.tiers
+                        history = HistoryLogic.initHistory(tiers, limit: history.limit)
+                        currentFileName = fileName
+                        hasUnsavedChanges = false
+                        lastSavedTime = saveData.createdDate
+                    }
+                } else if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                          let tierData = json["tiers"] as? [String: [[String: Any]]] {
+                    // Legacy fallback
+                    var newTiers: Items = [:]
+                    for (tierName, contestantData) in tierData {
+                        newTiers[tierName] = contestantData.compactMap { dict in
+                            guard let id = dict["id"] as? String else { return nil }
+                            if let attrs = dict["attributes"] as? [String: String] {
+                                return Item(id: id, attributes: attrs)
+                            } else {
+                                var attrs: [String: String] = [:]
+                                for (k, v) in dict where k != "id" {
+                                    attrs[k] = String(describing: v)
+                                }
+                                return Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
+                            }
+                        }
+                    }
+                    updateProgress(0.8)
+                    await MainActor.run {
+                        tiers = newTiers
+                        history = HistoryLogic.initHistory(tiers, limit: history.limit)
+                        currentFileName = fileName
+                        hasUnsavedChanges = false
+                        lastSavedTime = Date()
+                    }
+                } else {
+                    throw NSError(domain: "AppState", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unrecognized save file format"])
                 }
                 updateProgress(1.0)
                 
@@ -526,13 +634,13 @@ final class AppState: ObservableObject {
         return await withLoadingIndicator(message: "Exporting \(format.displayName)...") {
             updateProgress(0.2)
             
-            let cfg: TLTierConfig = [
-                "S": (name: "S", description: nil),
-                "A": (name: "A", description: nil),
-                "B": (name: "B", description: nil),
-                "C": (name: "C", description: nil),
-                "D": (name: "D", description: nil),
-                "F": (name: "F", description: nil)
+            let cfg: TierConfig = [
+                "S": TierConfigEntry(name: "S", description: nil),
+                "A": TierConfigEntry(name: "A", description: nil),
+                "B": TierConfigEntry(name: "B", description: nil),
+                "C": TierConfigEntry(name: "C", description: nil),
+                "D": TierConfigEntry(name: "D", description: nil),
+                "F": TierConfigEntry(name: "F", description: nil)
             ]
             updateProgress(0.4)
             
@@ -540,7 +648,7 @@ final class AppState: ObservableObject {
             let fileName: String
             switch format {
             case .text:
-                result = TLExportFormatter.generate(group: group, date: .now, themeName: themeName, tiers: tiers, tierConfig: cfg)
+                result = ExportFormatter.generate(group: group, date: .now, themeName: themeName, tiers: tiers, tierConfig: cfg)
                 fileName = "tier_list.txt"
             case .json:
                 result = exportToJSON(group: group, themeName: themeName)
@@ -574,8 +682,13 @@ final class AppState: ObservableObject {
                 "appVersion": "1.0"
             ],
             "tierOrder": tierOrder,
-            "tiers": tiers.mapValues { contestants in
-                contestants.map { ["id": $0.id, "name": $0.name ?? "", "season": $0.season ?? ""] }
+            "tiers": tiers.mapValues { items in
+                items.map { i in
+                    var dict: [String: Any] = ["id": i.id]
+                    if let attrs = i.attributes { dict["attributes"] = attrs }
+                    else { dict["attributes"] = [:] }
+                    return dict
+                }
             }
         ] as [String: Any]
         
@@ -587,26 +700,26 @@ final class AppState: ObservableObject {
         }
     }
     
-    private func exportToMarkdown(group: String, themeName: String, tierConfig: TLTierConfig) -> String {
-        var markdown = "# My Survivor Tier Ranking - \(group)\n\n"
+    private func exportToMarkdown(group: String, themeName: String, tierConfig: TierConfig) -> String {
+                var markdown = "# My Tier List - \(group)\n\n"
         markdown += "**Theme:** \(themeName)  \n"
         markdown += "**Date:** \(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .none))\n\n"
         
-        for tierName in tierOrder {
-            guard let contestants = tiers[tierName], !contestants.isEmpty,
+            for tierName in tierOrder {
+            guard let items = tiers[tierName], !items.isEmpty,
                   let cfg = tierConfig[tierName] else { continue }
-            
+
             markdown += "## \(cfg.name) Tier\n\n"
-            for contestant in contestants {
-                markdown += "- **\(contestant.name ?? contestant.id)** (Season \(contestant.season ?? "?"))\n"
+            for item in items {
+                markdown += "- **\(item.name ?? item.id)** (Season \(item.seasonString ?? "?"))\n"
             }
             markdown += "\n"
         }
         
         if let unranked = tiers["unranked"], !unranked.isEmpty {
             markdown += "## Unranked\n\n"
-            for contestant in unranked {
-                markdown += "- \(contestant.name ?? contestant.id) (Season \(contestant.season ?? "?"))\n"
+            for item in unranked {
+                markdown += "- \(item.name ?? item.id) (Season \(item.seasonString ?? "?"))\n"
             }
         }
         
@@ -617,18 +730,18 @@ final class AppState: ObservableObject {
         var csv = "Name,Season,Tier\n"
         
         for tierName in tierOrder {
-            guard let contestants = tiers[tierName] else { continue }
-            for contestant in contestants {
-                let name = (contestant.name ?? contestant.id).replacingOccurrences(of: ",", with: ";")
-                let season = contestant.season ?? "?"
+            guard let items = tiers[tierName] else { continue }
+            for item in items {
+                let name = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
+                let season = item.seasonString ?? "?"
                 csv += "\"\(name)\",\"\(season)\",\"\(tierName)\"\n"
             }
         }
         
         if let unranked = tiers["unranked"] {
-            for contestant in unranked {
-                let name = (contestant.name ?? contestant.id).replacingOccurrences(of: ",", with: ";")
-                let season = contestant.season ?? "?"
+            for item in unranked {
+                let name = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
+                let season = item.seasonString ?? "?"
                 csv += "\"\(name)\",\"\(season)\",\"Unranked\"\n"
             }
         }
@@ -676,24 +789,22 @@ final class AppState: ObservableObject {
                 }
                 updateProgress(0.6)
                 
-                var newTiers: TLTiers = [:]
+                var newTiers: Items = [:]
                 
                 for (tierName, contestantData) in tierData {
                     newTiers[tierName] = contestantData.compactMap { data in
                         guard let id = data["id"], !id.isEmpty else { return nil }
-                        return TLContestant(
-                            id: id,
-                            name: data["name"]?.isEmpty == false ? data["name"] : nil,
-                            season: data["season"]?.isEmpty == false ? data["season"] : nil,
-                            thumbUri: nil
-                        )
+                        // Build attributes bag where possible
+                        var attrs: [String: String] = [:]
+                        for (k, v) in data { if k != "id" { attrs[k] = v } }
+                        return Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
                     }
                 }
                 updateProgress(0.8)
                 
                 await MainActor.run {
                     tiers = newTiers
-                    history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
+                    history = HistoryLogic.initHistory(tiers, limit: history.limit)
                     markAsChanged()
                 }
                 updateProgress(1.0)
@@ -718,7 +829,7 @@ final class AppState: ObservableObject {
             }
             updateProgress(0.4)
             
-            var newTiers: TLTiers = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
+            var newTiers: Items = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
             
             // Skip header row
             for line in lines.dropFirst() {
@@ -733,12 +844,10 @@ final class AppState: ObservableObject {
                 
                 guard !name.isEmpty else { continue }
                 
-                let contestant = TLContestant(
-                    id: name.lowercased().replacingOccurrences(of: " ", with: "_"),
-                    name: name,
-                    season: season.isEmpty ? nil : season,
-                    thumbUri: nil
-                )
+                let id = name.lowercased().replacingOccurrences(of: " ", with: "_")
+                var attrs: [String: String] = ["name": name]
+                if !season.isEmpty { attrs["season"] = season }
+                let contestant = Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
                 
                 let tierKey = tier.lowercased() == "unranked" ? "unranked" : tier.uppercased()
                 if newTiers[tierKey] != nil {
@@ -751,7 +860,7 @@ final class AppState: ObservableObject {
             
             await MainActor.run {
                 tiers = newTiers
-                history = TLHistoryLogic.initHistory(tiers, limit: history.limit)
+                history = HistoryLogic.initHistory(tiers, limit: history.limit)
                 markAsChanged()
             }
             updateProgress(1.0)
@@ -787,18 +896,25 @@ final class AppState: ObservableObject {
         do {
             let dict = try ModelResolver.loadProject(from: url)
             let resolved = ModelResolver.resolveTiers(from: dict)
-            var newTiers: TLTiers = [:]
+            var newTiers: Items = [:]
             var newOrder: [String] = []
             for rt in resolved {
                 newOrder.append(rt.label)
-                newTiers[rt.label] = rt.items.map { ri in
-                    TLContestant(id: ri.id, name: ri.title, season: nil, thumbUri: ri.thumbUri)
-                }
+                    newTiers[rt.label] = rt.items.map { ri in
+                        if let attrs = ri.attributes {
+                            return Item(id: ri.id, attributes: attrs)
+                        } else {
+                            var a: [String:String] = [:]
+                            a["name"] = ri.title
+                            if let t = ri.thumbUri { a["thumbUri"] = t }
+                            return Item(id: ri.id, attributes: a.isEmpty ? nil : a)
+                        }
+                    }
             }
             await MainActor.run {
                 self.tierOrder = newOrder
                 self.tiers = newTiers
-                self.history = TLHistoryLogic.initHistory(self.tiers, limit: self.history.limit)
+                self.history = HistoryLogic.initHistory(self.tiers, limit: self.history.limit)
                 self.markAsChanged()
             }
             showSuccessToast("Import Complete", message: "Project loaded successfully")
@@ -910,26 +1026,26 @@ final class AppState: ObservableObject {
     }
 
     func exportText(group: String = "All", themeName: String = "Default") -> String {
-        let cfg: TLTierConfig = [
-            "S": (name: "S", description: nil),
-            "A": (name: "A", description: nil),
-            "B": (name: "B", description: nil),
-            "C": (name: "C", description: nil),
-            "D": (name: "D", description: nil),
-            "F": (name: "F", description: nil)
+        let cfg: TierConfig = [
+            "S": TierConfigEntry(name: "S", description: nil),
+            "A": TierConfigEntry(name: "A", description: nil),
+            "B": TierConfigEntry(name: "B", description: nil),
+            "C": TierConfigEntry(name: "C", description: nil),
+            "D": TierConfigEntry(name: "D", description: nil),
+            "F": TierConfigEntry(name: "F", description: nil)
         ]
-        return TLExportFormatter.generate(group: group, date: .now, themeName: themeName, tiers: tiers, tierConfig: cfg)
+        return ExportFormatter.generate(group: group, date: .now, themeName: themeName, tiers: tiers, tierConfig: cfg)
     }
 
     // MARK: - Quick Rank
-    func beginQuickRank(_ contestant: TLContestant) { quickRankTarget = contestant }
+    func beginQuickRank(_ item: Item) { quickRankTarget = item }
     func cancelQuickRank() { quickRankTarget = nil }
     func commitQuickRank(to tier: String) {
-        guard let c = quickRankTarget else { return }
-        let next = TLQuickRankLogic.assign(tiers, contestantId: c.id, to: tier)
+        guard let i = quickRankTarget else { return }
+        let next = QuickRankLogic.assign(tiers, itemId: i.id, to: tier)
         guard next != tiers else { quickRankTarget = nil; return }
         tiers = next
-        history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
         quickRankTarget = nil
     }
@@ -945,31 +1061,51 @@ final class AppState: ObservableObject {
 
     func nextH2HPair() {
         guard h2hActive else { return }
-        if let pair = TLHeadToHeadLogic.pickPair(from: h2hPool, rng: { Double.random(in: 0...1) }) {
+        if let pair = HeadToHeadLogic.pickPair(from: h2hPool, rng: { Double.random(in: 0...1) }) {
             h2hPair = (pair.0, pair.1)
         } else {
             h2hPair = nil
         }
     }
 
-    func voteH2H(winner: TLContestant) {
+    func voteH2H(winner: Item) {
         guard h2hActive, let pair = h2hPair else { return }
         let a = pair.0, b = pair.1
-        TLHeadToHeadLogic.vote(a, b, winner: winner, records: &h2hRecords)
+        HeadToHeadLogic.vote(a, b, winner: winner, records: &h2hRecords)
         nextH2HPair()
     }
 
     func finishH2H() {
         guard h2hActive else { return }
         // build ranking using current pool and records
-        let ranking = TLHeadToHeadLogic.ranking(from: h2hPool, records: h2hRecords)
-        let distributed = TLHeadToHeadLogic.distributeRoundRobin(ranking, into: tierOrder, baseTiers: tiers)
+        let ranking = HeadToHeadLogic.ranking(from: h2hPool, records: h2hRecords)
+        let distributed = HeadToHeadLogic.distributeRoundRobin(ranking, into: tierOrder, baseTiers: tiers)
         tiers = distributed
-        history = TLHistoryLogic.saveSnapshot(history, snapshot: tiers)
+        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
         h2hActive = false
         h2hPair = nil
         h2hPool = []
         h2hRecords = [:]
+    }
+
+    // MARK: - Data Normalization / Migration Helpers
+
+    /// Ensure every contestant has an attributes bag; migrate legacy top-level fields into attributes.
+    static func normalizedTiers(from tiers: Items) -> Items {
+        var out: Items = [:]
+        for (k, v) in tiers {
+            out[k] = v.map { c in
+                // If already has attributes, keep as-is
+                if let attrs = c.attributes, !attrs.isEmpty { return c }
+                // Otherwise migrate top-level computed accessors into attributes
+                var newAttrs: [String: String] = [:]
+                if let n = c.name { newAttrs["name"] = n }
+                if let s = c.seasonString { newAttrs["season"] = s }
+                if let t = c.thumbUri { newAttrs["thumbUri"] = t }
+                return Item(id: c.id, attributes: newAttrs.isEmpty ? nil : newAttrs)
+            }
+        }
+        return out
     }
 }

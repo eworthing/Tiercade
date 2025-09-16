@@ -1,8 +1,8 @@
 import Foundation
 
-public struct H2HContestant: Hashable, Sendable {
-    public let contestant: Contestant
-    public init(_ c: Contestant) { self.contestant = c }
+public struct H2HItem: Hashable, Sendable {
+    public let item: Item
+    public init(_ c: Item) { self.item = c }
 }
 
 public struct H2HRecord: Sendable {
@@ -12,16 +12,16 @@ public struct H2HRecord: Sendable {
     public var winRate: Double { total == 0 ? 0 : Double(wins) / Double(total) }
 }
 
-public struct H2HRankingEntry: Sendable { public let contestant: Contestant; public let winRate: Double }
+public struct H2HRankingEntry: Sendable { public let contestant: Item; public let winRate: Double }
 
 public enum HeadToHeadLogic {
     /// Pick a distinct pair from pool using provided rng; returns nil if <2.
-    public static func pickPair(from pool: [Contestant], rng: () -> Double) -> (Contestant, Contestant)? {
+    public static func pickPair(from pool: [Item], rng: () -> Double) -> (Item, Item)? {
         RandomUtils.pickRandomPair(pool, rng: rng)
     }
 
     /// Apply a vote outcome to the records dictionary.
-    public static func vote(_ a: Contestant, _ b: Contestant, winner: Contestant, records: inout [String: H2HRecord]) {
+    public static func vote(_ a: Item, _ b: Item, winner: Item, records: inout [String: H2HRecord]) {
         if winner.id == a.id {
             records[a.id, default: .init()].wins += 1
             records[b.id, default: .init()].losses += 1
@@ -32,7 +32,7 @@ public enum HeadToHeadLogic {
     }
 
     /// Compute ranking by win rate, descending; ties by total desc, then name asc.
-    public static func ranking(from pool: [Contestant], records: [String: H2HRecord]) -> [H2HRankingEntry] {
+    public static func ranking(from pool: [Item], records: [String: H2HRecord]) -> [H2HRankingEntry] {
         let entries = pool.map { c -> H2HRankingEntry in
             let r = records[c.id] ?? H2HRecord()
             return H2HRankingEntry(contestant: c, winRate: r.winRate)
@@ -47,7 +47,7 @@ public enum HeadToHeadLogic {
     }
 
     /// Distribute ranked contestants into ordered tier names in a round-robin pattern.
-    public static func distributeRoundRobin(_ ranking: [H2HRankingEntry], into tierOrder: [String], baseTiers: Tiers) -> Tiers {
+    public static func distributeRoundRobin(_ ranking: [H2HRankingEntry], into tierOrder: [String], baseTiers: Items) -> Items {
         var newTiers = baseTiers
         for name in tierOrder { if newTiers[name] == nil { newTiers[name] = [] } }
         // remove any ranked contestant from unranked

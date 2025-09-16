@@ -1,0 +1,140 @@
+{ "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tier List Project",
+  "description": "Versioned canonical schema for multi-domain tier-list projects.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": { "type": "integer", "minimum": 1 },
+    "projectId": { "type": "string", "format": "uuid" },
+    "title": { "type": "string", "maxLength": 256 },
+    "description": { "type": "string", "maxLength": 4096 },
+    "tiers": { "type": "array", "items": { "$ref": "#/$defs/Tier" } },
+    "items": {
+      "type": "object",
+      "description": "Map of canonical items keyed by itemId",
+      "patternProperties": { "^[a-zA-Z0-9_\\-:]+$": { "$ref": "#/$defs/Item" } },
+      "additionalProperties": false
+    },
+    "overrides": {
+      "type": "object",
+      "description": "Per-project overrides keyed by itemId",
+      "patternProperties": { "^[a-zA-Z0-9_\\-:]+$": { "$ref": "#/$defs/ItemOverride" } },
+      "additionalProperties": false
+    },
+    "links": {
+      "type": "object",
+      "properties": {
+        "visibility": { "type": "string", "enum": ["public", "unlisted", "private"] },
+        "shareUrl": { "type": "string", "format": "uri" },
+        "embedHtml": { "type": "string" },
+        "stateUrl": { "type": "string", "format": "uri" }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "theme": { "type": "string", "enum": ["light", "dark", "system"], "default": "system" },
+        "tierSortOrder": { "type": "string", "enum": ["S-F", "F-S"], "default": "S-F" },
+        "gridSnap": { "type": "boolean", "default": true },
+        "showUnranked": { "type": "boolean", "default": true },
+        "accessibility": {
+          "type": "object",
+          "properties": {
+            "colorblind": { "type": "boolean" },
+            "highContrast": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "collab": {
+      "type": "object",
+      "properties": { "members": { "type": "array", "items": { "type": "object", "properties": { "userId": { "type": "string" }, "role": { "type": "string", "enum": ["owner","editor","viewer"] } }, "required": ["userId","role"] } } }
+    },
+    "audit": { "$ref": "#/$defs/Audit" }
+  },
+  "required": ["schemaVersion","projectId","tiers","items","audit"],
+  "$defs": {
+    "Tier": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string", "maxLength": 100 },
+        "color": { "type": "string", "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$" },
+        "order": { "type": "integer" },
+        "locked": { "type": "boolean", "default": false },
+        "collapsed": { "type": "boolean", "default": false },
+        "rules": { "type": "object" },
+        "itemIds": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id","label","order","itemIds"]
+    },
+    "Item": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "maxLength": 256 },
+        "subtitle": { "type": "string", "maxLength": 256 },
+        "summary": { "type": "string", "maxLength": 2048 },
+        "slug": { "type": "string" },
+        "media": { "type": "array", "items": { "$ref": "#/$defs/Media" } },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "type": "boolean" },
+              { "type": "array", "items": { "type": "string" } }
+            ]
+          }
+        },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "rating": { "type": "number", "minimum": 0, "maximum": 100 },
+        "sources": {
+          "type": "array",
+          "items": { "type": "object", "properties": { "rel": { "type": "string" }, "href": { "type": "string", "format": "uri" }, "title": { "type": "string" } }, "required": ["href"] }
+        },
+        "locale": { "type": "object", "additionalProperties": { "type": "object", "additionalProperties": { "type": "string" } } },
+        "meta": { "$ref": "#/$defs/Audit" }
+      },
+      "required": ["id","title"]
+    },
+    "ItemOverride": {
+      "type": "object",
+      "properties": {
+        "displayTitle": { "type": "string", "maxLength": 256 },
+        "notes": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "rating": { "type": "number", "minimum": 0, "maximum": 100 },
+        "media": { "type": "array", "items": { "$ref": "#/$defs/Media" } },
+        "hidden": { "type": "boolean", "default": false }
+      }
+    },
+    "Media": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string", "enum": ["image","gif","video","audio"] },
+        "uri": { "type": "string", "format": "uri" },
+        "mime": { "type": "string" },
+        "w": { "type": "number" },
+        "h": { "type": "number" },
+        "durationMs": { "type": "number" },
+        "posterUri": { "type": "string", "format": "uri" },
+        "thumbUri": { "type": "string", "format": "uri" },
+        "alt": { "type": "string" },
+        "attribution": { "type": "object", "properties": { "creator": { "type": "string" }, "license": { "type": "string" }, "source": { "type": "string", "format": "uri" } } }
+      },
+      "required": ["id","kind","uri","mime"]
+    },
+    "Audit": {
+      "type": "object",
+      "properties": {
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" },
+        "updatedBy": { "type": "string" }
+      },
+      "required": ["createdAt","updatedAt"]
+    }
+  }
+}
