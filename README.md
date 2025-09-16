@@ -3,6 +3,8 @@
 A comprehensive tier list management application for iOS, built with SwiftUI. Create, manage, and analyze tier lists with professional-grade features including advanced analytics, multiple export formats, and intelligent insights.
 
 ![iOS](https://img.shields.io/badge/iOS-18.5+-blue.svg)
+![tvOS](https://img.shields.io/badge/tvOS-17+-lightgrey.svg)
+![macOS](https://img.shields.io/badge/macOS-14+-lightgrey.svg)
 ![Swift](https://img.shields.io/badge/Swift-6.0-orange.svg)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-Native-green.svg)
 ![Xcode](https://img.shields.io/badge/Xcode-16+-blue.svg)
@@ -106,17 +108,20 @@ TiercadeCore Logic → State Update → UI Refresh
 ## 🧪 Testing
 
 ### **Test Coverage**
-- **Unit Tests** - Core logic validation in TiercadeCore
+- **Unit Tests** - Core logic validation in TiercadeCore (run via `swift test` inside `TiercadeCore`)
 - **Integration Tests** - Feature interaction testing
-- **UI Tests** - End-to-end user journey validation
+- **UI Tests** - End-to-end user journey validation (iOS/tvOS simulators supported)
 
 ### **Running Tests**
 ```bash
 # Unit tests for core logic
 cd TiercadeCore && swift test
 
-# iOS app tests
+# iOS app tests (example, adjust device name as needed)
 xcodebuild test -project Tiercade.xcodeproj -scheme Tiercade -destination 'platform=iOS Simulator,name=iPhone 16'
+
+# tvOS UI tests (example using simulator UDID)
+# xcodebuild test -project Tiercade.xcodeproj -scheme Tiercade -destination "platform=tvOS Simulator,id=<SIM_UDID>"
 ```
 
 ### **Test Architecture**
@@ -128,7 +133,9 @@ xcodebuild test -project Tiercade.xcodeproj -scheme Tiercade -destination 'platf
 
 ### **Requirements**
 - **Xcode 16+** - Latest development environment
-- **iOS 18.5+ Simulator** - For testing and development
+- **iOS 18.5+ Simulator** - For testing and development (recommended)
+- **tvOS 17+ Simulator** - For tvOS UI testing
+- **macOS 14+** - For macOS development and packaging
 - **Swift 6.0** - Language mode with strict concurrency and enhanced type safety
 - **macOS** - Development platform
 
@@ -295,7 +302,7 @@ func updateProgress(_ value: Double) { /* 0.0 ... 1.0 */ }
 
 ## 📄 License
 
-[Add your license information here]
+This project is currently unlicensed in the repository. If you intend to open-source it, add a LICENSE file at the repository root (for example, MIT or Apache-2.0). For private/internal projects, include a short statement here describing distribution restrictions.
 
 ## 🤝 Contributing
 
@@ -305,7 +312,7 @@ Also see the core package docs: [TiercadeCore/README.md](TiercadeCore/README.md)
 
 ## 📞 Support
 
-[Add support contact information here]
+For project support and questions, please open an issue on GitHub or contact the maintainer via the repository email in GitHub profile.
 
 ---
 
