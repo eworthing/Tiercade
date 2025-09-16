@@ -55,6 +55,8 @@ A comprehensive tier list management application for iOS, built with SwiftUI. Cr
 - **iOS 18.5+** - Target deployment supporting latest iOS features
 - **TiercadeCore** - Platform-agnostic Swift Package for shared logic
 
+> Note: The app target aims for iOS 18.5+ while the `TiercadeCore` Swift package documents support for iOS 17 / macOS 14 / tvOS 17+. This is intentional: the core package keeps slightly broader compatibility for cross-platform use while the app UI targets newer OS features. See `TiercadeCore/README.md` for core package requirements.
+
 ### **Design Patterns**
 - **MVVM Architecture** - Clean separation of concerns with SwiftUI
 - **@MainActor State Management** - Thread-safe UI updates with published properties
