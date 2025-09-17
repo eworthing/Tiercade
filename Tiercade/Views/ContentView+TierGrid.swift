@@ -51,9 +51,13 @@ struct TierRowView: View {
         if !filteredCards.isEmpty {
             VStack(alignment: .leading, spacing: Metrics.grid) {
                 HStack {
-                    Text(tier)
+                    #if os(tvOS)
+                    TierHeaderView(tierId: tier)
+                    #else
+                    Text(app.displayLabel(for: tier))
                         .font(TypeScale.h3)
                         .foregroundColor(Palette.text)
+                    #endif
                     Spacer()
                     if !app.searchQuery.isEmpty || app.activeFilter != .all {
                         Text("\(filteredCards.count)/\(app.tierCount(tier))")
@@ -61,32 +65,71 @@ struct TierRowView: View {
                             .foregroundColor(Palette.textDim)
                     }
                 }
+
+                #if os(tvOS)
+                if filteredCards.count >= TierRowPerformance.limit {
+                    CollectionTierRowContainer(
+                        tierName: tier,
+                        items: filteredCards,
+                        onSelect: { item in
+                            if app.isMultiSelect { app.toggleSelection(item.id) } else { app.presentItemMenu(item) }
+                        },
+                        onPlayPause: { item in
+                            if app.isMultiSelect { app.toggleSelection(item.id) } else { app.beginQuickMove(item) }
+                        },
+                        selectedIds: app.selection,
+                        isMultiSelect: app.isMultiSelect
+                    )
+                    .frame(height: 260)
+                    .focusSection()
+                } else {
+                    ScrollView(.horizontal) {
+                        LazyHStack(spacing: 10) {
+                            ForEach(filteredCards, id: \.id) { item in
+                                CardView(item: item)
+                                    .focused($focusedCardId, equals: item.id)
+                            }
+                        }
+                        .padding(.bottom, Metrics.grid * 0.5)
+                    }
+                    .focusSection()
+                    .onAppear { focusedCardId = filteredCards.first?.id }
+                }
+                #else
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 10) {
                         ForEach(filteredCards, id: \.id) { item in
                             CardView(item: item)
-                            #if !os(tvOS)
                                 .draggable(item.id)
-                            #else
-                                .focused($focusedCardId, equals: item.id)
-                            #endif
                         }
                     }
                     .padding(.bottom, Metrics.grid * 0.5)
                 }
-                #if os(tvOS)
-                .onAppear { focusedCardId = filteredCards.first?.id }
                 #endif
             }
             .padding(Metrics.grid * 1.5)
-            .background(RoundedRectangle(cornerRadius: 12).fill(.ultraThinMaterial))
+            .background(
+                ZStack {
+                    if let hex = app.displayColorHex(for: tier), let color = Color(hex: hex) {
+                        RoundedRectangle(cornerRadius: 12).fill(color.opacity(0.12))
+                    }
+                    RoundedRectangle(cornerRadius: 12).fill(.ultraThinMaterial)
+                }
+            )
+            .overlay(
+                Group {
+                    if let hex = app.displayColorHex(for: tier), let color = Color(hex: hex) {
+                        RoundedRectangle(cornerRadius: 12).stroke(color.opacity(0.35), lineWidth: 1)
+                    } else { EmptyView() }
+                }
+            )
             .overlay {
                 DragTargetHighlight(isTarget: app.dragTargetTier == tier, color: Palette.tierColor(tier))
             }
             #if !os(tvOS)
             .dropDestination(for: String.self) { items, _ in
                 if let id = items.first { app.move(id, to: tier) }
-                app.setDragTarget(nil) // Clear drag target
+                app.setDragTarget(nil)
                 app.setDragging(nil)
                 return true
             } isTargeted: { isTargeted in
@@ -121,7 +164,7 @@ struct UnrankedView: View {
     var body: some View {
         if !filteredItems.isEmpty {
             VStack(alignment: .leading, spacing: Metrics.grid) {
-                HStack { 
+                HStack {
                     Text("Unranked")
                         .font(TypeScale.h3)
                         .foregroundColor(Palette.text)
@@ -146,8 +189,11 @@ struct UnrankedView: View {
                         #endif
                     }
                 }
+                #if os(tvOS)
+                .focusSection()
+                #endif
             }
-        .padding(Metrics.grid * 1.5)
+            .padding(Metrics.grid * 1.5)
             .background(RoundedRectangle(cornerRadius: 12).strokeBorder(.secondary))
             .overlay {
                 DragTargetHighlight(isTarget: app.dragTargetTier == "unranked", color: Palette.tierColor("F"))
@@ -155,7 +201,7 @@ struct UnrankedView: View {
             #if !os(tvOS)
             .dropDestination(for: String.self) { items, _ in
                 if let id = items.first { app.move(id, to: "unranked") }
-                app.setDragTarget(nil) // Clear drag target
+                app.setDragTarget(nil)
                 app.setDragging(nil)
                 return true
             } isTargeted: { isTargeted in
@@ -172,40 +218,64 @@ struct CardView: View {
     let item: Item
     @EnvironmentObject var app: AppState
     var body: some View {
-        Button(action: { app.beginQuickRank(item) }) {
+        Button(action: {
+            #if os(tvOS)
+            if app.isMultiSelect { app.toggleSelection(item.id) } else { app.presentItemMenu(item) }
+            #else
+            app.beginQuickRank(item)
+            #endif
+        }) {
             VStack(spacing: 8) {
                 ThumbnailView(item: item)
                 Text("S \(item.seasonString ?? "?")").font(.caption2).foregroundStyle(.secondary)
             }
             .padding(Metrics.grid)
             .card()
+            #if os(tvOS)
+            .overlay(alignment: .topTrailing) {
+                if app.isMultiSelect && app.isSelected(item.id) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, Color.accentColor)
+                        .padding(6)
+                        .background(Circle().fill(Color.black.opacity(0.4)))
+                        .offset(x: 6, y: -6)
+                }
+            }
+            #endif
         }
         .buttonStyle(PlainButtonStyle())
+        .accessibilityIdentifier("Card_\(item.id)")
         .scaleEffect(app.draggingId == item.id ? 0.98 : 1.0)
         .shadow(color: Color.black.opacity(app.draggingId == item.id ? 0.45 : 0.1), radius: app.draggingId == item.id ? 20 : 6, x: 0, y: app.draggingId == item.id ? 12 : 4)
         .contentShape(Rectangle())
         .accessibilityLabel(item.name ?? item.id)
-    #if os(macOS)
+        #if os(macOS)
         .focusable(true)
         .accessibilityAddTraits(.isButton)
-    #endif
-    #if !os(tvOS)
+        #endif
+        #if !os(tvOS)
         .onDrag {
             app.setDragging(item.id)
             return NSItemProvider(object: NSString(string: item.id))
         }
-    #endif
-    #if os(tvOS)
+        #endif
+        #if os(tvOS)
         .focusable(true)
         .onPlayPauseCommand {
-            app.beginQuickRank(item)
+            if app.isMultiSelect {
+                app.toggleSelection(item.id)
+            } else {
+                app.beginQuickMove(item)
+            }
         }
         .contextMenu {
             ForEach(app.tierOrder, id: \.self) { t in
                 Button("Move to \(t)") { app.move(item.id, to: t) }
             }
+            Button("View Details") { app.detailItem = item }
         }
-    #endif
+        #endif
     }
 }
 

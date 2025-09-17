@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 import TiercadeCore
 
@@ -8,7 +11,7 @@ import TiercadeCore
 // MARK: - Export & Import System Types
 
 enum ExportFormat: CaseIterable {
-    case text, json, markdown, csv
+    case text, json, markdown, csv, png, pdf
     
     var fileExtension: String {
         switch self {
@@ -16,6 +19,8 @@ enum ExportFormat: CaseIterable {
         case .json: return "json"
         case .markdown: return "md"
         case .csv: return "csv"
+        case .png: return "png"
+        case .pdf: return "pdf"
         }
     }
     
@@ -25,6 +30,8 @@ enum ExportFormat: CaseIterable {
         case .json: return "JSON"
         case .markdown: return "Markdown"
         case .csv: return "CSV"
+        case .png: return "PNG Image"
+        case .pdf: return "PDF"
         }
     }
 }
@@ -66,6 +73,20 @@ final class AppState: ObservableObject {
     @Published var activeFilter: FilterType = .all
     @Published var currentToast: ToastMessage? = nil
     @Published var quickRankTarget: Item? = nil
+    // tvOS quick move (Play/Pause accelerator)
+    @Published var quickMoveTarget: Item? = nil
+    // Multi-select state for batch operations
+    @Published var selection: Set<String> = []
+    @Published var isMultiSelect: Bool = false
+    // Detail overlay routing
+    @Published var detailItem: Item? = nil
+    // Item menu overlay routing (tvOS primary action)
+    @Published var itemMenuTarget: Item? = nil
+    // Locked tiers set (until full Tier model exists)
+    @Published var lockedTiers: Set<String> = []
+    // Tier display overrides (rename/recolor without core model changes)
+    @Published var tierLabels: [String: String] = [:] // tierId -> display label
+    @Published var tierColors: [String: String] = [:] // tierId -> hex color
     // Head-to-Head
     @Published var h2hActive: Bool = false
     @Published var h2hPool: [Item] = []
@@ -170,14 +191,71 @@ final class AppState: ObservableObject {
         ]
     }
 
+    // MARK: - Selection / Multi-Select
+    func toggleMultiSelect() {
+        isMultiSelect.toggle()
+        if !isMultiSelect { selection.removeAll() }
+    }
+
+    func isSelected(_ id: String) -> Bool { selection.contains(id) }
+    func toggleSelection(_ id: String) {
+        if selection.contains(id) { selection.remove(id) } else { selection.insert(id) }
+    }
+    func clearSelection() { selection.removeAll() }
+
     func move(_ id: String, to tier: String) {
+    if lockedTiers.contains(tier) {
+        showErrorToast("Tier Locked", message: "Cannot move into \(tier)")
+        announce("Tier \(tier) is locked. Move canceled.")
+        return
+    }
     let next = TierLogic.moveItem(tiers, itemId: id, targetTierName: tier)
         guard next != tiers else { return }
         tiers = next
     history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
+    if let name = (tiers[tier]?.first(where: { $0.id == id })?.name) {
+        showInfoToast("Moved", message: "Moved ‘\(name)’ to \(tier)")
+        announce("Moved ‘\(name)’ to \(tier) tier")
+    } else {
+        showInfoToast("Moved", message: "Moved to \(tier)")
+        announce("Moved to \(tier) tier")
+    }
     print("[AppState] move: itemId=\(id) -> tier=\(tier)\n    counts: \(tierOrder.map { (name) in "\(name):\(tiers[name]?.count ?? 0)" }.joined(separator: ", "))")
     NSLog("[AppState] move: itemId=%@ -> tier=%@ counts=%@", id, tier, tierOrder.map { "\($0):\(tiers[$0]?.count ?? 0)" }.joined(separator: ", "))
+    }
+
+    func batchMove(_ ids: [String], to tier: String) {
+        guard !ids.isEmpty else { return }
+        guard !lockedTiers.contains(tier) else {
+            showErrorToast("Tier Locked", message: "Cannot move into \(tier)")
+            announce("Tier \(tier) is locked. Move canceled.")
+            return
+        }
+        var next = tiers
+        for id in ids {
+            next = TierLogic.moveItem(next, itemId: id, targetTierName: tier)
+        }
+        guard next != tiers else { return }
+        tiers = next
+        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
+        markAsChanged()
+        clearSelection()
+        showSuccessToast("Moved Items", message: "Moved \(ids.count) item(s) to \(tier)")
+        let count = ids.count
+        announce("Moved \(count) item\(count == 1 ? "" : "s") to \(tier) tier")
+    }
+
+    func currentTier(of id: String) -> String? {
+        for t in tierOrder + ["unranked"] {
+            if tiers[t]?.contains(where: { $0.id == id }) == true { return t }
+        }
+        return nil
+    }
+
+    func removeFromCurrentTier(_ id: String) {
+        // Move to unranked
+        move(id, to: "unranked")
     }
 
     func clearTier(_ tier: String) {
@@ -189,6 +267,7 @@ final class AppState: ObservableObject {
     history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
     showInfoToast("Tier Cleared", message: "Moved all items from \(tier) tier to unranked")
+        announce("Cleared \(tier) tier. Moved \(moving.count) item\(moving.count == 1 ? "" : "s") to unranked")
     }
 
     func undo() { 
@@ -472,6 +551,53 @@ final class AppState: ObservableObject {
     print("[AppState] commitQuickRank: item=\(i.id) -> tier=\(tier)")
     NSLog("[AppState] commitQuickRank: item=%@ -> tier=%@", i.id, tier)
         appendDebugFile("commitQuickRank: item=\(i.id) -> tier=\(tier)")
+    }
+
+    // MARK: - Quick Move (tvOS Play/Pause)
+    func beginQuickMove(_ item: Item) { quickMoveTarget = item }
+    func cancelQuickMove() { quickMoveTarget = nil }
+    func commitQuickMove(to tier: String) {
+        guard let i = quickMoveTarget else { return }
+        let prev = tiers
+        let next = QuickRankLogic.assign(tiers, itemId: i.id, to: tier)
+        guard next != tiers else { quickMoveTarget = nil; return }
+        tiers = next
+        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
+        markAsChanged()
+        quickMoveTarget = nil
+        let movedName = i.name ?? i.id
+        currentToast = ToastMessage(type: .info, title: "Moved", message: "Moved ‘\(movedName)’ to \(tier)", duration: 3.0, actionTitle: "Undo", action: { [weak self] in
+            guard let self = self else { return }
+            self.tiers = prev
+            self.history = HistoryLogic.saveSnapshot(self.history, snapshot: prev)
+            self.markAsChanged()
+        })
+        announce("Moved ‘\(movedName)’ to \(tier) tier")
+    }
+
+    // MARK: - Item Menu (tvOS primary)
+    func presentItemMenu(_ item: Item) { itemMenuTarget = item }
+    func dismissItemMenu() { itemMenuTarget = nil }
+
+    // MARK: - Tier Lock
+    func isTierLocked(_ id: String) -> Bool { lockedTiers.contains(id) }
+    func toggleTierLocked(_ id: String) {
+        if lockedTiers.contains(id) { lockedTiers.remove(id) } else { lockedTiers.insert(id) }
+        let label = displayLabel(for: id)
+        announce(lockedTiers.contains(id) ? "Locked \(label) tier" : "Unlocked \(label) tier")
+    }
+
+    // MARK: - Tier label/color overrides
+    func displayLabel(for tierId: String) -> String { tierLabels[tierId] ?? tierId }
+    func setDisplayLabel(_ label: String, for tierId: String) { tierLabels[tierId] = label }
+    func displayColorHex(for tierId: String) -> String? { tierColors[tierId] }
+    func setDisplayColorHex(_ hex: String?, for tierId: String) { tierColors[tierId] = hex }
+
+    // MARK: - Accessibility
+    private func announce(_ message: String) {
+        #if canImport(UIKit)
+        UIAccessibility.post(notification: .announcement, argument: message)
+        #endif
     }
 
     // MARK: - Head to Head

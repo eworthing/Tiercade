@@ -6,7 +6,7 @@ import TiercadeCore
 // ContentView+*.swift modular files).
 
 struct MainAppView: View {
-    @StateObject private var app = AppState()
+    @EnvironmentObject var app: AppState
 
     var body: some View {
         Group {
@@ -56,6 +56,15 @@ struct MainAppView: View {
                 QuickRankOverlay(app: app)
                     .zIndex(40)
 
+                #if os(tvOS)
+                // Quick Move overlay for tvOS Play/Pause accelerator
+                QuickMoveOverlay(app: app)
+                    .zIndex(45)
+                // Item Menu overlay (primary action)
+                ItemMenuOverlay(app: app)
+                    .zIndex(46)
+                #endif
+
                 // Head-to-Head overlay
                 HeadToHeadOverlay(app: app)
                     .zIndex(40)
@@ -68,6 +77,26 @@ struct MainAppView: View {
                             .padding()
                     }
                     .zIndex(60)
+                }
+
+                #if os(tvOS)
+                VStack { Spacer(); TVActionBar(app: app) }
+                    .zIndex(30)
+                #endif
+
+                // Detail overlay (all platforms)
+                if let detail = app.detailItem {
+                    ZStack {
+                        Color.black.opacity(0.45).ignoresSafeArea()
+                        VStack {
+                            DetailView(item: detail)
+                            Button("Close") { app.detailItem = nil }
+                                .buttonStyle(.bordered)
+                        }
+                        .padding()
+                    }
+                    .transition(.opacity)
+                    .zIndex(55)
                 }
             }
         }

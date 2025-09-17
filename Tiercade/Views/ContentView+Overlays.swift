@@ -31,6 +31,11 @@ struct ToastView: View {
             }
 
             Spacer()
+
+            if let title = toast.actionTitle, let action = toast.action {
+                Button(title) { action() }
+                    .buttonStyle(.borderedProminent)
+            }
         }
         .padding(.horizontal, Metrics.grid * 2)
         .padding(.vertical, Metrics.grid * 1.5)

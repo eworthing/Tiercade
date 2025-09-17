@@ -44,18 +44,22 @@ enum ToastType {
     }
 }
 
-struct ToastMessage: Identifiable, Equatable {
+struct ToastMessage: Identifiable {
     let id = UUID()
     let type: ToastType
     let title: String
     let message: String?
     let duration: TimeInterval
+    let actionTitle: String?
+    let action: (() -> Void)?
 
-    init(type: ToastType, title: String, message: String? = nil, duration: TimeInterval = 3.0) {
+    init(type: ToastType, title: String, message: String? = nil, duration: TimeInterval = 3.0, actionTitle: String? = nil, action: (() -> Void)? = nil) {
         self.type = type
         self.title = title
         self.message = message
         self.duration = duration
+        self.actionTitle = actionTitle
+        self.action = action
     }
 }
 
@@ -70,3 +74,16 @@ struct ToastMessage: Identifiable, Equatable {
 // canonical `TiercadeCore.Item` API directly (name, seasonString/seasonNumber,
 // imageUrl, videoUrl, etc.). This repository is in a migration phase and the
 // app code has been updated to reference the canonical fields.
+
+// MARK: - Color helpers
+extension Color {
+    init?(hex: String) {
+        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        if s.hasPrefix("#") { s.removeFirst() }
+        guard s.count == 6, let v = Int(s, radix: 16) else { return nil }
+        let r = Double((v >> 16) & 0xFF) / 255.0
+        let g = Double((v >> 8) & 0xFF) / 255.0
+        let b = Double(v & 0xFF) / 255.0
+        self = Color(red: r, green: g, blue: b)
+    }
+}
