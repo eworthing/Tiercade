@@ -20,8 +20,8 @@ extension AppState {
             ]
             updateProgress(0.4)
             
-            let result: String
-            let fileName: String
+            var result: String = ""
+            var fileName: String = ""
             switch format {
             case .text:
                 result = ExportFormatter.generate(group: group, date: .now, themeName: themeName, tiers: tiers, tierConfig: cfg)
@@ -35,6 +35,29 @@ extension AppState {
             case .csv:
                 result = exportToCSV(group: group, themeName: themeName)
                 fileName = "tier_list.csv"
+            case .png:
+                if let data = ExportRenderer.renderPNG(tiers: tiers, order: tierOrder, labels: tierLabels, colors: tierColors, group: group, themeName: themeName) {
+                    updateProgress(1.0)
+                    showSuccessToast("Export Complete", message: "Exported PNG image")
+                    return (data, "tier_list.png")
+                } else {
+                    showErrorToast("Export Failed", message: "Could not render PNG")
+                    return nil
+                }
+            case .pdf:
+                #if os(tvOS)
+                showErrorToast("Unsupported", message: "PDF export is not available on tvOS")
+                return nil
+                #else
+                if let data = ExportRenderer.renderPDF(tiers: tiers, order: tierOrder, labels: tierLabels, colors: tierColors, group: group, themeName: themeName) {
+                    updateProgress(1.0)
+                    showSuccessToast("Export Complete", message: "Exported PDF")
+                    return (data, "tier_list.pdf")
+                } else {
+                    showErrorToast("Export Failed", message: "Could not render PDF")
+                    return nil
+                }
+                #endif
             }
             updateProgress(0.8)
             

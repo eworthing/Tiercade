@@ -19,11 +19,11 @@ public typealias PlatformColor = Color
 #endif
 
 extension Color {
-    init(hex: String) {
+    init(designHex: String) {
         #if canImport(UIKit)
-        self = Color(PlatformColor(hex: hex))
+        self = Color(PlatformColor(hex: designHex))
         #elseif canImport(AppKit)
-        self = Color(PlatformColor(hex: hex))
+        self = Color(PlatformColor(hex: designHex))
         #else
         self = Color.black
         #endif
@@ -85,20 +85,20 @@ enum Palette {
     static let surfHi  = Color.dynamic(light: "#00000008", dark: "#FFFFFF14")
     static let text    = Color.dynamic(light: "#111827", dark: "#E8EDF2")
     static let textDim = Color.dynamic(light: "#6B7280", dark: "#FFFFFFB8")
-    static let brand   = Color(hex: "#3B82F6")
+    static let brand   = Color(designHex: "#3B82F6")
 
     // Tier accents as Colors
     static let tierColors: [String: Color] = [
-        "S": Color(hex: "#E11D48"),
-        "A": Color(hex: "#F59E0B"),
-        "B": Color(hex: "#22C55E"),
-        "C": Color(hex: "#06B6D4"),
-        "D": Color(hex: "#3B82F6"),
-        "F": Color(hex: "#6B7280")
+        "S": Color(designHex: "#E11D48"),
+        "A": Color(designHex: "#F59E0B"),
+        "B": Color(designHex: "#22C55E"),
+        "C": Color(designHex: "#06B6D4"),
+        "D": Color(designHex: "#3B82F6"),
+        "F": Color(designHex: "#6B7280")
     ]
 
     static func tierColor(_ tier: String) -> Color {
-        tierColors[tier] ?? Color(hex: "#6B7280")
+        tierColors[tier] ?? Color(designHex: "#6B7280")
     }
 }
 

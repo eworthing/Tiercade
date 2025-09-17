@@ -3,10 +3,5 @@
     "author" : "xcode",
     "version" : 1
   },
-  "images" : [
-    {
-      "idiom" : "universal",
-      "filename" : "Back-placeholder.png"
-    }
-  ]
+  "images" : []
 }
