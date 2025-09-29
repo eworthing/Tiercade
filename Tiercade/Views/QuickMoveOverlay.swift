@@ -5,7 +5,10 @@ import TiercadeCore
 struct QuickMoveOverlay: View {
     @ObservedObject var app: AppState
 
-    private let primaryTargets = ["S", "A", "B", "C"]
+    private let primaryTargets = ["S", "A", "B", "C", "unranked"]
+    @FocusState private var focused: FocusField?
+
+    private enum FocusField: Hashable { case s, a, b, c, u, more, cancel }
 
     var body: some View {
         if let item = app.quickMoveTarget {
@@ -20,20 +23,32 @@ struct QuickMoveOverlay: View {
                         .frame(width: 420, height: 420)
                         .overlay(Circle().strokeBorder(.white.opacity(0.08)))
 
-                    // Four targets
+                    // Five targets (S, A, B, C, Unranked)
                     VStack {
-                        moveButton(label: "S", color: .red, a11y: "Move to S tier") { app.commitQuickMove(to: "S") }
+                        MoveCircleButton(label: "S", color: .red, a11y: "Move to S tier") { app.commitQuickMove(to: "S") }
+                            .focused($focused, equals: .s)
                         Spacer(minLength: 0)
-                        moveButton(label: "B", color: .green, a11y: "Move to B tier") { app.commitQuickMove(to: "B") }
+                        MoveCircleButton(label: "B", color: .green, a11y: "Move to B tier") { app.commitQuickMove(to: "B") }
+                            .focused($focused, equals: .b)
                     }
                     .frame(height: 360)
 
                     HStack {
-                        moveButton(label: "A", color: .orange, a11y: "Move to A tier") { app.commitQuickMove(to: "A") }
+                        MoveCircleButton(label: "A", color: .orange, a11y: "Move to A tier") { app.commitQuickMove(to: "A") }
+                            .focused($focused, equals: .a)
                         Spacer(minLength: 0)
-                        moveButton(label: "C", color: .cyan, a11y: "Move to C tier") { app.commitQuickMove(to: "C") }
+                        MoveCircleButton(label: "C", color: .cyan, a11y: "Move to C tier") { app.commitQuickMove(to: "C") }
+                            .focused($focused, equals: .c)
                     }
                     .frame(width: 360)
+
+                    // Unranked target at center-bottom
+                    VStack {
+                        Spacer()
+                        MoveCircleButton(label: "U", color: .gray, a11y: "Move to Unranked") { app.commitQuickMove(to: "unranked") }
+                            .focused($focused, equals: .u)
+                    }
+                    .frame(height: 420)
                 }
                 .frame(width: 440, height: 440)
                 .focusSection()
@@ -46,9 +61,11 @@ struct QuickMoveOverlay: View {
                         .buttonStyle(.borderedProminent)
                         .tint(.secondary)
                         .accessibilityIdentifier("QuickMove_More")
+                        .focused($focused, equals: .more)
                     Button("Cancel", role: .cancel) { app.cancelQuickMove() }
                         .buttonStyle(.bordered)
                         .accessibilityIdentifier("QuickMove_Cancel")
+                        .focused($focused, equals: .cancel)
                 }
             }
             .padding(24)
@@ -59,36 +76,41 @@ struct QuickMoveOverlay: View {
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
             .accessibilityIdentifier("QuickMove_Overlay")
-            .onMoveCommand { dir in
-                switch dir {
-                case .up: app.commitQuickMove(to: "S")
-                case .right: app.commitQuickMove(to: "A")
-                case .down: app.commitQuickMove(to: "B")
-                case .left: app.commitQuickMove(to: "C")
-                @unknown default: break
-                }
-            }
+            .defaultFocus($focused, .s)
         }
     }
 
-    @ViewBuilder
-    private func moveButton(label: String, color: Color, a11y: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(.system(size: 48, weight: .bold))
-                .frame(width: 140, height: 140)
-                .background(
-                    Circle()
-                        .fill(color.opacity(0.25))
-                )
-                .overlay(Circle().stroke(color.opacity(0.8), lineWidth: 2))
+    // Focus-aware circle button used in the radial layout above
+    private struct MoveCircleButton: View {
+        let label: String
+        let color: Color
+        let a11y: String
+        let action: () -> Void
+        @Environment(\.isFocused) private var isFocused: Bool
+
+        var body: some View {
+            Button(action: action) {
+                Text(label)
+                    .font(.system(size: 48, weight: .bold))
+                    .frame(width: 140, height: 140)
+                    .background(
+                        Circle()
+                            .fill(color.opacity(0.25))
+                    )
+                    .overlay(
+                        Circle()
+                            .stroke(color.opacity(isFocused ? 1.0 : 0.8), lineWidth: isFocused ? 4 : 2)
+                            .shadow(color: color.opacity(isFocused ? 0.7 : 0.0), radius: isFocused ? 22 : 0)
+                    )
+                    .scaleEffect(isFocused ? 1.08 : 1.0)
+                    .animation(.spring(response: 0.25, dampingFraction: 0.75, blendDuration: 0.08), value: isFocused)
+            }
+            .buttonStyle(.plain)
+            .contentShape(Circle())
+            .focusable(true)
+            .accessibilityLabel(a11y)
+            .accessibilityIdentifier("QuickMove_\(label)")
         }
-        .buttonStyle(.plain)
-        .contentShape(Circle())
-        .focusable(true)
-        .accessibilityLabel(a11y)
-        .accessibilityIdentifier("QuickMove_\(label)")
-        .scaleEffect(1.0)
     }
 }
 #endif

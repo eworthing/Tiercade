@@ -1,5 +1,9 @@
 import SwiftUI
 import TiercadeCore
+// HIG-aligned tvOS layout metrics
+#if os(tvOS)
+import Foundation
+#endif
 
 // MainAppView: Top-level composition that was split out during modularization.
 // It composes SidebarView, TierGridView, ToolbarView and overlays (from the
@@ -22,25 +26,38 @@ struct MainAppView: View {
             }
             .toolbar { ToolbarView(app: app) }
 #else
-            // For iOS/tvOS use a simple VStack with toolbar at the top
-            VStack(spacing: 0) {
-#if os(tvOS)
-                // tvOS: provide a simple view-based toolbar so essential actions remain reachable
-                TVToolbarView(app: app)
-                    .padding(.vertical, 8)
-#else
-                // ToolbarView is ToolbarContent (not a View) on some platforms; avoid embedding it directly on tvOS
-                HStack {
-                    // On non-tvOS platforms we can still include toolbar-like controls if needed.
-                    // Keep this minimal so it builds across platforms.
-                    Text("")
-                }
-                .environmentObject(app)
-#endif
-
+            // For iOS/tvOS show content full-bleed and inject bars via safe area insets
+            ZStack {
                 TierGridView(tierOrder: app.tierOrder)
                     .environmentObject(app)
+                    // Add content padding to avoid overlay bars overlap
+                    .padding(.top, TVMetrics.contentTopInset)
+                    .padding(.bottom, TVMetrics.contentBottomInset)
             }
+            #if os(tvOS)
+            // Top toolbar (overlay so it doesn't reduce content area)
+            .overlay(alignment: .top) {
+                TVToolbarView(app: app)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(height: TVMetrics.topBarHeight)
+                    .background(.thinMaterial)
+                    .overlay(Divider().opacity(0.15), alignment: .bottom)
+            }
+            // Bottom action bar (safe area inset to avoid covering focused rows)
+            .overlay(alignment: .bottom) {
+                TVActionBar(app: app)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: TVMetrics.bottomBarHeight)
+                    .background(.thinMaterial)
+                    .overlay(Divider().opacity(0.15), alignment: .top)
+            }
+            #else
+            // ToolbarView is ToolbarContent (not a View) on some platforms; avoid embedding it directly on tvOS
+            .overlay(alignment: .top) {
+                HStack { Text("") }
+                    .environmentObject(app)
+            }
+            #endif
 #endif
         }
         .overlay {
@@ -79,10 +96,7 @@ struct MainAppView: View {
                     .zIndex(60)
                 }
 
-                #if os(tvOS)
-                VStack { Spacer(); TVActionBar(app: app) }
-                    .zIndex(30)
-                #endif
+                // Bottom action bar is inset on tvOS via safeAreaInset above; no overlay here
 
                 // Detail overlay (all platforms)
                 if let detail = app.detailItem {
@@ -109,35 +123,62 @@ struct MainAppView: View {
 // Simple tvOS-friendly toolbar exposing essential actions as buttons.
 struct TVToolbarView: View {
     @ObservedObject var app: AppState
+    // Seed and manage initial focus for tvOS toolbar controls
+    @FocusState private var focusedControl: Control?
+
+    private enum Control: Hashable {
+        case undo, redo, randomize, reset, h2h, analyze
+    }
 
     var body: some View {
         HStack(spacing: 16) {
             Button(action: { app.undo() }) { Label("Undo", systemImage: "arrow.uturn.backward") }
-                .buttonStyle(GhostButtonStyle())
+                .buttonStyle(.bordered)
+                .focusable()
+                .focused($focusedControl, equals: .undo)
 
             Button(action: { app.redo() }) { Label("Redo", systemImage: "arrow.uturn.forward") }
-                .buttonStyle(GhostButtonStyle())
+                .buttonStyle(.bordered)
+                .focusable()
+                .focused($focusedControl, equals: .redo)
 
             Divider()
 
             Button(action: { app.randomize() }) { Label("Randomize", systemImage: "shuffle") }
-                .buttonStyle(PrimaryButtonStyle())
+                .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("Toolbar_Randomize")
+                .focusable()
+                .focused($focusedControl, equals: .randomize)
 
             Button(action: { app.reset() }) { Label("Reset", systemImage: "trash") }
-                .buttonStyle(GhostButtonStyle())
+                .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("Toolbar_Reset")
+                .focusable()
+                .focused($focusedControl, equals: .reset)
 
-            Spacer()
+            Spacer(minLength: 0)
 
             Button(action: { app.startH2H() }) { Label("H2H", systemImage: "bolt.horizontal") }
-                .buttonStyle(PrimaryButtonStyle())
+                .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("Toolbar_H2H")
+                .focusable()
+                .focused($focusedControl, equals: .h2h)
 
             Button(action: { app.toggleAnalysis() }) { Label("Analyze", systemImage: "chart.bar") }
-                .buttonStyle(GhostButtonStyle())
+                .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("Toolbar_Analyze")
+                .focusable()
+                .focused($focusedControl, equals: .analyze)
         }
-        .padding(.horizontal, Metrics.grid)
+        .lineLimit(1)
+        .padding(.horizontal, TVMetrics.barHorizontalPadding)
+        .padding(.vertical, TVMetrics.barVerticalPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: TVMetrics.topBarHeight)
+        .fixedSize(horizontal: false, vertical: true)
+        #if os(tvOS)
+        .focusSection()
+        // Don't seed default focus here; let grid own initial focus for tvOS
+        #endif
     }
 }

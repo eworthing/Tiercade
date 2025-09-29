@@ -51,13 +51,15 @@ struct SidebarSearchView: View {
 
             HStack(spacing: 8) {
                 ForEach(FilterType.allCases, id: \.self) { filter in
-                    Button(filter.rawValue) { app.activeFilter = filter }
-                        .buttonStyle(GhostButtonStyle())
-                        #if !os(tvOS)
-                        .controlSize(.small)
-                        #endif
-                        .background(app.activeFilter == filter ? Color.accentColor.opacity(0.2) : Color.clear)
-                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(app.activeFilter == filter ? Color.accentColor : Color.clear, lineWidth: 2))
+                        Button(filter.rawValue) { app.activeFilter = filter }
+                            .buttonStyle(GhostButtonStyle())
+                            #if os(tvOS)
+                            .focusable()
+                            #else
+                            .controlSize(.small)
+                            #endif
+                            .background(app.activeFilter == filter ? Color.accentColor.opacity(0.2) : Color.clear)
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(app.activeFilter == filter ? Color.accentColor : Color.clear, lineWidth: 2))
                 }
             }
         }

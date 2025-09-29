@@ -127,6 +127,8 @@ struct DragTargetHighlight: View {
 
 struct QuickRankOverlay: View {
     @ObservedObject var app: AppState
+    @FocusState private var focused: FocusField?
+    private enum FocusField: Hashable { case firstTier, cancel }
     var body: some View {
         if let item = app.quickRankTarget {
             VStack(spacing: 12) {
@@ -137,10 +139,12 @@ struct QuickRankOverlay: View {
                         Button(t) { app.commitQuickRank(to: t) }
                             .buttonStyle(PrimaryButtonStyle())
                             .accessibilityIdentifier("QuickRank_Tier_\(t)")
+                            .focused($focused, equals: t == app.tierOrder.first ? .firstTier : nil)
                     }
                     Button("Cancel", role: .cancel) { app.cancelQuickRank() }
                         .accessibilityHint("Cancel quick rank")
                         .accessibilityIdentifier("QuickRank_Cancel")
+                        .focused($focused, equals: .cancel)
                 }
             }
             .accessibilityIdentifier("QuickRank_Overlay")
@@ -152,6 +156,8 @@ struct QuickRankOverlay: View {
             #if os(macOS) || os(tvOS)
             .focusable(true)
             .accessibilityAddTraits(.isModal)
+            .defaultFocus($focused, .firstTier)
+            .focusSection()
             #endif
         }
     }
@@ -161,6 +167,8 @@ struct QuickRankOverlay: View {
 
 struct HeadToHeadOverlay: View {
     @ObservedObject var app: AppState
+    @FocusState private var focused: FocusField?
+    private enum FocusField: Hashable { case left, right, finish, cancel }
     var body: some View {
         if app.h2hActive {
             ZStack {
@@ -173,9 +181,11 @@ struct HeadToHeadOverlay: View {
                         HStack(spacing: 16) {
                             H2HButton(item: pair.0) { app.voteH2H(winner: pair.0) }
                                 .accessibilityIdentifier("H2H_Left")
+                                .focused($focused, equals: .left)
                             Text("vs").font(.headline)
                             H2HButton(item: pair.1) { app.voteH2H(winner: pair.1) }
                                 .accessibilityIdentifier("H2H_Right")
+                                .focused($focused, equals: .right)
                         }
                     } else {
                         Text("No more pairs. Tap Finish.").foregroundStyle(.secondary)
@@ -184,19 +194,24 @@ struct HeadToHeadOverlay: View {
                         Button("Finish") { app.finishH2H() }
                             .buttonStyle(PrimaryButtonStyle())
                             .accessibilityIdentifier("H2H_Finish")
+                            .focused($focused, equals: .finish)
                         Button("Cancel", role: .cancel) { app.h2hActive = false }
                             .accessibilityHint("Cancel head to head and return to the main view")
                             .accessibilityIdentifier("H2H_Cancel")
+                            .focused($focused, equals: .cancel)
                     }
                 }
                 .padding(Metrics.grid)
                 .background(.thinMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .padding(Metrics.grid * 2)
+                .accessibilityIdentifier("H2H_Overlay")
                 .accessibilityElement(children: .contain)
                 #if os(macOS) || os(tvOS)
                 .focusable(true)
                 .accessibilityAddTraits(.isModal)
+                .defaultFocus($focused, .left)
+                .focusSection()
                 #else
                 .accessibilityAddTraits(.isModal)
                 #endif

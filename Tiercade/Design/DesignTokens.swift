@@ -39,13 +39,13 @@ extension Color {
         #elseif canImport(AppKit)
         // NSColor with dynamic provider
         let dynamic = PlatformColor(name: nil, dynamicProvider: { appearance in
-            // Choose a color based on appearance (aqua == light, darkAqua == dark)
             let isLight = appearance.bestMatch(from: [.aqua, .darkAqua]) == .aqua
             return isLight ? PlatformColor(hex: light) : PlatformColor(hex: dark)
         })
         return Color(dynamic)
         #else
-        return Color(hex: dark)
+        // On platforms without dynamic providers, prefer dark by default
+        return Color(hex: dark) ?? .black
         #endif
     }
 }
@@ -115,8 +115,15 @@ enum Metrics {
 
 enum TypeScale {
     // Use dynamic, semantic text styles so SwiftUI can scale them for Accessibility / Dynamic Type
+    #if os(tvOS)
+    static let h2 = Font.largeTitle.weight(.bold)
+    static let h3 = Font.title.weight(.semibold)
+    static let body = Font.title3
+    static let label = Font.body
+    #else
     static let h2 = Font.title.weight(.semibold)
     static let h3 = Font.title2.weight(.semibold)
     static let body = Font.body
     static let label = Font.caption
+    #endif
 }
