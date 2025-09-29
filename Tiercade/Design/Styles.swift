@@ -81,3 +81,89 @@ private func get(_ isPressed: Bool) -> Color {
         return .white
         #endif
     }
+
+struct TVRemoteButtonStyle: ButtonStyle {
+    enum Role {
+        case primary
+        case secondary
+        case list
+    }
+
+    var role: Role = .primary
+    @Environment(\.isFocused) private var isFocused: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+    let colors = palette(for: role, isPressed: configuration.isPressed, isFocused: isFocused)
+        let cornerRadius: CGFloat = role == .list ? 22 : 18
+
+        return configuration.label
+            .font(font(for: role))
+            .frame(maxWidth: role == .list ? .infinity : nil, alignment: .leading)
+            .padding(.horizontal, horizontalPadding(for: role))
+            .padding(.vertical, verticalPadding(for: role))
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(colors.background)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .stroke(colors.border, lineWidth: isFocused ? 3 : 1.5)
+                    )
+            )
+            .foregroundColor(colors.foreground)
+            .scaleEffect(configuration.isPressed ? 0.97 : (isFocused ? 1.06 : 1.0))
+            .animation(.easeOut(duration: 0.15), value: isFocused)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+
+    private func font(for role: Role) -> Font {
+        switch role {
+        case .primary: return .title3.weight(.semibold)
+        case .secondary: return .headline.weight(.semibold)
+        case .list: return .body.weight(.semibold)
+        }
+    }
+
+    private func horizontalPadding(for role: Role) -> CGFloat {
+        switch role {
+        case .primary: return 26
+        case .secondary: return 22
+        case .list: return 20
+        }
+    }
+
+    private func verticalPadding(for role: Role) -> CGFloat {
+        switch role {
+        case .primary: return 14
+        case .secondary: return 12
+        case .list: return 10
+        }
+    }
+
+    private func palette(for role: Role, isPressed: Bool, isFocused: Bool) -> (background: Color, border: Color, foreground: Color) {
+        let baseOpacity: Double = isFocused ? 0.35 : 0.25
+        switch role {
+        case .primary:
+            return (
+                background: Color.white.opacity(isPressed ? 0.45 : baseOpacity),
+                border: Color.white.opacity(isFocused ? 0.9 : 0.55),
+                foreground: .white
+            )
+        case .secondary:
+            return (
+                background: Color.white.opacity(isPressed ? 0.25 : 0.18),
+                border: Color.white.opacity(isFocused ? 0.65 : 0.4),
+                foreground: .white
+            )
+        case .list:
+            return (
+                background: Color.white.opacity(isPressed ? 0.22 : 0.15),
+                border: Color.white.opacity(isFocused ? 0.5 : 0.25),
+                foreground: .white
+            )
+        }
+    }
+}
+
+extension ButtonStyle where Self == TVRemoteButtonStyle {
+    static func tvRemote(_ role: TVRemoteButtonStyle.Role = .primary) -> TVRemoteButtonStyle { TVRemoteButtonStyle(role: role) }
+}
