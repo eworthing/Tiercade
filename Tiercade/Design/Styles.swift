@@ -36,7 +36,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .font(TypeScale.label)
             .padding(.horizontal, Metrics.grid * 2).padding(.vertical, Metrics.grid * 1.25)
             .background(Palette.brand.opacity(configuration.isPressed ? 0.85 : 1))
-            .foregroundColor(.white)
+            .foregroundColor(get(configuration.isPressed))
             .cornerRadius(Metrics.rSm)
             .shadow(color: Palette.brand.opacity(0.6), radius: 10, x: 0, y: 6)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
@@ -44,12 +44,40 @@ struct PrimaryButtonStyle: ButtonStyle {
 }
 
 struct GhostButtonStyle: ButtonStyle {
+    @Environment(\.isFocused) var isFocused: Bool
+    
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(TypeScale.label)
             .padding(.horizontal, Metrics.grid * 2).padding(.vertical, Metrics.grid * 1.25)
-            .background(Palette.surfHi)
-            .foregroundColor(Palette.text)
+            .background(isFocused ? Color.blue.opacity(0.3) : Color.black.opacity(0.5))
+            .foregroundColor(.white)
             .cornerRadius(Metrics.rSm)
+            .scaleEffect(isFocused ? 1.05 : 1.0)
+            .animation(.easeOut(duration: 0.2), value: isFocused)
     }
 }
+
+struct CardButtonStyle: ButtonStyle {
+    @Environment(\.isFocused) var isFocused: Bool
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect((configuration.isPressed || isFocused) ? 1.15 : 1.0)
+            .shadow(
+                color: (configuration.isPressed || isFocused) ? .blue.opacity(0.6) : .black.opacity(0.1), 
+                radius: (configuration.isPressed || isFocused) ? 20 : 6, 
+                x: 0, 
+                y: (configuration.isPressed || isFocused) ? 12 : 4
+            )
+            .animation(.easeOut(duration: 0.2), value: configuration.isPressed || isFocused)
+    }
+}
+
+private func get(_ isPressed: Bool) -> Color {
+        #if os(tvOS)
+        return isPressed ? .black : .white
+        #else
+        return .white
+        #endif
+    }

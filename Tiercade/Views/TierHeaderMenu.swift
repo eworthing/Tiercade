@@ -4,22 +4,30 @@ import SwiftUI
 struct TierHeaderView: View {
     @EnvironmentObject var app: AppState
     let tierId: String
+    var titleColor: Color? = nil
     @State private var showMenu = false
     @State private var newLabel: String = ""
     @State private var newColorHex: String = ""
 
     var body: some View {
         HStack {
-            Text(app.displayLabel(for: tierId))
-                .font(TypeScale.h3)
-                .foregroundColor(Palette.text)
+            Button(action: { showMenu = true }) {
+                Text(app.displayLabel(for: tierId))
+                    .font(TypeScale.h3)
+                    .foregroundColor(titleColor ?? Palette.text)
+            }
+            .buttonStyle(GhostButtonStyle())
+            .focusable()
+            
             Spacer()
             Button(app.isTierLocked(tierId) ? "Unlock" : "Lock") {
                 app.toggleTierLocked(tierId)
             }
             .buttonStyle(.bordered)
+            .focusable()
             Button("Menu") { showMenu = true }
                 .buttonStyle(.bordered)
+                .focusable()
         }
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.6).onEnded { _ in showMenu = true })
         .sheet(isPresented: $showMenu) {

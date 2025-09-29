@@ -4,6 +4,8 @@ import TiercadeCore
 #if os(tvOS)
 struct ItemMenuOverlay: View {
     @ObservedObject var app: AppState
+    @FocusState private var focused: FocusField?
+    private enum FocusField: Hashable { case firstMove, toggle, details, remove, close }
 
     var body: some View {
         if let item = app.itemMenuTarget {
@@ -17,6 +19,7 @@ struct ItemMenuOverlay: View {
                                 .buttonStyle(.borderedProminent)
                                 .accessibilityLabel("Move to \(t) tier")
                                 .accessibilityIdentifier("ItemMenu_Move_\(t)")
+                                .focused($focused, equals: t == app.tierOrder.first ? .firstMove : nil)
                         }
                     }
                 }
@@ -26,6 +29,7 @@ struct ItemMenuOverlay: View {
                     }
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier("ItemMenu_ToggleSelection")
+                    .focused($focused, equals: .toggle)
 
                     Button("View Details") {
                         app.detailItem = item
@@ -33,6 +37,7 @@ struct ItemMenuOverlay: View {
                     }
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier("ItemMenu_ViewDetails")
+                    .focused($focused, equals: .details)
 
                     Button("Remove from Tier") {
                         app.removeFromCurrentTier(item.id)
@@ -40,10 +45,12 @@ struct ItemMenuOverlay: View {
                     }
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier("ItemMenu_RemoveFromTier")
+                    .focused($focused, equals: .remove)
 
                     Spacer()
                     Button("Close", role: .cancel) { app.dismissItemMenu() }
                         .accessibilityIdentifier("ItemMenu_Close")
+                        .focused($focused, equals: .close)
                 }
             }
             .padding(24)
@@ -53,6 +60,8 @@ struct ItemMenuOverlay: View {
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
             .accessibilityIdentifier("ItemMenu_Overlay")
+            .defaultFocus($focused, .firstMove)
+            .focusSection()
         }
     }
 }

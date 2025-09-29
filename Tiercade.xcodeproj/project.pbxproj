@@ -396,6 +396,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				/* Disable tvOS app icon in Debug so we can build/test without layered icon artwork */
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=appletvos*]" = "";
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=appletvsimulator*]" = "";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Tiercade/Tiercade.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -434,6 +437,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				/* Disable tvOS app icon in Release temporarily until artwork is ready */
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=appletvos*]" = "";
+				"ASSETCATALOG_COMPILER_APPICON_NAME[sdk=appletvsimulator*]" = "";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Tiercade/Tiercade.entitlements;
 				CODE_SIGN_STYLE = Automatic;

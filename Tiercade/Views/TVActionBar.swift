@@ -32,9 +32,11 @@ struct TVActionBar: View {
                     .accessibilityIdentifier("ActionBar_ClearSelection")
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 10)
-        .background(.ultraThinMaterial)
+        .lineLimit(1)
+        .padding(.horizontal, TVMetrics.barHorizontalPadding)
+        .padding(.vertical, TVMetrics.barVerticalPadding)
+        .frame(maxWidth: .infinity)
+        .frame(height: TVMetrics.bottomBarHeight)
         .focusSection()
         .accessibilityIdentifier("ActionBar")
     }
