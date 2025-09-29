@@ -11,6 +11,9 @@ import Foundation
 
 struct MainAppView: View {
     @EnvironmentObject var app: AppState
+    #if os(tvOS)
+    @Environment(\.scenePhase) private var scenePhase
+    #endif
 
     var body: some View {
         Group {
@@ -60,6 +63,12 @@ struct MainAppView: View {
             #endif
 #endif
         }
+#if os(tvOS)
+        .task { FocusUtils.seedFocus() }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active { FocusUtils.seedFocus() }
+        }
+#endif
         .overlay {
             // Compose overlays here so they appear on all platforms (including tvOS)
             ZStack {
@@ -133,41 +142,37 @@ struct TVToolbarView: View {
     var body: some View {
         HStack(spacing: 16) {
             Button(action: { app.undo() }) { Label("Undo", systemImage: "arrow.uturn.backward") }
-                .buttonStyle(.bordered)
-                .focusable()
+                .buttonStyle(.tvRemote(.secondary))
+                .disabled(!app.canUndo)
                 .focused($focusedControl, equals: .undo)
 
             Button(action: { app.redo() }) { Label("Redo", systemImage: "arrow.uturn.forward") }
-                .buttonStyle(.bordered)
-                .focusable()
+                .buttonStyle(.tvRemote(.secondary))
+                .disabled(!app.canRedo)
                 .focused($focusedControl, equals: .redo)
 
             Divider()
 
             Button(action: { app.randomize() }) { Label("Randomize", systemImage: "shuffle") }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.tvRemote(.primary))
                 .accessibilityIdentifier("Toolbar_Randomize")
-                .focusable()
                 .focused($focusedControl, equals: .randomize)
 
             Button(action: { app.reset() }) { Label("Reset", systemImage: "trash") }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.tvRemote(.primary))
                 .accessibilityIdentifier("Toolbar_Reset")
-                .focusable()
                 .focused($focusedControl, equals: .reset)
 
             Spacer(minLength: 0)
 
             Button(action: { app.startH2H() }) { Label("H2H", systemImage: "bolt.horizontal") }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.tvRemote(.primary))
                 .accessibilityIdentifier("Toolbar_H2H")
-                .focusable()
                 .focused($focusedControl, equals: .h2h)
 
             Button(action: { app.toggleAnalysis() }) { Label("Analyze", systemImage: "chart.bar") }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.tvRemote(.primary))
                 .accessibilityIdentifier("Toolbar_Analyze")
-                .focusable()
                 .focused($focusedControl, equals: .analyze)
         }
         .lineLimit(1)

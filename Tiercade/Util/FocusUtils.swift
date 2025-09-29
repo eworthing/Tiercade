@@ -1,7 +1,14 @@
 import SwiftUI
+#if os(tvOS)
+import UIKit
+#endif
 
 enum FocusUtils {
     static func seedFocus() {
-        // Placeholder; SwiftUI focus is driven via @FocusState and .focusSection()
+#if os(tvOS)
+        DispatchQueue.main.async {
+            UIAccessibility.post(notification: .screenChanged, argument: nil)
+        }
+#endif
     }
 }
