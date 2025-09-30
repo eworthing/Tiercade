@@ -1,8 +1,16 @@
+````instructions
 ```instructions
 When the question involves Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (SwiftUI, UIKit, Focus, HIG), consult the apple-docs MCP tools first. Use them to search/fetch authoritative Apple documentation before other sources.
 ```
 
 ## Tiercade guidance for AI coding agents
+
+- Development practices
+  - Commit style: Use Conventional Commits (`feat:`, `fix:`, `chore:`, `refactor:`, `test:`, `docs:`)
+  - Write concise, present-tense commit messages. Include scope when helpful (e.g., `feat(tvOS): quick move overlay`)
+  - Keep views platform-agnostic; use `#if os(...)` for platform specifics
+  - Build and test before committing: `swift test` in TiercadeCore, build for simulators
+  - Avoid committing build artifacts, DerivedData, or .DS_Store files
 
 - Targets and stack
   - SwiftUI app; shared logic in `TiercadeCore` (Swift Package). This branch focuses on tvOS.
