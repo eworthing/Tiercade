@@ -157,15 +157,27 @@ Cmd+R (or Product → Run)
 ### **Project Structure**
 ```
 Tiercade/
-├── Tiercade/                  # Main iOS app target
-│   ├── AppState.swift         # Central state management
-│   ├── ContentView.swift      # Main UI composition
+├── Tiercade/                  # Main app target (SwiftUI + tvOS focus)
+│   ├── State/                 # AppState core and feature extensions
+│   ├── Views/
+│   │   ├── Main/              # Core screen composition (ContentView, MainAppView)
+│   │   ├── Toolbar/           # Toolbar views and export sheets
+│   │   ├── Overlays/          # QuickMove, Item menu, QR overlays
+│   │   └── Components/        # Reusable detail, settings, and shared parts
+│   ├── Bridges/               # UIKit/AVKit bridges for focus & galleries
+│   ├── Design/                # Tokens, themes, and tvOS metrics
+│   ├── Export/                # Export renderer helpers
+│   ├── Util/                  # Cross-cutting utilities (focus, device checks)
+│   ├── SharedCore.swift       # Shared dependency wiring
 │   └── TiercadeApp.swift      # App entry point
 ├── TiercadeCore/              # Platform-agnostic Swift Package
-│   ├── Sources/               # Core domain logic
-│   └── Tests/                 # Unit tests
-├── TiercadeTests/             # iOS integration tests
-├── TiercadeUITests/           # UI automation tests
+│   ├── Sources/
+│   │   ├── Models/            # Data structures & model resolution
+│   │   ├── Logic/             # Tiering, history, head-to-head logic
+│   │   └── Utilities/         # Formatters, data loaders, randomness
+│   └── Tests/                 # Core unit tests
+├── TiercadeTests/             # App unit/integration tests
+├── TiercadeUITests/           # UI automation suites (tvOS tests under tvOS/)
 └── Tiercade.xcodeproj/        # Xcode project configuration
 ```
 

@@ -50,7 +50,6 @@ private extension Gradient {
 #Preview("tvOS") { ContentView() }
 #endif
 
-
 // MARK: - Quick Rank overlay
 // QuickRankOverlay (and the other overlays like HeadToHeadOverlay, ToastView,
 // etc.) were moved to `Tiercade/Views/ContentView+Overlays.swift`.
@@ -58,7 +57,6 @@ private extension Gradient {
 // MARK: - JSON FileDocument
 // Head-to-head, quick-rank and overlay components are implemented in
 // `Tiercade/Views/ContentView+Overlays.swift`.
-
 
 // Analysis and statistics views were moved to `Tiercade/Views/ContentView+Analysis.swift`
 // to reduce compile-time specialization. See that file for the implementations.

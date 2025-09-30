@@ -253,7 +253,7 @@ final class AppState: ObservableObject {
     @Published var analysisData: TierAnalysisData?
 
     // MARK: - Accessibility
-    fileprivate func announce(_ message: String) {
+    func announce(_ message: String) {
         #if canImport(UIKit)
         UIAccessibility.post(notification: .announcement, argument: message)
         #endif

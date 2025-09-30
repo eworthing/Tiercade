@@ -19,7 +19,7 @@ final class TiercadeCoreTests: XCTestCase {
 
     func testHistory() {
         var h = HistoryLogic.initHistory([0])
-        h = HistoryLogic.saveSnapshot(h, snapshot: [0,1])
+        h = HistoryLogic.saveSnapshot(h, snapshot: [0, 1])
         XCTAssertTrue(HistoryLogic.canUndo(h))
         XCTAssertFalse(HistoryLogic.canRedo(h))
         let u = HistoryLogic.undo(h)
@@ -39,8 +39,8 @@ final class TiercadeCoreTests: XCTestCase {
         let b = Item(id: "b", name: "B")
         let c = Item(id: "c", name: "C")
     let ranking = [H2HRankingEntry(item: a, winRate: 0.9), H2HRankingEntry(item: b, winRate: 0.8), H2HRankingEntry(item: c, winRate: 0.7)]
-        let tiers: Items = ["S": [], "A": [], "B": [], "unranked": [a,b,c]]
-        let distributed = HeadToHeadLogic.distributeRoundRobin(ranking, into: ["S","A","B"], baseTiers: tiers)
+        let tiers: Items = ["S": [], "A": [], "B": [], "unranked": [a, b, c]]
+        let distributed = HeadToHeadLogic.distributeRoundRobin(ranking, into: ["S", "A", "B"], baseTiers: tiers)
         XCTAssertEqual(distributed["S"]?.map { $0.id }, ["a"])
         XCTAssertEqual(distributed["A"]?.map { $0.id }, ["b"])
         XCTAssertEqual(distributed["B"]?.map { $0.id }, ["c"])
@@ -62,7 +62,7 @@ final class TiercadeCoreTests: XCTestCase {
         var rng = SeededRNG(seed: 42)
         let vals = (0..<3).map { _ in rng.next() }
         XCTAssertEqual(vals.count, 3)
-        let arr = [1,2,3]
+        let arr = [1, 2, 3]
         let pair = RandomUtils.pickRandomPair(arr) { rng.next() }
         XCTAssertNotNil(pair)
         if let p = pair { XCTAssertNotEqual(p.0, p.1) }

@@ -1,0 +1,5 @@
+# Ignore legacy partials replaced by modularized Views
+./Views/ContentView+TierGrid.swift
+./Views/ContentView+Toolbar.swift
+Views/ContentView+TierGrid.swift
+Views/ContentView+Toolbar.swift

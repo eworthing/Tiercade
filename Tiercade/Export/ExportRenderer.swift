@@ -27,146 +27,170 @@ struct ExportRenderer {
         var strokeLineWidth: CGFloat = 1
     }
 
-    static func makeView(tiers: [String: [Item]],
-                         order: [String],
-                         labels: [String: String],
-                         colors: [String: String],
-                         group: String,
-                         themeName: String,
-                         cfg: Config = Config()) -> some View {
-        let header = VStack(alignment: .leading, spacing: 8) {
-            Text("Tier List — \(group)")
-                .font(cfg.headerFont)
-                .foregroundColor(cfg.titleColor)
-            Text("Theme: \(themeName) • \(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .none))")
-                .font(cfg.subtitleFont)
-                .foregroundColor(cfg.subtitleColor)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    struct Context {
+        let tiers: [String: [Item]]
+        let order: [String]
+        let labels: [String: String]
+        let colors: [String: String]
+        let group: String
+        let themeName: String
+    }
 
-        return VStack(alignment: .leading, spacing: cfg.sectionSpacing) {
-            header
-            ForEach(order, id: \.self) { tier in
-                VStack(alignment: .leading, spacing: 8) {
-                    let label = labels[tier] ?? tier
-                    HStack {
-                        Text(label)
-                            .font(.title).bold()
-                            .foregroundColor(.white)
-                        Spacer()
-                        Text("\(tiers[tier]?.count ?? 0)")
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                    .padding(.bottom, 6)
-
-                    let tint = Color(hex: colors[tier] ?? "")
-                    let items = tiers[tier] ?? []
-                    ExportRow(items: items, itemSize: cfg.itemSize, spacing: cfg.itemSpacing)
-                        .padding(12)
-                        .background(
-                            RoundedRectangle(cornerRadius: cfg.cornerRadius)
-                                .fill((tint ?? Color.clear).opacity(0.08))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: cfg.cornerRadius)
-                                .stroke(cfg.strokeColor, lineWidth: cfg.strokeLineWidth)
-                        )
-                }
+    static func makeView(context: Context, cfg: Config = Config()) -> some View {
+        VStack(alignment: .leading, spacing: cfg.sectionSpacing) {
+            headerView(context: context, cfg: cfg)
+            ForEach(context.order, id: \.self) { tier in
+                tierSection(for: tier, context: context, cfg: cfg)
             }
-
-            if let unranked = tiers["unranked"], !unranked.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("Unranked")
-                            .font(.title).bold()
-                            .foregroundColor(.white)
-                        Spacer()
-                        Text("\(unranked.count)")
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                    .padding(.bottom, 6)
-
-                    ExportRow(items: unranked, itemSize: cfg.itemSize, spacing: cfg.itemSpacing)
-                        .padding(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: cfg.cornerRadius)
-                                .stroke(cfg.strokeColor, lineWidth: cfg.strokeLineWidth)
-                        )
-                }
-            }
+            unrankedSection(context: context, cfg: cfg)
         }
         .padding(cfg.contentInsets)
         .background(cfg.background)
     }
 
+    @ViewBuilder
+    private static func headerView(context: Context, cfg: Config) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Tier List — \(context.group)")
+                .font(cfg.headerFont)
+                .foregroundColor(cfg.titleColor)
+
+            Text(themeLine(context: context))
+                .font(cfg.subtitleFont)
+                .foregroundColor(cfg.subtitleColor)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private static func tierSection(for tier: String, context: Context, cfg: Config) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            headerRow(for: tier, context: context)
+            let tint = Color(hex: context.colors[tier] ?? "")
+            let items = context.tiers[tier] ?? []
+            ExportRow(items: items, itemSize: cfg.itemSize, spacing: cfg.itemSpacing)
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: cfg.cornerRadius)
+                        .fill((tint ?? Color.clear).opacity(0.08))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: cfg.cornerRadius)
+                        .stroke(cfg.strokeColor, lineWidth: cfg.strokeLineWidth)
+                )
+        }
+    }
+
+    @ViewBuilder
+    private static func unrankedSection(context: Context, cfg: Config) -> some View {
+        if let unranked = context.tiers["unranked"], !unranked.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                sectionHeader(title: "Unranked", count: unranked.count)
+                ExportRow(items: unranked, itemSize: cfg.itemSize, spacing: cfg.itemSpacing)
+                    .padding(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cfg.cornerRadius)
+                            .stroke(cfg.strokeColor, lineWidth: cfg.strokeLineWidth)
+                    )
+            }
+        }
+    }
+
+    private static func headerRow(for tier: String, context: Context) -> some View {
+        let label = context.labels[tier] ?? tier
+        let count = context.tiers[tier]?.count ?? 0
+        return sectionHeader(title: label, count: count)
+    }
+
+    private static func sectionHeader(title: String, count: Int) -> some View {
+        HStack {
+            Text(title)
+                .font(.title).bold()
+                .foregroundColor(.white)
+            Spacer()
+            Text("\(count)")
+                .foregroundColor(.white.opacity(0.7))
+        }
+        .padding(.bottom, 6)
+    }
+
+    private static func themeLine(context: Context) -> String {
+        let dateString = DateFormatter.localizedString(
+            from: Date(),
+            dateStyle: .medium,
+            timeStyle: .none
+        )
+        return "Theme: \(context.themeName) • \(dateString)"
+    }
+
     // Render to PNG data, clamped to max size by scaling the container view.
-    static func renderPNG(tiers: [String: [Item]],
-                          order: [String],
-                          labels: [String: String],
-                          colors: [String: String],
-                          group: String,
-                          themeName: String,
+    static func renderPNG(context: Context,
                           targetSize: CGSize? = nil,
                           cfg: Config = Config()) -> Data? {
-        let view = makeView(tiers: tiers, order: order, labels: labels, colors: colors, group: group, themeName: themeName, cfg: cfg)
+        let prepared = prepareRenderingView(context: context, cfg: cfg)
+        let sizing = resolveSizing(for: prepared.size, targetSize: targetSize, cfg: cfg)
 
-        // Estimate intrinsic width based on widest row
-        let screenWidth: CGFloat = 1920 // base logical width for layout; will scale down if needed
-        let hosting = UIHostingController(rootView: view.frame(width: screenWidth))
-        hosting.view.bounds = CGRect(origin: .zero, size: CGSize(width: screenWidth, height: 100))
-        hosting.view.backgroundColor = .clear
-        let size = hosting.sizeThatFits(in: CGSize(width: screenWidth, height: CGFloat.greatestFiniteMagnitude))
-
-        let maxSize = targetSize ?? cfg.maxSize
-        let scale = min(maxSize.width / size.width, maxSize.height / size.height, 1.0)
-        let finalSize = CGSize(width: floor(size.width * scale), height: floor(size.height * scale))
-
-        let renderer = UIGraphicsImageRenderer(size: finalSize)
-        let data = renderer.pngData { ctx in
-            // Scale context
-            ctx.cgContext.scaleBy(x: scale, y: scale)
-            hosting.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
+        let renderer = UIGraphicsImageRenderer(size: sizing.finalSize)
+        return renderer.pngData { ctx in
+            ctx.cgContext.scaleBy(x: sizing.scale, y: sizing.scale)
+            prepared.view.drawHierarchy(in: CGRect(origin: .zero, size: prepared.size), afterScreenUpdates: true)
         }
-        return data
     }
 
     // Render to vector PDF on iOS/macOS; tvOS doesn't support PDF context.
-    static func renderPDF(tiers: [String: [Item]],
-                          order: [String],
-                          labels: [String: String],
-                          colors: [String: String],
-                          group: String,
-                          themeName: String,
+    static func renderPDF(context: Context,
                           targetSize: CGSize? = nil,
                           cfg: Config = Config()) -> Data? {
         #if os(tvOS)
         return nil
         #else
-        let view = makeView(tiers: tiers, order: order, labels: labels, colors: colors, group: group, themeName: themeName, cfg: cfg)
-
-        let screenWidth: CGFloat = 1920
-        let hosting = UIHostingController(rootView: view.frame(width: screenWidth))
-        hosting.view.bounds = CGRect(origin: .zero, size: CGSize(width: screenWidth, height: 100))
-        hosting.view.backgroundColor = .clear
-        let size = hosting.sizeThatFits(in: CGSize(width: screenWidth, height: CGFloat.greatestFiniteMagnitude))
-
-        let maxSize = targetSize ?? cfg.maxSize
-        let scale = min(maxSize.width / size.width, maxSize.height / size.height, 1.0)
-        let finalSize = CGSize(width: floor(size.width * scale), height: floor(size.height * scale))
+        let prepared = prepareRenderingView(context: context, cfg: cfg)
+        let sizing = resolveSizing(for: prepared.size, targetSize: targetSize, cfg: cfg)
 
         let data = NSMutableData()
         guard let consumer = CGDataConsumer(data: data as CFMutableData) else { return nil }
-        var mediaBox = CGRect(origin: .zero, size: finalSize)
+        var mediaBox = CGRect(origin: .zero, size: sizing.finalSize)
         guard let ctx = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return nil }
         ctx.beginPDFPage(nil)
-        ctx.scaleBy(x: scale, y: scale)
-        hosting.view.layer.render(in: ctx)
+        ctx.scaleBy(x: sizing.scale, y: sizing.scale)
+        prepared.view.layer.render(in: ctx)
         ctx.endPDFPage()
         ctx.closePDF()
         return data as Data
         #endif
     }
 }
+
+#if canImport(UIKit)
+private struct PreparedRenderingView {
+    let view: UIView
+    let size: CGSize
+}
+
+private struct SizingResult {
+    let finalSize: CGSize
+    let scale: CGFloat
+}
+
+private extension ExportRenderer {
+    static func prepareRenderingView(context: Context, cfg: Config) -> PreparedRenderingView {
+        let view = makeView(context: context, cfg: cfg)
+        let baseWidth: CGFloat = 1920
+        let hosting = UIHostingController(rootView: AnyView(view.frame(width: baseWidth, alignment: .leading)))
+        hosting.view.bounds = CGRect(origin: .zero, size: CGSize(width: baseWidth, height: 100))
+        hosting.view.backgroundColor = .clear
+        let size = hosting.sizeThatFits(in: CGSize(width: baseWidth, height: .greatestFiniteMagnitude))
+        return PreparedRenderingView(view: hosting.view, size: size)
+    }
+
+    static func resolveSizing(for size: CGSize, targetSize: CGSize?, cfg: Config) -> SizingResult {
+        let maxSize = targetSize ?? cfg.maxSize
+        let scale = min(maxSize.width / size.width, maxSize.height / size.height, 1.0)
+        let finalSize = CGSize(width: floor(size.width * scale), height: floor(size.height * scale))
+        return SizingResult(finalSize: finalSize, scale: scale)
+    }
+}
+#endif
 
 private struct ExportRow: View {
     let items: [Item]

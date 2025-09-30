@@ -9,9 +9,7 @@ extension AppState {
     func showToast(type: ToastType, title: String, message: String? = nil, duration: TimeInterval = 3.0) {
         let toast = ToastMessage(type: type, title: title, message: message, duration: duration)
         currentToast = toast
-    print("[AppState] showToast: type=\(type) title=\(title) message=\(message ?? "") duration=\(duration)")
-    NSLog("[AppState] showToast: type=%@ title=%@ message=%@ duration=%f", String(describing: type), title, message ?? "", duration)
-    appendDebugFile("showToast: type=\(type) title=\(title) message=\(message ?? "") duration=\(duration)")
+        logEvent("showToast: type=\(type) title=\(title) message=\(message ?? "") duration=\(duration)")
 
         // Auto-dismiss after duration
         DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
@@ -24,9 +22,7 @@ extension AppState {
 
     func dismissToast() {
         currentToast = nil
-        print("[AppState] dismissToast")
-        NSLog("[AppState] dismissToast")
-        appendDebugFile("dismissToast")
+        logEvent("dismissToast")
     }
 
     func showSuccessToast(_ title: String, message: String? = nil) {

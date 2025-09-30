@@ -53,7 +53,14 @@ struct ToastMessage: Identifiable {
     let actionTitle: String?
     let action: (() -> Void)?
 
-    init(type: ToastType, title: String, message: String? = nil, duration: TimeInterval = 3.0, actionTitle: String? = nil, action: (() -> Void)? = nil) {
+    init(
+        type: ToastType,
+        title: String,
+        message: String? = nil,
+        duration: TimeInterval = 3.0,
+        actionTitle: String? = nil,
+        action: (() -> Void)? = nil
+    ) {
         self.type = type
         self.title = title
         self.message = message

@@ -2,17 +2,6 @@ import Foundation
 import SwiftUI
 import TiercadeCore
 
-private struct AppSaveFile: Codable {
-    let tiers: Items
-    let createdDate: Date
-    let appVersion: String
-}
-
-private enum PersistenceError: Error {
-    case missingDocumentsDirectory
-    case unrecognizedSaveFormat
-}
-
 @MainActor
 extension AppState {
     // MARK: - Enhanced Persistence
@@ -32,13 +21,13 @@ extension AppState {
             return false
         }
     }
-
+    
     @discardableResult
     func autoSave() -> Bool {
         guard hasUnsavedChanges else { return true }
         return save()
     }
-
+    
     @discardableResult
     func saveToFile(named fileName: String) -> Bool {
         do {
@@ -53,18 +42,15 @@ extension AppState {
             let saveData = AppSaveFile(tiers: tiers, createdDate: Date(), appVersion: "1.0")
 
             let data = try encoder.encode(saveData)
-            let documentsPath = FileManager.default.urls(
-                for: .documentDirectory,
-                in: .userDomainMask
-            )[0]
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
-
+            
             try data.write(to: fileURL)
-
+            
             currentFileName = fileName
             hasUnsavedChanges = false
             lastSavedTime = Date()
-
+            
             showSuccessToast("File Saved", message: "Saved as \(fileName).json")
             return true
         } catch {
@@ -95,8 +81,16 @@ extension AppState {
                     for (tierName, itemData) in tierData {
                         newTiers[tierName] = itemData.compactMap { dict in
                             guard let id = dict["id"] as? String else { return nil }
-                            let attrs = legacyAttributes(from: dict)
-                            return Item(id: id, attributes: attrs)
+                            if let attrs = dict["attributes"] as? [String: String] {
+                                return Item(id: id, attributes: attrs)
+                            } else {
+                                // Build attributes from top-level keys
+                                var attrs: [String: String] = [:]
+                                for (k, v) in dict where k != "id" {
+                                    attrs[k] = String(describing: v)
+                                }
+                                return Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
+                            }
                         }
                     }
                     tiers = newTiers
@@ -120,7 +114,7 @@ extension AppState {
         do {
             let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
-
+            
             let data = try Data(contentsOf: fileURL)
             // Try to decode the modern app save file, fall back to legacy structures
             struct AppSaveFile: Codable { let tiers: Items; let createdDate: Date; let appVersion: String }
@@ -142,8 +136,15 @@ extension AppState {
                 for (tierName, itemData) in tierData {
                     newTiers[tierName] = itemData.compactMap { dict in
                         guard let id = dict["id"] as? String else { return nil }
-                        let attrs = legacyAttributes(from: dict)
-                        return Item(id: id, attributes: attrs)
+                        if let attrs = dict["attributes"] as? [String: String] {
+                            return Item(id: id, attributes: attrs)
+                        } else {
+                            var attrs: [String: String] = [:]
+                            for (k, v) in dict where k != "id" {
+                                attrs[k] = String(describing: v)
+                            }
+                            return Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
+                        }
                     }
                 }
                 tiers = newTiers
@@ -171,10 +172,7 @@ extension AppState {
     func getAvailableSaveFiles() -> [String] {
         do {
             let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let fileURLs = try FileManager.default.contentsOfDirectory(
-                at: documentsPath,
-                includingPropertiesForKeys: nil
-            )
+            let fileURLs = try FileManager.default.contentsOfDirectory(at: documentsPath, includingPropertiesForKeys: nil)
             return fileURLs
                 .filter { $0.pathExtension == "json" }
                 .map { $0.deletingPathExtension().lastPathComponent }
@@ -187,10 +185,7 @@ extension AppState {
 
     func deleteSaveFile(named fileName: String) -> Bool {
         do {
-            let documentsPath = FileManager.default.urls(
-                for: .documentDirectory,
-                in: .userDomainMask
-            )[0]
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
             try FileManager.default.removeItem(at: fileURL)
             return true
@@ -205,27 +200,32 @@ extension AppState {
     func saveToFileAsync(named fileName: String) async -> Bool {
         return await withLoadingIndicator(message: "Saving \(fileName)...") {
             updateProgress(0.2)
-
+            
             do {
+                struct AppSaveFile: Codable {
+                    let tiers: Items
+                    let createdDate: Date
+                    let appVersion: String
+                }
                 let saveData = AppSaveFile(tiers: tiers, createdDate: Date(), appVersion: "1.0")
                 updateProgress(0.4)
-
+                
                 let data = try JSONEncoder().encode(saveData)
                 updateProgress(0.6)
-
+                
                 let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
                 let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
                 updateProgress(0.8)
-
+                
                 try data.write(to: fileURL)
-
+                
                 await MainActor.run {
                     currentFileName = fileName
                     hasUnsavedChanges = false
                     lastSavedTime = Date()
                 }
                 updateProgress(1.0)
-
+                
                 showSuccessToast("File Saved", message: "Saved \(fileName).json")
                 return true
             } catch {
@@ -237,27 +237,58 @@ extension AppState {
     }
 
     func loadFromFileAsync(named fileName: String) async -> Bool {
-        await withLoadingIndicator(message: "Loading \(fileName)...") {
+        return await withLoadingIndicator(message: "Loading \(fileName)...") {
             updateProgress(0.2)
-
+            
             do {
-                let fileURL = try fileURL(for: fileName)
+                let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
                 updateProgress(0.4)
-
+                
                 let data = try Data(contentsOf: fileURL)
                 updateProgress(0.6)
-
-                if let saveData = decodeModernSave(from: data) {
+                // Try modern save format first
+                struct AppSaveFile: Codable { let tiers: Items; let createdDate: Date; let appVersion: String }
+                if let saveData = try? JSONDecoder().decode(AppSaveFile.self, from: data) {
                     updateProgress(0.8)
-                    await applyLoadedState(saveData.tiers, fileName: fileName, timestamp: saveData.createdDate)
-                } else if let legacyTiers = decodeLegacyTiers(from: data) {
+                    await MainActor.run {
+                        tiers = saveData.tiers
+                        history = HistoryLogic.initHistory(tiers, limit: history.limit)
+                        currentFileName = fileName
+                        hasUnsavedChanges = false
+                        lastSavedTime = saveData.createdDate
+                    }
+                } else if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                          let tierData = json["tiers"] as? [String: [[String: Any]]] {
+                    // Legacy fallback
+                    var newTiers: Items = [:]
+                    for (tierName, itemData) in tierData {
+                        newTiers[tierName] = itemData.compactMap { dict in
+                            guard let id = dict["id"] as? String else { return nil }
+                            if let attrs = dict["attributes"] as? [String: String] {
+                                return Item(id: id, attributes: attrs)
+                            } else {
+                                var attrs: [String: String] = [:]
+                                for (k, v) in dict where k != "id" {
+                                    attrs[k] = String(describing: v)
+                                }
+                                return Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
+                            }
+                        }
+                    }
                     updateProgress(0.8)
-                    await applyLoadedState(legacyTiers, fileName: fileName, timestamp: Date())
+                    await MainActor.run {
+                        tiers = newTiers
+                        history = HistoryLogic.initHistory(tiers, limit: history.limit)
+                        currentFileName = fileName
+                        hasUnsavedChanges = false
+                        lastSavedTime = Date()
+                    }
                 } else {
-                    throw PersistenceError.unrecognizedSaveFormat
+                    throw NSError(domain: "AppState", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unrecognized save file format"])
                 }
-
                 updateProgress(1.0)
+                
                 showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
                 return true
             } catch {
@@ -267,59 +298,4 @@ extension AppState {
             }
         }
     }
-    private func fileURL(for fileName: String) throws -> URL {
-        let directory = try documentsDirectory()
-        return directory.appendingPathComponent("\(fileName).json")
-    }
-
-    private func documentsDirectory() throws -> URL {
-        guard let directory = FileManager.default.urls(
-            for: .documentDirectory,
-            in: .userDomainMask
-        ).first else {
-            throw PersistenceError.missingDocumentsDirectory
-        }
-        return directory
-    }
-
-    private func decodeModernSave(from data: Data) -> AppSaveFile? {
-        try? JSONDecoder().decode(AppSaveFile.self, from: data)
-    }
-
-    private func decodeLegacyTiers(from data: Data) -> Items? {
-        guard
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let tierData = json["tiers"] as? [String: [[String: Any]]]
-        else { return nil }
-
-        var newTiers: Items = [:]
-        for (tierName, itemData) in tierData {
-            newTiers[tierName] = itemData.compactMap { dict in
-                guard let id = dict["id"] as? String else { return nil }
-                let attrs = legacyAttributes(from: dict)
-                return Item(id: id, attributes: attrs)
-            }
-        }
-        return newTiers
-    }
-
-    private func applyLoadedState(_ newTiers: Items, fileName: String, timestamp: Date) async {
-        await MainActor.run {
-            tiers = newTiers
-            history = HistoryLogic.initHistory(tiers, limit: history.limit)
-            currentFileName = fileName
-            hasUnsavedChanges = false
-            lastSavedTime = timestamp
-        }
-    }
-    private func legacyAttributes(from dict: [String: Any]) -> [String: String]? {
-        if let attrs = dict["attributes"] as? [String: String] {
-            return attrs
-        }
-        var attributes: [String: String] = [:]
-        for (key, value) in dict {
-            guard key != "id" else { continue }
-            attributes[key] = String(describing: value)
-        }
-        return attributes.isEmpty ? nil : attributes
-    }
+}

@@ -7,7 +7,7 @@ struct DetailView: View {
     @State private var playNow: Bool = false
     #endif
     @State private var showQR: Bool = false
-    @State private var pendingURL: URL? = nil
+    @State private var pendingURL: URL?
     var body: some View {
         VStack(spacing: 16) {
             // Hero gallery (image URIs only)
@@ -59,9 +59,9 @@ struct DetailView: View {
                 }
                 Spacer()
             }
-            .sheet(isPresented: $showQR) {
+            .sheet(isPresented: $showQR, content: {
                 if let u = pendingURL { QRSheet(url: u) }
-            }
+            })
         }
         .padding(24)
     }
