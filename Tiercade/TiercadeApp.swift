@@ -14,8 +14,6 @@ import SwiftUI
 //  Created by PL on 9/14/25.
 //
 
-import SwiftUI
-
 @main
 struct TiercadeApp: App {
     @AppStorage("ui.theme") private var themeRaw: String = ThemePreference.system.rawValue

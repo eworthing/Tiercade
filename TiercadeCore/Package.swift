@@ -9,10 +9,10 @@ let package = Package(
         .tvOS(.v17)
     ],
     products: [
-        .library(name: "TiercadeCore", targets: ["TiercadeCore"]),
+        .library(name: "TiercadeCore", targets: ["TiercadeCore"])
     ],
     targets: [
         .target(name: "TiercadeCore"),
-        .testTarget(name: "TiercadeCoreTests", dependencies: ["TiercadeCore"]),
+        .testTarget(name: "TiercadeCoreTests", dependencies: ["TiercadeCore"])
     ]
 )

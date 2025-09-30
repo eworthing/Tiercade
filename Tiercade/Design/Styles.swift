@@ -45,7 +45,7 @@ struct PrimaryButtonStyle: ButtonStyle {
 
 struct GhostButtonStyle: ButtonStyle {
     @Environment(\.isFocused) var isFocused: Bool
-    
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(TypeScale.label)
@@ -60,14 +60,14 @@ struct GhostButtonStyle: ButtonStyle {
 
 struct CardButtonStyle: ButtonStyle {
     @Environment(\.isFocused) var isFocused: Bool
-    
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect((configuration.isPressed || isFocused) ? 1.15 : 1.0)
             .shadow(
-                color: (configuration.isPressed || isFocused) ? .blue.opacity(0.6) : .black.opacity(0.1), 
-                radius: (configuration.isPressed || isFocused) ? 20 : 6, 
-                x: 0, 
+                color: (configuration.isPressed || isFocused) ? .blue.opacity(0.6) : .black.opacity(0.1),
+                radius: (configuration.isPressed || isFocused) ? 20 : 6,
+                x: 0,
                 y: (configuration.isPressed || isFocused) ? 12 : 4
             )
             .animation(.easeOut(duration: 0.2), value: configuration.isPressed || isFocused)
@@ -139,23 +139,23 @@ struct TVRemoteButtonStyle: ButtonStyle {
         }
     }
 
-    private func palette(for role: Role, isPressed: Bool, isFocused: Bool) -> (background: Color, border: Color, foreground: Color) {
+    private func palette(for role: Role, isPressed: Bool, isFocused: Bool) -> TVRemoteButtonColors {
         let baseOpacity: Double = isFocused ? 0.35 : 0.25
         switch role {
         case .primary:
-            return (
+            return TVRemoteButtonColors(
                 background: Color.white.opacity(isPressed ? 0.45 : baseOpacity),
                 border: Color.white.opacity(isFocused ? 0.9 : 0.55),
                 foreground: .white
             )
         case .secondary:
-            return (
+            return TVRemoteButtonColors(
                 background: Color.white.opacity(isPressed ? 0.25 : 0.18),
                 border: Color.white.opacity(isFocused ? 0.65 : 0.4),
                 foreground: .white
             )
         case .list:
-            return (
+            return TVRemoteButtonColors(
                 background: Color.white.opacity(isPressed ? 0.22 : 0.15),
                 border: Color.white.opacity(isFocused ? 0.5 : 0.25),
                 foreground: .white
@@ -165,5 +165,13 @@ struct TVRemoteButtonStyle: ButtonStyle {
 }
 
 extension ButtonStyle where Self == TVRemoteButtonStyle {
-    static func tvRemote(_ role: TVRemoteButtonStyle.Role = .primary) -> TVRemoteButtonStyle { TVRemoteButtonStyle(role: role) }
+    static func tvRemote(_ role: TVRemoteButtonStyle.Role = .primary) -> TVRemoteButtonStyle {
+        TVRemoteButtonStyle(role: role)
+    }
+}
+
+private struct TVRemoteButtonColors {
+    let background: Color
+    let border: Color
+    let foreground: Color
 }

@@ -15,96 +15,129 @@ import AppKit
 
 // MARK: - Color helpers (Display P3 aware)
 
-private struct RGBA {
-    let r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat
+private struct RGBAComponents {
+    let red: CGFloat
+    let green: CGFloat
+    let blue: CGFloat
+    let alpha: CGFloat
 }
 
-private func parseHexRGBA(_ hex: String, defaultAlpha: CGFloat = 1.0) -> RGBA {
+private func parseHexRGBA(_ hex: String, defaultAlpha: CGFloat = 1.0) -> RGBAComponents {
     // Supports #RRGGBB and #RRGGBBAA
-    let s = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-    var i: UInt64 = 0
-    Scanner(string: s).scanHexInt64(&i)
-    let r, g, b, a: UInt64
-    switch s.count {
+    let sanitizedHex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+    var hexValue: UInt64 = 0
+    Scanner(string: sanitizedHex).scanHexInt64(&hexValue)
+    let redValue, greenValue, blueValue, alphaValue: UInt64
+    switch sanitizedHex.count {
     case 8: // RRGGBBAA
-        r = (i >> 24) & 0xff
-        g = (i >> 16) & 0xff
-        b = (i >> 8) & 0xff
-        a = i & 0xff
+        redValue = (hexValue >> 24) & 0xff
+        greenValue = (hexValue >> 16) & 0xff
+        blueValue = (hexValue >> 8) & 0xff
+        alphaValue = hexValue & 0xff
     case 6: // RRGGBB
-        r = (i >> 16) & 0xff
-        g = (i >> 8) & 0xff
-        b = i & 0xff
-        a = UInt64(defaultAlpha * 255.0)
+        redValue = (hexValue >> 16) & 0xff
+        greenValue = (hexValue >> 8) & 0xff
+        blueValue = hexValue & 0xff
+        alphaValue = UInt64(defaultAlpha * 255.0)
     default:
-        return .init(r: 1, g: 1, b: 1, a: defaultAlpha)
+        return .init(red: 1, green: 1, blue: 1, alpha: defaultAlpha)
     }
-    return .init(r: CGFloat(r)/255.0, g: CGFloat(g)/255.0, b: CGFloat(b)/255.0, a: CGFloat(a)/255.0)
+    return .init(
+        red: CGFloat(redValue) / 255.0,
+        green: CGFloat(greenValue) / 255.0,
+        blue: CGFloat(blueValue) / 255.0,
+        alpha: CGFloat(alphaValue) / 255.0
+    )
 }
 
 extension Color {
     /// Wide-gamut aware color from hex string in RGBA format (#RRGGBB or #RRGGBBAA).
     static func wideGamut(_ rgbaHex: String) -> Color {
-        let c = parseHexRGBA(rgbaHex)
+        let components = parseHexRGBA(rgbaHex)
         #if canImport(UIKit)
         let dyn = UIColor { trait in
             if trait.displayGamut == .P3 {
-                return UIColor(displayP3Red: c.r, green: c.g, blue: c.b, alpha: c.a)
+                return UIColor(
+                    displayP3Red: components.red,
+                    green: components.green,
+                    blue: components.blue,
+                    alpha: components.alpha
+                )
             } else {
-                return UIColor(red: c.r, green: c.g, blue: c.b, alpha: c.a)
+                return UIColor(
+                    red: components.red,
+                    green: components.green,
+                    blue: components.blue,
+                    alpha: components.alpha
+                )
             }
         }
         return Color(dyn)
         #elseif canImport(AppKit)
         if #available(macOS 10.12, *) {
-            return Color(NSColor(displayP3Red: c.r, green: c.g, blue: c.b, alpha: c.a))
+            return Color(
+                NSColor(
+                    displayP3Red: components.red,
+                    green: components.green,
+                    blue: components.blue,
+                    alpha: components.alpha
+                )
+            )
         } else {
-            return Color(NSColor(calibratedRed: c.r, green: c.g, blue: c.b, alpha: c.a))
+            return Color(
+                NSColor(
+                    calibratedRed: components.red,
+                    green: components.green,
+                    blue: components.blue,
+                    alpha: components.alpha
+                )
+            )
         }
         #else
-        return Color(red: c.r, green: c.g, blue: c.b).opacity(Double(c.a))
+        return Color(red: components.red, green: components.green, blue: components.blue)
+            .opacity(Double(components.alpha))
         #endif
     }
 }
 
 // MARK: - Contrast utilities for chip text
 
-private func srgbToLinear(_ c: CGFloat) -> CGFloat {
-    return c <= 0.04045 ? (c / 12.92) : pow((c + 0.055) / 1.055, 2.4)
+private func srgbToLinear(_ component: CGFloat) -> CGFloat {
+    return component <= 0.04045 ? (component / 12.92) : pow((component + 0.055) / 1.055, 2.4)
 }
 
-private func relativeLuminance(r: CGFloat, g: CGFloat, b: CGFloat) -> CGFloat {
-    let R = srgbToLinear(r)
-    let G = srgbToLinear(g)
-    let B = srgbToLinear(b)
-    return 0.2126 * R + 0.7152 * G + 0.0722 * B
+private func relativeLuminance(red: CGFloat, green: CGFloat, blue: CGFloat) -> CGFloat {
+    let linearRed = srgbToLinear(red)
+    let linearGreen = srgbToLinear(green)
+    let linearBlue = srgbToLinear(blue)
+    return 0.2126 * linearRed + 0.7152 * linearGreen + 0.0722 * linearBlue
 }
 
-private func contrastRatio(lumA: CGFloat, lumB: CGFloat) -> CGFloat {
-    let L1 = max(lumA, lumB)
-    let L2 = min(lumA, lumB)
-    return (L1 + 0.05) / (L2 + 0.05)
+private func contrastRatio(luminanceA: CGFloat, luminanceB: CGFloat) -> CGFloat {
+    let highestLuminance = max(luminanceA, luminanceB)
+    let lowestLuminance = min(luminanceA, luminanceB)
+    return (highestLuminance + 0.05) / (lowestLuminance + 0.05)
 }
 
 private func chipTextColor(forHex hex: String) -> Color {
     // Compute luminance of the chip color (assume sRGB for contrast calc)
     let rgba = parseHexRGBA(hex)
-    let lumChip = relativeLuminance(r: rgba.r, g: rgba.g, b: rgba.b)
+    let chipLuminance = relativeLuminance(red: rgba.red, green: rgba.green, blue: rgba.blue)
     // White and black luminances
     let lumWhite: CGFloat = 1.0
     let lumBlack: CGFloat = 0.0
-    let crWhite = contrastRatio(lumA: lumWhite, lumB: lumChip)
-    let crBlack = contrastRatio(lumA: lumChip, lumB: lumBlack)
+    let whiteContrast = contrastRatio(luminanceA: lumWhite, luminanceB: chipLuminance)
+    let blackContrast = contrastRatio(luminanceA: chipLuminance, luminanceB: lumBlack)
     // Choose the text color that meets >= 4.5:1; if both, prefer higher contrast
-    let whiteMeets = crWhite >= 4.5
-    let blackMeets = crBlack >= 4.5
-    if whiteMeets && (!blackMeets || crWhite >= crBlack) {
+    let whiteMeets = whiteContrast >= 4.5
+    let blackMeets = blackContrast >= 4.5
+    if whiteMeets && (!blackMeets || whiteContrast >= blackContrast) {
         return Color.wideGamut("#FFFFFFE6")
-    } else if blackMeets && (!whiteMeets || crBlack > crWhite) {
+    } else if blackMeets && (!whiteMeets || blackContrast > whiteContrast) {
         return Color.wideGamut("#000000E6")
     }
     // Neither meets: fallback to better of the two
-    return crWhite >= crBlack ? Color.wideGamut("#FFFFFFE6") : Color.wideGamut("#000000E6")
+    return whiteContrast >= blackContrast ? Color.wideGamut("#FFFFFFE6") : Color.wideGamut("#000000E6")
 }
 
 // MARK: - Vibrant Color Tokens
@@ -234,7 +267,7 @@ struct VibrantCardView: View {
     var tier: Tier = .s
 
     var body: some View {
-        Button(action: {}) {
+        Button(action: {}, label: {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(Color.cardBackground)
@@ -250,7 +283,7 @@ struct VibrantCardView: View {
                     .padding(8)
             }
             .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        }
+        })
         .buttonStyle(.plain)
         .focusable(true)
         .punchyFocus(tier: tier, cornerRadius: 12)

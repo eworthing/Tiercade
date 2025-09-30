@@ -24,7 +24,7 @@ struct ItemTrayView: View {
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: Metrics.grid)]) {
                     ForEach(app.allItems(), id: \.id) { item in
-                        Button(action: { app.beginQuickRank(item) }) {
+                        Button(action: { app.beginQuickRank(item) }, label: {
                             VStack(alignment: .leading) {
                                 RoundedRectangle(cornerRadius: Metrics.rSm)
                                     .frame(minHeight: 72, idealHeight: 88)
@@ -60,7 +60,7 @@ struct ItemTrayView: View {
                                     , alignment: .bottomLeading)
                             }
                             .card()
-                        }
+                        })
                         .buttonStyle(PlainButtonStyle())
                         .contentShape(Rectangle())
                         .accessibilityLabel(item.name ?? item.id)
@@ -79,10 +79,10 @@ struct ItemTrayView: View {
         .panel()
         .frame(minWidth: Metrics.paneLeft)
         .padding(.horizontal, Metrics.grid)
-        .sheet(isPresented: $showingAdd) {
+        .sheet(isPresented: $showingAdd, content: {
             AddItemsView(isPresented: $showingAdd)
                 .environmentObject(app)
-        }
+        })
     }
 }
 

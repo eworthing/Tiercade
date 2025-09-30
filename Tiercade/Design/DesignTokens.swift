@@ -29,11 +29,15 @@ extension Color {
         #endif
     }
 
-    /// Create a dynamic color that adapts to light/dark appearance when running on platforms that support dynamic UIColor/NSColor.
+    /// Create a dynamic color that adapts to appearance changes on platforms
+    /// that support dynamic UIColor/NSColor.
     static func dynamic(light: String, dark: String) -> Color {
         #if canImport(UIKit)
         let color = UIColor { trait in
-            return trait.userInterfaceStyle == .light ? PlatformColor(hex: light) : PlatformColor(hex: dark)
+            let provider = trait.userInterfaceStyle == .light
+                ? PlatformColor(hex: light)
+                : PlatformColor(hex: dark)
+            return provider
         }
         return Color(color)
         #elseif canImport(AppKit)
@@ -52,25 +56,35 @@ extension Color {
 
 extension PlatformColor {
     convenience init(hex: String) {
-        let s = hex.trimmingCharacters(in: .alphanumerics.inverted)
-        var i: UInt64 = 0
-        Scanner(string: s).scanHexInt64(&i)
-        let a, r, g, b: UInt64
-        if s.count == 8 {
-            a = (i >> 24) & 0xff
-            r = (i >> 16) & 0xff
-            g = (i >> 8) & 0xff
-            b = i & 0xff
+        let sanitizedHex = hex.trimmingCharacters(in: .alphanumerics.inverted)
+        var hexValue: UInt64 = 0
+        Scanner(string: sanitizedHex).scanHexInt64(&hexValue)
+        let alphaValue, redValue, greenValue, blueValue: UInt64
+        if sanitizedHex.count == 8 {
+            alphaValue = (hexValue >> 24) & 0xff
+            redValue = (hexValue >> 16) & 0xff
+            greenValue = (hexValue >> 8) & 0xff
+            blueValue = hexValue & 0xff
         } else {
-            a = 255
-            r = (i >> 16) & 0xff
-            g = (i >> 8) & 0xff
-            b = i & 0xff
+            alphaValue = 255
+            redValue = (hexValue >> 16) & 0xff
+            greenValue = (hexValue >> 8) & 0xff
+            blueValue = hexValue & 0xff
         }
         #if canImport(UIKit)
-        self.init(red: CGFloat(r)/255.0, green: CGFloat(g)/255.0, blue: CGFloat(b)/255.0, alpha: CGFloat(a)/255.0)
+        self.init(
+            red: CGFloat(redValue) / 255.0,
+            green: CGFloat(greenValue) / 255.0,
+            blue: CGFloat(blueValue) / 255.0,
+            alpha: CGFloat(alphaValue) / 255.0
+        )
         #elseif canImport(AppKit)
-        self.init(calibratedRed: CGFloat(r)/255.0, green: CGFloat(g)/255.0, blue: CGFloat(b)/255.0, alpha: CGFloat(a)/255.0)
+        self.init(
+            calibratedRed: CGFloat(redValue) / 255.0,
+            green: CGFloat(greenValue) / 255.0,
+            blue: CGFloat(blueValue) / 255.0,
+            alpha: CGFloat(alphaValue) / 255.0
+        )
         #else
         self.init()
         #endif
@@ -86,6 +100,8 @@ enum Palette {
     static let text    = Color.dynamic(light: "#111827", dark: "#E8EDF2")
     static let textDim = Color.dynamic(light: "#6B7280", dark: "#FFFFFFB8")
     static let brand   = Color(designHex: "#3B82F6")
+    private static let defaultTierColor = Color(designHex: "#6B7280")
+    private static let unrankedTierColor = Color(designHex: "#94A3B8")
 
     // Tier accents as Colors
     static let tierColors: [String: Color] = [
@@ -94,11 +110,14 @@ enum Palette {
         "B": Color(designHex: "#22C55E"),
         "C": Color(designHex: "#06B6D4"),
         "D": Color(designHex: "#3B82F6"),
-        "F": Color(designHex: "#6B7280")
+        "F": defaultTierColor,
+        "UNRANKED": unrankedTierColor
     ]
 
     static func tierColor(_ tier: String) -> Color {
-        tierColors[tier] ?? Color(designHex: "#6B7280")
+        let normalized = tier.lowercased()
+        if normalized == "unranked" { return unrankedTierColor }
+        return tierColors[tier.uppercased()] ?? defaultTierColor
     }
 }
 

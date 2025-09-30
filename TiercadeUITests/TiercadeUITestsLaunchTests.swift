@@ -13,9 +13,7 @@
 
 import XCTest
 
-import XCTest
-
-final class TiercadeUITestsLaunchTests: XCTestCase {
+class TiercadeUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

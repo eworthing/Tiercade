@@ -225,7 +225,7 @@ struct H2HButton: View {
     let item: Item
     var action: () -> Void
     var body: some View {
-        Button(action: action) {
+        Button(action: action, label: {
             VStack(spacing: 8) {
                 RoundedRectangle(cornerRadius: 12).fill(Color.accentColor)
                     .frame(minWidth: 140, idealWidth: 160, minHeight: 88, idealHeight: 100)
@@ -235,7 +235,7 @@ struct H2HButton: View {
             .padding(Metrics.grid)
             .contentShape(Rectangle())
             .frame(minWidth: 44, minHeight: 44)
-        }
+        })
         .accessibilityLabel(item.name ?? item.id)
         .buttonStyle(GhostButtonStyle())
         .accessibilityIdentifier("H2HButton_\(item.id)")
