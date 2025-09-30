@@ -29,7 +29,7 @@ public enum TierIdentifier: String, Codable, Sendable, CaseIterable, Hashable {
     case d = "D"
     case f = "F"
     case unranked = "unranked"
-    
+
     /// Human-readable display name
     public var displayName: String {
         switch self {
@@ -39,7 +39,7 @@ public enum TierIdentifier: String, Codable, Sendable, CaseIterable, Hashable {
             return rawValue
         }
     }
-    
+
     /// Sort order for display (S at top, unranked at bottom)
     public var sortOrder: Int {
         switch self {
@@ -52,7 +52,7 @@ public enum TierIdentifier: String, Codable, Sendable, CaseIterable, Hashable {
         case .unranked: return 6
         }
     }
-    
+
     /// Default color for tier (if not overridden by TierConfig)
     public var defaultColorHex: String {
         switch self {
@@ -65,17 +65,17 @@ public enum TierIdentifier: String, Codable, Sendable, CaseIterable, Hashable {
         case .unranked: return "#888888"
         }
     }
-    
+
     /// Check if this is a ranked tier (not unranked)
     public var isRanked: Bool {
         self != .unranked
     }
-    
+
     /// All standard tier keys in sort order
     public static var standardOrder: [TierIdentifier] {
         allCases.sorted { $0.sortOrder < $1.sortOrder }
     }
-    
+
     /// All ranked tiers (excluding unranked)
     public static var rankedTiers: [TierIdentifier] {
         allCases.filter { $0.isRanked }
@@ -101,7 +101,7 @@ extension Dictionary where Key == String, Value == [Item] {
         }
         return typed
     }
-    
+
     /// Access items using TierIdentifier (convenience)
     public subscript(tier: TierIdentifier) -> Value? {
         get { self[tier.rawValue] }

@@ -11,9 +11,9 @@ extension AppState {
         currentToast = toast
         logEvent("showToast: type=\(type) title=\(title) message=\(message ?? "") duration=\(duration)")
 
-        // Auto-dismiss after duration
-        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
-            guard let self = self else { return }
+        // Auto-dismiss after duration using structured concurrency
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(duration))
             if self.currentToast?.id == toast.id {
                 self.dismissToast()
             }

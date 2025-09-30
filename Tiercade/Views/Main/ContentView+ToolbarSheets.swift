@@ -9,8 +9,8 @@ import UniformTypeIdentifiers
 // MARK: - Toolbar Sheets
 
 #if os(iOS)
-struct BottomToolbarSheets: ToolbarContent {
-    @ObservedObject var app: AppState
+struct LoadSheetView: View {
+    @Bindable var app: AppState
     @Binding var exportText: String
     @Binding var showingShare: Bool
     @Binding var showingSettings: Bool
@@ -103,8 +103,8 @@ struct BottomToolbarSheets: ToolbarContent {
     }
 }
 #else
-struct MacAndTVToolbarSheets: ToolbarContent {
-    @ObservedObject var app: AppState
+struct SaveSheetView: View {
+    @Bindable var app: AppState
     @Binding var showingSaveDialog: Bool
     @Binding var showingLoadDialog: Bool
     @Binding var saveFileName: String
@@ -162,7 +162,7 @@ struct ExportFormatSheetView: View {
     @State private var shareItems: [Any] = []
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 20) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Export Format")
@@ -265,11 +265,27 @@ struct ExportFormatSheetView: View {
         isExporting = true
         defer { isExporting = false }
 
-        if let (data, filename) = await app.exportToFormat(exportFormat) {
+        do {
+            let (data, filename) = try await app.exportToFormat(exportFormat)
             await MainActor.run {
                 exportedData = data
                 exportFileName = filename
                 showingFileExporter = true
+            }
+        } catch let error as ExportError {
+            await MainActor.run {
+                switch error {
+                case .formatNotSupported(let format):
+                    app.showErrorToast("Export Failed", message: "Format '\(format.displayName)' not supported")
+                case .dataEncodingFailed(let reason):
+                    app.showErrorToast("Export Failed", message: "Encoding failed: \(reason)")
+                case .insufficientData:
+                    app.showErrorToast("Export Failed", message: "No data to export")
+                case .renderingFailed(let reason):
+                    app.showErrorToast("Export Failed", message: "Rendering failed: \(reason)")
+                case .invalidConfiguration:
+                    app.showErrorToast("Export Failed", message: "Invalid configuration")
+                }
             }
         }
     }
@@ -279,24 +295,54 @@ struct ExportFormatSheetView: View {
         isExporting = true
         defer { isExporting = false }
 
-        if let (data, filename) = await app.exportToFormat(exportFormat) {
-            await MainActor.run {
-                let tempURL = FileManager.default
-                    .temporaryDirectory
-                    .appendingPathComponent(filename)
-                do {
-                    try data.write(to: tempURL)
-                    shareItems = [tempURL]
-                    showingShareSheet = true
-                } catch {
-                    app.showToast(
-                        type: .error,
-                        title: "Export Failed",
-                        message: "Could not prepare file: \(error.localizedDescription)"
-                    )
-                }
-                isPresented = false
+        do {
+            let (data, filename) = try await app.exportToFormat(exportFormat)
+            await writeAndShareFile(data: data, filename: filename)
+        } catch let error as ExportError {
+            await handleExportError(error)
+        }
+    }
+
+    private func writeAndShareFile(data: Data, filename: String) async {
+        await MainActor.run {
+            let tempURL = FileManager.default
+                .temporaryDirectory
+                .appendingPathComponent(filename)
+            do {
+                try data.write(to: tempURL)
+                shareItems = [tempURL]
+                showingShareSheet = true
+            } catch {
+                app.showToast(
+                    type: .error,
+                    title: "Export Failed",
+                    message: "Could not prepare file: \(error.localizedDescription)"
+                )
             }
+            isPresented = false
+        }
+    }
+
+    private func handleExportError(_ error: ExportError) async {
+        await MainActor.run {
+            let message = getErrorMessage(for: error)
+            app.showErrorToast("Export Failed", message: message)
+            isPresented = false
+        }
+    }
+
+    private func getErrorMessage(for error: ExportError) -> String {
+        switch error {
+        case .formatNotSupported(let format):
+            return "Format '\(format.displayName)' not supported"
+        case .dataEncodingFailed(let reason):
+            return "Encoding failed: \(reason)"
+        case .insufficientData:
+            return "No data to export"
+        case .renderingFailed(let reason):
+            return "Rendering failed: \(reason)"
+        case .invalidConfiguration:
+            return "Invalid configuration"
         }
     }
 }

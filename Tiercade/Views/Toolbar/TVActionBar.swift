@@ -3,7 +3,7 @@ import TiercadeCore
 
 #if os(tvOS)
 struct TVActionBar: View {
-    @ObservedObject var app: AppState
+    @Bindable var app: AppState
 
     var body: some View {
         HStack(spacing: 20) {

@@ -3,9 +3,12 @@ import SwiftUI
 import TiercadeCore
 
 struct ItemTrayView: View {
-    @EnvironmentObject var app: AppState
-    // Use AppState.searchQuery so filtering is centralized
+    @Bindable private var app: AppState
     @State private var showingAdd = false
+
+    init(app: AppState) {
+        self.app = app
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: Metrics.grid) {
             HStack {
@@ -19,7 +22,7 @@ struct ItemTrayView: View {
             TextField("Search items...", text: $app.searchQuery)
                 #if !os(tvOS)
                 .textFieldStyle(.roundedBorder)
-                #endif
+            #endif
 
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: Metrics.grid)]) {
@@ -57,7 +60,7 @@ struct ItemTrayView: View {
                                                                 .padding(Metrics.grid))
                                             }
                                         }
-                                    , alignment: .bottomLeading)
+                                        , alignment: .bottomLeading)
                             }
                             .card()
                         })
@@ -81,21 +84,21 @@ struct ItemTrayView: View {
         .padding(.horizontal, Metrics.grid)
         .sheet(isPresented: $showingAdd, content: {
             AddItemsView(isPresented: $showingAdd)
-                .environmentObject(app)
+                .environment(app)
         })
     }
 }
 
 // Simple modal for adding items
 struct AddItemsView: View {
-    @EnvironmentObject var app: AppState
+    @Environment(AppState.self) private var app: AppState
     @Binding var isPresented: Bool
     @State private var name: String = ""
     @State private var id: String = ""
     @State private var season: String = ""
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section(header: Text("New Item")) {
                     TextField("ID (unique)", text: $id)

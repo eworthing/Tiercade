@@ -30,7 +30,7 @@ struct TiersDocument: FileDocument {
 #endif
 
 struct SecondaryToolbarActions: ToolbarContent {
-    @ObservedObject var app: AppState
+    @Bindable var app: AppState
     var onShowSave: () -> Void = {}
     var onShowLoad: () -> Void = {}
     var onShowExportFormat: (ExportFormat) -> Void = { _ in }
@@ -51,12 +51,12 @@ struct SecondaryToolbarActions: ToolbarContent {
                 fileOperationsMenu
                 exportImportMenu
                 Button("Head-to-Head") { app.startH2H() }
-                #if !os(tvOS)
-                .keyboardShortcut("h", modifiers: [.command])
+                    #if !os(tvOS)
+                    .keyboardShortcut("h", modifiers: [.command])
                 #endif
                 Button("Analysis") { app.toggleAnalysis() }
-                #if !os(tvOS)
-                .keyboardShortcut("a", modifiers: [.command])
+                    #if !os(tvOS)
+                    .keyboardShortcut("a", modifiers: [.command])
                 #endif
                 Button("Settings") { onShowSettings() }
             }
@@ -73,22 +73,22 @@ struct SecondaryToolbarActions: ToolbarContent {
 
     private var fileOperationsMenu: some View {
         Menu("File Operations") {
-            Button("Save Locally") { _ = app.save() }
-            #if !os(tvOS)
-            .keyboardShortcut("s", modifiers: [.command])
+            Button("Save Locally") { try? app.save() }
+                #if !os(tvOS)
+                .keyboardShortcut("s", modifiers: [.command])
             #endif
             Button("Load Saved") { _ = app.load() }
-            #if !os(tvOS)
-            .keyboardShortcut("o", modifiers: [.command])
+                #if !os(tvOS)
+                .keyboardShortcut("o", modifiers: [.command])
             #endif
             Divider()
             Button("Save to File...") { onShowSave() }
-            #if !os(tvOS)
-            .keyboardShortcut("S", modifiers: [.command, .shift])
+                #if !os(tvOS)
+                .keyboardShortcut("S", modifiers: [.command, .shift])
             #endif
             Button("Load from File...") { onShowLoad() }
-            #if !os(tvOS)
-            .keyboardShortcut("O", modifiers: [.command, .shift])
+                #if !os(tvOS)
+                .keyboardShortcut("O", modifiers: [.command, .shift])
             #endif
         }
     }
@@ -113,7 +113,7 @@ struct SecondaryToolbarActions: ToolbarContent {
 
 #if os(iOS)
 struct BottomToolbarSheets: ToolbarContent {
-    @ObservedObject var app: AppState
+    @Bindable var app: AppState
     @Binding var exportText: String
     @Binding var showingSettings: Bool
     @Binding var showingExportFormatSheet: Bool
@@ -201,7 +201,7 @@ struct BottomToolbarSheets: ToolbarContent {
 }
 #else
 struct MacAndTVToolbarSheets: ToolbarContent {
-    @ObservedObject var app: AppState
+    @Bindable var app: AppState
     @Binding var showingSaveDialog: Bool
     @Binding var showingLoadDialog: Bool
     @Binding var saveFileName: String
@@ -214,7 +214,7 @@ struct MacAndTVToolbarSheets: ToolbarContent {
                     TextField("File Name", text: $saveFileName)
                     Button("Save") {
                         if !saveFileName.isEmpty {
-                            _ = app.saveToFile(named: saveFileName)
+                            try? app.saveToFile(named: saveFileName)
                         }
                     }
                     Button("Cancel", role: .cancel) {}

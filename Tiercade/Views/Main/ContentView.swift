@@ -19,7 +19,7 @@ struct AppTier: Identifiable, Hashable { let id: String; var name: String }
 // specialization cost and keep this file focused. See those files for implementations.)
 
 struct ContentView: View {
-    @StateObject private var app = AppState()
+    @State private var app = AppState()
     @State private var showingAddItems = false
     #if os(tvOS)
     private var canStartH2HFromRemote: Bool { app.quickRankTarget == nil && !app.h2hActive }
@@ -27,7 +27,7 @@ struct ContentView: View {
 
     var body: some View {
         MainAppView()
-            .environmentObject(app)
+            .environment(app)
     }
 }
 

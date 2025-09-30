@@ -21,19 +21,19 @@ struct MediaGalleryView: View {
                     .tag(page.index)
             }
         }
-#if os(macOS)
+        #if os(macOS)
         .tabViewStyle(.automatic)
-#else
+        #else
         .tabViewStyle(.page(indexDisplayMode: pages.count > 1 ? .automatic : .never))
-#if os(tvOS)
+        #if os(tvOS)
         .focusSection()
         .onChange(of: selection) { newValue in
-            guard pages.indices.contains(newValue) else { return }
-            let announcement = "Image \(newValue + 1) of \(pages.count)"
-            UIAccessibility.post(notification: .announcement, argument: announcement)
+        guard pages.indices.contains(newValue) else { return }
+        let announcement = "Image \(newValue + 1) of \(pages.count)"
+        UIAccessibility.post(notification: .announcement, argument: announcement)
         }
-#endif
-#endif
+        #endif
+        #endif
     }
 }
 

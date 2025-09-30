@@ -61,10 +61,10 @@ extension AppState {
         history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
         clearSelection()
-    showSuccessToast("Moved Items", message: "Moved \(ids.count) item(s) to \(tier)")
+        showSuccessToast("Moved Items", message: "Moved \(ids.count) item(s) to \(tier)")
         let count = ids.count
-    let announcement = "Moved \(count) item\(count == 1 ? "" : "s") to \(tier) tier"
-    announce(announcement)
+        let announcement = "Moved \(count) item\(count == 1 ? "" : "s") to \(tier) tier"
+        announce(announcement)
     }
 
     func currentTier(of id: String) -> String? {
@@ -86,10 +86,10 @@ extension AppState {
         tiers = next
         history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
-    let toastMessage = "Moved all items from \(tier) tier to unranked"
-    showInfoToast("Tier Cleared", message: toastMessage)
-    let announcement = "Cleared \(tier) tier. Moved \(moving.count) item\(moving.count == 1 ? "" : "s") to unranked"
-    announce(announcement)
+        let toastMessage = "Moved all items from \(tier) tier to unranked"
+        showInfoToast("Tier Cleared", message: toastMessage)
+        let announcement = "Cleared \(tier) tier. Moved \(moving.count) item\(moving.count == 1 ? "" : "s") to unranked"
+        announce(announcement)
     }
 
     // MARK: - Tier Locking

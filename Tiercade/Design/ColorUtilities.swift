@@ -22,7 +22,7 @@ enum ColorUtilities {
         let blue: CGFloat
         let alpha: CGFloat
     }
-    
+
     /// Parse hex color string supporting #RGB, #RRGGBB, #RRGGBBAA formats
     /// - Parameters:
     ///   - hex: Hex color string with optional # prefix
@@ -32,12 +32,12 @@ enum ColorUtilities {
         let sanitized = hex.trimmingCharacters(in: .alphanumerics.inverted)
         var value: UInt64 = 0
         Scanner(string: sanitized).scanHexInt64(&value)
-        
+
         let r: UInt64
         let g: UInt64
         let b: UInt64
         let a: UInt64
-        
+
         switch sanitized.count {
         case 3:  // #RGB → expand to #RRGGBB
             r = (value >> 8 & 0xF) * 17
@@ -60,7 +60,7 @@ enum ColorUtilities {
             b = 255
             a = UInt64(defaultAlpha * 255)
         }
-        
+
         return RGBAComponents(
             red: CGFloat(r) / 255.0,
             green: CGFloat(g) / 255.0,
@@ -68,7 +68,7 @@ enum ColorUtilities {
             alpha: CGFloat(a) / 255.0
         )
     }
-    
+
     /// Calculate WCAG 2.1 relative luminance
     /// - Parameter components: RGBA color components
     /// - Returns: Relative luminance value (0.0-1.0)
@@ -77,10 +77,10 @@ enum ColorUtilities {
             c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
         }
         return 0.2126 * linearize(components.red)
-             + 0.7152 * linearize(components.green)
-             + 0.0722 * linearize(components.blue)
+            + 0.7152 * linearize(components.green)
+            + 0.0722 * linearize(components.blue)
     }
-    
+
     /// Calculate WCAG contrast ratio between two luminance values
     /// - Parameters:
     ///   - lum1: First luminance value
@@ -91,7 +91,7 @@ enum ColorUtilities {
         let darker = min(lum1, lum2)
         return (lighter + 0.05) / (darker + 0.05)
     }
-    
+
     /// Choose white or black text color for optimal contrast on given background
     /// - Parameter backgroundHex: Background color as hex string
     /// - Returns: White or black color with 90% opacity for optimal readability
@@ -100,13 +100,13 @@ enum ColorUtilities {
         let bgLum = luminance(bg)
         let whiteContrast = contrastRatio(lum1: 1.0, lum2: bgLum)
         let blackContrast = contrastRatio(lum1: bgLum, lum2: 0.0)
-        
+
         // Prefer white text if it has better or equal contrast
         return whiteContrast >= blackContrast
             ? Color.white.opacity(0.9)
             : Color.black.opacity(0.9)
     }
-    
+
     /// Create a wide-gamut aware Color from hex string
     /// - Parameters:
     ///   - hex: Hex color string (#RRGGBB or #RRGGBBAA)
@@ -114,7 +114,7 @@ enum ColorUtilities {
     /// - Returns: SwiftUI Color with Display P3 support on capable devices
     static func color(hex: String, alpha: CGFloat = 1.0) -> Color {
         let components = parseHex(hex, defaultAlpha: alpha)
-        
+
         #if canImport(UIKit)
         // Use Display P3 on supported devices
         let platformColor = UIColor { trait in
@@ -135,7 +135,7 @@ enum ColorUtilities {
             }
         }
         return Color(platformColor)
-        
+
         #elseif canImport(AppKit)
         let platformColor = NSColor(
             displayP3Red: components.red,
@@ -144,7 +144,7 @@ enum ColorUtilities {
             alpha: components.alpha
         )
         return Color(platformColor)
-        
+
         #else
         return Color(
             red: Double(components.red),

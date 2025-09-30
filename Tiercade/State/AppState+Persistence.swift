@@ -6,30 +6,24 @@ import TiercadeCore
 extension AppState {
     // MARK: - Enhanced Persistence
 
-    @discardableResult
-    func save() -> Bool {
+    func save() throws(PersistenceError) {
         do {
             let data = try JSONEncoder().encode(tiers)
             UserDefaults.standard.set(data, forKey: storageKey)
             hasUnsavedChanges = false
             lastSavedTime = Date()
             showSuccessToast("Saved", message: "Tier list saved successfully")
-            return true
         } catch {
-            print("Save failed: \(error)")
-            showErrorToast("Save Failed", message: "Could not save tier list")
-            return false
+            throw PersistenceError.encodingFailed("JSONEncoder failed: \(error.localizedDescription)")
         }
     }
-    
-    @discardableResult
-    func autoSave() -> Bool {
-        guard hasUnsavedChanges else { return true }
-        return save()
+
+    func autoSave() throws(PersistenceError) {
+        guard hasUnsavedChanges else { return }
+        try save()
     }
-    
-    @discardableResult
-    func saveToFile(named fileName: String) -> Bool {
+
+    func saveToFile(named fileName: String) throws(PersistenceError) {
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = .prettyPrinted
@@ -44,69 +38,90 @@ extension AppState {
             let data = try encoder.encode(saveData)
             let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
-            
+
             try data.write(to: fileURL)
-            
+
             currentFileName = fileName
             hasUnsavedChanges = false
             lastSavedTime = Date()
-            
+
             showSuccessToast("File Saved", message: "Saved as \(fileName).json")
-            return true
+        } catch let error as EncodingError {
+            throw PersistenceError.encodingFailed("Failed to encode: \(error.localizedDescription)")
+        } catch let error as CocoaError where error.code == .fileWriteNoPermission {
+            throw PersistenceError.permissionDenied
         } catch {
-            print("File save failed: \(error)")
-            showErrorToast("Save Failed", message: "Could not save \(fileName).json")
-            return false
+            throw PersistenceError.fileSystemError("Could not write file: \(error.localizedDescription)")
         }
     }
 
     @discardableResult
     func load() -> Bool {
         guard let data = UserDefaults.standard.data(forKey: storageKey) else { return false }
-        // Try to decode Items directly; if that fails, attempt legacy JSON fallbacks.
+
+        if loadModernFormat(from: data) {
+            return true
+        }
+
+        return loadLegacyFormat(from: data)
+    }
+
+    private func loadModernFormat(from data: Data) -> Bool {
         do {
             let decoded = try JSONDecoder().decode(Items.self, from: data)
-            tiers = decoded
-            history = HistoryLogic.initHistory(tiers, limit: history.limit)
-            hasUnsavedChanges = false
-            lastSavedTime = UserDefaults.standard.object(forKey: "\(storageKey).timestamp") as? Date
-            showSuccessToast("Loaded", message: "Tier list loaded successfully")
+            applyLoadedTiers(decoded, isLegacy: false)
             return true
         } catch {
-            // Fallback: try to parse as legacy JSON structure with attributes bags
-            do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let tierData = json["tiers"] as? [String: [[String: Any]]] {
-                    var newTiers: Items = [:]
-                    for (tierName, itemData) in tierData {
-                        newTiers[tierName] = itemData.compactMap { dict in
-                            guard let id = dict["id"] as? String else { return nil }
-                            if let attrs = dict["attributes"] as? [String: String] {
-                                return Item(id: id, attributes: attrs)
-                            } else {
-                                // Build attributes from top-level keys
-                                var attrs: [String: String] = [:]
-                                for (k, v) in dict where k != "id" {
-                                    attrs[k] = String(describing: v)
-                                }
-                                return Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
-                            }
-                        }
-                    }
-                    tiers = newTiers
-                    history = HistoryLogic.initHistory(tiers, limit: history.limit)
-                    hasUnsavedChanges = false
-                    lastSavedTime = UserDefaults.standard.object(forKey: "\(storageKey).timestamp") as? Date
-                    showSuccessToast("Loaded", message: "Tier list loaded (legacy) successfully")
-                    return true
-                }
-            } catch {
-                print("Legacy load failed: \(error)")
+            return false
+        }
+    }
+
+    private func loadLegacyFormat(from data: Data) -> Bool {
+        do {
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let tierData = json["tiers"] as? [String: [[String: Any]]] else {
+                return false
             }
-            print("Load failed: \(error)")
+
+            let newTiers = parseLegacyTiers(from: tierData)
+            applyLoadedTiers(newTiers, isLegacy: true)
+            return true
+        } catch {
+            print("Legacy load failed: \(error)")
             showErrorToast("Load Failed", message: "Could not load tier list")
             return false
         }
+    }
+
+    private func parseLegacyTiers(from tierData: [String: [[String: Any]]]) -> Items {
+        var newTiers: Items = [:]
+        for (tierName, itemData) in tierData {
+            newTiers[tierName] = itemData.compactMap { parseLegacyItem(from: $0) }
+        }
+        return newTiers
+    }
+
+    private func parseLegacyItem(from dict: [String: Any]) -> Item? {
+        guard let id = dict["id"] as? String else { return nil }
+
+        if let attrs = dict["attributes"] as? [String: String] {
+            return Item(id: id, attributes: attrs)
+        }
+
+        var attrs: [String: String] = [:]
+        for (k, v) in dict where k != "id" {
+            attrs[k] = String(describing: v)
+        }
+        return Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
+    }
+
+    private func applyLoadedTiers(_ loadedTiers: Items, isLegacy: Bool) {
+        tiers = loadedTiers
+        history = HistoryLogic.initHistory(tiers, limit: history.limit)
+        hasUnsavedChanges = false
+        lastSavedTime = UserDefaults.standard.object(forKey: "\(storageKey).timestamp") as? Date
+        let message = isLegacy ? "Tier list loaded (legacy) successfully" : "Tier list loaded successfully"
+        showSuccessToast("Loaded", message: message)
     }
 
     @discardableResult
@@ -114,7 +129,7 @@ extension AppState {
         do {
             let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
-            
+
             let data = try Data(contentsOf: fileURL)
             // Try to decode the modern app save file, fall back to legacy structures
             struct AppSaveFile: Codable { let tiers: Items; let createdDate: Date; let appVersion: String }
@@ -171,8 +186,14 @@ extension AppState {
 
     func getAvailableSaveFiles() -> [String] {
         do {
-            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let fileURLs = try FileManager.default.contentsOfDirectory(at: documentsPath, includingPropertiesForKeys: nil)
+            let documentsPath = FileManager.default.urls(
+                for: .documentDirectory,
+                in: .userDomainMask
+            )[0]
+            let fileURLs = try FileManager.default.contentsOfDirectory(
+                at: documentsPath,
+                includingPropertiesForKeys: nil
+            )
             return fileURLs
                 .filter { $0.pathExtension == "json" }
                 .map { $0.deletingPathExtension().lastPathComponent }
@@ -200,7 +221,7 @@ extension AppState {
     func saveToFileAsync(named fileName: String) async -> Bool {
         return await withLoadingIndicator(message: "Saving \(fileName)...") {
             updateProgress(0.2)
-            
+
             do {
                 struct AppSaveFile: Codable {
                     let tiers: Items
@@ -209,23 +230,23 @@ extension AppState {
                 }
                 let saveData = AppSaveFile(tiers: tiers, createdDate: Date(), appVersion: "1.0")
                 updateProgress(0.4)
-                
+
                 let data = try JSONEncoder().encode(saveData)
                 updateProgress(0.6)
-                
+
                 let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
                 let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
                 updateProgress(0.8)
-                
+
                 try data.write(to: fileURL)
-                
+
                 await MainActor.run {
                     currentFileName = fileName
                     hasUnsavedChanges = false
                     lastSavedTime = Date()
                 }
                 updateProgress(1.0)
-                
+
                 showSuccessToast("File Saved", message: "Saved \(fileName).json")
                 return true
             } catch {
@@ -239,63 +260,87 @@ extension AppState {
     func loadFromFileAsync(named fileName: String) async -> Bool {
         return await withLoadingIndicator(message: "Loading \(fileName)...") {
             updateProgress(0.2)
-            
+
             do {
-                let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-                let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
+                let fileURL = try getFileURL(for: fileName)
                 updateProgress(0.4)
-                
+
                 let data = try Data(contentsOf: fileURL)
                 updateProgress(0.6)
-                // Try modern save format first
-                struct AppSaveFile: Codable { let tiers: Items; let createdDate: Date; let appVersion: String }
-                if let saveData = try? JSONDecoder().decode(AppSaveFile.self, from: data) {
-                    updateProgress(0.8)
-                    await MainActor.run {
-                        tiers = saveData.tiers
-                        history = HistoryLogic.initHistory(tiers, limit: history.limit)
-                        currentFileName = fileName
-                        hasUnsavedChanges = false
-                        lastSavedTime = saveData.createdDate
-                    }
-                } else if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                          let tierData = json["tiers"] as? [String: [[String: Any]]] {
-                    // Legacy fallback
-                    var newTiers: Items = [:]
-                    for (tierName, itemData) in tierData {
-                        newTiers[tierName] = itemData.compactMap { dict in
-                            guard let id = dict["id"] as? String else { return nil }
-                            if let attrs = dict["attributes"] as? [String: String] {
-                                return Item(id: id, attributes: attrs)
-                            } else {
-                                var attrs: [String: String] = [:]
-                                for (k, v) in dict where k != "id" {
-                                    attrs[k] = String(describing: v)
-                                }
-                                return Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
-                            }
-                        }
-                    }
-                    updateProgress(0.8)
-                    await MainActor.run {
-                        tiers = newTiers
-                        history = HistoryLogic.initHistory(tiers, limit: history.limit)
-                        currentFileName = fileName
-                        hasUnsavedChanges = false
-                        lastSavedTime = Date()
-                    }
-                } else {
-                    throw NSError(domain: "AppState", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unrecognized save file format"])
+
+                if try await loadModernSaveFormat(from: data, fileName: fileName) {
+                    return true
                 }
-                updateProgress(1.0)
-                
-                showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
-                return true
+
+                if try await loadLegacySaveFormat(from: data, fileName: fileName) {
+                    return true
+                }
+
+                throw NSError(
+                    domain: "AppState",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Unrecognized save file format"]
+                )
             } catch {
                 print("File load failed: \(error)")
                 showErrorToast("Load Failed", message: "Could not load \(fileName).json")
                 return false
             }
+        }
+    }
+
+    private func getFileURL(for fileName: String) throws -> URL {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return documentsPath.appendingPathComponent("\(fileName).json")
+    }
+
+    private func loadModernSaveFormat(from data: Data, fileName: String) async throws -> Bool {
+        struct AppSaveFile: Codable {
+            let tiers: Items
+            let createdDate: Date
+            let appVersion: String
+        }
+
+        guard let saveData = try? JSONDecoder().decode(AppSaveFile.self, from: data) else {
+            return false
+        }
+
+        updateProgress(0.8)
+        await applyLoadedFile(
+            tiers: saveData.tiers,
+            fileName: fileName,
+            savedDate: saveData.createdDate
+        )
+        updateProgress(1.0)
+        showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
+        return true
+    }
+
+    private func loadLegacySaveFormat(from data: Data, fileName: String) async throws -> Bool {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tierData = json["tiers"] as? [String: [[String: Any]]] else {
+            return false
+        }
+
+        let newTiers = parseLegacyTiers(from: tierData)
+        updateProgress(0.8)
+        await applyLoadedFile(
+            tiers: newTiers,
+            fileName: fileName,
+            savedDate: Date()
+        )
+        updateProgress(1.0)
+        showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
+        return true
+    }
+
+    private func applyLoadedFile(tiers newTiers: Items, fileName: String, savedDate: Date) async {
+        await MainActor.run {
+            tiers = newTiers
+            history = HistoryLogic.initHistory(tiers, limit: history.limit)
+            currentFileName = fileName
+            hasUnsavedChanges = false
+            lastSavedTime = savedDate
         }
     }
 }

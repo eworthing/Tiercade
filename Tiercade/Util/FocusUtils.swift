@@ -4,11 +4,12 @@ import UIKit
 #endif
 
 enum FocusUtils {
+    @MainActor
     static func seedFocus() {
-#if os(tvOS)
-        DispatchQueue.main.async {
+        #if os(tvOS)
+        Task { @MainActor in
             UIAccessibility.post(notification: .screenChanged, argument: nil)
         }
-#endif
+        #endif
     }
 }

@@ -50,15 +50,15 @@ extension AppState {
 
     private func logDragTarget(_ tierName: String?) {
         let value = tierName ?? "nil"
-    let message = "[AppState] setDragTarget: \(value)"
-    print(message)
-    NSLog("%@", message)
+        let message = "[AppState] setDragTarget: \(value)"
+        print(message)
+        NSLog("%@", message)
     }
 
     private func logDragging(_ id: String?) {
         let value = id ?? "nil"
-    let message = "[AppState] setDragging: \(value)"
-    print(message)
-    NSLog("%@", message)
+        let message = "[AppState] setDragging: \(value)"
+        print(message)
+        NSLog("%@", message)
     }
 }

@@ -10,51 +10,56 @@ extension AppState {
         _ format: ExportFormat,
         group: String = "All",
         themeName: String = "Default"
-    ) async -> (Data, String)? {
-        await withLoadingIndicator(message: "Exporting \(format.displayName)...") {
-            updateProgress(0.2)
+    ) async throws(ExportError) -> (Data, String) {
+        do {
+            return try await withLoadingIndicator(message: "Exporting \(format.displayName)...") {
+                updateProgress(0.2)
 
-            let tierConfig: TierConfig = [
-                "S": TierConfigEntry(name: "S", description: nil),
-                "A": TierConfigEntry(name: "A", description: nil),
-                "B": TierConfigEntry(name: "B", description: nil),
-                "C": TierConfigEntry(name: "C", description: nil),
-                "D": TierConfigEntry(name: "D", description: nil),
-                "F": TierConfigEntry(name: "F", description: nil)
-            ]
-            updateProgress(0.4)
+                let tierConfig: TierConfig = [
+                    "S": TierConfigEntry(name: "S", description: nil),
+                    "A": TierConfigEntry(name: "A", description: nil),
+                    "B": TierConfigEntry(name: "B", description: nil),
+                    "C": TierConfigEntry(name: "C", description: nil),
+                    "D": TierConfigEntry(name: "D", description: nil),
+                    "F": TierConfigEntry(name: "F", description: nil)
+                ]
+                updateProgress(0.4)
 
-            switch exportBinaryFormat(format, group: group, themeName: themeName) {
-            case .success(let data, let fileName):
+                switch exportBinaryFormat(format, group: group, themeName: themeName) {
+                case .success(let data, let fileName):
+                    updateProgress(1.0)
+                    let message = fileName.hasSuffix(".pdf") ? "Exported PDF" : "Exported PNG image"
+                    showSuccessToast("Export Complete", message: message)
+                    return (data, fileName)
+                case .failure:
+                    throw ExportError.renderingFailed("Binary export failed")
+                case .notApplicable:
+                    break
+                }
+
+                guard let (content, fileName) = exportTextFormat(
+                    format,
+                    group: group,
+                    themeName: themeName,
+                    tierConfig: tierConfig
+                ) else {
+                    throw ExportError.formatNotSupported(format)
+                }
+
+                updateProgress(0.8)
+
+                guard let data = content.data(using: .utf8) else {
+                    throw ExportError.dataEncodingFailed("UTF-8 encoding failed")
+                }
+
                 updateProgress(1.0)
-                let message = fileName.hasSuffix(".pdf") ? "Exported PDF" : "Exported PNG image"
-                showSuccessToast("Export Complete", message: message)
+                showSuccessToast("Export Complete", message: "Exported as \(format.displayName)")
                 return (data, fileName)
-            case .failure:
-                return nil
-            case .notApplicable:
-                break
             }
-
-            guard let (content, fileName) = exportTextFormat(
-                format,
-                group: group,
-                themeName: themeName,
-                tierConfig: tierConfig
-            ) else {
-                return nil
-            }
-
-            updateProgress(0.8)
-
-            guard let data = content.data(using: .utf8) else {
-                showErrorToast("Export Failed", message: "Could not convert content to data")
-                return nil
-            }
-
-            updateProgress(1.0)
-            showSuccessToast("Export Complete", message: "Exported as \(format.displayName)")
-            return (data, fileName)
+        } catch let error as ExportError {
+            throw error
+        } catch {
+            throw ExportError.renderingFailed("Unexpected error: \(error.localizedDescription)")
         }
     }
 
