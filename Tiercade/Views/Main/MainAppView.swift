@@ -10,29 +10,29 @@ import Foundation
 // ContentView+*.swift modular files).
 
 struct MainAppView: View {
-    @EnvironmentObject var app: AppState
+    @Environment(AppState.self) private var app: AppState
     #if os(tvOS)
     @Environment(\.scenePhase) private var scenePhase
     #endif
 
     var body: some View {
         Group {
-#if os(macOS) || targetEnvironment(macCatalyst)
+            #if os(macOS) || targetEnvironment(macCatalyst)
             NavigationSplitView {
                 SidebarView(tierOrder: app.tierOrder)
-                    .environmentObject(app)
+                    .environment(app)
             } content: {
                 TierGridView(tierOrder: app.tierOrder)
-                    .environmentObject(app)
+                    .environment(app)
             } detail: {
                 EmptyView()
             }
             .toolbar { ToolbarView(app: app) }
-#else
+            #else
             // For iOS/tvOS show content full-bleed and inject bars via safe area insets
             ZStack {
                 TierGridView(tierOrder: app.tierOrder)
-                    .environmentObject(app)
+                    .environment(app)
                     // Add content padding to avoid overlay bars overlap
                     .padding(.top, TVMetrics.contentTopInset)
                     .padding(.bottom, TVMetrics.contentBottomInset)
@@ -57,18 +57,18 @@ struct MainAppView: View {
             #else
             // ToolbarView is ToolbarContent (not a View) on some platforms; avoid embedding it directly on tvOS
             .overlay(alignment: .top) {
-                HStack { Text("") }
-                    .environmentObject(app)
+            HStack { Text("") }
+            .environment(app)
             }
             #endif
-#endif
+            #endif
         }
-#if os(tvOS)
+        #if os(tvOS)
         .task { FocusUtils.seedFocus() }
         .onChange(of: scenePhase) { phase in
             if phase == .active { FocusUtils.seedFocus() }
         }
-#endif
+        #endif
         .overlay {
             // Compose overlays here so they appear on all platforms (including tvOS)
             ZStack {
@@ -79,7 +79,7 @@ struct MainAppView: View {
                         message: app.loadingMessage,
                         progress: app.operationProgress
                     )
-                        .zIndex(50)
+                    .zIndex(50)
                 }
 
                 // Quick Rank overlay
@@ -135,7 +135,7 @@ struct MainAppView: View {
 
 // Simple tvOS-friendly toolbar exposing essential actions as buttons.
 struct TVToolbarView: View {
-    @ObservedObject var app: AppState
+    @Bindable var app: AppState
     // Seed and manage initial focus for tvOS toolbar controls
     @FocusState private var focusedControl: Control?
 

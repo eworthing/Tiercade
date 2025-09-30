@@ -2,7 +2,7 @@ import SwiftUI
 
 #if os(tvOS)
 struct TierHeaderView: View {
-    @EnvironmentObject var app: AppState
+    @Environment(AppState.self) private var app: AppState
     let tierId: String
     var titleColor: Color?
     @State private var showMenu = false
@@ -31,13 +31,13 @@ struct TierHeaderView: View {
         }
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.6).onEnded { _ in showMenu = true })
         .sheet(isPresented: $showMenu, content: {
-            TierMenuSheet(app: app, tierId: tierId, showMenu: $showMenu)
+            TierLabelEditor(app: app, tierId: tierId, showMenu: $showMenu)
         })
     }
 }
 
-private struct TierMenuSheet: View {
-    @ObservedObject var app: AppState
+private struct TierLabelEditor: View {
+    @Bindable var app: AppState
     let tierId: String
     @Binding var showMenu: Bool
     @State private var label: String = ""

@@ -3,14 +3,14 @@ import TiercadeCore
 
 // MARK: - Tier grid
 struct TierGridView: View {
-    @EnvironmentObject var app: AppState
+    @Environment(AppState.self) private var app: AppState
     let tierOrder: [String]
 
     var body: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
                 ForEach(tierOrder, id: \.self) { tier in
-                    TierRowView(tier: tier)
+                    TierRowWrapper(tier: tier)
                 }
                 UnrankedView()
             }
@@ -21,7 +21,7 @@ struct TierGridView: View {
 }
 
 struct UnrankedView: View {
-    @EnvironmentObject var app: AppState
+    @Environment(AppState.self) private var app: AppState
 
     private var filteredItems: [Item] {
         let allUnranked = app.items(for: "unranked")
@@ -105,7 +105,7 @@ struct UnrankedView: View {
 
 struct CardView: View {
     let item: Item
-    @EnvironmentObject var app: AppState
+    @Environment(AppState.self) var app
     @Environment(\.isFocused) var isFocused: Bool
 
     private func tierForItem(_ item: Item) -> Tier {
@@ -171,7 +171,7 @@ struct CardView: View {
         #else
         .buttonStyle(PlainButtonStyle())
         #endif
-    .accessibilityIdentifier("Card_\(item.id)")
+        .accessibilityIdentifier("Card_\(item.id)")
         .scaleEffect(app.draggingId == item.id ? 0.98 : 1.0)
         .shadow(
             color: Color.black.opacity(app.draggingId == item.id ? 0.45 : 0.1),

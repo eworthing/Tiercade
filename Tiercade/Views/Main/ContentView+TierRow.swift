@@ -1,8 +1,8 @@
 import SwiftUI
 import TiercadeCore
 
-struct TierRowView: View {
-    @EnvironmentObject var app: AppState
+struct TierRowWrapper: View {
+    @Environment(AppState.self) private var app: AppState
     let tier: String
     #if os(tvOS)
     @FocusState private var focusedItemId: String?

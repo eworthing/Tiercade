@@ -5,38 +5,40 @@
 //  Created by PL on 9/14/25.
 //
 
-import XCTest
+import Testing
 @testable import Tiercade
 import TiercadeCore
 
-final class TiercadeTests: XCTestCase {
+@Suite("Tiercade Core Tests")
+@MainActor
+struct TiercadeTests {
 
-    @MainActor
-    func testRandomize() throws {
+    @Test("Randomize distributes items across tiers and clears unranked")
+    func randomize() async throws {
         let appState = AppState()
 
-    // Set up initial state with items in different tiers
+        // Set up initial state with items in different tiers
         appState.tiers = [
             "S": [Item(id: "1", attributes: ["name": "Player 1", "season": "1"])],
             "A": [Item(id: "2", attributes: ["name": "Player 2", "season": "2"])],
             "B": [],
-               "C": [Item(id: "3", attributes: ["name": "Player 3", "season": "3"])],
+            "C": [Item(id: "3", attributes: ["name": "Player 3", "season": "3"])],
             "D": [],
             "F": [],
             "unranked": [
-                     Item(id: "4", attributes: ["name": "Player 4", "season": "4"]),
-                         Item(id: "5", attributes: ["name": "Player 5", "season": "5"])
+                Item(id: "4", attributes: ["name": "Player 4", "season": "4"]),
+                Item(id: "5", attributes: ["name": "Player 5", "season": "5"])
             ]
         ]
 
-    // Count items before randomize
-    let sTierCount = appState.tierCount("S")
-    let aTierCount = appState.tierCount("A")
-    let bTierCount = appState.tierCount("B")
-    let cTierCount = appState.tierCount("C")
-    let dTierCount = appState.tierCount("D")
-    let fTierCount = appState.tierCount("F")
-    let unrankedCount = appState.unrankedCount()
+        // Count items before randomize
+        let sTierCount = appState.tierCount("S")
+        let aTierCount = appState.tierCount("A")
+        let bTierCount = appState.tierCount("B")
+        let cTierCount = appState.tierCount("C")
+        let dTierCount = appState.tierCount("D")
+        let fTierCount = appState.tierCount("F")
+        let unrankedCount = appState.unrankedCount()
         let originalCount = [
             sTierCount,
             aTierCount,
@@ -62,11 +64,11 @@ final class TiercadeTests: XCTestCase {
         ]
         let newCount = countsAfter.reduce(0, +)
 
-        XCTAssertEqual(originalCount, newCount, "Randomize should preserve total item count")
+        #expect(originalCount == newCount, "Randomize should preserve total item count")
 
         // Check that unranked should be empty after randomize (items distributed to tiers)
         let newUnrankedCount = countsAfter.last ?? 0
-        XCTAssertEqual(newUnrankedCount, 0, "Unranked should be empty after randomize")
+        #expect(newUnrankedCount == 0, "Unranked should be empty after randomize")
 
         // Check that items are distributed across tiers
         let tiersWithItems = appState.tierOrder
@@ -74,11 +76,11 @@ final class TiercadeTests: XCTestCase {
             .filter { $0 > 0 }
             .count
 
-        XCTAssertGreaterThan(tiersWithItems, 0, "At least one tier should have items after randomize")
+        #expect(tiersWithItems > 0, "At least one tier should have items after randomize")
     }
 
-    @MainActor
-    func testClearTier() throws {
+    @Test("Clear tier moves items to unranked")
+    func clearTier() async throws {
         let appState = AppState()
 
         // Set up initial state
@@ -92,28 +94,29 @@ final class TiercadeTests: XCTestCase {
             "unranked": []
         ]
 
-    let originalSCount = appState.tierCount("S")
-    let originalUnrankedCount = appState.unrankedCount()
+        let originalSCount = appState.tierCount("S")
+        let originalUnrankedCount = appState.unrankedCount()
 
         // Clear S tier
         appState.clearTier("S")
 
         // Check that S tier is now empty
-    let sCount = appState.tierCount("S")
-        XCTAssertEqual(sCount, 0, "S tier should be empty after clearing")
+        let sCount = appState.tierCount("S")
+        #expect(sCount == 0, "S tier should be empty after clearing")
 
-    // Check that items moved to unranked
-    let unrankedCount = appState.unrankedCount()
-    XCTAssertEqual(unrankedCount, originalUnrankedCount + originalSCount, "Unranked should contain the moved items")
+        // Check that items moved to unranked
+        let unrankedCount = appState.unrankedCount()
+        #expect(unrankedCount == originalUnrankedCount + originalSCount, "Unranked should contain the moved items")
 
         // Check that A tier was not affected
-    let aCount = appState.tierCount("A")
-    XCTAssertEqual(aCount, 1, "A tier should remain unchanged")
+        let aCount = appState.tierCount("A")
+        #expect(aCount == 1, "A tier should remain unchanged")
     }
 
-    func testExample() throws {
+    @Test("Example test always passes")
+    func example() async throws {
         // Write your unit test here.
-        XCTAssertTrue(true)
+        #expect(true)
     }
 
 }

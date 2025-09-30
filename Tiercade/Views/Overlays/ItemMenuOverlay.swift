@@ -3,7 +3,7 @@ import TiercadeCore
 
 #if os(tvOS)
 struct ItemMenuOverlay: View {
-    @ObservedObject var app: AppState
+    @Bindable var app: AppState
     @FocusState private var focused: FocusField?
     private enum FocusField: Hashable { case firstMove, toggle, details, remove, close }
 

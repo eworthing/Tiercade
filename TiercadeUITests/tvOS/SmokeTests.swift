@@ -19,10 +19,10 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(firstElement.waitForExistence(timeout: 10), "App did not launch or UI not visible")
 
         // Capture a baseline screenshot
-    let before = XCUIScreen.main.screenshot()
-    let beforeData = before.pngRepresentation
-    let beforeURL = URL(fileURLWithPath: "/tmp").appendingPathComponent("tiercade_ui_before.png")
-    try beforeData.write(to: beforeURL)
+        let before = XCUIScreen.main.screenshot()
+        let beforeData = before.pngRepresentation
+        let beforeURL = URL(fileURLWithPath: "/tmp").appendingPathComponent("tiercade_ui_before.png")
+        try beforeData.write(to: beforeURL)
 
         // Use XCUIRemote to simulate Apple TV remote presses
         let remote = XCUIRemote.shared

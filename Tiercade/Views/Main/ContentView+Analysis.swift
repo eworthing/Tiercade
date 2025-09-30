@@ -4,11 +4,11 @@ import TiercadeCore
 // MARK: - Analysis & Statistics Views
 
 struct AnalysisView: View {
-    @ObservedObject var app: AppState
+    @Bindable var app: AppState
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     if let analysis = app.analysisData {
@@ -45,26 +45,26 @@ struct AnalysisView: View {
                 .padding(Metrics.grid * 2)
             }
             .navigationTitle("Tier Analysis")
-    #if !os(macOS)
-                #if !os(tvOS)
-                .navigationBarTitleDisplayMode(.large)
-                #endif
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("Done") {
-                            dismiss()
-                        }
-                    }
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Refresh") {
-                            Task {
-                                await app.generateAnalysis()
-                            }
-                        }
-                        .disabled(app.isLoading)
+            #if !os(macOS)
+            #if !os(tvOS)
+            .navigationBarTitleDisplayMode(.large)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Done") {
+                        dismiss()
                     }
                 }
-    #endif
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Refresh") {
+                        Task {
+                            await app.generateAnalysis()
+                        }
+                    }
+                    .disabled(app.isLoading)
+                }
+            }
+            #endif
         }
     }
 }
@@ -122,8 +122,8 @@ struct OverallStatsView: View {
                 )
             }
         }
-    .padding(Metrics.grid * 2)
-    .panel()
+        .padding(Metrics.grid * 2)
+        .panel()
     }
 }
 
@@ -148,7 +148,7 @@ struct StatCardView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
         }
-    .padding(Metrics.grid)
+        .padding(Metrics.grid)
         .card()
     }
 }
@@ -168,8 +168,8 @@ struct TierDistributionChartView: View {
                 }
             }
         }
-    .padding(Metrics.grid * 2)
-    .panel()
+        .padding(Metrics.grid * 2)
+        .panel()
     }
 }
 
@@ -243,13 +243,13 @@ struct BalanceScoreView: View {
             VStack(spacing: 12) {
                 ZStack {
                     let strokeColor: Color = {
-    #if os(tvOS)
+                        #if os(tvOS)
                         return Palette.surfHi
-    #elseif canImport(UIKit)
+                        #elseif canImport(UIKit)
                         return Color(UIColor.systemGray4)
-    #else
+                        #else
                         return Palette.surfHi
-    #endif
+                        #endif
                     }()
 
                     Circle()
@@ -280,8 +280,8 @@ struct BalanceScoreView: View {
                     .multilineTextAlignment(.center)
             }
         }
-                .padding(Metrics.grid * 2)
-    .panel()
+        .padding(Metrics.grid * 2)
+        .panel()
     }
 
     private var scoreColor: Color {
@@ -336,7 +336,7 @@ struct InsightsView: View {
                 }
             }
         }
-            .padding(Metrics.grid * 2)
-    .panel()
+        .padding(Metrics.grid * 2)
+        .panel()
     }
 }

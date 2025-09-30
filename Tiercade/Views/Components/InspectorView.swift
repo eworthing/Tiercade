@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct InspectorView: View {
-    @EnvironmentObject var app: AppState
+    @Environment(AppState.self) private var app: AppState
     @State private var locked = false
     var body: some View {
         VStack(alignment: .leading, spacing: Metrics.grid) {

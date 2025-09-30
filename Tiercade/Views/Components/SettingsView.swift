@@ -15,8 +15,8 @@ struct SettingsView: View {
                 Section("Appearance") {
                     ForEach(ThemePreference.allCases) { option in
                         ThemeOptionRow(option: option, selectionRaw: $themeRaw)
-                        .listRowInsets(EdgeInsets(top: 12, leading: 32, bottom: 12, trailing: 32))
-                        .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets(top: 12, leading: 32, bottom: 12, trailing: 32))
+                            .listRowBackground(Color.clear)
                     }
                 }
 
@@ -30,9 +30,9 @@ struct SettingsView: View {
             .background(Color.appBackground.ignoresSafeArea())
             .listStyle(.plain)
             .navigationTitle("Settings")
-#if os(tvOS)
+            #if os(tvOS)
             .toolbar { ToolbarItem(placement: .navigationBarTrailing) { CloseButton(dismiss: dismiss) } }
-#endif
+            #endif
         }
     }
 }
@@ -110,11 +110,11 @@ private struct ThemeOptionRow: View {
         } label: {
             SettingsOptionLabel(title: option.displayName, isSelected: selectionRaw == option.rawValue)
         }
-#if os(tvOS)
+        #if os(tvOS)
         .buttonStyle(.tvRemote(.list))
-#else
+        #else
         .buttonStyle(.plain)
-#endif
+        #endif
         .accessibilityIdentifier("Settings_Theme_\(option.rawValue.capitalized)")
     }
 }

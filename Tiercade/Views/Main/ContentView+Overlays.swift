@@ -126,7 +126,7 @@ struct DragTargetHighlight: View {
 // MARK: - Quick Rank overlay
 
 struct QuickRankOverlay: View {
-    @ObservedObject var app: AppState
+    @Bindable var app: AppState
     @FocusState private var focused: FocusField?
     private enum FocusField: Hashable { case firstTier, cancel }
     var body: some View {
@@ -166,7 +166,7 @@ struct QuickRankOverlay: View {
 // MARK: - Head-to-Head overlay
 
 struct HeadToHeadOverlay: View {
-    @ObservedObject var app: AppState
+    @Bindable var app: AppState
     @FocusState private var focused: FocusField?
     private enum FocusField: Hashable { case left, right, finish, cancel }
     var body: some View {
@@ -190,7 +190,7 @@ struct HeadToHeadOverlay: View {
                     } else {
                         Text("No more pairs. Tap Finish.").foregroundStyle(.secondary)
                     }
-                        HStack {
+                    HStack {
                         Button("Finish") { app.finishH2H() }
                             .buttonStyle(PrimaryButtonStyle())
                             .accessibilityIdentifier("H2H_Finish")

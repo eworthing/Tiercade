@@ -6,7 +6,7 @@ import TiercadeCore
 @MainActor
 protocol ToolbarExportCoordinating: ObservableObject {
     var isLoading: Bool { get }
-    func exportToFormat(_ format: ExportFormat) async -> (Data, String)?
+    func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String)
     func showToast(type: ToastType, title: String, message: String?)
 }
 
@@ -21,7 +21,7 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
     @State private var shareFileURL: URL?
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             VStack(spacing: 20) {
                 informationSection
                 contentSection
@@ -136,11 +136,16 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
         isExporting = true
         defer { isExporting = false }
 
-        if let (data, filename) = await coordinator.exportToFormat(exportFormat) {
+        do {
+            let (data, filename) = try await coordinator.exportToFormat(exportFormat)
             await MainActor.run {
                 exportedData = data
                 exportFileName = filename
                 showingFileExporter = true
+            }
+        } catch let error as ExportError {
+            await MainActor.run {
+                coordinator.showToast(type: .error, title: "Export Failed", message: error.localizedDescription)
             }
         }
     }
@@ -150,7 +155,8 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
         isExporting = true
         defer { isExporting = false }
 
-        if let (data, filename) = await coordinator.exportToFormat(exportFormat) {
+        do {
+            let (data, filename) = try await coordinator.exportToFormat(exportFormat)
             await MainActor.run {
                 let tempURL = FileManager.default
                     .temporaryDirectory
@@ -165,6 +171,10 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
                         message: "Could not prepare file: \(error.localizedDescription)"
                     )
                 }
+            }
+        } catch let error as ExportError {
+            await MainActor.run {
+                coordinator.showToast(type: .error, title: "Export Failed", message: error.localizedDescription)
             }
         }
     }

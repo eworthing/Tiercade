@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import Observation
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -66,45 +67,46 @@ struct TierAnalysisData: Sendable {
 }
 
 @MainActor
-final class AppState: ObservableObject {
-    @Published var tiers: Items = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
-    @Published var tierOrder: [String] = ["S", "A", "B", "C", "D", "F"]
-    @Published var searchQuery: String = ""
-    @Published var activeFilter: FilterType = .all
-    @Published var currentToast: ToastMessage?
-    @Published var quickRankTarget: Item?
+@Observable
+final class AppState {
+    var tiers: Items = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
+    var tierOrder: [String] = ["S", "A", "B", "C", "D", "F"]
+    var searchQuery: String = ""
+    var activeFilter: FilterType = .all
+    var currentToast: ToastMessage?
+    var quickRankTarget: Item?
     // tvOS quick move (Play/Pause accelerator)
-    @Published var quickMoveTarget: Item?
+    var quickMoveTarget: Item?
     // Multi-select state for batch operations
-    @Published var selection: Set<String> = []
-    @Published var isMultiSelect: Bool = false
+    var selection: Set<String> = []
+    var isMultiSelect: Bool = false
     // Detail overlay routing
-    @Published var detailItem: Item?
+    var detailItem: Item?
     // Item menu overlay routing (tvOS primary action)
-    @Published var itemMenuTarget: Item?
+    var itemMenuTarget: Item?
     // Locked tiers set (until full Tier model exists)
-    @Published var lockedTiers: Set<String> = []
+    var lockedTiers: Set<String> = []
     // Tier display overrides (rename/recolor without core model changes)
-    @Published var tierLabels: [String: String] = [:] // tierId -> display label
-    @Published var tierColors: [String: String] = [:] // tierId -> hex color
+    var tierLabels: [String: String] = [:] // tierId -> display label
+    var tierColors: [String: String] = [:] // tierId -> hex color
     // Head-to-Head
-    @Published var h2hActive: Bool = false
-    @Published var h2hPool: [Item] = []
-    @Published var h2hPair: (Item, Item)?
-    @Published var h2hRecords: [String: H2HRecord] = [:]
+    var h2hActive: Bool = false
+    var h2hPool: [Item] = []
+    var h2hPair: (Item, Item)?
+    var h2hRecords: [String: H2HRecord] = [:]
 
     // Enhanced Persistence
-    @Published var hasUnsavedChanges: Bool = false
-    @Published var lastSavedTime: Date?
-    @Published var currentFileName: String?
+    var hasUnsavedChanges: Bool = false
+    var lastSavedTime: Date?
+    var currentFileName: String?
 
     // Progress Tracking & Visual Feedback
-    @Published var isLoading: Bool = false
-    @Published var loadingMessage: String = ""
-    @Published var operationProgress: Double = 0.0
-    @Published var dragTargetTier: String?
-    @Published var draggingId: String?
-    @Published var isProcessingSearch: Bool = false
+    var isLoading: Bool = false
+    var loadingMessage: String = ""
+    var operationProgress: Double = 0.0
+    var dragTargetTier: String?
+    var draggingId: String?
+    var isProcessingSearch: Bool = false
 
     let storageKey = "Tiercade.tiers.v1"
     nonisolated(unsafe) var autosaveTimer: Timer?
@@ -190,7 +192,7 @@ final class AppState: ObservableObject {
             guard let self = self else { return }
             Task { @MainActor in
                 if self.hasUnsavedChanges {
-                    self.autoSave()
+                    try? self.autoSave()
                 }
             }
         }
@@ -249,8 +251,8 @@ final class AppState: ObservableObject {
 
     // MARK: - Analysis & Statistics System
 
-    @Published var showingAnalysis = false
-    @Published var analysisData: TierAnalysisData?
+    var showingAnalysis = false
+    var analysisData: TierAnalysisData?
 
     // MARK: - Accessibility
     func announce(_ message: String) {

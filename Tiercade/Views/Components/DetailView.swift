@@ -49,15 +49,15 @@ struct DetailView: View {
                         activePlayer = AVPlayer(url: url)
                         showVideoPlayer = true
                     }
-                        .buttonStyle(.tvRemote(.primary))
-                        .accessibilityIdentifier("Detail_PlayVideo")
+                    .buttonStyle(.tvRemote(.primary))
+                    .accessibilityIdentifier("Detail_PlayVideo")
                     #else
                     Button("Play Video") {
                         OpenExternal.open(url) { result in
                             if case .unsupported = result { pendingURL = url; showQR = true }
                         }
                     }
-                        .buttonStyle(.bordered)
+                    .buttonStyle(.bordered)
                     #endif
                 }
                 Spacer()
@@ -68,16 +68,20 @@ struct DetailView: View {
         }
         .padding(24)
         #if os(tvOS)
-        .fullScreenCover(isPresented: $showVideoPlayer, onDismiss: {
-            activePlayer?.pause()
-            activePlayer = nil
-        }) {
-            TVVideoPlayerContainer(player: activePlayer) {
-                showVideoPlayer = false
+        .fullScreenCover(
+            isPresented: $showVideoPlayer,
+            onDismiss: {
                 activePlayer?.pause()
                 activePlayer = nil
+            },
+            content: {
+                TVVideoPlayerContainer(player: activePlayer) {
+                    showVideoPlayer = false
+                    activePlayer?.pause()
+                    activePlayer = nil
+                }
             }
-        }
+        )
         #endif
     }
 }

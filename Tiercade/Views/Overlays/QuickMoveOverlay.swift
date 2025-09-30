@@ -3,7 +3,7 @@ import TiercadeCore
 
 #if os(tvOS)
 struct QuickMoveOverlay: View {
-    @ObservedObject var app: AppState
+    @Bindable var app: AppState
 
     private let primaryTargets = ["S", "A", "B", "C", "unranked"]
     @FocusState private var focused: FocusField?
@@ -139,7 +139,7 @@ struct QuickMoveOverlay: View {
                         .spring(response: 0.25, dampingFraction: 0.75, blendDuration: 0.08),
                         value: isFocused
                     )
-        })
+            })
             .buttonStyle(.plain)
             .contentShape(Circle())
             .focusable(true)

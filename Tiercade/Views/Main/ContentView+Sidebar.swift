@@ -3,7 +3,7 @@ import TiercadeCore
 
 // MARK: - Sidebar (filters/summary)
 struct SidebarView: View {
-    @EnvironmentObject var app: AppState
+    @Environment(AppState.self) var app
     let tierOrder: [String]
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -22,7 +22,7 @@ struct SidebarView: View {
             Divider()
             SidebarTierListView(tierOrder: tierOrder)
             Divider()
-            ItemTrayView()
+            ItemTrayView(app: app)
         }
         .padding(Metrics.grid * 2)
         .frame(minWidth: 280)
@@ -31,7 +31,7 @@ struct SidebarView: View {
 }
 
 struct SidebarSearchView: View {
-    @EnvironmentObject var app: AppState
+    @Environment(AppState.self) var app
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Search & Filter").font(.headline)
@@ -80,7 +80,7 @@ struct SidebarSearchView: View {
 }
 
 struct SidebarStatsView: View {
-    @EnvironmentObject var app: AppState
+    @Environment(AppState.self) var app
     let tierOrder: [String]
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -102,7 +102,7 @@ struct SidebarStatsView: View {
 }
 
 struct SidebarTierListView: View {
-    @EnvironmentObject var app: AppState
+    @Environment(AppState.self) var app
     let tierOrder: [String]
     var body: some View {
         ScrollView {
@@ -123,7 +123,7 @@ struct SidebarTierListView: View {
 
 // MARK: - Persistence Status
 struct PersistenceStatusView: View {
-    @ObservedObject var app: AppState
+    @Bindable var app: AppState
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 4) {

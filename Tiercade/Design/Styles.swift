@@ -75,12 +75,12 @@ struct CardButtonStyle: ButtonStyle {
 }
 
 private func get(_ isPressed: Bool) -> Color {
-        #if os(tvOS)
-        return isPressed ? .black : .white
-        #else
-        return .white
-        #endif
-    }
+    #if os(tvOS)
+    return isPressed ? .black : .white
+    #else
+    return .white
+    #endif
+}
 
 struct TVRemoteButtonStyle: ButtonStyle {
     enum Role {
@@ -93,7 +93,7 @@ struct TVRemoteButtonStyle: ButtonStyle {
     @Environment(\.isFocused) private var isFocused: Bool
 
     func makeBody(configuration: Configuration) -> some View {
-    let colors = palette(for: role, isPressed: configuration.isPressed, isFocused: isFocused)
+        let colors = palette(for: role, isPressed: configuration.isPressed, isFocused: isFocused)
         let cornerRadius: CGFloat = role == .list ? 22 : 18
 
         return configuration.label
