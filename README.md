@@ -1,13 +1,13 @@
-# Tiercade iOS
+# Tiercade
 
-A comprehensive tier list management application for iOS, built with SwiftUI. Create, manage, and analyze tier lists with professional-grade features including advanced analytics, multiple export formats, and intelligent insights.
+A comprehensive tier list management application built with SwiftUI. Create, manage, and analyze tier lists with professional-grade features including advanced analytics, multiple export formats, and intelligent insights.
 
-![iOS](https://img.shields.io/badge/iOS-18.5+-blue.svg)
-![tvOS](https://img.shields.io/badge/tvOS-17+-lightgrey.svg)
-![macOS](https://img.shields.io/badge/macOS-14+-lightgrey.svg)
+![iOS](https://img.shields.io/badge/iOS-26.0+-blue.svg)
+![tvOS](https://img.shields.io/badge/tvOS-26.0+-blue.svg)
+![macOS](https://img.shields.io/badge/macOS-26.0+-blue.svg)
 ![Swift](https://img.shields.io/badge/Swift-6.0-orange.svg)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-Native-green.svg)
-![Xcode](https://img.shields.io/badge/Xcode-16+-blue.svg)
+![Xcode](https://img.shields.io/badge/Xcode-26+-blue.svg)
 
 ## 🚀 Features
 
@@ -52,42 +52,45 @@ A comprehensive tier list management application for iOS, built with SwiftUI. Cr
 
 ### **Technical Stack**
 - **SwiftUI** - Modern declarative UI framework
-- **Swift 6.0** - Latest language features with strict concurrency
-- **iOS 18.5+** - Target deployment supporting latest iOS features
-- **TiercadeCore** - Platform-agnostic Swift Package for shared logic
+- **Swift 6.0** - Latest language features with strict concurrency checking
+- **OS 26.0+** - Target deployment: iOS 26.0, tvOS 26.0, macOS 26.0
+- **TiercadeCore** - Platform-agnostic Swift Package for shared logic (iOS 17+/macOS 14+/tvOS 17+)
 
-> Note: The app target aims for iOS 18.5+ while the `TiercadeCore` Swift package documents support for iOS 17 / macOS 14 / tvOS 17+. This is intentional: the core package keeps slightly broader compatibility for cross-platform use while the app UI targets newer OS features. See `TiercadeCore/README.md` for core package requirements.
+> Note: The app targets OS 26.0+ to leverage the latest platform features (Swift 6 strict concurrency, modern SwiftUI APIs, @Observable macro). The `TiercadeCore` Swift package maintains broader compatibility (iOS 17+/macOS 14+/tvOS 17+) for potential cross-platform reuse. See `TiercadeCore/README.md` for core package details.
 
 ### **Design Patterns**
 - **MVVM Architecture** - Clean separation of concerns with SwiftUI
-- **@MainActor State Management** - Thread-safe UI updates with published properties
-- **Async/Await** - Modern concurrency for file operations and analysis
+- **@Observable + @MainActor** - Modern Swift 6 state management with automatic observation
+- **Typed Throws** - Compile-time error handling with specific error types
+- **Async/Await** - Structured concurrency for file operations and analysis
 - **Protocol-Oriented Design** - Flexible, testable interfaces throughout
 
 ### **Core Components**
 
-#### **AppState (@MainActor)**
-Central state management with comprehensive functionality:
+#### **AppState (@MainActor + @Observable)**
+Central state management with modern Swift 6 concurrency and observation:
 ```swift
 @MainActor
-final class AppState: ObservableObject {
-    // Core state
-    @Published var tiers: TLTiers = ["S":[],"A":[],"B":[],"C":[],"D":[],"F":[],"unranked":[]]
-    @Published var tierOrder: [String] = ["S","A","B","C","D","F"]
+@Observable
+final class AppState {
+    // Core state (automatic observation via @Observable)
+    var tiers: Items = ["S":[],"A":[],"B":[],"C":[],"D":[],"F":[],"unranked":[]]
+    var tierOrder: [String] = ["S","A","B","C","D","F"]
     
     // UI/feature state
-    @Published var searchQuery: String = ""
-    @Published var isLoading: Bool = false
-    @Published var loadingMessage: String = ""
-    @Published var operationProgress: Double = 0
-    @Published var currentToast: ToastMessage?
-    @Published var analysisData: TierAnalysisData?
+    var searchQuery: String = ""
+    var isLoading: Bool = false
+    var loadingMessage: String = ""
+    var operationProgress: Double = 0
+    var currentToast: ToastMessage?
+    var analysisData: TierAnalysisData?
 
-    // Operations (signatures)
+    // Operations with typed throws
     func move(_ id: String, to tier: String)
-    func exportToFormat(_ format: ExportFormat, group: String, themeName: String) async -> (Data, String)?
+    func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String)
     func generateAnalysis() async
-    func randomize()
+    func save() throws(PersistenceError)
+    func importFromJSON(_ jsonString: String) async throws(ImportError)
     func undo()
     func redo()
 }
@@ -135,11 +138,11 @@ xcodebuild test -project Tiercade.xcodeproj -scheme Tiercade -destination 'platf
 ## 🛠️ Development
 
 ### **Requirements**
-- **Xcode 16+** - Latest development environment
-- **iOS 18.5+ Simulator** - For testing and development (recommended)
-- **tvOS 17+ Simulator** - For tvOS UI testing
-- **macOS 14+** - For macOS development and packaging
-- **Swift 6.0** - Language mode with strict concurrency and enhanced type safety
+- **Xcode 26+** - Latest development environment
+- **iOS 26.0+ Simulator** - For testing and development
+- **tvOS 26.0+ Simulator** - For tvOS UI testing (primary focus)
+- **macOS 26.0+** - For macOS development and packaging
+- **Swift 6.0** - Language mode with strict concurrency checking enabled
 - **macOS** - Development platform
 
 ### **Project Setup**
@@ -239,9 +242,9 @@ func updateProgress(_ value: Double) { /* 0.0 ... 1.0 */ }
 ## 🎯 Design Decisions
 
 ### **State Management Choice: @Observable + @MainActor**
-- **Rationale**: Modern SwiftUI state management with thread safety
-- **Benefits**: Automatic UI updates, compile-time safety, clear data flow
-- **Trade-offs**: iOS 17+ requirement, learning curve for team
+- **Rationale**: Modern Swift 6 observation replacing @ObservableObject/@Published
+- **Benefits**: Automatic observation, no boilerplate, compile-time concurrency safety
+- **Trade-offs**: Requires Swift 6 and latest OS versions
 
 ### **Architecture: MVVM with SwiftUI**
 - **Rationale**: Natural fit for SwiftUI's declarative paradigm
@@ -317,13 +320,14 @@ func updateProgress(_ value: Double) { /* 0.0 ... 1.0 */ }
 
 ## 📄 License
 
-This project is currently unlicensed in the repository. If you intend to open-source it, add a LICENSE file at the repository root (for example, MIT or Apache-2.0). For private/internal projects, include a short statement here describing distribution restrictions.
+This project is currently unlicensed. This is a personal project developed with GitHub Copilot assistance.
 
-## 🤝 Contributing
+## 📚 Documentation
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-Also see the core package docs: [TiercadeCore/README.md](TiercadeCore/README.md)
+- **Core Package**: [TiercadeCore/README.md](TiercadeCore/README.md) - Platform-agnostic logic and models
+- **Design System**: [Tiercade/Design/README.md](Tiercade/Design/README.md) - Design tokens and styles
+- **Tools & Testing**: [tools/README.md](tools/README.md) - tvOS debugging and automation
+- **Copilot Instructions**: [.github/copilot-instructions.md](.github/copilot-instructions.md) - Development guidance for AI assistance
 
 ## 📞 Support
 

@@ -1,6 +1,6 @@
 # Tiercade tvOS Debugging and Testing
 
-This document describes the automated testing and debugging setup for Tiercade on tvOS.
+This document describes the automated testing and debugging setup for Tiercade on tvOS (OS 26.0+).
 
 ## Quick Start
 
@@ -11,7 +11,7 @@ Run the full build + test + artifact collection:
 ```
 
 This will:
-- Build the app for the tvOS simulator
+- Build the app for the tvOS 26.0+ simulator
 - Run UI tests (SmokeTests) to exercise toolbar and overlays
 - Capture screenshots and debug logs
 - Run legacy smoke tests for additional coverage
