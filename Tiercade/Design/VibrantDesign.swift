@@ -14,130 +14,21 @@ import AppKit
 #endif
 
 // MARK: - Color helpers (Display P3 aware)
-
-private struct RGBAComponents {
-    let red: CGFloat
-    let green: CGFloat
-    let blue: CGFloat
-    let alpha: CGFloat
-}
-
-private func parseHexRGBA(_ hex: String, defaultAlpha: CGFloat = 1.0) -> RGBAComponents {
-    // Supports #RRGGBB and #RRGGBBAA
-    let sanitizedHex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-    var hexValue: UInt64 = 0
-    Scanner(string: sanitizedHex).scanHexInt64(&hexValue)
-    let redValue, greenValue, blueValue, alphaValue: UInt64
-    switch sanitizedHex.count {
-    case 8: // RRGGBBAA
-        redValue = (hexValue >> 24) & 0xff
-        greenValue = (hexValue >> 16) & 0xff
-        blueValue = (hexValue >> 8) & 0xff
-        alphaValue = hexValue & 0xff
-    case 6: // RRGGBB
-        redValue = (hexValue >> 16) & 0xff
-        greenValue = (hexValue >> 8) & 0xff
-        blueValue = hexValue & 0xff
-        alphaValue = UInt64(defaultAlpha * 255.0)
-    default:
-        return .init(red: 1, green: 1, blue: 1, alpha: defaultAlpha)
-    }
-    return .init(
-        red: CGFloat(redValue) / 255.0,
-        green: CGFloat(greenValue) / 255.0,
-        blue: CGFloat(blueValue) / 255.0,
-        alpha: CGFloat(alphaValue) / 255.0
-    )
-}
+// Note: Using consolidated ColorUtilities for hex parsing and contrast calculations
 
 extension Color {
     /// Wide-gamut aware color from hex string in RGBA format (#RRGGBB or #RRGGBBAA).
+    /// This is a convenience wrapper around ColorUtilities for backward compatibility.
     static func wideGamut(_ rgbaHex: String) -> Color {
-        let components = parseHexRGBA(rgbaHex)
-        #if canImport(UIKit)
-        let dyn = UIColor { trait in
-            if trait.displayGamut == .P3 {
-                return UIColor(
-                    displayP3Red: components.red,
-                    green: components.green,
-                    blue: components.blue,
-                    alpha: components.alpha
-                )
-            } else {
-                return UIColor(
-                    red: components.red,
-                    green: components.green,
-                    blue: components.blue,
-                    alpha: components.alpha
-                )
-            }
-        }
-        return Color(dyn)
-        #elseif canImport(AppKit)
-        if #available(macOS 10.12, *) {
-            return Color(
-                NSColor(
-                    displayP3Red: components.red,
-                    green: components.green,
-                    blue: components.blue,
-                    alpha: components.alpha
-                )
-            )
-        } else {
-            return Color(
-                NSColor(
-                    calibratedRed: components.red,
-                    green: components.green,
-                    blue: components.blue,
-                    alpha: components.alpha
-                )
-            )
-        }
-        #else
-        return Color(red: components.red, green: components.green, blue: components.blue)
-            .opacity(Double(components.alpha))
-        #endif
+        ColorUtilities.color(hex: rgbaHex)
     }
 }
 
 // MARK: - Contrast utilities for chip text
 
-private func srgbToLinear(_ component: CGFloat) -> CGFloat {
-    return component <= 0.04045 ? (component / 12.92) : pow((component + 0.055) / 1.055, 2.4)
-}
-
-private func relativeLuminance(red: CGFloat, green: CGFloat, blue: CGFloat) -> CGFloat {
-    let linearRed = srgbToLinear(red)
-    let linearGreen = srgbToLinear(green)
-    let linearBlue = srgbToLinear(blue)
-    return 0.2126 * linearRed + 0.7152 * linearGreen + 0.0722 * linearBlue
-}
-
-private func contrastRatio(luminanceA: CGFloat, luminanceB: CGFloat) -> CGFloat {
-    let highestLuminance = max(luminanceA, luminanceB)
-    let lowestLuminance = min(luminanceA, luminanceB)
-    return (highestLuminance + 0.05) / (lowestLuminance + 0.05)
-}
-
 private func chipTextColor(forHex hex: String) -> Color {
-    // Compute luminance of the chip color (assume sRGB for contrast calc)
-    let rgba = parseHexRGBA(hex)
-    let chipLuminance = relativeLuminance(red: rgba.red, green: rgba.green, blue: rgba.blue)
-    // White and black luminances
-    let lumWhite: CGFloat = 1.0
-    let lumBlack: CGFloat = 0.0
-    let whiteContrast = contrastRatio(luminanceA: lumWhite, luminanceB: chipLuminance)
-    let blackContrast = contrastRatio(luminanceA: chipLuminance, luminanceB: lumBlack)
-    // Choose the text color that meets >= 4.5:1; if both, prefer higher contrast
-    let whiteMeets = whiteContrast >= 4.5
-    let blackMeets = blackContrast >= 4.5
-    if whiteMeets && (!blackMeets || whiteContrast >= blackContrast) {
-        return Color.wideGamut("#FFFFFFE6")
-    } else if blackMeets && (!whiteMeets || blackContrast > whiteContrast) {
-        return Color.wideGamut("#000000E6")
-    }
-    // Neither meets: fallback to better of the two
-    return whiteContrast >= blackContrast ? Color.wideGamut("#FFFFFFE6") : Color.wideGamut("#000000E6")
+    // Use consolidated ColorUtilities instead of duplicated logic
+    ColorUtilities.accessibleTextColor(onBackground: hex)
 }
 
 // MARK: - Vibrant Color Tokens

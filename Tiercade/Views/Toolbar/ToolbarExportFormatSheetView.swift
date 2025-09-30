@@ -1,7 +1,6 @@
 #if os(iOS)
 import SwiftUI
 import UniformTypeIdentifiers
-import UIKit
 import TiercadeCore
 
 @MainActor
@@ -19,8 +18,7 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
     @State private var exportedData: Data?
     @State private var exportFileName: String = ""
     @State private var showingFileExporter = false
-    @State private var showingShareSheet = false
-    @State private var shareItems: [Any] = []
+    @State private var shareFileURL: URL?
 
     var body: some View {
         NavigationView {
@@ -63,9 +61,6 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
             }
             isPresented = false
         }
-        .sheet(isPresented: $showingShareSheet) {
-            ShareSheet(activityItems: shareItems)
-        }
     }
 
     @ViewBuilder
@@ -79,9 +74,21 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
                     .buttonStyle(PrimaryButtonStyle())
                     .disabled(isExporting)
 
-                Button("Share") { Task { await shareExport() } }
+                if let shareURL = shareFileURL {
+                    ShareLink(
+                        item: shareURL,
+                        subject: Text("Tier List Export"),
+                        message: Text("Sharing tier list in \(exportFormat.displayName) format")
+                    ) {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity)
+                    }
                     .buttonStyle(GhostButtonStyle())
-                    .disabled(isExporting)
+                } else {
+                    Button("Share") { Task { await prepareShareFile() } }
+                        .buttonStyle(GhostButtonStyle())
+                        .disabled(isExporting)
+                }
             }
             .padding(Metrics.grid)
         }
@@ -138,7 +145,7 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
         }
     }
 
-    private func shareExport() async {
+    private func prepareShareFile() async {
         guard !isExporting else { return }
         isExporting = true
         defer { isExporting = false }
@@ -150,8 +157,7 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
                     .appendingPathComponent(filename)
                 do {
                     try data.write(to: tempURL)
-                    shareItems = [tempURL]
-                    showingShareSheet = true
+                    shareFileURL = tempURL
                 } catch {
                     coordinator.showToast(
                         type: .error,
@@ -159,7 +165,6 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
                         message: "Could not prepare file: \(error.localizedDescription)"
                     )
                 }
-                isPresented = false
             }
         }
     }
@@ -184,15 +189,5 @@ struct ExportDocument: FileDocument {
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         FileWrapper(regularFileWithContents: data)
     }
-}
-
-struct ShareSheet: UIViewControllerRepresentable {
-    var activityItems: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 #endif

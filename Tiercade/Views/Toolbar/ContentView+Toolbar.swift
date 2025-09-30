@@ -115,7 +115,6 @@ struct SecondaryToolbarActions: ToolbarContent {
 struct BottomToolbarSheets: ToolbarContent {
     @ObservedObject var app: AppState
     @Binding var exportText: String
-    @Binding var showingShare: Bool
     @Binding var showingSettings: Bool
     @Binding var showingExportFormatSheet: Bool
     @Binding var selectedExportFormat: ExportFormat
@@ -130,9 +129,6 @@ struct BottomToolbarSheets: ToolbarContent {
     var body: some ToolbarContent {
         ToolbarItem(placement: .bottomBar) {
             EmptyView()
-                .sheet(isPresented: $showingShare) {
-                    ShareSheet(activityItems: [exportText])
-                }
                 .sheet(isPresented: $showingSettings) {
                     SettingsView()
                 }

@@ -83,6 +83,7 @@ struct ToastMessage: Identifiable {
 // app code has been updated to reference the canonical fields.
 
 // MARK: - Color helpers
+// Note: Basic hex parsing for backward compatibility. Full color utilities in ColorUtilities.swift
 extension Color {
     init?(hex: String) {
         var s = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()

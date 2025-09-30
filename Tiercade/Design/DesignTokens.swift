@@ -55,35 +55,22 @@ extension Color {
 }
 
 extension PlatformColor {
+    /// Convenience initializer for hex colors (uses ColorUtilities for consistency)
     convenience init(hex: String) {
-        let sanitizedHex = hex.trimmingCharacters(in: .alphanumerics.inverted)
-        var hexValue: UInt64 = 0
-        Scanner(string: sanitizedHex).scanHexInt64(&hexValue)
-        let alphaValue, redValue, greenValue, blueValue: UInt64
-        if sanitizedHex.count == 8 {
-            alphaValue = (hexValue >> 24) & 0xff
-            redValue = (hexValue >> 16) & 0xff
-            greenValue = (hexValue >> 8) & 0xff
-            blueValue = hexValue & 0xff
-        } else {
-            alphaValue = 255
-            redValue = (hexValue >> 16) & 0xff
-            greenValue = (hexValue >> 8) & 0xff
-            blueValue = hexValue & 0xff
-        }
+        let components = ColorUtilities.parseHex(hex)
         #if canImport(UIKit)
         self.init(
-            red: CGFloat(redValue) / 255.0,
-            green: CGFloat(greenValue) / 255.0,
-            blue: CGFloat(blueValue) / 255.0,
-            alpha: CGFloat(alphaValue) / 255.0
+            red: components.red,
+            green: components.green,
+            blue: components.blue,
+            alpha: components.alpha
         )
         #elseif canImport(AppKit)
         self.init(
-            calibratedRed: CGFloat(redValue) / 255.0,
-            green: CGFloat(greenValue) / 255.0,
-            blue: CGFloat(blueValue) / 255.0,
-            alpha: CGFloat(alphaValue) / 255.0
+            calibratedRed: components.red,
+            green: components.green,
+            blue: components.blue,
+            alpha: components.alpha
         )
         #else
         self.init()
