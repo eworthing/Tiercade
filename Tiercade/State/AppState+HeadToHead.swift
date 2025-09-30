@@ -5,6 +5,16 @@ import TiercadeCore
 extension AppState {
     // MARK: - Head to Head
     func startH2H() {
+        if h2hActive {
+            showInfoToast("Head-to-Head Already Active", message: "Finish or cancel the current matchup first")
+            return
+        }
+
+        guard hasEnoughForPairing else {
+            showInfoToast("Need More Items", message: "Add at least two items before starting Head-to-Head")
+            return
+        }
+
         let pool = (tiers["unranked"] ?? []) + tierOrder.flatMap { tiers[$0] ?? [] }
         h2hPool = pool
         h2hRecords = [:]

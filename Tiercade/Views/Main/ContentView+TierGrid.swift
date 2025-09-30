@@ -14,7 +14,12 @@ struct TierGridView: View {
                 }
                 UnrankedView()
             }
+            #if os(tvOS)
+            .padding(.horizontal, TVMetrics.contentHorizontalPadding)
+            .padding(.vertical, Metrics.grid)
+            #else
             .padding(Metrics.grid * 2)
+            #endif
         }
         .background(Color.appBackground.ignoresSafeArea())
     }
@@ -22,6 +27,9 @@ struct TierGridView: View {
 
 struct UnrankedView: View {
     @Environment(AppState.self) private var app: AppState
+    #if os(tvOS)
+    @FocusState private var focusedItemId: String?
+    #endif
 
     private var filteredItems: [Item] {
         let allUnranked = app.items(for: "unranked")
@@ -44,6 +52,7 @@ struct UnrankedView: View {
                     ForEach(filteredItems, id: \.id) { item in
                         #if os(tvOS)
                         CardView(item: item)
+                            .focused($focusedItemId, equals: item.id)
                         #else
                         CardView(item: item)
                             .draggable(item.id)
@@ -52,6 +61,7 @@ struct UnrankedView: View {
                 }
                 #if os(tvOS)
                 .focusSection()
+                .defaultFocus($focusedItemId, filteredItems.first?.id)
                 #endif
             }
             .padding(Metrics.grid * 1.5)
@@ -108,16 +118,18 @@ struct CardView: View {
     @Environment(AppState.self) var app
     @Environment(\.isFocused) var isFocused: Bool
 
+    private static let tierLookup: [String: Tier] = [
+        "S": .s,
+        "A": .a,
+        "B": .b,
+        "C": .c,
+        "D": .d,
+        "F": .f
+    ]
+
     private func tierForItem(_ item: Item) -> Tier {
-        let tierId = app.currentTier(of: item.id) ?? "F"
-        switch tierId.uppercased() {
-        case "S": return .s
-        case "A": return .a
-        case "B": return .b
-        case "C": return .c
-        case "D": return .d
-        default: return .f
-        }
+        guard let tierId = app.currentTier(of: item.id)?.uppercased() else { return .unranked }
+        return Self.tierLookup[tierId] ?? .unranked
     }
 
     var body: some View {
@@ -181,7 +193,6 @@ struct CardView: View {
         )
         .contentShape(Rectangle())
         .accessibilityLabel(item.name ?? item.id)
-        .focusable(true)
         .punchyFocus(tier: tierForItem(item), cornerRadius: 12)
         #if os(macOS)
         .accessibilityAddTraits(.isButton)

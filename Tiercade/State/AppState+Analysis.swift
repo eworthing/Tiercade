@@ -14,8 +14,18 @@ extension AppState {
     }
 
     func toggleAnalysis() {
-        showingAnalysis.toggle()
-        if showingAnalysis, analysisData == nil {
+        if showingAnalysis {
+            showingAnalysis = false
+            return
+        }
+
+        guard canShowAnalysis else {
+            showInfoToast("Nothing to Analyze", message: "Add items before opening analysis")
+            return
+        }
+
+        showingAnalysis = true
+        if analysisData == nil {
             Task { await generateAnalysis() }
         }
     }

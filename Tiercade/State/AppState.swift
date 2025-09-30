@@ -242,6 +242,16 @@ final class AppState {
     }
     var canUndo: Bool { HistoryLogic.canUndo(history) }
     var canRedo: Bool { HistoryLogic.canRedo(history) }
+    var totalItemCount: Int {
+        tiers.values.reduce(into: 0) { partialResult, items in
+            partialResult += items.count
+        }
+    }
+    var hasAnyItems: Bool { totalItemCount > 0 }
+    var hasEnoughForPairing: Bool { totalItemCount >= 2 }
+    var canRandomizeItems: Bool { totalItemCount > 1 }
+    var canStartHeadToHead: Bool { !h2hActive && hasEnoughForPairing }
+    var canShowAnalysis: Bool { hasAnyItems }
 
     // MARK: - Enhanced Persistence
 

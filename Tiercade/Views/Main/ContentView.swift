@@ -22,7 +22,9 @@ struct ContentView: View {
     @State private var app = AppState()
     @State private var showingAddItems = false
     #if os(tvOS)
-    private var canStartH2HFromRemote: Bool { app.quickRankTarget == nil && !app.h2hActive }
+    private var canStartH2HFromRemote: Bool {
+        app.quickRankTarget == nil && app.canStartHeadToHead
+    }
     #endif
 
     var body: some View {

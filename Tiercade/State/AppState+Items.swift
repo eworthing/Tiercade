@@ -27,6 +27,10 @@ extension AppState {
     }
 
     func randomize() {
+        guard canRandomizeItems else {
+            showInfoToast("Nothing to Randomize", message: "Add more items before shuffling tiers")
+            return
+        }
         var allItems: [Item] = []
         for tierName in tierOrder + ["unranked"] {
             allItems.append(contentsOf: tiers[tierName] ?? [])

@@ -13,10 +13,14 @@ struct MainAppView: View {
     @Environment(AppState.self) private var app: AppState
     #if os(tvOS)
     @Environment(\.scenePhase) private var scenePhase
+    @FocusState private var detailFocus: DetailFocus?
+    private enum DetailFocus: Hashable { case close }
     #endif
 
     var body: some View {
-        Group {
+        let detailPresented = app.detailItem != nil
+
+        return Group {
             #if os(macOS) || targetEnvironment(macCatalyst)
             NavigationSplitView {
                 SidebarView(tierOrder: app.tierOrder)
@@ -36,6 +40,8 @@ struct MainAppView: View {
                     // Add content padding to avoid overlay bars overlap
                     .padding(.top, TVMetrics.contentTopInset)
                     .padding(.bottom, TVMetrics.contentBottomInset)
+                    .allowsHitTesting(!detailPresented)
+                    .disabled(detailPresented)
             }
             #if os(tvOS)
             // Top toolbar (overlay so it doesn't reduce content area)
@@ -45,6 +51,8 @@ struct MainAppView: View {
                     .frame(height: TVMetrics.topBarHeight)
                     .background(.thinMaterial)
                     .overlay(Divider().opacity(0.15), alignment: .bottom)
+                    .allowsHitTesting(!detailPresented)
+                    .disabled(detailPresented)
             }
             // Bottom action bar (safe area inset to avoid covering focused rows)
             .overlay(alignment: .bottom) {
@@ -53,6 +61,8 @@ struct MainAppView: View {
                     .frame(height: TVMetrics.bottomBarHeight)
                     .background(.thinMaterial)
                     .overlay(Divider().opacity(0.15), alignment: .top)
+                    .allowsHitTesting(!detailPresented)
+                    .disabled(detailPresented)
             }
             #else
             // ToolbarView is ToolbarContent (not a View) on some platforms; avoid embedding it directly on tvOS
@@ -67,6 +77,11 @@ struct MainAppView: View {
         .task { FocusUtils.seedFocus() }
         .onChange(of: scenePhase) { phase in
             if phase == .active { FocusUtils.seedFocus() }
+        }
+        .onExitCommand {
+            if detailPresented {
+                app.detailItem = nil
+            }
         }
         #endif
         .overlay {
@@ -114,13 +129,34 @@ struct MainAppView: View {
                 // Detail overlay (all platforms)
                 if let detail = app.detailItem {
                     ZStack {
-                        Color.black.opacity(0.45).ignoresSafeArea()
-                        VStack {
+                        Color.black.opacity(0.55).ignoresSafeArea()
+                        VStack(spacing: 24) {
                             DetailView(item: detail)
+                                .frame(maxWidth: 720)
+
                             Button("Close") { app.detailItem = nil }
+                                #if os(tvOS)
+                                .buttonStyle(.tvRemote(.secondary))
+                                .focused($detailFocus, equals: .close)
+                                #else
                                 .buttonStyle(.bordered)
+                                #endif
                         }
-                        .padding()
+                        .padding(.vertical, 32)
+                        .padding(.horizontal, 36)
+                        .frame(maxWidth: 820)
+                        .background(
+                            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                .fill(.ultraThinMaterial)
+                                .shadow(color: .black.opacity(0.35), radius: 30, y: 12)
+                        )
+                        .accessibilityAddTraits(.isModal)
+                        #if os(tvOS)
+                        .focusSection()
+                        .defaultFocus($detailFocus, .close)
+                        .onAppear { detailFocus = .close }
+                        .onDisappear { detailFocus = nil }
+                        #endif
                     }
                     .transition(.opacity)
                     .zIndex(55)
@@ -144,40 +180,96 @@ struct TVToolbarView: View {
     }
 
     var body: some View {
+        let randomizeEnabled = app.canRandomizeItems
+        let headToHeadEnabled = app.canStartHeadToHead
+        let analysisActive = app.showingAnalysis
+        let analysisEnabled = analysisActive || app.canShowAnalysis
+        let randomizeHint = randomizeEnabled
+            ? "Randomly distribute items across tiers"
+            : "Add more items before randomizing tiers"
+        let randomizeTooltip = randomizeEnabled ? "Randomize" : "Add more items to randomize"
+        let headToHeadHint = headToHeadEnabled
+            ? "Start head-to-head comparisons"
+            : "Add at least two items before starting head-to-head"
+        let headToHeadTooltip = headToHeadEnabled ? "Head to Head" : "Add two items to start"
+        let analysisHint: String = {
+            if analysisEnabled {
+                return analysisActive ? "Hide tier analysis" : "Show insights about your tiers"
+            }
+            return "Add items before opening analysis"
+        }()
+        let analysisTooltip = analysisActive ? "Hide Analysis" : "Show Analysis"
         HStack(spacing: 16) {
-            Button(action: { app.undo() }, label: { Label("Undo", systemImage: "arrow.uturn.backward") })
-                .buttonStyle(.tvRemote(.secondary))
+            Button(action: { app.undo() }, label: {
+                Image(systemName: "arrow.uturn.backward")
+                    .frame(width: 32, height: 32)
+            })
+                .buttonStyle(.tvRemote(.primary))
                 .disabled(!app.canUndo)
                 .focused($focusedControl, equals: .undo)
+                .accessibilityLabel("Undo")
+                .focusTooltip("Undo")
 
-            Button(action: { app.redo() }, label: { Label("Redo", systemImage: "arrow.uturn.forward") })
-                .buttonStyle(.tvRemote(.secondary))
+            Button(action: { app.redo() }, label: {
+                Image(systemName: "arrow.uturn.forward")
+                    .frame(width: 32, height: 32)
+            })
+                .buttonStyle(.tvRemote(.primary))
                 .disabled(!app.canRedo)
                 .focused($focusedControl, equals: .redo)
+                .accessibilityLabel("Redo")
+                .focusTooltip("Redo")
 
             Divider()
 
-            Button(action: { app.randomize() }, label: { Label("Randomize", systemImage: "shuffle") })
+            Button(action: { app.randomize() }, label: {
+                Image(systemName: "shuffle")
+                    .frame(width: 32, height: 32)
+            })
                 .buttonStyle(.tvRemote(.primary))
+                .disabled(!randomizeEnabled)
                 .accessibilityIdentifier("Toolbar_Randomize")
                 .focused($focusedControl, equals: .randomize)
+                .accessibilityLabel("Randomize")
+                .accessibilityHint(randomizeHint)
+                .focusTooltip(randomizeTooltip)
 
-            Button(action: { app.reset() }, label: { Label("Reset", systemImage: "trash") })
+            Button(action: { app.reset() }, label: {
+                Image(systemName: "trash")
+                    .frame(width: 32, height: 32)
+            })
                 .buttonStyle(.tvRemote(.primary))
                 .accessibilityIdentifier("Toolbar_Reset")
                 .focused($focusedControl, equals: .reset)
+                .accessibilityLabel("Reset")
+                .focusTooltip("Reset")
 
             Spacer(minLength: 0)
 
-            Button(action: { app.startH2H() }, label: { Label("H2H", systemImage: "bolt.horizontal") })
+            Button(action: { app.startH2H() }, label: {
+                Image(systemName: "bolt.horizontal")
+                    .frame(width: 32, height: 32)
+            })
                 .buttonStyle(.tvRemote(.primary))
                 .accessibilityIdentifier("Toolbar_H2H")
+                .disabled(!headToHeadEnabled)
                 .focused($focusedControl, equals: .h2h)
+                .accessibilityLabel("Head to Head")
+                .accessibilityHint(headToHeadHint)
+                .focusTooltip(headToHeadTooltip)
 
-            Button(action: { app.toggleAnalysis() }, label: { Label("Analyze", systemImage: "chart.bar") })
+            Button(action: { app.toggleAnalysis() }, label: {
+                Image(systemName: analysisActive ? "chart.bar.fill" : "chart.bar")
+                    .frame(width: 32, height: 32)
+            })
                 .buttonStyle(.tvRemote(.primary))
                 .accessibilityIdentifier("Toolbar_Analyze")
+                .disabled(!analysisEnabled)
                 .focused($focusedControl, equals: .analyze)
+                .accessibilityLabel("Analyze")
+                .accessibilityValue(analysisActive ? "Visible" : "Hidden")
+                .accessibilityHint(analysisHint)
+                .focusTooltip(analysisTooltip)
         }
         .lineLimit(1)
         .padding(.horizontal, TVMetrics.barHorizontalPadding)

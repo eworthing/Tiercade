@@ -17,17 +17,21 @@ struct TierHeaderView: View {
                     .foregroundColor(titleColor ?? Palette.text)
             })
             .buttonStyle(GhostButtonStyle())
-            .focusable()
 
             Spacer()
-            Button(app.isTierLocked(tierId) ? "Unlock" : "Lock") {
-                app.toggleTierLocked(tierId)
-            }
+            Button(action: { app.toggleTierLocked(tierId) }, label: {
+                Image(systemName: app.isTierLocked(tierId) ? "lock.fill" : "lock.open.fill")
+            })
             .buttonStyle(.bordered)
-            .focusable()
-            Button("Menu") { showMenu = true }
-                .buttonStyle(.bordered)
-                .focusable()
+            .accessibilityLabel(app.isTierLocked(tierId) ? "Unlock Tier" : "Lock Tier")
+            .focusTooltip(app.isTierLocked(tierId) ? "Unlock" : "Lock")
+            
+            Button(action: { showMenu = true }, label: {
+                Image(systemName: "ellipsis.circle")
+            })
+            .buttonStyle(.bordered)
+            .accessibilityLabel("Tier Menu")
+            .focusTooltip("Menu")
         }
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.6).onEnded { _ in showMenu = true })
         .sheet(isPresented: $showMenu, content: {

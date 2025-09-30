@@ -42,19 +42,24 @@ struct SecondaryToolbarActions: ToolbarContent {
         ToolbarItemGroup(placement: toolbarPlacement) {
             Menu("Actions") {
                 ForEach(["S", "A", "B", "C", "D", "F"], id: \.self) { tier in
+                    let isTierEmpty = (app.tiers[tier]?.isEmpty ?? true)
                     Button("Clear \(tier) Tier") { app.clearTier(tier) }
+                        .disabled(isTierEmpty)
                 }
                 Divider()
                 Button("Randomize") { app.randomize() }
+                    .disabled(!app.canRandomizeItems)
                 Button("Reset All", role: .destructive) { app.reset() }
                 Divider()
                 fileOperationsMenu
                 exportImportMenu
                 Button("Head-to-Head") { app.startH2H() }
+                    .disabled(!app.canStartHeadToHead)
                     #if !os(tvOS)
                     .keyboardShortcut("h", modifiers: [.command])
                 #endif
                 Button("Analysis") { app.toggleAnalysis() }
+                    .disabled(!app.showingAnalysis && !app.canShowAnalysis)
                     #if !os(tvOS)
                     .keyboardShortcut("a", modifiers: [.command])
                 #endif
