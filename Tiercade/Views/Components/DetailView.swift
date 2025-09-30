@@ -1,10 +1,14 @@
 import SwiftUI
 import TiercadeCore
+#if os(tvOS)
+import AVKit
+#endif
 
 struct DetailView: View {
     let item: Item
     #if os(tvOS)
-    @State private var playNow: Bool = false
+    @State private var showVideoPlayer: Bool = false
+    @State private var activePlayer: AVPlayer?
     #endif
     @State private var showQR: Bool = false
     @State private var pendingURL: URL?
@@ -18,7 +22,7 @@ struct DetailView: View {
                     return ["png", "jpg", "jpeg", "gif", "webp"].contains(url.pathExtension.lowercased())
                 }
             if !galleryUris.isEmpty {
-                PageGalleryView(uris: galleryUris)
+                MediaGalleryView(uris: galleryUris)
                     .frame(height: 340)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
             } else {
@@ -41,13 +45,12 @@ struct DetailView: View {
             HStack {
                 if let v = item.videoUrl, let url = URL(string: v) {
                     #if os(tvOS)
-                    Button("Play Video") { playNow = true }
-                        .buttonStyle(.borderedProminent)
-                        .background(
-                            AVPlayerPresenter(url: url, isPresented: $playNow)
-                                .frame(width: 0, height: 0)
-                                .hidden()
-                        )
+                    Button("Play Video") {
+                        activePlayer = AVPlayer(url: url)
+                        showVideoPlayer = true
+                    }
+                        .buttonStyle(.tvRemote(.primary))
+                        .accessibilityIdentifier("Detail_PlayVideo")
                     #else
                     Button("Play Video") {
                         OpenExternal.open(url) { result in
@@ -64,5 +67,55 @@ struct DetailView: View {
             })
         }
         .padding(24)
+        #if os(tvOS)
+        .fullScreenCover(isPresented: $showVideoPlayer, onDismiss: {
+            activePlayer?.pause()
+            activePlayer = nil
+        }) {
+            TVVideoPlayerContainer(player: activePlayer) {
+                showVideoPlayer = false
+                activePlayer?.pause()
+                activePlayer = nil
+            }
+        }
+        #endif
     }
 }
+
+#if os(tvOS)
+private struct TVVideoPlayerContainer: View {
+    let player: AVPlayer?
+    let dismiss: () -> Void
+
+    var body: some View {
+        ZStack {
+            if let player {
+                VideoPlayer(player: player)
+                    .ignoresSafeArea()
+                    .onAppear { player.play() }
+                    .onDisappear { player.pause() }
+            } else {
+                Color.black.ignoresSafeArea()
+            }
+
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: dismiss) {
+                        Label("Close", systemImage: "xmark.circle.fill")
+                            .labelStyle(.iconOnly)
+                            .font(.system(size: 54, weight: .semibold))
+                            .symbolRenderingMode(.hierarchical)
+                    }
+                    .buttonStyle(.plain)
+                    .padding()
+                    .accessibilityIdentifier("VideoPlayer_Close")
+                }
+                Spacer()
+            }
+        }
+        .background(Color.black)
+        .focusSection()
+    }
+}
+#endif
