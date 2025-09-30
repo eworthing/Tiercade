@@ -46,6 +46,7 @@ A comprehensive tier list management application for iOS, built with SwiftUI. Cr
 - **Keyboard Shortcuts** - Productivity shortcuts (Cmd+A for analysis, Cmd+Z for undo)
 - **Responsive Design** - Optimized for various iOS device sizes
 - **Dark/Light Mode** - Full support for iOS appearance preferences
+- **Immersive Media Gallery** - SwiftUI TabView gallery with remote-friendly focus and full-screen playback on tvOS
 
 ## 🏗️ Architecture
 
