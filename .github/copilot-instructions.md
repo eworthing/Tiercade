@@ -47,4 +47,9 @@ When the question involves Apple platforms (iOS, macOS, tvOS, visionOS) or Apple
   - Toolbar/actions and platform sheets: `Tiercade/Views/ContentView+Toolbar.swift`.
   - Core package docs: `TiercadeCore/README.md`; tvOS test/CI: `tools/README.md` and scripts in `tools/`.
 
+- SourceKit & IDE troubleshooting
+  - The IDE may show "No such module 'TiercadeCore'" or "Cannot find 'Metrics/Palette/TypeScale'" errors—these are **SourceKit false positives**. If `xcodebuild` succeeds, ignore red squiggles.
+  - After restructures, close old file tabs and reopen from new locations (e.g., `State/AppState.swift`, `Views/Main/ContentView+*.swift`).
+  - Workarounds: Clean Build Folder (⇧⌘K), restart Swift Language Server, or trust terminal builds over IDE diagnostics.
+
 Questions or gaps? If simulator targets, scheme names, or expected accessibility IDs are unclear, ask to confirm before large refactors.
