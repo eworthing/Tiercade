@@ -1,4 +1,12 @@
-# SourceKit False Positives
+# SourceKit False Positives & Deleted Files
+
+## ⚠️ IMPORTANT: You May Have Deleted Files Open in Your Editor
+After the restructure, several files were moved or deleted:
+- `Tiercade/AppState*.swift` → **MOVED** to `Tiercade/State/AppState*.swift`
+- `Tiercade/Views/ContentView+*.swift` → **MOVED** to `Tiercade/Views/Main/ContentView+*.swift`
+- `TiercadeCore/Sources/TiercadeCore/{HeadToHead,HistoryLogic,Formatters}.swift` → **DELETED** (duplicates of files in Logic/ and Utilities/)
+
+**If you see errors in files with old paths, close those tabs and reopen the files from their new locations!**
 
 ## Summary
 Most "No such module" errors shown in the Problems panel are **SourceKit indexing false positives**, not actual build errors. The project builds successfully via `xcodebuild`.
