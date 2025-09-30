@@ -20,6 +20,31 @@ public enum HeadToHeadLogic {
         RandomUtils.pickRandomPair(pool, rng: rng)
     }
 
+    /// Generate every unique unordered pairing from the pool and randomize the order.
+    public static func pairings(from pool: [Item], rng: () -> Double) -> [(Item, Item)] {
+        guard pool.count >= 2 else { return [] }
+        var combinations: [(Item, Item)] = []
+        combinations.reserveCapacity(pool.count * (pool.count - 1) / 2)
+        for i in 0..<(pool.count - 1) {
+            let left = pool[i]
+            for j in (i + 1)..<pool.count {
+                combinations.append((left, pool[j]))
+            }
+        }
+
+        guard combinations.count > 1 else { return combinations }
+
+        // Fisher–Yates shuffle using supplied RNG for deterministic testing when needed.
+        var shuffled = combinations
+        var idx = shuffled.count - 1
+        while idx > 0 {
+            let random = Int(floor(rng() * Double(idx + 1)))
+            shuffled.swapAt(idx, random)
+            idx -= 1
+        }
+        return shuffled
+    }
+
     /// Apply a vote outcome to the records dictionary.
     public static func vote(_ a: Item, _ b: Item, winner: Item, records: inout [String: H2HRecord]) {
         if winner.id == a.id {

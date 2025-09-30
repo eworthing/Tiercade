@@ -12,7 +12,7 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 ## 🚀 Features
 
 ### **Core Tier Management**
-- **Drag & Drop Interface** - Native SwiftUI drag and drop with visual feedback
+- **Drag & Drop Interface** - Native SwiftUI drag and drop on iOS/macOS, with click-to-select Quick Move workflows on tvOS
 - **Multiple Tier Support** - Customizable tier structure (S, A, B, C, D, F tiers)
 - **Item Management** - Add, remove, and organize items across tiers
 - **Real-time Updates** - Instant visual feedback for all operations
@@ -48,6 +48,14 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **Dark/Light Mode** - Full support for iOS appearance preferences
 - **Immersive Media Gallery** - SwiftUI TabView gallery with remote-friendly focus and full-screen playback on tvOS
 
+### **tvOS Experience**
+- **Remote-First Navigation** - Optimized focus rings and directional layout tuned for the Siri Remote, with safe-area-aware spacing for comfortable living-room viewing.
+- **Dedicated Overlays** - Quick Move, Quick Rank, and Detail overlays appear as modal glass surfaces that pause background interaction until dismissed, keeping attention on the active task.
+- **Toolbar & Action Bar** - Floating top and bottom bars adapt to tvOS conventions, exposing undo/redo, head-to-head, analysis, and selection actions with clear focus targets.
+- **Exit Command Handling** - Pressing the remote’s ⌘/Menu (Exit) button inside modals dismisses the current overlay instead of backing out of the app, mirroring native tvOS behavior.
+- **Focus Tooltips** - Custom tooltips surface helpful hints (e.g. “Randomize”, “Lock Tier”) when buttons receive focus, guiding new users through tier management on the TV.
+- **Media Playback** - Item detail pages can promote images and video with full-screen playback support that respects tvOS playback gestures.
+
 ## 🏗️ Architecture
 
 ### **Technical Stack**
@@ -64,6 +72,32 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **Typed Throws** - Compile-time error handling with specific error types
 - **Async/Await** - Structured concurrency for file operations and analysis
 - **Protocol-Oriented Design** - Flexible, testable interfaces throughout
+
+### **Modernization Guardrails**
+- **Strict Concurrency** – All targets enable "Complete" checking; core logic favors `Sendable` value types and actors for isolation.
+- **Observation-First State** – UI state uses Swift Observation macros (`@Observable`, `@Bindable`) instead of `ObservableObject`/`@Published`.
+- **SwiftUI Everywhere** – Screens, overlays, and navigation are pure SwiftUI with `NavigationStack`/`NavigationSplitView`; UIKit appears only through targeted representable adapters when absolutely necessary.
+- **SwiftData Persistence** – New persistence flows adopt `@Model` + `@Query`; remaining Core Data touchpoints are migrated module-by-module.
+- **Async Streams** – Legacy Combine pipelines are rewritten to `AsyncSequence`, `AsyncStream`, `async let`, or `TaskGroup` constructs.
+- **Liquid Glass Chrome** – Translucent, glassy effects stay confined to top-level chrome (toolbars, sheets) to keep fast-refreshing content performant.
+- **Swift Testing** – New tests rely on the Swift Testing framework (`@Test`, `#expect`) with incremental XCTest retirement.
+- **SwiftPM Only** – Dependencies live in SwiftPM; feature flags and environment variants use SPM traits.
+
+### **Configuration Snippets**
+```swift
+// Package.swift baseline for strict concurrency
+.enableUpcomingFeature("StrictConcurrency"),
+.unsafeFlags(["-strict-concurrency=complete"])
+```
+
+```swift
+// Example SPM traits configuration
+traits: [
+    .featureFlag("offline-mode"),
+    .featureFlag("ai-features"),
+    .featureFlag("debug-tools", enabledTraits: ["development"])
+]
+```
 
 ### **Core Components**
 
@@ -117,6 +151,7 @@ TiercadeCore Logic → State Update → UI Refresh
 - **Unit Tests** - Core logic validation in TiercadeCore (run via `swift test` inside `TiercadeCore`)
 - **Integration Tests** - Feature interaction testing
 - **UI Tests** - End-to-end user journey validation (iOS/tvOS simulators supported)
+- **Swift Testing First** - All new suites are written with Swift Testing annotations, with XCTest cases migrated opportunistically.
 
 ### **Running Tests**
 ```bash
@@ -144,6 +179,7 @@ xcodebuild test -project Tiercade.xcodeproj -scheme Tiercade -destination 'platf
 - **macOS 26.0+** - For macOS development and packaging
 - **Swift 6.0** - Language mode with strict concurrency checking enabled
 - **macOS** - Development platform
+- **SwiftLint** - Enforce cyclomatic complexity thresholds (warning 8, error 12) as part of pre-commit checks
 
 ### **Project Setup**
 ```bash
@@ -157,6 +193,10 @@ open Tiercade.xcodeproj
 # Build and run
 Cmd+R (or Product → Run)
 ```
+
+### **Interactive tvOS Verification**
+- After every successful build, boot the tvOS simulator with the latest app build, keep it open for visual review, and exercise the relevant surfaces with a Siri Remote (or keyboard arrow) pass to confirm focus, animations, and gestures.
+- Preferred flow: run the "Build tvOS Tiercade (Debug)" task (or `Cmd+R` in Xcode), then leave the simulator running while iterating on focus tweaks, visual polish, and final sign-off.
 
 ### **Project Structure**
 ```

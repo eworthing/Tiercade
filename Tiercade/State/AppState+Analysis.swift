@@ -14,6 +14,9 @@ extension AppState {
     }
 
     func toggleAnalysis() {
+#if os(tvOS)
+        toggleAnalyticsSidebar()
+#else
         if showingAnalysis {
             showingAnalysis = false
             return
@@ -28,6 +31,34 @@ extension AppState {
         if analysisData == nil {
             Task { await generateAnalysis() }
         }
+#endif
+    }
+
+    func toggleAnalyticsSidebar() {
+        if showAnalyticsSidebar {
+            showAnalyticsSidebar = false
+            return
+        }
+
+        guard canShowAnalysis else {
+            showInfoToast("Nothing to Analyze", message: "Add items before opening analytics")
+            return
+        }
+
+        showAnalyticsSidebar = true
+        showingAnalysis = false
+        if analysisData == nil {
+            Task { await generateSidebarAnalysis() }
+        }
+    }
+
+    func closeAnalyticsSidebar() {
+        showAnalyticsSidebar = false
+        showingAnalysis = false
+    }
+
+    private func generateSidebarAnalysis() async {
+        analysisData = await buildAnalysis()
     }
 
     private func buildAnalysis() async -> TierAnalysisData {

@@ -94,6 +94,11 @@ final class AppState {
     var h2hPool: [Item] = []
     var h2hPair: (Item, Item)?
     var h2hRecords: [String: H2HRecord] = [:]
+    var h2hPairsQueue: [(Item, Item)] = []
+    var h2hDeferredPairs: [(Item, Item)] = []
+    var h2hTotalComparisons: Int = 0
+    var h2hCompletedComparisons: Int = 0
+    var h2hSkippedPairKeys: Set<String> = []
 
     // Enhanced Persistence
     var hasUnsavedChanges: Bool = false
@@ -107,12 +112,24 @@ final class AppState {
     var dragTargetTier: String?
     var draggingId: String?
     var isProcessingSearch: Bool = false
+    var showAnalyticsSidebar: Bool = false
 
     let storageKey = "Tiercade.tiers.v1"
-    nonisolated(unsafe) var autosaveTimer: Timer?
+    var autosaveTask: Task<Void, Never>?
     let autosaveInterval: TimeInterval = 30.0 // Auto-save every 30 seconds
 
     var history = History<Items>(stack: [], index: 0, limit: 80)
+
+    var h2hProgress: Double {
+        guard h2hTotalComparisons > 0 else { return 0 }
+        return min(Double(h2hCompletedComparisons) / Double(h2hTotalComparisons), 1.0)
+    }
+
+    var h2hRemainingComparisons: Int {
+        max(h2hTotalComparisons - h2hCompletedComparisons, 0)
+    }
+
+    var h2hSkippedCount: Int { h2hSkippedPairKeys.count }
 
     init() {
         if !load() {
@@ -183,18 +200,27 @@ final class AppState {
         }
     }
 
-    deinit {
-        autosaveTimer?.invalidate()
+    private func setupAutosave() {
+        autosaveTask?.cancel()
+        let interval = autosaveInterval
+        autosaveTask = Task { [weak self] in
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(for: .seconds(interval))
+                } catch {
+                    return
+                }
+
+                guard let self else { return }
+                await self.performAutosaveIfNeeded()
+            }
+        }
     }
 
-    private func setupAutosave() {
-        autosaveTimer = Timer.scheduledTimer(withTimeInterval: autosaveInterval, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            Task { @MainActor in
-                if self.hasUnsavedChanges {
-                    try? self.autoSave()
-                }
-            }
+    @MainActor
+    private func performAutosaveIfNeeded() {
+        if hasUnsavedChanges {
+            try? autoSave()
         }
     }
 

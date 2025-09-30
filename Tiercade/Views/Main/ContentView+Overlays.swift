@@ -168,49 +168,126 @@ struct QuickRankOverlay: View {
 struct HeadToHeadOverlay: View {
     @Bindable var app: AppState
     @FocusState private var focused: FocusField?
-    private enum FocusField: Hashable { case left, right, finish, cancel }
+    private enum FocusField: Hashable { case left, right, skip, finish, cancel }
+
     var body: some View {
         if app.h2hActive {
             ZStack {
-                Color.black.opacity(0.4).ignoresSafeArea()
+                Color.black.opacity(0.45).ignoresSafeArea()
                     .onTapGesture { /* block background interaction */ }
                     .accessibilityHidden(true)
-                VStack(spacing: 16) {
-                    Text("Head-to-Head").font(.headline)
+                VStack(spacing: 24) {
+                    VStack(spacing: 8) {
+                        Text("Head-to-Head")
+                            .font(.largeTitle.weight(.semibold))
+                        Text("Choose the stronger option or skip to revisit later.")
+                            .font(.callout)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if app.h2hTotalComparisons > 0 {
+                        VStack(spacing: 8) {
+                            ProgressView(value: app.h2hProgress) {
+                                Text("Progress")
+                                    .font(.caption.weight(.semibold))
+                                    .textCase(.uppercase)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .progressViewStyle(LinearProgressViewStyle())
+                            .frame(maxWidth: 320)
+                            .accessibilityIdentifier("H2H_Progress")
+
+                            Text("\(app.h2hCompletedComparisons) decided • \(app.h2hRemainingComparisons) remaining")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+
+                            if app.h2hSkippedCount > 0 {
+                                Text("\(app.h2hSkippedCount) skipped to revisit soon")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .accessibilityIdentifier("H2H_SkippedCount")
+                            }
+                        }
+                    }
+
                     if let pair = app.h2hPair {
-                        HStack(spacing: 16) {
-                            H2HButton(item: pair.0) { app.voteH2H(winner: pair.0) }
-                                .accessibilityIdentifier("H2H_Left")
-                                .focused($focused, equals: .left)
-                            Text("vs").font(.headline)
-                            H2HButton(item: pair.1) { app.voteH2H(winner: pair.1) }
-                                .accessibilityIdentifier("H2H_Right")
-                                .focused($focused, equals: .right)
+                        VStack(spacing: 20) {
+                            HStack(spacing: 24) {
+                                H2HButton(item: pair.0) { app.voteH2H(winner: pair.0) }
+                                    .accessibilityIdentifier("H2H_Left")
+                                    .focused($focused, equals: .left)
+
+                                Text("vs")
+                                    .font(.title.weight(.bold))
+                                    .foregroundStyle(.secondary)
+
+                                H2HButton(item: pair.1) { app.voteH2H(winner: pair.1) }
+                                    .accessibilityIdentifier("H2H_Right")
+                                    .focused($focused, equals: .right)
+                            }
+
+                            Button("Skip This Pair") {
+                                app.skipCurrentH2HPair()
+                            }
+                            .buttonStyle(TVRemoteButtonStyle(role: .secondary))
+                            .accessibilityIdentifier("H2H_Skip")
+                            .focused($focused, equals: .skip)
                         }
                     } else {
-                        Text("No more pairs. Tap Finish.").foregroundStyle(.secondary)
+                        VStack(spacing: 12) {
+                            Text("All comparisons reviewed.")
+                                .font(.headline)
+                            Text("Choose Finish to apply the results or Cancel to discard.")
+                                .font(.callout)
+                                .multilineTextAlignment(.center)
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                    HStack {
-                        Button("Finish") { app.finishH2H() }
-                            .buttonStyle(PrimaryButtonStyle())
-                            .accessibilityIdentifier("H2H_Finish")
-                            .focused($focused, equals: .finish)
-                        Button("Cancel", role: .cancel) { app.h2hActive = false }
-                            .accessibilityHint("Cancel head to head and return to the main view")
-                            .accessibilityIdentifier("H2H_Cancel")
-                            .focused($focused, equals: .cancel)
+
+                    HStack(spacing: 16) {
+                        Button("Finish") {
+                            app.finishH2H()
+                        }
+                        .buttonStyle(PrimaryButtonStyle())
+                        .accessibilityIdentifier("H2H_Finish")
+                        .focused($focused, equals: .finish)
+
+                        Button("Cancel", role: .cancel) {
+                            app.cancelH2H()
+                        }
+                        .buttonStyle(TVRemoteButtonStyle(role: .secondary))
+                        .accessibilityHint("Cancel head-to-head and return to the main view")
+                        .accessibilityIdentifier("H2H_Cancel")
+                        .focused($focused, equals: .cancel)
                     }
                 }
-                .padding(Metrics.grid)
-                .background(.thinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .padding(Metrics.grid * 2)
+                .frame(maxWidth: 760)
+                .background(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(.thinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                .stroke(Color.white.opacity(0.18), lineWidth: 1.5)
+                        )
+                )
                 .padding(Metrics.grid * 2)
                 .accessibilityIdentifier("H2H_Overlay")
                 .accessibilityElement(children: .contain)
+                .onAppear { updateFocus(hasPair: app.h2hPair != nil) }
+                .onChange(of: app.h2hPair?.0.id) { _, _ in
+                    updateFocus(hasPair: app.h2hPair != nil)
+                }
+                .onChange(of: app.h2hPair?.1.id) { _, _ in
+                    updateFocus(hasPair: app.h2hPair != nil)
+                }
+                .onChange(of: app.h2hPair == nil) { _, _ in
+                    updateFocus(hasPair: app.h2hPair != nil)
+                }
                 #if os(macOS) || os(tvOS)
                 .focusable(true)
                 .accessibilityAddTraits(.isModal)
-                .defaultFocus($focused, .left)
                 .focusSection()
                 #else
                 .accessibilityAddTraits(.isModal)
@@ -219,25 +296,61 @@ struct HeadToHeadOverlay: View {
             .transition(.opacity)
         }
     }
+
+    private func updateFocus(hasPair: Bool) {
+        Task { @MainActor in
+            focused = hasPair ? .left : .finish
+        }
+    }
 }
 
 struct H2HButton: View {
     let item: Item
     var action: () -> Void
+
     var body: some View {
-        Button(action: action, label: {
-            VStack(spacing: 8) {
-                RoundedRectangle(cornerRadius: 12).fill(Color.accentColor)
-                    .frame(minWidth: 140, idealWidth: 160, minHeight: 88, idealHeight: 100)
-                    .overlay(Text((item.name ?? item.id).prefix(14)).font(.headline).foregroundStyle(.white))
-                Text(item.seasonString ?? "?").font(.caption)
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(item.name ?? item.id)
+                    .font(.title2.weight(.semibold))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                if let season = item.seasonString, !season.isEmpty {
+                    Text("Season \(season)")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+
+                if let status = item.status, !status.isEmpty {
+                    Text(status)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let description = item.description, !description.isEmpty {
+                    Text(description)
+                        .font(.body)
+                        .lineLimit(4)
+                        .multilineTextAlignment(.leading)
+                        .foregroundStyle(.primary)
+                }
             }
-            .padding(Metrics.grid)
-            .contentShape(Rectangle())
-            .frame(minWidth: 44, minHeight: 44)
-        })
+            .padding(Metrics.grid * 1.5)
+            .frame(minWidth: 240, maxWidth: 320, minHeight: 200, alignment: .topLeading)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white.opacity(0.12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(Color.white.opacity(0.25), lineWidth: 1.5)
+                    )
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        }
+        .buttonStyle(CardButtonStyle())
         .accessibilityLabel(item.name ?? item.id)
-        .buttonStyle(GhostButtonStyle())
+        .accessibilityHint(item.description ?? "Head-to-head option")
         .accessibilityIdentifier("H2HButton_\(item.id)")
     }
 }

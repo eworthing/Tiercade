@@ -14,11 +14,17 @@ struct MainAppView: View {
     #if os(tvOS)
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var detailFocus: DetailFocus?
-    private enum DetailFocus: Hashable { case close }
+    enum DetailFocus: Hashable { case close }
     #endif
 
     var body: some View {
         let detailPresented = app.detailItem != nil
+        let headToHeadPresented = app.h2hActive
+        #if os(tvOS)
+        let modalBlockingFocus = headToHeadPresented || detailPresented
+        #else
+        let modalBlockingFocus = detailPresented || headToHeadPresented
+        #endif
 
         return Group {
             #if os(macOS) || targetEnvironment(macCatalyst)
@@ -40,8 +46,8 @@ struct MainAppView: View {
                     // Add content padding to avoid overlay bars overlap
                     .padding(.top, TVMetrics.contentTopInset)
                     .padding(.bottom, TVMetrics.contentBottomInset)
-                    .allowsHitTesting(!detailPresented)
-                    .disabled(detailPresented)
+                    .allowsHitTesting(!modalBlockingFocus)
+                    .disabled(modalBlockingFocus)
             }
             #if os(tvOS)
             // Top toolbar (overlay so it doesn't reduce content area)
@@ -51,8 +57,8 @@ struct MainAppView: View {
                     .frame(height: TVMetrics.topBarHeight)
                     .background(.thinMaterial)
                     .overlay(Divider().opacity(0.15), alignment: .bottom)
-                    .allowsHitTesting(!detailPresented)
-                    .disabled(detailPresented)
+                    .allowsHitTesting(!modalBlockingFocus)
+                    .disabled(modalBlockingFocus)
             }
             // Bottom action bar (safe area inset to avoid covering focused rows)
             .overlay(alignment: .bottom) {
@@ -61,8 +67,8 @@ struct MainAppView: View {
                     .frame(height: TVMetrics.bottomBarHeight)
                     .background(.thinMaterial)
                     .overlay(Divider().opacity(0.15), alignment: .top)
-                    .allowsHitTesting(!detailPresented)
-                    .disabled(detailPresented)
+                    .allowsHitTesting(!modalBlockingFocus)
+                    .disabled(modalBlockingFocus)
             }
             #else
             // ToolbarView is ToolbarContent (not a View) on some platforms; avoid embedding it directly on tvOS
@@ -75,11 +81,13 @@ struct MainAppView: View {
         }
         #if os(tvOS)
         .task { FocusUtils.seedFocus() }
-        .onChange(of: scenePhase) { phase in
-            if phase == .active { FocusUtils.seedFocus() }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active { FocusUtils.seedFocus() }
         }
         .onExitCommand {
-            if detailPresented {
+            if app.showAnalyticsSidebar {
+                app.closeAnalyticsSidebar()
+            } else if detailPresented {
                 app.detailItem = nil
             }
         }
@@ -114,6 +122,18 @@ struct MainAppView: View {
                 HeadToHeadOverlay(app: app)
                     .zIndex(40)
 
+#if os(tvOS)
+                if app.showAnalyticsSidebar {
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        AnalyticsSidebarView()
+                            .frame(maxHeight: .infinity)
+                    }
+                    .allowsHitTesting(true)
+                    .zIndex(52)
+                }
+#endif
+
                 // Toast messages (bottom)
                 if let toast = app.currentToast {
                     VStack {
@@ -128,6 +148,22 @@ struct MainAppView: View {
 
                 // Detail overlay (all platforms)
                 if let detail = app.detailItem {
+                    #if os(tvOS)
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        DetailSidebarView(item: detail, focus: $detailFocus)
+                            .frame(maxHeight: .infinity)
+                    }
+                    .focusSection()
+                    .defaultFocus($detailFocus, .close)
+                    .onAppear { detailFocus = .close }
+                    .onDisappear { detailFocus = nil }
+                    .transition(
+                        .move(edge: .trailing)
+                            .combined(with: .opacity)
+                    )
+                    .zIndex(55)
+                    #else
                     ZStack {
                         Color.black.opacity(0.55).ignoresSafeArea()
                         VStack(spacing: 24) {
@@ -135,12 +171,7 @@ struct MainAppView: View {
                                 .frame(maxWidth: 720)
 
                             Button("Close") { app.detailItem = nil }
-                                #if os(tvOS)
-                                .buttonStyle(.tvRemote(.secondary))
-                                .focused($detailFocus, equals: .close)
-                                #else
                                 .buttonStyle(.bordered)
-                                #endif
                         }
                         .padding(.vertical, 32)
                         .padding(.horizontal, 36)
@@ -151,15 +182,10 @@ struct MainAppView: View {
                                 .shadow(color: .black.opacity(0.35), radius: 30, y: 12)
                         )
                         .accessibilityAddTraits(.isModal)
-                        #if os(tvOS)
-                        .focusSection()
-                        .defaultFocus($detailFocus, .close)
-                        .onAppear { detailFocus = .close }
-                        .onDisappear { detailFocus = nil }
-                        #endif
                     }
                     .transition(.opacity)
                     .zIndex(55)
+                    #endif
                 }
             }
         }
@@ -176,14 +202,14 @@ struct TVToolbarView: View {
     @FocusState private var focusedControl: Control?
 
     private enum Control: Hashable {
-        case undo, redo, randomize, reset, h2h, analyze
+        case undo, redo, randomize, reset, h2h, analytics
     }
 
     var body: some View {
         let randomizeEnabled = app.canRandomizeItems
         let headToHeadEnabled = app.canStartHeadToHead
-        let analysisActive = app.showingAnalysis
-        let analysisEnabled = analysisActive || app.canShowAnalysis
+        let analyticsActive = app.showAnalyticsSidebar
+        let analyticsEnabled = analyticsActive || app.canShowAnalysis
         let randomizeHint = randomizeEnabled
             ? "Randomly distribute items across tiers"
             : "Add more items before randomizing tiers"
@@ -192,13 +218,15 @@ struct TVToolbarView: View {
             ? "Start head-to-head comparisons"
             : "Add at least two items before starting head-to-head"
         let headToHeadTooltip = headToHeadEnabled ? "Head to Head" : "Add two items to start"
-        let analysisHint: String = {
-            if analysisEnabled {
-                return analysisActive ? "Hide tier analysis" : "Show insights about your tiers"
+        let analyticsHint: String = {
+            if analyticsEnabled {
+                return analyticsActive
+                    ? "Hide analytics"
+                    : "View tier distribution and balance score"
             }
-            return "Add items before opening analysis"
+            return "Add items before opening analytics"
         }()
-        let analysisTooltip = analysisActive ? "Hide Analysis" : "Show Analysis"
+        let analyticsTooltip = analyticsActive ? "Hide Analytics" : "Show Analytics"
         HStack(spacing: 16) {
             Button(action: { app.undo() }, label: {
                 Image(systemName: "arrow.uturn.backward")
@@ -258,18 +286,18 @@ struct TVToolbarView: View {
                 .accessibilityHint(headToHeadHint)
                 .focusTooltip(headToHeadTooltip)
 
-            Button(action: { app.toggleAnalysis() }, label: {
-                Image(systemName: analysisActive ? "chart.bar.fill" : "chart.bar")
+            Button(action: { app.toggleAnalyticsSidebar() }, label: {
+                Image(systemName: "chart.bar.fill")
                     .frame(width: 32, height: 32)
             })
                 .buttonStyle(.tvRemote(.primary))
-                .accessibilityIdentifier("Toolbar_Analyze")
-                .disabled(!analysisEnabled)
-                .focused($focusedControl, equals: .analyze)
-                .accessibilityLabel("Analyze")
-                .accessibilityValue(analysisActive ? "Visible" : "Hidden")
-                .accessibilityHint(analysisHint)
-                .focusTooltip(analysisTooltip)
+                .accessibilityIdentifier("Toolbar_Analytics")
+                .disabled(!analyticsEnabled)
+                .focused($focusedControl, equals: .analytics)
+                .accessibilityLabel("Analytics")
+                .accessibilityValue(analyticsActive ? "Visible" : "Hidden")
+                .accessibilityHint(analyticsHint)
+                .focusTooltip(analyticsTooltip)
         }
         .lineLimit(1)
         .padding(.horizontal, TVMetrics.barHorizontalPadding)
@@ -281,5 +309,10 @@ struct TVToolbarView: View {
         .focusSection()
         // Don't seed default focus here; let grid own initial focus for tvOS
         #endif
+        .onChange(of: app.showAnalyticsSidebar) { _, isPresented in
+            if !isPresented {
+                focusedControl = .analytics
+            }
+        }
     }
 }

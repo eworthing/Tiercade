@@ -5,6 +5,45 @@ When the question involves Apple platforms (iOS, macOS, tvOS, visionOS) or Apple
 
 ## Tiercade guidance for AI coding agents
 
+- Modernization mandates (OS 26 / Swift 6)
+  - Target iOS/iPadOS/tvOS 26 and macOS 26 (Tahoe); assume Swift 6 toolchains everywhere.
+  - Enable **Strict Concurrency Checking = Complete** in every target. Prefer actors, `@MainActor`, and `Sendable` value types (`struct`, `enum`).
+  - Replace completion handlers with `async/await`; remove manual queues/locks in favor of actors or `MainActor.run` hops.
+  - State must lean on Swift **Observation** (`@Observable`, `@Bindable`). Replace `ObservableObject`/`@Published` whenever touched.
+  - Build UI with SwiftUI only. Navigation uses `NavigationStack`/`NavigationSplitView`; UIKit appears only via representable bridges for maintenance seams.
+  - Use native SwiftUI web surfaces (built-in `WebView`)—avoid custom `WKWebView` wrappers.
+  - Persistence for new features relies on **SwiftData** (`@Model`, `@Query`). Migrate Core Data modules gradually, module by module.
+  - Phase out Combine: publishers → `.values` or `AsyncStream`, subjects → `AsyncStream`, operator chains → `async let`/`TaskGroup` compositions.
+  - Prefer `AsyncSequence` for streaming work.
+  - New and modernized tests belong in **Swift Testing** (`@Test`, `#expect`). Migrate XCTest incrementally.
+  - Stay in SwiftPM land—no CocoaPods/Carthage. Use SPM traits for feature flags and environment variants.
+  - UI chrome (toolbars, sheets, overlays) may use Liquid Glass; keep fast-refreshing content plain to preserve performance.
+  - Enforce lint thresholds: `cyclomatic_complexity` warning at 8, error at 12. Run `swiftlint` alongside builds.
+  - Favor feature-first folders (`Features/<Feature>/…`) for new surface area; shared code lives in `Shared/`, `Services/`, `Models/`, `Resources/` and Swift packages.
+  - Keep the following transformation map in mind:
+    - Callbacks → `async`/`await`
+    - Dispatch queues/locks → actors / `MainActor`
+    - UIKit views/controllers → SwiftUI views (representables only as adapters)
+    - `ObservableObject`/`@Published` → `@Observable` + `@Bindable`
+    - Core Data (new) → SwiftData models + queries
+    - Combine streams/operators → Structured concurrency (`AsyncStream`, `async let`, `TaskGroup`)
+    - `NavigationView` → `NavigationStack` / `NavigationSplitView`
+
+  ```swift
+  // Package.swift swiftSettings baseline
+  .enableUpcomingFeature("StrictConcurrency"),
+  .unsafeFlags(["-strict-concurrency=complete"])
+  ```
+
+  ```swift
+  // Example SPM traits usage
+  traits: [
+      .featureFlag("offline-mode"),
+      .featureFlag("ai-features"),
+      .featureFlag("debug-tools", enabledTraits: ["development"])
+  ]
+  ```
+
 - Development practices
   - Commit style: Use Conventional Commits (`feat:`, `fix:`, `chore:`, `refactor:`, `test:`, `docs:`)
   - Write concise, present-tense commit messages. Include scope when helpful (e.g., `feat(tvOS): quick move overlay`)
@@ -33,6 +72,7 @@ When the question involves Apple platforms (iOS, macOS, tvOS, visionOS) or Apple
   - JSON import prefers `ModelResolver.loadProject` + `resolveTiers`, falls back to legacy flat JSON.
 
 - tvOS UX and testing
+  - After every successful build, launch the latest tvOS simulator build interactively (Cmd+R or VS Code task), keep it open for visual review, and validate focus/input in any surfaces you touched before moving on.
   - Stable accessibility identifiers are required. Examples used in tests:
     - Toolbar: `Toolbar_H2H`, `Toolbar_Randomize`, `Toolbar_Reset`
     - Quick Move: `QuickMove_Overlay`, `QuickMove_S/A/B/C/U`, `QuickMove_More`, `QuickMove_Cancel`

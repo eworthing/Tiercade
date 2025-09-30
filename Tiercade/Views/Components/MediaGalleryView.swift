@@ -27,10 +27,10 @@ struct MediaGalleryView: View {
         .tabViewStyle(.page(indexDisplayMode: pages.count > 1 ? .automatic : .never))
         #if os(tvOS)
         .focusSection()
-        .onChange(of: selection) { newValue in
-        guard pages.indices.contains(newValue) else { return }
-        let announcement = "Image \(newValue + 1) of \(pages.count)"
-        UIAccessibility.post(notification: .announcement, argument: announcement)
+        .onChange(of: selection) { _, newValue in
+            guard pages.indices.contains(newValue) else { return }
+            let announcement = "Image \(newValue + 1) of \(pages.count)"
+            UIAccessibility.post(notification: .announcement, argument: announcement)
         }
         #endif
         #endif
