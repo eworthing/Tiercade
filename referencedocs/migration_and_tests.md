@@ -1,43 +1,39 @@
-# Migration Notes & Tests Outline
+# Test Plan (No Migrations / No Back-Compat)
 
-## Versioning policy
-- `schemaVersion` is a monotonic integer. Major breaking changes increment this value.
-- Deprecation window: keep deprecated field for at least one major version cycle and mark in changelog.
+There is **no legacy data** to migrate. All tests focus on correctness, integrity, and performance for the v1 schema.
 
-## Example migration v1 -> v2 (rename Item.summary -> Item.description)
-Pseudocode:
-```
-function migrate_v1_to_v2(project) {
-  if (project.schemaVersion !== 1) return project;
-  const p2 = JSON.parse(JSON.stringify(project));
-  for (const id in p2.items) {
-    const it = p2.items[id];
-    if (it.summary && !it.description) { it.description = it.summary; delete it.summary; }
-  }
-  if (p2.overrides) {
-    for (const id in p2.overrides) {
-      const ov = p2.overrides[id];
-      if (ov.summary && !ov.description) { ov.description = ov.summary; delete ov.summary; }
-    }
-  }
-  p2.schemaVersion = 2;
-  return p2;
-}
-```
+## 1) Schema validation
+- Validate sample projects against `tierlist.schema.json` using a Swift JSON-schema validator or fixture-based Codable decoding.
 
-## Tests outline
-1. **Schema validation tests**: validate sample files against `tierlist.schema.json` using AJV (Node) and jsonschema (Python).
-2. **Round-trip tests (TypeScript)**: create Project object -> JSON.stringify -> parse -> deepEqual.
-3. **Round-trip tests (Swift Codable)**: encode -> decode -> assert equal.
-4. **CSV import/export tests**: produce CSV rows, import, export, assert equivalence for core fields.
-5. **Stateful URL tests**: encode subset, decode, assert identity.
-6. **Property-based tests (fast-check / SwiftCheck)**:
-   - serialization invariance
-   - override non-destruction
-   - rating bounds
-   - media.kind validity
-   - tier.order uniqueness
-   - id format compliance (UUID for projectId)
-   - items/tier consistency (all tier.itemIds exist in items map)
-7. **Performance tests**: import/export of 10k items (server-side), pagination latencies, and lazy-media load benchmarks.
-8. **Security tests**: XSS checks in notes and embed HTML; CORS enforcement on media URIs.
+## 2) Codable round-trip (Swift 6)
+- Construct a complex `Project` in memory → `JSONEncoder` → `JSONDecoder` → equality on all fields.
+- Ensure unknown fields pass through `additional` maps where present.
+
+## 3) Property-based tests (SwiftCheck)
+- **Serialization invariance**: encode→decode equals original.
+- **Tier integrity**: every `tier.itemIds[i]` exists in `items`.
+- **Tier order**: unique sequence 0..n-1 (array order authoritative).
+- **Rating bounds**: 0–100 for any rating present.
+- **Media kind validity**: only `image|gif|video|audio`.
+- **Attributes types**: only string|number|boolean|string[].
+- **Overrides non-destruction**: applying overrides never mutates canonical `items`.
+
+## 4) Media pipeline tests
+- Import of local files writes to `Media/` with SHA-256 names.
+- Thumbnail generator produces `Thumbs/<sha>_256.jpg`, sets `thumbUri`.
+- Broken path detection raises a clear error.
+
+## 5) Bundle export/import round-trip
+- Export `.tierproj` → unzip → open → validate → compare with original (URIs may differ only by normalized file paths).
+
+## 6) Performance targets
+- Open/resolve **≤5k items**: initial render under ~500ms on baseline dev hardware with UI virtualization.
+- Thumbnail generation amortized and cached (no UI jank).
+
+## 7) Security
+- Notes are rendered as Markdown with sanitization (no script execution).
+- Only `file://` URIs permitted for media in offline v1.
+
+## 8) Validation regression tests
+- URI scheme enforcement: constructing a project with any `http(s)` media URI throws via `ProjectValidation.validateOfflineV1`.
+- Collaboration role required: missing `role` in any `collab.members` entry fails Codable decode (or explicit validation helper).

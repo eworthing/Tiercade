@@ -14,12 +14,18 @@ struct ItemMenuOverlay: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Move to:").font(.headline)
                     HStack {
-                        ForEach(app.tierOrder, id: \.self) { t in
-                            Button(t) { app.move(item.id, to: t); app.dismissItemMenu() }
-                                .buttonStyle(.borderedProminent)
-                                .accessibilityLabel("Move to \(t) tier")
-                                .accessibilityIdentifier("ItemMenu_Move_\(t)")
-                                .focused($focused, equals: t == app.tierOrder.first ? .firstMove : nil)
+                        ForEach(availableMoveTargets, id: \.self) { tierId in
+                            Button(app.displayLabel(for: tierId)) {
+                                app.move(item.id, to: tierId)
+                                app.dismissItemMenu()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .accessibilityLabel("Move to \(app.displayLabel(for: tierId)) tier")
+                            .accessibilityIdentifier("ItemMenu_Move_\(tierId)")
+                            .focused(
+                                $focused,
+                                equals: tierId == availableMoveTargets.first ? .firstMove : nil
+                            )
                         }
                     }
                 }
@@ -39,13 +45,15 @@ struct ItemMenuOverlay: View {
                     .accessibilityIdentifier("ItemMenu_ViewDetails")
                     .focused($focused, equals: .details)
 
-                    Button("Remove from Tier") {
-                        app.removeFromCurrentTier(item.id)
-                        app.dismissItemMenu()
+                    if hasUnrankedDestination {
+                        Button("Move to Unranked") {
+                            app.removeFromCurrentTier(item.id)
+                            app.dismissItemMenu()
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("ItemMenu_RemoveFromTier")
+                        .focused($focused, equals: .remove)
                     }
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("ItemMenu_RemoveFromTier")
-                    .focused($focused, equals: .remove)
 
                     Spacer()
                     Button("Close", role: .cancel) { app.dismissItemMenu() }
@@ -60,9 +68,23 @@ struct ItemMenuOverlay: View {
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
             .accessibilityIdentifier("ItemMenu_Overlay")
-            .defaultFocus($focused, .firstMove)
+            .defaultFocus($focused, defaultFocusField)
             .focusSection()
         }
+    }
+}
+
+private extension ItemMenuOverlay {
+    private var availableMoveTargets: [String] {
+        app.tierOrder.filter { $0 != TierIdentifier.unranked.rawValue }
+    }
+
+    private var hasUnrankedDestination: Bool {
+        app.tierOrder.contains(TierIdentifier.unranked.rawValue)
+    }
+
+    private var defaultFocusField: FocusField {
+        availableMoveTargets.isEmpty ? .toggle : .firstMove
     }
 }
 #endif

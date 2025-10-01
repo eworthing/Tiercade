@@ -5,6 +5,20 @@ import TiercadeCore
 extension AppState {
     // MARK: - Item Management
     func reset(showToast: Bool = false) {
+        // Check if there's any data to reset
+        let hasAnyData = (tierOrder + ["unranked"]).contains { tierName in
+            (tiers[tierName] ?? []).count > 0
+        }
+        
+        if hasAnyData && !showToast {
+            showResetConfirmation = true
+            return
+        }
+        
+        performReset(showToast: showToast)
+    }
+    
+    func performReset(showToast: Bool = false) {
         tiers = makeEmptyTiers()
         seed()
         history = HistoryLogic.initHistory(tiers, limit: history.limit)
@@ -27,6 +41,25 @@ extension AppState {
     }
 
     func randomize() {
+        guard canRandomizeItems else {
+            showInfoToast("Nothing to Randomize", message: "Add more items before shuffling tiers")
+            return
+        }
+        
+        // Check if there's data in ranked tiers (excluding unranked)
+        let hasRankedData = tierOrder.contains { tierName in
+            (tiers[tierName] ?? []).count > 0
+        }
+        
+        if hasRankedData {
+            showRandomizeConfirmation = true
+            return
+        }
+        
+        performRandomize()
+    }
+    
+    func performRandomize() {
         var allItems: [Item] = []
         for tierName in tierOrder + ["unranked"] {
             allItems.append(contentsOf: tiers[tierName] ?? [])

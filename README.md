@@ -1,18 +1,18 @@
-# Tiercade iOS
+# Tiercade
 
-A comprehensive tier list management application for iOS, built with SwiftUI. Create, manage, and analyze tier lists with professional-grade features including advanced analytics, multiple export formats, and intelligent insights.
+A comprehensive tier list management application built with SwiftUI. Create, manage, and analyze tier lists with professional-grade features including advanced analytics, multiple export formats, and intelligent insights.
 
-![iOS](https://img.shields.io/badge/iOS-18.5+-blue.svg)
-![tvOS](https://img.shields.io/badge/tvOS-17+-lightgrey.svg)
-![macOS](https://img.shields.io/badge/macOS-14+-lightgrey.svg)
+![iOS](https://img.shields.io/badge/iOS-26.0+-blue.svg)
+![tvOS](https://img.shields.io/badge/tvOS-26.0+-blue.svg)
+![macOS](https://img.shields.io/badge/macOS-26.0+-blue.svg)
 ![Swift](https://img.shields.io/badge/Swift-6.0-orange.svg)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-Native-green.svg)
-![Xcode](https://img.shields.io/badge/Xcode-16+-blue.svg)
+![Xcode](https://img.shields.io/badge/Xcode-26+-blue.svg)
 
 ## 🚀 Features
 
 ### **Core Tier Management**
-- **Drag & Drop Interface** - Native SwiftUI drag and drop with visual feedback
+- **Drag & Drop Interface** - Native SwiftUI drag and drop on iOS/macOS, with click-to-select Quick Move workflows on tvOS
 - **Multiple Tier Support** - Customizable tier structure (S, A, B, C, D, F tiers)
 - **Item Management** - Add, remove, and organize items across tiers
 - **Real-time Updates** - Instant visual feedback for all operations
@@ -48,46 +48,84 @@ A comprehensive tier list management application for iOS, built with SwiftUI. Cr
 - **Dark/Light Mode** - Full support for iOS appearance preferences
 - **Immersive Media Gallery** - SwiftUI TabView gallery with remote-friendly focus and full-screen playback on tvOS
 
+### **tvOS Experience**
+- **Remote-First Navigation** - Optimized focus rings and directional layout tuned for the Siri Remote, with safe-area-aware spacing for comfortable living-room viewing.
+- **Dedicated Overlays** - Quick Move, Quick Rank, and Detail overlays appear as modal glass surfaces that pause background interaction until dismissed, keeping attention on the active task.
+- **Toolbar & Action Bar** - Floating top and bottom bars adapt to tvOS conventions, exposing undo/redo, head-to-head, analysis, and selection actions with clear focus targets.
+- **Exit Command Handling** - Pressing the remote’s ⌘/Menu (Exit) button inside modals dismisses the current overlay instead of backing out of the app, mirroring native tvOS behavior.
+- **Deferred Skip Flow** - The Head-to-Head overlay now features a dedicated Skip card with a recirculating clock icon, updates the skipped count live, and automatically resurfaces deferred pairs after all first-pass matchups.
+- **Focus Tooltips** - Custom tooltips surface helpful hints (e.g. “Randomize”, “Lock Tier”) when buttons receive focus, guiding new users through tier management on the TV.
+- **Media Playback** - Item detail pages can promote images and video with full-screen playback support that respects tvOS playback gestures.
+
 ## 🏗️ Architecture
 
 ### **Technical Stack**
 - **SwiftUI** - Modern declarative UI framework
-- **Swift 6.0** - Latest language features with strict concurrency
-- **iOS 18.5+** - Target deployment supporting latest iOS features
-- **TiercadeCore** - Platform-agnostic Swift Package for shared logic
+- **Swift 6.0** - Latest language features with strict concurrency checking
+- **OS 26.0+** - Target deployment: iOS 26.0, tvOS 26.0, macOS 26.0
+- **TiercadeCore** - Platform-agnostic Swift Package for shared logic (iOS 17+/macOS 14+/tvOS 17+)
 
-> Note: The app target aims for iOS 18.5+ while the `TiercadeCore` Swift package documents support for iOS 17 / macOS 14 / tvOS 17+. This is intentional: the core package keeps slightly broader compatibility for cross-platform use while the app UI targets newer OS features. See `TiercadeCore/README.md` for core package requirements.
+> Note: The app targets OS 26.0+ to leverage the latest platform features (Swift 6 strict concurrency, modern SwiftUI APIs, @Observable macro). The `TiercadeCore` Swift package maintains broader compatibility (iOS 17+/macOS 14+/tvOS 17+) for potential cross-platform reuse. See `TiercadeCore/README.md` for core package details.
 
 ### **Design Patterns**
 - **MVVM Architecture** - Clean separation of concerns with SwiftUI
-- **@MainActor State Management** - Thread-safe UI updates with published properties
-- **Async/Await** - Modern concurrency for file operations and analysis
+- **@Observable + @MainActor** - Modern Swift 6 state management with automatic observation
+- **Typed Throws** - Compile-time error handling with specific error types
+- **Async/Await** - Structured concurrency for file operations and analysis
 - **Protocol-Oriented Design** - Flexible, testable interfaces throughout
+
+### **Modernization Guardrails**
+- **Strict Concurrency** – All targets enable "Complete" checking; core logic favors `Sendable` value types and actors for isolation.
+- **Observation-First State** – UI state uses Swift Observation macros (`@Observable`, `@Bindable`) instead of `ObservableObject`/`@Published`.
+- **SwiftUI Everywhere** – Screens, overlays, and navigation are pure SwiftUI with `NavigationStack`/`NavigationSplitView`; UIKit appears only through targeted representable adapters when absolutely necessary.
+- **SwiftData Persistence** – New persistence flows adopt `@Model` + `@Query`; remaining Core Data touchpoints are migrated module-by-module.
+- **Async Streams** – Legacy Combine pipelines are rewritten to `AsyncSequence`, `AsyncStream`, `async let`, or `TaskGroup` constructs.
+- **Liquid Glass Chrome** – Translucent, glassy effects stay confined to top-level chrome (toolbars, sheets) to keep fast-refreshing content performant.
+- **Swift Testing** – New tests rely on the Swift Testing framework (`@Test`, `#expect`) with incremental XCTest retirement.
+- **SwiftPM Only** – Dependencies live in SwiftPM; feature flags and environment variants use SPM traits.
+
+### **Configuration Snippets**
+```swift
+// Package.swift baseline for strict concurrency
+.enableUpcomingFeature("StrictConcurrency"),
+.unsafeFlags(["-strict-concurrency=complete"])
+```
+
+```swift
+// Example SPM traits configuration
+traits: [
+    .featureFlag("offline-mode"),
+    .featureFlag("ai-features"),
+    .featureFlag("debug-tools", enabledTraits: ["development"])
+]
+```
 
 ### **Core Components**
 
-#### **AppState (@MainActor)**
-Central state management with comprehensive functionality:
+#### **AppState (@MainActor + @Observable)**
+Central state management with modern Swift 6 concurrency and observation:
 ```swift
 @MainActor
-final class AppState: ObservableObject {
-    // Core state
-    @Published var tiers: TLTiers = ["S":[],"A":[],"B":[],"C":[],"D":[],"F":[],"unranked":[]]
-    @Published var tierOrder: [String] = ["S","A","B","C","D","F"]
+@Observable
+final class AppState {
+    // Core state (automatic observation via @Observable)
+    var tiers: Items = ["S":[],"A":[],"B":[],"C":[],"D":[],"F":[],"unranked":[]]
+    var tierOrder: [String] = ["S","A","B","C","D","F"]
     
     // UI/feature state
-    @Published var searchQuery: String = ""
-    @Published var isLoading: Bool = false
-    @Published var loadingMessage: String = ""
-    @Published var operationProgress: Double = 0
-    @Published var currentToast: ToastMessage?
-    @Published var analysisData: TierAnalysisData?
+    var searchQuery: String = ""
+    var isLoading: Bool = false
+    var loadingMessage: String = ""
+    var operationProgress: Double = 0
+    var currentToast: ToastMessage?
+    var analysisData: TierAnalysisData?
 
-    // Operations (signatures)
+    // Operations with typed throws
     func move(_ id: String, to tier: String)
-    func exportToFormat(_ format: ExportFormat, group: String, themeName: String) async -> (Data, String)?
+    func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String)
     func generateAnalysis() async
-    func randomize()
+    func save() throws(PersistenceError)
+    func importFromJSON(_ jsonString: String) async throws(ImportError)
     func undo()
     func redo()
 }
@@ -114,6 +152,7 @@ TiercadeCore Logic → State Update → UI Refresh
 - **Unit Tests** - Core logic validation in TiercadeCore (run via `swift test` inside `TiercadeCore`)
 - **Integration Tests** - Feature interaction testing
 - **UI Tests** - End-to-end user journey validation (iOS/tvOS simulators supported)
+- **Swift Testing First** - All new suites are written with Swift Testing annotations, with XCTest cases migrated opportunistically.
 
 ### **Running Tests**
 ```bash
@@ -135,12 +174,13 @@ xcodebuild test -project Tiercade.xcodeproj -scheme Tiercade -destination 'platf
 ## 🛠️ Development
 
 ### **Requirements**
-- **Xcode 16+** - Latest development environment
-- **iOS 18.5+ Simulator** - For testing and development (recommended)
-- **tvOS 17+ Simulator** - For tvOS UI testing
-- **macOS 14+** - For macOS development and packaging
-- **Swift 6.0** - Language mode with strict concurrency and enhanced type safety
+- **Xcode 26+** - Latest development environment
+- **iOS 26.0+ Simulator** - For testing and development
+- **tvOS 26.0+ Simulator** - For tvOS UI testing (primary focus)
+- **macOS 26.0+** - For macOS development and packaging
+- **Swift 6.0** - Language mode with strict concurrency checking enabled
 - **macOS** - Development platform
+- **SwiftLint** - Enforce cyclomatic complexity thresholds (warning 8, error 12) as part of pre-commit checks
 
 ### **Project Setup**
 ```bash
@@ -154,6 +194,10 @@ open Tiercade.xcodeproj
 # Build and run
 Cmd+R (or Product → Run)
 ```
+
+### **Interactive tvOS Verification**
+- After every successful build, boot the tvOS simulator with the latest app build, keep it open for visual review, and exercise the relevant surfaces with a Siri Remote (or keyboard arrow) pass to confirm focus, animations, and gestures.
+- Preferred flow: run the "Build tvOS Tiercade (Debug)" task (or `Cmd+R` in Xcode), then leave the simulator running while iterating on focus tweaks, visual polish, and final sign-off.
 
 ### **Project Structure**
 ```
@@ -239,9 +283,9 @@ func updateProgress(_ value: Double) { /* 0.0 ... 1.0 */ }
 ## 🎯 Design Decisions
 
 ### **State Management Choice: @Observable + @MainActor**
-- **Rationale**: Modern SwiftUI state management with thread safety
-- **Benefits**: Automatic UI updates, compile-time safety, clear data flow
-- **Trade-offs**: iOS 17+ requirement, learning curve for team
+- **Rationale**: Modern Swift 6 observation replacing @ObservableObject/@Published
+- **Benefits**: Automatic observation, no boilerplate, compile-time concurrency safety
+- **Trade-offs**: Requires Swift 6 and latest OS versions
 
 ### **Architecture: MVVM with SwiftUI**
 - **Rationale**: Natural fit for SwiftUI's declarative paradigm
@@ -317,13 +361,14 @@ func updateProgress(_ value: Double) { /* 0.0 ... 1.0 */ }
 
 ## 📄 License
 
-This project is currently unlicensed in the repository. If you intend to open-source it, add a LICENSE file at the repository root (for example, MIT or Apache-2.0). For private/internal projects, include a short statement here describing distribution restrictions.
+This project is currently unlicensed. This is a personal project developed with GitHub Copilot assistance.
 
-## 🤝 Contributing
+## 📚 Documentation
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
-
-Also see the core package docs: [TiercadeCore/README.md](TiercadeCore/README.md)
+- **Core Package**: [TiercadeCore/README.md](TiercadeCore/README.md) - Platform-agnostic logic and models
+- **Design System**: [Tiercade/Design/README.md](Tiercade/Design/README.md) - Design tokens and styles
+- **Tools & Testing**: [tools/README.md](tools/README.md) - tvOS debugging and automation
+- **Copilot Instructions**: [.github/copilot-instructions.md](.github/copilot-instructions.md) - Development guidance for AI assistance
 
 ## 📞 Support
 

@@ -67,7 +67,7 @@ extension Color {
 // MARK: - Tier enum
 
 enum Tier: String, CaseIterable, Identifiable {
-    case s, a, b, c, d, f
+    case s, a, b, c, d, f, unranked
 
     var id: String { rawValue }
     var letter: String { rawValue.uppercased() }
@@ -79,6 +79,7 @@ enum Tier: String, CaseIterable, Identifiable {
         case .c: return "#00D9FE"
         case .d: return "#1E3A8A"
         case .f: return "#808080"
+        case .unranked: return "#6B7280"
         }
     }
     var color: Color {

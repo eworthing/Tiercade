@@ -42,125 +42,140 @@ public struct ResolvedTier {
 }
 
 public enum ModelResolver {
-    // Load JSON file from URL into a Dictionary representation
-    public static func loadProject(from url: URL) throws -> [String: Any] {
+    public static func loadProject(from url: URL) throws -> Project {
         let data = try Data(contentsOf: url)
-        let obj = try JSONSerialization.jsonObject(with: data)
-        guard let dict = obj as? [String: Any] else {
-            throw NSError(
-                domain: "ModelResolver",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Invalid project JSON"]
-            )
-        }
-        return dict
+        return try decodeProject(from: data)
     }
 
-    // Resolve items map + overrides into ResolvedTiers using the project's tiers array
-    public static func resolveTiers(from project: [String: Any]) -> [ResolvedTier] {
-        guard let tiers = project["tiers"] as? [[String: Any]] else { return [] }
-        let itemsMap = project["items"] as? [String: Any] ?? [:]
-        let overrides = project["overrides"] as? [String: Any] ?? [:]
+    public static func decodeProject(from data: Data) throws -> Project {
+        let decoder = jsonDecoder()
+        let project = try decoder.decode(Project.self, from: data)
+        try ProjectValidation.validateOfflineV1(project)
+        return project
+    }
 
-        let resolveItem = makeItemResolver(items: itemsMap, overrides: overrides)
+    public static func resolveTiers(from project: Project) -> [ResolvedTier] {
+        let overrides = project.overrides ?? [:]
 
-        return tiers.map { tier -> ResolvedTier in
-            let identifier = tierIdentifier(from: tier)
-            let label = tierLabel(from: tier)
-            let itemIds = tier["itemIds"] as? [String] ?? []
-            let items = itemIds.compactMap(resolveItem)
-            return ResolvedTier(id: identifier, label: label, items: items)
+        return project.tiers.map { tier in
+            let items = tier.itemIds.compactMap { itemId -> ResolvedItem? in
+                guard let item = project.items[itemId] else { return nil }
+                let override = overrides[itemId]
+                return makeResolvedItem(id: itemId, item: item, override: override)
+            }
+            return ResolvedTier(id: tier.id, label: tier.label, items: items)
         }
     }
 }
 
 private extension ModelResolver {
-    static func makeItemResolver(items: [String: Any], overrides: [String: Any]) -> (String) -> ResolvedItem? {
-        { itemId in
-            guard let item = items[itemId] as? [String: Any] else { return nil }
-            let override = overrides[itemId] as? [String: Any]
+    static func jsonDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }
 
-            let title = resolveTitle(for: itemId, item: item, override: override)
-            let subtitle = resolveSubtitle(item: item, override: override)
-            let description = resolveDescription(item: item, override: override)
-            let thumbUri = resolveThumbUri(item: item, override: override)
-            let attributes = buildAttributes(item: item, override: override, thumbUri: thumbUri)
+    static func makeResolvedItem(id: String, item: Project.Item, override: Project.ItemOverride?) -> ResolvedItem {
+        let title = resolvedTitle(id: id, item: item, override: override)
+        let subtitle = item.subtitle
+        let description = resolvedDescription(item: item, override: override)
+        let thumbUri = resolvedThumbUri(item: item, override: override)
+        let attributes = buildAttributes(item: item, override: override, thumbUri: thumbUri)
 
-            return ResolvedItem(
-                id: itemId,
-                title: title,
-                subtitle: subtitle,
-                description: description,
-                thumbUri: thumbUri,
-                attributes: attributes
-            )
+        return ResolvedItem(
+            id: id,
+            title: title,
+            subtitle: subtitle,
+            description: description,
+            thumbUri: thumbUri,
+            attributes: attributes
+        )
+    }
+
+    static func resolvedTitle(id: String, item: Project.Item, override: Project.ItemOverride?) -> String {
+        if let overrideTitle = override?.displayTitle, !overrideTitle.isEmpty {
+            return overrideTitle
         }
+        if !item.title.isEmpty {
+            return item.title
+        }
+        return id
     }
 
-    static func tierIdentifier(from tier: [String: Any]) -> String {
-        tier["id"] as? String ?? UUID().uuidString
+    static func resolvedDescription(item: Project.Item, override: Project.ItemOverride?) -> String? {
+        if let notes = override?.notes, !notes.isEmpty {
+            return notes
+        }
+        if let summary = item.summary, !summary.isEmpty {
+            return summary
+        }
+        return nil
     }
 
-    static func tierLabel(from tier: [String: Any]) -> String {
-        tier["label"] as? String ?? ""
+    static func resolvedThumbUri(item: Project.Item, override: Project.ItemOverride?) -> String? {
+        if let thumb = mediaPrimaryThumbnail(from: override?.media) {
+            return thumb
+        }
+        if let thumb = mediaPrimaryThumbnail(from: item.media) {
+            return thumb
+        }
+        return nil
     }
 
-    static func resolveTitle(for itemId: String, item: [String: Any], override: [String: Any]?) -> String {
-        if let overrideTitle = override?["displayTitle"] as? String { return overrideTitle }
-        if let title = item["title"] as? String { return title }
-        return itemId
+    static func mediaPrimaryThumbnail(from media: [Project.Media]?) -> String? {
+        guard let media, let first = media.first else { return nil }
+        if let thumb = first.thumbUri, !thumb.isEmpty {
+            return thumb
+        }
+        if let poster = first.posterUri, !poster.isEmpty {
+            return poster
+        }
+        return nil
     }
 
-    static func resolveSubtitle(item: [String: Any], override: [String: Any]?) -> String? {
-        override?["subtitle"] as? String ?? item["subtitle"] as? String
-    }
-
-    static func resolveDescription(item: [String: Any], override: [String: Any]?) -> String? {
-        override?["description"] as? String
-            ?? item["description"] as? String
-            ?? item["summary"] as? String
-    }
-
-    static func resolveThumbUri(item: [String: Any], override: [String: Any]?) -> String? {
-        mediaThumb(in: override)
-            ?? mediaThumb(in: item)
-            ?? item["posterUri"] as? String
-    }
-
-    static func mediaThumb(in source: [String: Any]?) -> String? {
-        guard
-            let media = source?["media"] as? [[String: Any]],
-            let first = media.first
-        else { return nil }
-
-        return (first["thumbUri"] as? String) ?? (first["posterUri"] as? String)
-    }
-
-    static func buildAttributes(item: [String: Any], override: [String: Any]?, thumbUri: String?) -> [String: String]? {
+    static func buildAttributes(
+        item: Project.Item,
+        override: Project.ItemOverride?,
+        thumbUri: String?
+    ) -> [String: String]? {
         var attributes: [String: String] = [:]
 
-        if let overrideName = override?["displayTitle"] as? String {
-            attributes["name"] = overrideName
-        } else if let itemName = item["title"] as? String {
-            attributes["name"] = itemName
+        if let overrideTitle = override?.displayTitle, !overrideTitle.isEmpty {
+            attributes["name"] = overrideTitle
+        } else if !item.title.isEmpty {
+            attributes["name"] = item.title
         }
 
-        if let overrideSeason = override?["season"] as? String {
-            attributes["season"] = overrideSeason
-        } else if let itemSeason = seasonString(from: item["season"]) {
-            attributes["season"] = itemSeason
+        if let season = override?.additional?["season"]?.stringValue ?? item.attributes?["season"]?.stringValue {
+            attributes["season"] = season
         }
 
-        if let thumbUri = thumbUri {
+        if let thumbUri {
             attributes["thumbUri"] = thumbUri
+        }
+
+        if let rating = override?.rating ?? item.rating {
+            attributes["rating"] = String(rating)
         }
 
         return attributes.isEmpty ? nil : attributes
     }
+}
 
-    static func seasonString(from value: Any?) -> String? {
-        if let string = value as? String { return string }
-        if let number = value as? Int { return String(number) }
-        return nil
+private extension JSONValue {
+    var stringValue: String? {
+        switch self {
+        case .string(let value):
+            return value
+        case .number(let number):
+            if floor(number) == number {
+                return String(Int(number))
+            }
+            return String(number)
+        case .bool(let bool):
+            return String(bool)
+        case .array, .object, .null:
+            return nil
+        }
     }
 }
