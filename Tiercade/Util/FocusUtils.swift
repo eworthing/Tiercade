@@ -1,6 +1,6 @@
 import SwiftUI
 #if os(tvOS)
-import UIKit
+import Accessibility
 #endif
 
 enum FocusUtils {
@@ -8,7 +8,7 @@ enum FocusUtils {
     static func seedFocus() {
         #if os(tvOS)
         Task { @MainActor in
-            UIAccessibility.post(notification: .screenChanged, argument: nil)
+            AccessibilityNotification.ScreenChanged().post()
         }
         #endif
     }

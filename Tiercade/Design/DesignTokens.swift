@@ -7,74 +7,26 @@
 
 import SwiftUI
 
-// Cross-platform platform color alias
-#if canImport(UIKit)
-import UIKit
-public typealias PlatformColor = UIColor
-#elseif canImport(AppKit)
-import AppKit
-public typealias PlatformColor = NSColor
-#else
-public typealias PlatformColor = Color
-#endif
+private struct DynamicDesignColor: ShapeStyle, Hashable {
+    typealias Resolved = Color.Resolved
 
-extension Color {
-    init(designHex: String) {
-        #if canImport(UIKit)
-        self = Color(PlatformColor(hex: designHex))
-        #elseif canImport(AppKit)
-        self = Color(PlatformColor(hex: designHex))
-        #else
-        self = Color.black
-        #endif
-    }
+    let lightHex: String
+    let darkHex: String
 
-    /// Create a dynamic color that adapts to appearance changes on platforms
-    /// that support dynamic UIColor/NSColor.
-    static func dynamic(light: String, dark: String) -> Color {
-        #if canImport(UIKit)
-        let color = UIColor { trait in
-            let provider = trait.userInterfaceStyle == .light
-                ? PlatformColor(hex: light)
-                : PlatformColor(hex: dark)
-            return provider
-        }
-        return Color(color)
-        #elseif canImport(AppKit)
-        // NSColor with dynamic provider
-        let dynamic = PlatformColor(name: nil, dynamicProvider: { appearance in
-            let isLight = appearance.bestMatch(from: [.aqua, .darkAqua]) == .aqua
-            return isLight ? PlatformColor(hex: light) : PlatformColor(hex: dark)
-        })
-        return Color(dynamic)
-        #else
-        // On platforms without dynamic providers, prefer dark by default
-        return Color(hex: dark) ?? .black
-        #endif
+    func resolve(in environment: EnvironmentValues) -> Color.Resolved {
+        let preferredHex = environment.colorScheme == .dark ? darkHex : lightHex
+        return ColorUtilities.color(hex: preferredHex).resolve(in: environment)
     }
 }
 
-extension PlatformColor {
-    /// Convenience initializer for hex colors (uses ColorUtilities for consistency)
-    convenience init(hex: String) {
-        let components = ColorUtilities.parseHex(hex)
-        #if canImport(UIKit)
-        self.init(
-            red: components.red,
-            green: components.green,
-            blue: components.blue,
-            alpha: components.alpha
-        )
-        #elseif canImport(AppKit)
-        self.init(
-            calibratedRed: components.red,
-            green: components.green,
-            blue: components.blue,
-            alpha: components.alpha
-        )
-        #else
-        self.init()
-        #endif
+extension Color {
+    init(designHex: String) {
+        self = ColorUtilities.color(hex: designHex)
+    }
+
+    /// Create a dynamic color that adapts to appearance changes using SwiftUI's shape style system.
+    static func dynamic(light: String, dark: String) -> Color {
+        Color(DynamicDesignColor(lightHex: light, darkHex: dark))
     }
 }
 

@@ -1,8 +1,8 @@
-#if os(tvOS)
 import Foundation
-import UIKit
+import CoreGraphics
+import ImageIO
 
-/// Lightweight async image loader with in-memory caching.
+/// Lightweight async image loader with in-memory caching using Core Graphics images.
 final actor ImageLoader {
     nonisolated static let shared = ImageLoader()
 
@@ -10,30 +10,45 @@ final actor ImageLoader {
         case decodingFailed
     }
 
-    private let cache = NSCache<NSString, UIImage>()
+    private final class CGImageBox: NSObject {
+        let image: CGImage
 
-    func cachedImage(for url: URL) async -> UIImage? {
-        cache.object(forKey: url.absoluteString as NSString)
+        init(image: CGImage) {
+            self.image = image
+        }
     }
 
-    func image(for url: URL) async throws -> UIImage {
-        if let cached = cache.object(forKey: url.absoluteString as NSString) {
+    private let cache = NSCache<NSURL, CGImageBox>()
+
+    func cachedImage(for url: URL) async -> CGImage? {
+        cache.object(forKey: url as NSURL)?.image
+    }
+
+    func image(for url: URL) async throws -> CGImage {
+        if let cached = cache.object(forKey: url as NSURL)?.image {
             return cached
         }
 
         let (data, _) = try await URLSession.shared.data(from: url)
-        guard let image = UIImage(data: data) else {
-            throw LoaderError.decodingFailed
-        }
-        cache.setObject(image, forKey: url.absoluteString as NSString)
+        let image = try decodeImage(from: data)
+        cache.setObject(CGImageBox(image: image), forKey: url as NSURL)
         return image
     }
 
     func prefetch(_ url: URL) async {
-        if cache.object(forKey: url.absoluteString as NSString) != nil {
+        if cache.object(forKey: url as NSURL) != nil {
             return
         }
         _ = try? await image(for: url)
     }
+
+    private func decodeImage(from data: Data) throws -> CGImage {
+        guard
+            let source = CGImageSourceCreateWithData(data as CFData, nil),
+            let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+        else {
+            throw LoaderError.decodingFailed
+        }
+        return image
+    }
 }
-#endif

@@ -1,6 +1,6 @@
 import SwiftUI
 #if os(tvOS)
-import UIKit
+import Accessibility
 #endif
 
 /// SwiftUI-native gallery view that replaces the previous UIPageViewController bridge.
@@ -30,7 +30,7 @@ struct MediaGalleryView: View {
         .onChange(of: selection) { _, newValue in
             guard pages.indices.contains(newValue) else { return }
             let announcement = "Image \(newValue + 1) of \(pages.count)"
-            UIAccessibility.post(notification: .announcement, argument: announcement)
+            AccessibilityNotification.Announcement(announcement).post()
         }
         #endif
         #endif

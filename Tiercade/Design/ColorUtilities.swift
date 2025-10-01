@@ -7,11 +7,7 @@
 //
 
 import SwiftUI
-#if canImport(UIKit)
-import UIKit
-#elseif canImport(AppKit)
-import AppKit
-#endif
+import CoreGraphics
 
 /// Centralized color utilities for hex parsing, luminance calculations, and contrast ratios
 enum ColorUtilities {
@@ -114,45 +110,24 @@ enum ColorUtilities {
     /// - Returns: SwiftUI Color with Display P3 support on capable devices
     static func color(hex: String, alpha: CGFloat = 1.0) -> Color {
         let components = parseHex(hex, defaultAlpha: alpha)
+        let colorComponents: [CGFloat] = [components.red, components.green, components.blue, components.alpha]
 
-        #if canImport(UIKit)
-        // Use Display P3 on supported devices
-        let platformColor = UIColor { trait in
-            if trait.displayGamut == .P3 {
-                return UIColor(
-                    displayP3Red: components.red,
-                    green: components.green,
-                    blue: components.blue,
-                    alpha: components.alpha
-                )
-            } else {
-                return UIColor(
-                    red: components.red,
-                    green: components.green,
-                    blue: components.blue,
-                    alpha: components.alpha
-                )
-            }
+        if let displayP3 = CGColorSpace(name: CGColorSpace.displayP3),
+           let cgColor = CGColor(colorSpace: displayP3, components: colorComponents) {
+            return Color(cgColor: cgColor)
         }
-        return Color(platformColor)
 
-        #elseif canImport(AppKit)
-        let platformColor = NSColor(
-            displayP3Red: components.red,
-            green: components.green,
-            blue: components.blue,
-            alpha: components.alpha
-        )
-        return Color(platformColor)
+        if let srgb = CGColorSpace(name: CGColorSpace.sRGB),
+           let cgColor = CGColor(colorSpace: srgb, components: colorComponents) {
+            return Color(cgColor: cgColor)
+        }
 
-        #else
         return Color(
             red: Double(components.red),
             green: Double(components.green),
             blue: Double(components.blue),
             opacity: Double(components.alpha)
         )
-        #endif
     }
 }
 

@@ -1,9 +1,9 @@
 import Foundation
 import SwiftUI
 import TiercadeCore
-#if canImport(UIKit)
-import UIKit
-#endif
+import CoreGraphics
+import ImageIO
+import UniformTypeIdentifiers
 
 // A simple, deterministic renderer for exporting a static image or PDF
 // of the current tier list. It intentionally avoids live focus/overlay
@@ -124,47 +124,52 @@ struct ExportRenderer {
     }
 
     // Render to PNG data, clamped to max size by scaling the container view.
+    @MainActor
     static func renderPNG(context: Context,
                           targetSize: CGSize? = nil,
                           cfg: Config = Config()) -> Data? {
-        let prepared = prepareRenderingView(context: context, cfg: cfg)
-        let sizing = resolveSizing(for: prepared.size, targetSize: targetSize, cfg: cfg)
+        let renderer = makeRenderer(context: context, cfg: cfg)
+        renderer.scale = 1.0
 
-        let renderer = UIGraphicsImageRenderer(size: sizing.finalSize)
-        return renderer.pngData { ctx in
-            ctx.cgContext.scaleBy(x: sizing.scale, y: sizing.scale)
-            prepared.view.drawHierarchy(in: CGRect(origin: .zero, size: prepared.size), afterScreenUpdates: true)
+        guard let baseImage = renderer.cgImage else { return nil }
+        let baseSize = CGSize(width: CGFloat(baseImage.width), height: CGFloat(baseImage.height))
+        let sizing = resolveSizing(for: baseSize, targetSize: targetSize, cfg: cfg)
+
+        if sizing.scale != 1.0 {
+            renderer.scale = sizing.scale
+            guard let scaledImage = renderer.cgImage else { return nil }
+            return makePNGData(from: scaledImage)
         }
+
+        return makePNGData(from: baseImage)
     }
 
     // Render to vector PDF on iOS/macOS; tvOS doesn't support PDF context.
+    @MainActor
     static func renderPDF(context: Context,
                           targetSize: CGSize? = nil,
                           cfg: Config = Config()) -> Data? {
         #if os(tvOS)
         return nil
         #else
-        let prepared = prepareRenderingView(context: context, cfg: cfg)
-        let sizing = resolveSizing(for: prepared.size, targetSize: targetSize, cfg: cfg)
-
+        let renderer = makeRenderer(context: context, cfg: cfg)
         let data = NSMutableData()
         guard let consumer = CGDataConsumer(data: data as CFMutableData) else { return nil }
-        var mediaBox = CGRect(origin: .zero, size: sizing.finalSize)
-        guard let ctx = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return nil }
-        ctx.beginPDFPage(nil)
-        ctx.scaleBy(x: sizing.scale, y: sizing.scale)
-        prepared.view.layer.render(in: ctx)
-        ctx.endPDFPage()
-        ctx.closePDF()
+
+        renderer.render { size, renderClosure in
+            let sizing = resolveSizing(for: size, targetSize: targetSize, cfg: cfg)
+            var mediaBox = CGRect(origin: .zero, size: sizing.finalSize)
+            guard let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil) else { return }
+            context.beginPDFPage(nil)
+            context.scaleBy(x: sizing.scale, y: sizing.scale)
+            renderClosure(context)
+            context.endPDFPage()
+            context.closePDF()
+        }
+
         return data as Data
         #endif
     }
-}
-
-#if canImport(UIKit)
-private struct PreparedRenderingView {
-    let view: UIView
-    let size: CGSize
 }
 
 private struct SizingResult {
@@ -172,25 +177,48 @@ private struct SizingResult {
     let scale: CGFloat
 }
 
+@MainActor
 private extension ExportRenderer {
-    static func prepareRenderingView(context: Context, cfg: Config) -> PreparedRenderingView {
-        let view = makeView(context: context, cfg: cfg)
+    static func makeRenderer(context: Context, cfg: Config) -> ImageRenderer<AnyView> {
         let baseWidth: CGFloat = 1920
-        let hosting = UIHostingController(rootView: AnyView(view.frame(width: baseWidth, alignment: .leading)))
-        hosting.view.bounds = CGRect(origin: .zero, size: CGSize(width: baseWidth, height: 100))
-        hosting.view.backgroundColor = .clear
-        let size = hosting.sizeThatFits(in: CGSize(width: baseWidth, height: .greatestFiniteMagnitude))
-        return PreparedRenderingView(view: hosting.view, size: size)
+        let view = makeView(context: context, cfg: cfg)
+            .frame(width: baseWidth, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+        let renderer = ImageRenderer(content: AnyView(view))
+        renderer.proposedSize = ProposedViewSize(width: baseWidth, height: nil)
+        renderer.isOpaque = true
+        return renderer
     }
 
     static func resolveSizing(for size: CGSize, targetSize: CGSize?, cfg: Config) -> SizingResult {
+        guard size.width > 0, size.height > 0 else {
+            return SizingResult(finalSize: targetSize ?? cfg.maxSize, scale: 1.0)
+        }
+
         let maxSize = targetSize ?? cfg.maxSize
         let scale = min(maxSize.width / size.width, maxSize.height / size.height, 1.0)
-        let finalSize = CGSize(width: floor(size.width * scale), height: floor(size.height * scale))
+        let finalSize = CGSize(
+            width: floor(size.width * scale),
+            height: floor(size.height * scale)
+        )
         return SizingResult(finalSize: finalSize, scale: scale)
     }
+
+    static func makePNGData(from image: CGImage) -> Data? {
+        let data = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            data,
+            UTType.png.identifier as CFString,
+            1,
+            nil
+        ) else {
+            return nil
+        }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return data as Data
+    }
 }
-#endif
 
 private struct ExportRow: View {
     let items: [Item]

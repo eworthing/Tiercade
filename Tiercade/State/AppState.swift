@@ -1,9 +1,7 @@
 import Foundation
 import SwiftUI
 import Observation
-#if canImport(UIKit)
-import UIKit
-#endif
+import Accessibility
 
 import TiercadeCore
 
@@ -299,8 +297,6 @@ final class AppState {
 
     // MARK: - Accessibility
     func announce(_ message: String) {
-        #if canImport(UIKit)
-        UIAccessibility.post(notification: .announcement, argument: message)
-        #endif
+        AccessibilityNotification.Announcement(message).post()
     }
 }
