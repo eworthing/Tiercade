@@ -212,27 +212,25 @@ struct HeadToHeadOverlay: View {
                     }
 
                     if let pair = app.h2hPair {
-                        VStack(spacing: 20) {
-                            HStack(spacing: 24) {
-                                H2HButton(item: pair.0) { app.voteH2H(winner: pair.0) }
-                                    .accessibilityIdentifier("H2H_Left")
-                                    .focused($focused, equals: .left)
+                        HStack(alignment: .center, spacing: 32) {
+                            H2HButton(item: pair.0) { app.voteH2H(winner: pair.0) }
+                                .accessibilityIdentifier("H2H_Left")
+                                .focused($focused, equals: .left)
 
+                            VStack(spacing: 16) {
                                 Text("vs")
                                     .font(.title.weight(.bold))
                                     .foregroundStyle(.secondary)
 
-                                H2HButton(item: pair.1) { app.voteH2H(winner: pair.1) }
-                                    .accessibilityIdentifier("H2H_Right")
-                                    .focused($focused, equals: .right)
+                                H2HSkipButton {
+                                    app.skipCurrentH2HPair()
+                                }
+                                .focused($focused, equals: .skip)
                             }
 
-                            Button("Skip This Pair") {
-                                app.skipCurrentH2HPair()
-                            }
-                            .buttonStyle(TVRemoteButtonStyle(role: .secondary))
-                            .accessibilityIdentifier("H2H_Skip")
-                            .focused($focused, equals: .skip)
+                            H2HButton(item: pair.1) { app.voteH2H(winner: pair.1) }
+                                .accessibilityIdentifier("H2H_Right")
+                                .focused($focused, equals: .right)
                         }
                     } else {
                         VStack(spacing: 12) {
@@ -249,7 +247,7 @@ struct HeadToHeadOverlay: View {
                         Button("Finish") {
                             app.finishH2H()
                         }
-                        .buttonStyle(PrimaryButtonStyle())
+                        .buttonStyle(TVRemoteButtonStyle(role: .primary))
                         .accessibilityIdentifier("H2H_Finish")
                         .focused($focused, equals: .finish)
 
@@ -263,7 +261,7 @@ struct HeadToHeadOverlay: View {
                     }
                 }
                 .padding(Metrics.grid * 2)
-                .frame(maxWidth: 760)
+                .frame(maxWidth: 1000)
                 .background(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .fill(.thinMaterial)
@@ -276,6 +274,7 @@ struct HeadToHeadOverlay: View {
                 .accessibilityIdentifier("H2H_Overlay")
                 .accessibilityElement(children: .contain)
                 .onAppear { updateFocus(hasPair: app.h2hPair != nil) }
+                .defaultFocus($focused, .left)
                 .onChange(of: app.h2hPair?.0.id) { _, _ in
                     updateFocus(hasPair: app.h2hPair != nil)
                 }
@@ -294,6 +293,11 @@ struct HeadToHeadOverlay: View {
                 #endif
             }
             .transition(.opacity)
+            #if os(tvOS)
+            .onExitCommand {
+                app.cancelH2H(fromExitCommand: true)
+            }
+            #endif
         }
     }
 
@@ -336,8 +340,8 @@ struct H2HButton: View {
                         .foregroundStyle(.primary)
                 }
             }
-            .padding(Metrics.grid * 1.5)
-            .frame(minWidth: 240, maxWidth: 320, minHeight: 200, alignment: .topLeading)
+            .padding(Metrics.grid * 2)
+            .frame(minWidth: 280, maxWidth: 380, minHeight: 240, alignment: .topLeading)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .fill(Color.white.opacity(0.12))
@@ -348,9 +352,38 @@ struct H2HButton: View {
             )
             .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
-        .buttonStyle(CardButtonStyle())
+    .buttonStyle(CardButtonStyle())
         .accessibilityLabel(item.name ?? item.id)
         .accessibilityHint(item.description ?? "Head-to-head option")
         .accessibilityIdentifier("H2HButton_\(item.id)")
+    }
+}
+
+struct H2HSkipButton: View {
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 10) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 36, weight: .semibold))
+                    .symbolRenderingMode(.monochrome)
+                Text("Skip")
+                    .font(.headline.weight(.semibold))
+            }
+            .frame(width: 180, height: 180)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(Color.white.opacity(0.12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(Color.white.opacity(0.25), lineWidth: 1.5)
+                    )
+            )
+        }
+        .buttonStyle(CardButtonStyle())
+        .accessibilityLabel("Skip This Pair")
+        .accessibilityHint("Skip to revisit later")
+        .accessibilityIdentifier("H2H_Skip")
     }
 }

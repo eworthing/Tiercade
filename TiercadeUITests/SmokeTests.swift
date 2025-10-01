@@ -60,3 +60,51 @@ final class SmokeTests: XCTestCase {
         )
     }
 }
+
+@MainActor
+extension SmokeTests {
+    func testHeadToHeadOpensWithoutDoubleSelect() throws {
+        app = XCUIApplication()
+        app.launchArguments = ["-uiTest"]
+        app.launch()
+
+        let h2hButton = app.buttons["Toolbar_H2H"]
+        XCTAssertTrue(h2hButton.waitForExistence(timeout: 5), "Head-to-head toolbar button should exist")
+
+        let remote = XCUIRemote.shared
+
+        // Move focus up to the toolbar area
+        for _ in 0..<3 {
+            remote.press(.up)
+            usleep(250_000)
+        }
+
+        var attempts = 0
+        while !h2hButton.hasFocus && attempts < 12 {
+            remote.press(.right)
+            usleep(250_000)
+            attempts += 1
+        }
+
+        XCTAssertTrue(h2hButton.hasFocus, "Head-to-head button should be focused before activation")
+
+        remote.press(.select)
+
+        let overlay = app.otherElements["H2H_Overlay"]
+        XCTAssertTrue(
+            overlay.waitForExistence(timeout: 2),
+            "Head-to-head overlay should appear after a single select press"
+        )
+
+        // Ensure the overlay persists briefly so the user doesn't need a second activation
+        sleep(1)
+        XCTAssertTrue(overlay.exists, "Head-to-head overlay should remain visible after being opened")
+
+        // Verify menu/exit still closes the overlay after the debounce window
+        remote.press(.menu)
+        XCTAssertTrue(
+            overlay.waitForNonExistence(timeout: 3),
+            "Head-to-head overlay should close when pressing Menu after it is displayed"
+        )
+    }
+}

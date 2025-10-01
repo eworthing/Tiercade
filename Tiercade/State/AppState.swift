@@ -99,6 +99,7 @@ final class AppState {
     var h2hTotalComparisons: Int = 0
     var h2hCompletedComparisons: Int = 0
     var h2hSkippedPairKeys: Set<String> = []
+    var h2hActivatedAt: Date?
 
     // Enhanced Persistence
     var hasUnsavedChanges: Bool = false
@@ -113,6 +114,12 @@ final class AppState {
     var draggingId: String?
     var isProcessingSearch: Bool = false
     var showAnalyticsSidebar: Bool = false
+    var showingBundledSelector: Bool = false
+    let bundledProjects: [BundledProject] = BundledProjects.all
+    
+    // Confirmation alerts
+    var showRandomizeConfirmation: Bool = false
+    var showResetConfirmation: Bool = false
 
     let storageKey = "Tiercade.tiers.v1"
     var autosaveTask: Task<Void, Never>?

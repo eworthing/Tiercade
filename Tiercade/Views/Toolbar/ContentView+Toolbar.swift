@@ -95,6 +95,7 @@ struct SecondaryToolbarActions: ToolbarContent {
                 #if !os(tvOS)
                 .keyboardShortcut("O", modifiers: [.command, .shift])
             #endif
+            Button("Load Bundled Tier List") { app.presentBundledTierlists() }
         }
     }
 

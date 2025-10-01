@@ -25,7 +25,7 @@ struct TierHeaderView: View {
             .buttonStyle(.bordered)
             .accessibilityLabel(app.isTierLocked(tierId) ? "Unlock Tier" : "Lock Tier")
             .focusTooltip(app.isTierLocked(tierId) ? "Unlock" : "Lock")
-            
+
             Button(action: { showMenu = true }, label: {
                 Image(systemName: "ellipsis.circle")
             })

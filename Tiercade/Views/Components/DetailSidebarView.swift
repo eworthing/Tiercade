@@ -31,6 +31,9 @@ struct DetailSidebarView: View {
             .padding(.vertical, 48)
             .padding(.trailing, 48)
             .focusSection()
+            .onExitCommand {
+                app.detailItem = nil
+            }
             .onAppear { focus.wrappedValue = .close }
         }
     }

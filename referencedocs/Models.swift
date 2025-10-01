@@ -1,4 +1,4 @@
-// Models.swift - Swift 6 Codable models for TierList schema
+// Models.swift - Swift 6 Codable models for TierList schema (offline v1, cloud-ready)
 import Foundation
 
 public enum JSONValue: Codable, Equatable {
@@ -37,7 +37,7 @@ public struct Media: Codable, Equatable, Identifiable {
     public enum Kind: String, Codable { case image, gif, video, audio }
     public var id: String
     public var kind: Kind
-    public var uri: String
+    public var uri: String     // v1 uses file:// URLs; schema allows http(s) for future cloud
     public var mime: String
     public var w: Double?
     public var h: Double?
@@ -70,7 +70,7 @@ public struct ItemOverride: Codable, Equatable {
     public var notes: String?
     public var tags: [String]?
     public var rating: Double?
-    public var media: [Media]?
+    public var media: [Media]?    // replace policy in v1
     public var hidden: Bool?
     public var additional: [String: JSONValue]?
 }
@@ -87,7 +87,19 @@ public struct Tier: Codable, Equatable, Identifiable {
     public var additional: [String: JSONValue]?
 }
 
-public struct Links: Codable, Equatable { public var visibility: String?; public var shareUrl: String?; public var embedHtml: String?; public var stateUrl: String?; public var additional: [String: JSONValue]? }
+public struct Links: Codable, Equatable {
+    public var visibility: String?   // public|unlisted|private (metadata only in v1)
+    public var shareUrl: String?
+    public var embedHtml: String?
+    public var stateUrl: String?
+    public var additional: [String: JSONValue]?
+}
+
+public struct Storage: Codable, Equatable {
+    public var mode: String?     // "local" (default) | "cloud"
+    public var remote: [String: JSONValue]? // provider/baseUrl/bucket/pathPrefix/auth...
+    public var additional: [String: JSONValue]?
+}
 
 public struct Settings: Codable, Equatable {
     public var theme: String?
@@ -98,8 +110,16 @@ public struct Settings: Codable, Equatable {
     public var additional: [String: JSONValue]?
 }
 
-public struct Member: Codable, Equatable { public var userId: String; public var role: String?; public var additional: [String: JSONValue]? }
-public struct Collaboration: Codable, Equatable { public var members: [Member]?; public var additional: [String: JSONValue]? }
+public struct Member: Codable, Equatable {
+    public var userId: String
+    public var role: String
+    public var additional: [String: JSONValue]?
+}
+
+public struct Collaboration: Codable, Equatable {
+    public var members: [Member]?
+    public var additional: [String: JSONValue]?
+}
 
 public struct Project: Codable, Equatable {
     public var schemaVersion: Int
@@ -110,8 +130,50 @@ public struct Project: Codable, Equatable {
     public var items: [String: Item]
     public var overrides: [String: ItemOverride]?
     public var links: Links?
+    public var storage: Storage?      // optional, future cloud-ready
     public var settings: Settings?
     public var collab: Collaboration?
     public var audit: Audit
     public var additional: [String: JSONValue]?
+}
+
+public enum ProjectValidation {
+    public static func validateOfflineV1(_ project: Project) throws {
+        if let mode = project.storage?.mode, mode.lowercased() != "local" {
+            throw NSError(
+                domain: "Tiercade",
+                code: 1001,
+                userInfo: [NSLocalizedDescriptionKey: "v1 is offline-only (storage.mode must be 'local' or omitted)."]
+            )
+        }
+
+        func isFileURL(_ value: String?) -> Bool {
+            guard let value else { return true }
+            return value.lowercased().hasPrefix("file://")
+        }
+
+        for (_, item) in project.items {
+            for media in item.media ?? [] {
+                guard isFileURL(media.uri), isFileURL(media.thumbUri), isFileURL(media.posterUri) else {
+                    throw NSError(
+                        domain: "Tiercade",
+                        code: 1002,
+                        userInfo: [NSLocalizedDescriptionKey: "Media URIs must be file:// in offline v1."]
+                    )
+                }
+            }
+        }
+
+        for (_, override) in project.overrides ?? [:] {
+            for media in override.media ?? [] {
+                guard isFileURL(media.uri), isFileURL(media.thumbUri), isFileURL(media.posterUri) else {
+                    throw NSError(
+                        domain: "Tiercade",
+                        code: 1003,
+                        userInfo: [NSLocalizedDescriptionKey: "Override media URIs must be file:// in offline v1."]
+                    )
+                }
+            }
+        }
+    }
 }

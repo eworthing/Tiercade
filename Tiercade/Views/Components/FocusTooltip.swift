@@ -5,7 +5,7 @@ import SwiftUI
 struct FocusTooltip: ViewModifier {
     let label: String
     @Environment(\.isFocused) private var isFocused: Bool
-    
+
     func body(content: Content) -> some View {
         content
             .overlay(alignment: .top) {

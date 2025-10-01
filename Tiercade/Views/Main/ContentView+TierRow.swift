@@ -83,9 +83,9 @@ struct TierRowWrapper: View {
                     hex: app.displayColorHex(for: tier) ?? defaultHex(for: tier)
                 )
             )
-            
+
             Spacer()
-            
+
             #if os(tvOS)
             TierControlButtons(
                 tier: tier,
@@ -190,11 +190,11 @@ extension Color {
         #else
         guard let components = NSColor(self).cgColor.components else { return nil }
         #endif
-        
+
         let red = Int(components[0] * 255.0)
         let green = Int(components[1] * 255.0)
         let blue = Int(components[2] * 255.0)
-        
+
         return String(format: "#%02X%02X%02X", red, green, blue)
     }
 }
@@ -204,7 +204,7 @@ extension Color {
 private struct VerticalTierText: View {
     let label: String
     let textColor: Color
-    
+
     var body: some View {
         VStack(spacing: 4) {
             ForEach(Array(label), id: \.self) { char in
@@ -224,7 +224,7 @@ private struct TierControlButtons: View {
     let textColor: Color
     let onToggleLock: () -> Void
     let onShowMenu: () -> Void
-    
+
     var body: some View {
         VStack(spacing: 12) {
             Button(action: onToggleLock, label: {
@@ -235,7 +235,7 @@ private struct TierControlButtons: View {
             .buttonStyle(.plain)
             .accessibilityLabel(isLocked ? "Unlock Tier" : "Lock Tier")
             .focusTooltip(isLocked ? "Unlock" : "Lock")
-            
+
             Button(action: onShowMenu, label: {
                 Image(systemName: "ellipsis.circle")
                     .font(.system(size: 24))
@@ -255,7 +255,7 @@ private struct TierLabelEditor: View {
     @State private var label: String = ""
     @State private var colorHex: String = ""
     @State private var showAdvancedColor: Bool = false
-    
+
     // Color picker options for tvOS
     private let colorOptions: [(String, String)] = [
         ("Red", "#FF0037"),
@@ -267,11 +267,11 @@ private struct TierLabelEditor: View {
         ("Pink", "#EC4899"),
         ("Gray", "#808080")
     ]
-    
+
     var body: some View {
         VStack(spacing: 20) {
             Text("Tier \(tierId)").font(.title2)
-            
+
             // Rename section
             VStack(alignment: .leading, spacing: 8) {
                 Text("Label").font(.headline)
@@ -288,11 +288,11 @@ private struct TierLabelEditor: View {
                     }
                 }
             }
-            
+
             // Color picker section (tvOS compatible)
             VStack(alignment: .leading, spacing: 8) {
                 Text("Color").font(.headline)
-                
+
                 // Color swatches
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 12) {
                     ForEach(colorOptions, id: \.0) { name, hex in
@@ -316,7 +316,7 @@ private struct TierLabelEditor: View {
                         .buttonStyle(.plain)
                     }
                 }
-                
+
                 // Advanced hex input
                 Button(action: { showAdvancedColor.toggle() }, label: {
                     HStack {
@@ -325,7 +325,7 @@ private struct TierLabelEditor: View {
                     }
                     .font(.caption)
                 })
-                
+
                 if showAdvancedColor {
                     HStack(spacing: 12) {
                         TextField("Hex Color (e.g., #E11D48)", text: $colorHex)
@@ -341,7 +341,7 @@ private struct TierLabelEditor: View {
                     }
                 }
             }
-            
+
             // Actions
             HStack(spacing: 12) {
                 Button(app.isTierLocked(tierId) ? "Unlock" : "Lock") {

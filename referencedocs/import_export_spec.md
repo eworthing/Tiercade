@@ -1,34 +1,58 @@
-# Import / Export Specification
+# Import / Export Specification (Swift-only, Offline)
 
-## JSON (canonical)
-- File must validate against `tierlist.schema.json` (Draft 2020-12).
-- Required top-level fields: `schemaVersion`, `projectId`, `tiers`, `items`, `audit`.
-- Items map keys must match pattern `^[a-zA-Z0-9_\\-:]+$`.
+This app is **standalone** (no cloud/CDN, no server) and **Swift 6–only**. All data is stored locally.
 
-## CSV
-- CSV rows represent items. Required columns for import:
-  - title, tierLabel
-- Optional columns (map to attributes with prefix `attr_`):
-  - attr_year, attr_platforms (semicolon-delimited), imageUrl, videoUrl, audioUrl, rating, tags (semicolon-delimited), notes
-- Mapping example (row -> JSON):
-  - `imageUrl` -> first media `{ kind: "image", uri: imageUrl, mime: inferred }`
-  - `attr_releaseYear` -> `attributes.releaseYear` (number)
-  - `tierLabel` -> place item in tier with same label (create if missing)
+## Canonical Format: JSON
 
-## Stateful URL (Copy-Jutsu)
-- Use LZ-String `compressToEncodedURIComponent` to compress a carefully chosen subset of project state:
-  - Recommended subset: { schemaVersion, projectId, title, tiers, items (only id/title/media.thumbUri), overrides (notes/tags) }
-- Pseudocode (encode/decode):
-  - encode: `LZString.compressToEncodedURIComponent(JSON.stringify(state))`
-  - decode: `JSON.parse(LZString.decompressFromEncodedURIComponent(fragment))`
-- Budget: aim for <= 8000 characters in practice. For projects that exceed budget, fall back to server-side share: POST project, return short `shareId`.
+- Files validate against `tierlist.schema.json` (Draft 2020-12).
+- Required at root: `schemaVersion`, `projectId` (UUID v4), `tiers[]`, `items{}`, `audit`.
+- Media `uri`/`thumbUri` are **file URLs** pointing into the app's local store.
 
-## Embed iframe
-- Read-only endpoint: `/embed/{projectId}`
-- Optional URL params: `?theme=dark&showUnranked=false`
-- Parent/iframe sizing: use `postMessage` to communicate height.
+## Bundle Format: `.tierproj` (zip)
 
-## Media handling
-- Store media URIs as either CDN URLs or content-addressed paths (`ipfs://...` supported)
-- Media objects should include `thumbUri` or `posterUri` for lazy-loading and quick visual lists
-- Respect CORS for browser-based rendering
+A self-contained bundle for sharing or backup, containing:
+```
+{ProjectTitle}.tierproj/
+  project.json               # canonical JSON (validates against schema)
+  Media/                     # content-addressed files: <sha256>.<ext>
+  Thumbs/                    # <sha256>_256.jpg (or .webp)
+  README.txt                 # optional notes
+```
+- Content addressing: filename = SHA-256 of bytes (dedup-friendly).
+- Thumbnails: generated locally at import time (max edge ~256px).
+
+### File URL rules
+- `Media` and `Thumbs` entries referenced in JSON must be `file://` URLs.
+- V1 validation fails if any media URI is not `file://` (enforced in `ProjectValidation.validateOfflineV1`).
+- When we flip to cloud later, we'll set `storage.mode = "cloud"` and allow http(s) URIs.
+- When importing external URLs, the importer downloads/copies into `Media/`, generates a thumb into `Thumbs/`, and rewrites URIs to `file://` paths.
+
+## CSV Import (optional)
+
+CSV allows quick item creation. Minimum columns:
+- `title`, `tierLabel`
+
+Optional columns:
+- `imagePath` (local path), `videoPath`, `audioPath`
+- `rating`
+- `tags` (semicolon-separated)
+- `notes`
+- `attr_*` → `attributes.*` (strings by default; numeric if parsable)
+
+### Mapping
+- `imagePath` → first media `{ kind: "image", uri: file://..., mime: inferred, thumbUri: file://... }`
+- `tierLabel` → place item into matching tier (create tier if needed)
+- `attr_year` → `attributes.year` (number if integer)
+
+## No URL sharing / no embeds
+- **Stateful URL** and **embed iframes** are out-of-scope for offline v1.
+- Sharing is done by exchanging the `.tierproj` bundle.
+
+## Integrity
+
+- On open/import: validate JSON via schema, verify that all `file://` URIs resolve.
+- On export: re-validate, then create `.tierproj` zip.
+
+## Future expansion (cloud-ready)
+- While v1 requires `file://` URIs, the schema permits generic `uri` values.
+- When enabling cloud later, set `storage.mode = "cloud"` and write absolute http(s) URIs for media.

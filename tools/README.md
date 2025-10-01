@@ -1,8 +1,47 @@
-# Tiercade tvOS Debugging and Testing
+# Tiercade Tools
 
-This document describes the automated testing and debugging setup for Tiercade on tvOS (OS 26.0+).
+This directory contains utility scripts for building, testing, and managing Tiercade assets.
 
-## Quick Start
+## Table of Contents
+
+- [Image Fetching & Asset Management](#image-fetching--asset-management)
+- [tvOS Building & Testing](#tvos-building--testing)
+- [Schema Validation](#schema-validation)
+
+---
+
+## Image Fetching & Asset Management
+
+Automatically fetch images from TMDb and organize them into Xcode asset catalogs for bundled tier lists.
+
+### Quick Start
+
+```bash
+# Set up TMDb API key (free from themoviedb.org)
+export TMDB_API_KEY='your-api-key-here'
+
+# Fetch all bundled images
+./tools/fetch_bundled_images.sh
+```
+
+**See [README_IMAGES.md](./README_IMAGES.md) for complete documentation.**
+
+### Manual Usage
+
+```bash
+node fetch_media_and_thumb.js project.json \
+    --tmdb \
+    --xcode-assets ../Tiercade/Assets.xcassets \
+    --asset-group "BundledTierlists/Custom"
+```
+
+---
+
+## tvOS Building & Testing
+
+Automated testing and debugging setup for Tiercade on tvOS (OS 26.0+).
+
+### Quick Start
 
 Run the full build + test + artifact collection:
 

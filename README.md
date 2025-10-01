@@ -53,6 +53,7 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **Dedicated Overlays** - Quick Move, Quick Rank, and Detail overlays appear as modal glass surfaces that pause background interaction until dismissed, keeping attention on the active task.
 - **Toolbar & Action Bar** - Floating top and bottom bars adapt to tvOS conventions, exposing undo/redo, head-to-head, analysis, and selection actions with clear focus targets.
 - **Exit Command Handling** - Pressing the remote’s ⌘/Menu (Exit) button inside modals dismisses the current overlay instead of backing out of the app, mirroring native tvOS behavior.
+- **Deferred Skip Flow** - The Head-to-Head overlay now features a dedicated Skip card with a recirculating clock icon, updates the skipped count live, and automatically resurfaces deferred pairs after all first-pass matchups.
 - **Focus Tooltips** - Custom tooltips surface helpful hints (e.g. “Randomize”, “Lock Tier”) when buttons receive focus, guiding new users through tier management on the TV.
 - **Media Playback** - Item detail pages can promote images and video with full-screen playback support that respects tvOS playback gestures.
 

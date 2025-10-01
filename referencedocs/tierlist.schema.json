@@ -1,6 +1,9 @@
-{ "$schema": "https://json-schema.org/draft/2020-12/schema",
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/tierlist.schema.json",
   "title": "Tier List Project",
-  "description": "Versioned canonical schema for multi-domain tier-list projects.",
+  "description": "Versioned canonical schema for multi-domain tier-list projects (Swift-only v1, cloud-ready).",
+  "$comment": "Offline v1: storage.mode omitted or 'local'. Future: set storage.mode='cloud' and use http(s) URIs.",
   "type": "object",
   "properties": {
     "schemaVersion": { "type": "integer", "minimum": 1 },
@@ -22,12 +25,39 @@
     },
     "links": {
       "type": "object",
+      "description": "Optional sharing metadata (unused in offline v1).",
       "properties": {
         "visibility": { "type": "string", "enum": ["public", "unlisted", "private"] },
         "shareUrl": { "type": "string", "format": "uri" },
         "embedHtml": { "type": "string" },
         "stateUrl": { "type": "string", "format": "uri" }
-      }
+      },
+      "additionalProperties": true
+    },
+    "storage": {
+      "type": "object",
+      "description": "Future cloud support; optional in v1. If omitted, assume local file storage.",
+      "properties": {
+        "mode": { "type": "string", "enum": ["local", "cloud"], "default": "local" },
+        "remote": {
+          "type": "object",
+          "properties": {
+            "provider": { "type": "string", "enum": ["s3", "gcs", "supabase", "azure", "custom"] },
+            "baseUrl": { "type": "string", "format": "uri" },
+            "bucket": { "type": "string" },
+            "pathPrefix": { "type": "string" },
+            "auth": {
+              "type": "object",
+              "properties": {
+                "type": { "type": "string", "enum": ["none", "token", "awsSigV4", "oauth"] }
+              },
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
     },
     "settings": {
       "type": "object",
@@ -41,13 +71,29 @@
           "properties": {
             "colorblind": { "type": "boolean" },
             "highContrast": { "type": "boolean" }
-          }
+          },
+          "additionalProperties": true
         }
-      }
+      },
+      "additionalProperties": true
     },
     "collab": {
       "type": "object",
-      "properties": { "members": { "type": "array", "items": { "type": "object", "properties": { "userId": { "type": "string" }, "role": { "type": "string", "enum": ["owner","editor","viewer"] } }, "required": ["userId","role"] } } }
+      "properties": {
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "userId": { "type": "string" },
+              "role": { "type": "string", "enum": ["owner","editor","viewer"] }
+            },
+            "required": ["userId","role"],
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
     },
     "audit": { "$ref": "#/$defs/Audit" }
   },
@@ -65,7 +111,8 @@
         "rules": { "type": "object" },
         "itemIds": { "type": "array", "items": { "type": "string" } }
       },
-      "required": ["id","label","order","itemIds"]
+      "required": ["id","label","order","itemIds"],
+      "additionalProperties": true
     },
     "Item": {
       "type": "object",
@@ -91,12 +138,21 @@
         "rating": { "type": "number", "minimum": 0, "maximum": 100 },
         "sources": {
           "type": "array",
-          "items": { "type": "object", "properties": { "rel": { "type": "string" }, "href": { "type": "string", "format": "uri" }, "title": { "type": "string" } }, "required": ["href"] }
+          "items": { "type": "object",
+            "properties": {
+              "rel": { "type": "string" },
+              "href": { "type": "string", "format": "uri" },
+              "title": { "type": "string" }
+            },
+            "required": ["href"],
+            "additionalProperties": true
+          }
         },
         "locale": { "type": "object", "additionalProperties": { "type": "object", "additionalProperties": { "type": "string" } } },
         "meta": { "$ref": "#/$defs/Audit" }
       },
-      "required": ["id","title"]
+      "required": ["id","title"],
+      "additionalProperties": true
     },
     "ItemOverride": {
       "type": "object",
@@ -107,9 +163,11 @@
         "rating": { "type": "number", "minimum": 0, "maximum": 100 },
         "media": { "type": "array", "items": { "$ref": "#/$defs/Media" } },
         "hidden": { "type": "boolean", "default": false }
-      }
+      },
+      "additionalProperties": true
     },
     "Media": {
+      "$comment": "v1 offline: app-level validator enforces file:// URIs when storage.mode is local. Schema keeps generic uri for cloud-readiness.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -122,9 +180,18 @@
         "posterUri": { "type": "string", "format": "uri" },
         "thumbUri": { "type": "string", "format": "uri" },
         "alt": { "type": "string" },
-        "attribution": { "type": "object", "properties": { "creator": { "type": "string" }, "license": { "type": "string" }, "source": { "type": "string", "format": "uri" } } }
+        "attribution": {
+          "type": "object",
+          "properties": {
+            "creator": { "type": "string" },
+            "license": { "type": "string" },
+            "source": { "type": "string", "format": "uri" }
+          },
+          "additionalProperties": true
+        }
       },
-      "required": ["id","kind","uri","mime"]
+      "required": ["id","kind","uri","mime"],
+      "additionalProperties": true
     },
     "Audit": {
       "type": "object",
@@ -134,7 +201,9 @@
         "createdBy": { "type": "string" },
         "updatedBy": { "type": "string" }
       },
-      "required": ["createdAt","updatedAt"]
+      "required": ["createdAt","updatedAt"],
+      "additionalProperties": true
     }
-  }
+  },
+  "additionalProperties": true
 }

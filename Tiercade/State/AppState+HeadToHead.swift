@@ -28,11 +28,12 @@ extension AppState {
         h2hRecords = [:]
         h2hPairsQueue = pairs
         h2hDeferredPairs = []
-        h2hTotalComparisons = pairs.count
+    h2hTotalComparisons = pairs.count
         h2hCompletedComparisons = 0
         h2hSkippedPairKeys = []
         h2hPair = nil
         h2hActive = true
+    h2hActivatedAt = Date()
 
         let log = "[AppState] startH2H: poolCount=\(h2hPool.count) totalPairs=\(h2hTotalComparisons)"
         print(log)
@@ -124,11 +125,16 @@ extension AppState {
         appendDebugFile("finishH2H: counts=\(summary)")
     }
 
-    func cancelH2H() {
+    func cancelH2H(fromExitCommand: Bool = false) {
         guard h2hActive else { return }
+        if fromExitCommand, let activatedAt = h2hActivatedAt, Date().timeIntervalSince(activatedAt) < 0.35 {
+            appendDebugFile("cancelH2H: ignored exitCommand within debounce window")
+            return
+        }
         resetH2HSession()
         showInfoToast("Head-to-Head Cancelled", message: "No changes were made.")
-        appendDebugFile("cancelH2H: user cancelled session")
+        let trigger = fromExitCommand ? "exitCommand" : "user"
+        appendDebugFile("cancelH2H: trigger=\(trigger)")
     }
 
     private func resetH2HSession(clearRecords: Bool = true) {
@@ -140,6 +146,7 @@ extension AppState {
         h2hTotalComparisons = 0
         h2hCompletedComparisons = 0
         h2hSkippedPairKeys = []
+        h2hActivatedAt = nil
         if clearRecords {
             h2hRecords = [:]
         }

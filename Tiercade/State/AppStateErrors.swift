@@ -79,24 +79,3 @@ enum PersistenceError: Error {
         }
     }
 }
-
-/// Errors that can occur during migration from legacy formats
-enum MigrationError: Error {
-    case unrecognizedFormat
-    case missingRequiredField(String)
-    case corruptedData
-    case unsupportedVersion(String)
-
-    var localizedDescription: String {
-        switch self {
-        case .unrecognizedFormat:
-            return "Unrecognized save file format"
-        case .missingRequiredField(let field):
-            return "Save file is missing required field: \(field)"
-        case .corruptedData:
-            return "Save file data is corrupted and cannot be migrated"
-        case .unsupportedVersion(let version):
-            return "File version \(version) is not supported"
-        }
-    }
-}

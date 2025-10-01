@@ -164,6 +164,8 @@ extension AppState {
                 markAsChanged()
             }
             showSuccessToast("Import Complete", message: "Project loaded successfully")
+        } catch let error as NSError where error.domain == "Tiercade" {
+            throw ImportError.invalidData(error.localizedDescription)
         } catch {
             do {
                 let data = try Data(contentsOf: url)

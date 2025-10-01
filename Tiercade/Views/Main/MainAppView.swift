@@ -19,11 +19,12 @@ struct MainAppView: View {
 
     var body: some View {
         let detailPresented = app.detailItem != nil
-        let headToHeadPresented = app.h2hActive
+    let headToHeadPresented = app.h2hActive
+    let bundledSelectorPresented = app.showingBundledSelector
         #if os(tvOS)
-        let modalBlockingFocus = headToHeadPresented || detailPresented
+    let modalBlockingFocus = headToHeadPresented || detailPresented || bundledSelectorPresented
         #else
-        let modalBlockingFocus = detailPresented || headToHeadPresented
+    let modalBlockingFocus = detailPresented || headToHeadPresented || bundledSelectorPresented
         #endif
 
         return Group {
@@ -85,8 +86,12 @@ struct MainAppView: View {
             if newPhase == .active { FocusUtils.seedFocus() }
         }
         .onExitCommand {
-            if app.showAnalyticsSidebar {
+            if app.showingBundledSelector {
+                app.dismissBundledTierlists()
+            } else if app.showAnalyticsSidebar {
                 app.closeAnalyticsSidebar()
+            } else if app.h2hActive {
+                app.cancelH2H(fromExitCommand: true)
             } else if detailPresented {
                 app.detailItem = nil
             }
@@ -133,6 +138,12 @@ struct MainAppView: View {
                     .zIndex(52)
                 }
 #endif
+
+                if app.showingBundledSelector {
+                    BundledTierlistSelector(app: app)
+                        .zIndex(51)
+                        .transition(.opacity)
+                }
 
                 // Toast messages (bottom)
                 if let toast = app.currentToast {
@@ -189,6 +200,34 @@ struct MainAppView: View {
                 }
             }
         }
+        .alert("Randomize Tiers?", isPresented: Binding(
+            get: { app.showRandomizeConfirmation },
+            set: { app.showRandomizeConfirmation = $0 }
+        )) {
+            Button("Cancel", role: .cancel) {
+                app.showRandomizeConfirmation = false
+            }
+            Button("Randomize", role: .destructive) {
+                app.showRandomizeConfirmation = false
+                app.performRandomize()
+            }
+        } message: {
+            Text("This will randomly redistribute all items across tiers. This action cannot be undone.")
+        }
+        .alert("Reset Tier List?", isPresented: Binding(
+            get: { app.showResetConfirmation },
+            set: { app.showResetConfirmation = $0 }
+        )) {
+            Button("Cancel", role: .cancel) {
+                app.showResetConfirmation = false
+            }
+            Button("Reset", role: .destructive) {
+                app.showResetConfirmation = false
+                app.performReset(showToast: true)
+            }
+        } message: {
+            Text("This will delete all items and reset the tier list. This action cannot be undone.")
+        }
     }
 }
 
@@ -202,7 +241,7 @@ struct TVToolbarView: View {
     @FocusState private var focusedControl: Control?
 
     private enum Control: Hashable {
-        case undo, redo, randomize, reset, h2h, analytics
+        case undo, redo, library, randomize, reset, h2h, analytics
     }
 
     var body: some View {
@@ -230,7 +269,8 @@ struct TVToolbarView: View {
         HStack(spacing: 16) {
             Button(action: { app.undo() }, label: {
                 Image(systemName: "arrow.uturn.backward")
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: Metrics.toolbarIconSize))
+                    .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
                 .buttonStyle(.tvRemote(.primary))
                 .disabled(!app.canUndo)
@@ -240,7 +280,8 @@ struct TVToolbarView: View {
 
             Button(action: { app.redo() }, label: {
                 Image(systemName: "arrow.uturn.forward")
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: Metrics.toolbarIconSize))
+                    .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
                 .buttonStyle(.tvRemote(.primary))
                 .disabled(!app.canRedo)
@@ -250,9 +291,23 @@ struct TVToolbarView: View {
 
             Divider()
 
+            Button(action: { app.presentBundledTierlists() }, label: {
+                Image(systemName: "square.grid.2x2")
+                    .font(.system(size: Metrics.toolbarIconSize))
+                    .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
+            })
+                .buttonStyle(.tvRemote(.primary))
+                .focused($focusedControl, equals: .library)
+                .accessibilityIdentifier("Toolbar_BundledLibrary")
+                .accessibilityLabel("Bundled Tier Lists")
+                .accessibilityHint("Browse built-in tier lists to start ranking")
+                .focusTooltip("Tier Library")
+                .disabled(app.showingBundledSelector)
+
             Button(action: { app.randomize() }, label: {
                 Image(systemName: "shuffle")
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: Metrics.toolbarIconSize))
+                    .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
                 .buttonStyle(.tvRemote(.primary))
                 .disabled(!randomizeEnabled)
@@ -264,7 +319,8 @@ struct TVToolbarView: View {
 
             Button(action: { app.reset() }, label: {
                 Image(systemName: "trash")
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: Metrics.toolbarIconSize))
+                    .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
                 .buttonStyle(.tvRemote(.primary))
                 .accessibilityIdentifier("Toolbar_Reset")
@@ -275,8 +331,9 @@ struct TVToolbarView: View {
             Spacer(minLength: 0)
 
             Button(action: { app.startH2H() }, label: {
-                Image(systemName: "bolt.horizontal")
-                    .frame(width: 32, height: 32)
+                Image(systemName: "person.line.dotted.person.fill")
+                    .font(.system(size: Metrics.toolbarIconSize * 0.9))
+                    .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
                 .buttonStyle(.tvRemote(.primary))
                 .accessibilityIdentifier("Toolbar_H2H")
@@ -288,7 +345,8 @@ struct TVToolbarView: View {
 
             Button(action: { app.toggleAnalyticsSidebar() }, label: {
                 Image(systemName: "chart.bar.fill")
-                    .frame(width: 32, height: 32)
+                    .font(.system(size: Metrics.toolbarIconSize))
+                    .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
                 .buttonStyle(.tvRemote(.primary))
                 .accessibilityIdentifier("Toolbar_Analytics")
