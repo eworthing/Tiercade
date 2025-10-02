@@ -128,18 +128,21 @@ struct DragTargetHighlight: View {
 struct QuickRankOverlay: View {
     @Bindable var app: AppState
     @FocusState private var focused: FocusField?
-    private enum FocusField: Hashable { case firstTier, cancel }
+    private enum FocusField: Hashable {
+        case tier(String)
+        case cancel
+    }
     var body: some View {
         if let item = app.quickRankTarget {
             VStack(spacing: 12) {
                 // mark overlay for UI tests
                 Text("Quick Rank: \(item.name ?? item.id)").font(.headline)
                 HStack(spacing: 8) {
-                    ForEach(app.tierOrder, id: \.self) { t in
-                        Button(t) { app.commitQuickRank(to: t) }
+                    ForEach(app.tierOrder, id: \.self) { tier in
+                        Button(tier) { app.commitQuickRank(to: tier) }
                             .buttonStyle(PrimaryButtonStyle())
-                            .accessibilityIdentifier("QuickRank_Tier_\(t)")
-                            .focused($focused, equals: t == app.tierOrder.first ? .firstTier : nil)
+                            .accessibilityIdentifier("QuickRank_Tier_\(tier)")
+                            .focused($focused, equals: .tier(tier))
                     }
                     Button("Cancel", role: .cancel) { app.cancelQuickRank() }
                         .accessibilityHint("Cancel quick rank")
@@ -156,10 +159,19 @@ struct QuickRankOverlay: View {
             #if os(macOS) || os(tvOS)
             .focusable(true)
             .accessibilityAddTraits(.isModal)
-            .defaultFocus($focused, .firstTier)
+            .defaultFocus($focused, defaultFocusField)
+            .onAppear { focused = defaultFocusField }
+            .onDisappear { focused = nil }
             .focusSection()
             #endif
         }
+    }
+
+    private var defaultFocusField: FocusField {
+        if let first = app.tierOrder.first {
+            return .tier(first)
+        }
+        return .cancel
     }
 }
 
@@ -169,6 +181,8 @@ struct HeadToHeadOverlay: View {
     @Bindable var app: AppState
     @FocusState private var focused: FocusField?
     private enum FocusField: Hashable { case left, right, skip, finish, cancel }
+    @State private var lastFocus: FocusField = .left
+    @State private var suppressFocusReset = false
 
     var body: some View {
         if app.h2hActive {
@@ -275,6 +289,10 @@ struct HeadToHeadOverlay: View {
                 .accessibilityElement(children: .contain)
                 .onAppear { updateFocus(hasPair: app.h2hPair != nil) }
                 .defaultFocus($focused, .left)
+                .onAppear {
+                    suppressFocusReset = false
+                    lastFocus = app.h2hPair != nil ? .left : .finish
+                }
                 .onChange(of: app.h2hPair?.0.id) { _, _ in
                     updateFocus(hasPair: app.h2hPair != nil)
                 }
@@ -288,6 +306,15 @@ struct HeadToHeadOverlay: View {
                 .focusable(true)
                 .accessibilityAddTraits(.isModal)
                 .focusSection()
+                .onChange(of: focused) { _, newValue in
+                    guard !suppressFocusReset else { return }
+                    if let newValue {
+                        lastFocus = newValue
+                    } else {
+                        focused = lastFocus
+                    }
+                }
+                .onMoveCommand(perform: handleMoveCommand)
                 #else
                 .accessibilityAddTraits(.isModal)
                 #endif
@@ -297,13 +324,76 @@ struct HeadToHeadOverlay: View {
             .onExitCommand {
                 app.cancelH2H(fromExitCommand: true)
             }
+            .onDisappear {
+                suppressFocusReset = true
+            }
             #endif
         }
     }
 
     private func updateFocus(hasPair: Bool) {
         Task { @MainActor in
-            focused = hasPair ? .left : .finish
+            let target: FocusField = hasPair ? .left : .finish
+            focused = target
+            lastFocus = target
+        }
+    }
+
+    private func handleMoveCommand(_ direction: MoveCommandDirection) {
+        guard !suppressFocusReset else { return }
+        let current = focused ?? lastFocus
+        guard let target = nextFocusTarget(from: current, direction: direction) else { return }
+        focused = target
+    }
+
+    private func nextFocusTarget(from current: FocusField, direction: MoveCommandDirection) -> FocusField? {
+        switch direction {
+        case .left:
+            return leftTarget(from: current)
+        case .right:
+            return rightTarget(from: current)
+        case .up:
+            return upTarget(from: current)
+        case .down:
+            return downTarget(from: current)
+        default:
+            return nil
+        }
+    }
+
+    private func leftTarget(from current: FocusField) -> FocusField? {
+        switch current {
+        case .right: return .skip
+        case .skip: return .left
+        default: return nil
+        }
+    }
+
+    private func rightTarget(from current: FocusField) -> FocusField? {
+        switch current {
+        case .left: return .skip
+        case .skip: return .right
+        default: return nil
+        }
+    }
+
+    private func upTarget(from current: FocusField) -> FocusField? {
+        switch current {
+        case .finish, .cancel:
+            return app.h2hPair != nil ? .skip : nil
+        case .skip:
+            return .left
+        default:
+            return nil
+        }
+    }
+
+    private func downTarget(from current: FocusField) -> FocusField? {
+        switch current {
+        case .left, .right, .skip:
+            return .finish
+        default:
+            return nil
         }
     }
 }

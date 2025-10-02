@@ -5,10 +5,10 @@ import TiercadeCore
 /// Displays theme options in a grid with live preview
 struct ThemePickerOverlay: View {
     @Bindable var appState: AppState
-    @Namespace private var focusNamespace
-    @FocusState private var focusedElement: FocusElement?
-
+    @FocusState private var focus: ThemePickerFocus?
     private let columns = 2
+    @State private var lastFocus: ThemePickerFocus = .card(0)
+    @State private var suppressFocusReset = false
 
     var body: some View {
         ZStack {
@@ -29,18 +29,18 @@ struct ThemePickerOverlay: View {
                         ],
                         spacing: TVMetrics.cardSpacing
                     ) {
-                        ForEach(focusableThemes, id: \.self) { theme in
+                        ForEach(Array(focusableThemes.enumerated()), id: \.offset) { idx, theme in
                             ThemeCard(
                                 theme: theme,
                                 isSelected: appState.selectedTheme == theme,
-                                isFocused: focusedTheme == theme,
+                                isFocused: focus == .card(idx),
                                 action: {
                                     withAnimation(.spring(response: 0.3)) {
                                         appState.applyTheme(theme)
                                     }
                                 }
                             )
-                            .focused($focusedElement, equals: .theme(theme))
+                            .focused($focus, equals: .card(idx))
                             .accessibilityIdentifier("ThemeCard_\(theme.rawValue)")
                         }
                     }
@@ -57,18 +57,30 @@ struct ThemePickerOverlay: View {
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
             .focusSection()
-            .focusScope(focusNamespace)
-            .defaultFocus($focusedElement, .theme(defaultFocusedTheme))
             .onAppear {
                 appState.themePickerActive = true
+                suppressFocusReset = false
+                let targetIndex = defaultFocusedIndex
+                let targetFocus: ThemePickerFocus = .card(targetIndex)
+                lastFocus = targetFocus
+                focus = targetFocus
             }
             .onDisappear {
+                suppressFocusReset = true
+                focus = nil
                 appState.themePickerActive = false
             }
             .onExitCommand {
                 appState.dismissThemePicker()
             }
-            .onMoveCommand(perform: handleMoveCommand)
+            .onChange(of: focus) { _, newValue in
+                guard !suppressFocusReset else { return }
+                if let newValue {
+                    lastFocus = newValue
+                } else {
+                    focus = lastFocus
+                }
+            }
         }
         #if os(tvOS)
         .persistentSystemOverlays(.hidden)
@@ -97,12 +109,15 @@ struct ThemePickerOverlay: View {
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.plain)
+            .focused($focus, equals: .close)
             .accessibilityLabel("Close theme picker")
             .accessibilityIdentifier("ThemePicker_Close")
-            .focused($focusedElement, equals: .close)
         }
         .padding(TVMetrics.overlayPadding)
         .background(.thinMaterial)
+        #if os(tvOS)
+        .focusSection()
+        #endif
     }
 
     private var footerSection: some View {
@@ -116,7 +131,6 @@ struct ThemePickerOverlay: View {
             }
             .buttonStyle(.bordered)
             .accessibilityIdentifier("ThemePicker_Reset")
-            .focused($focusedElement, equals: .reset)
 
             Spacer()
 
@@ -132,111 +146,15 @@ struct ThemePickerOverlay: View {
         TierTheme.allCases
     }
 
-    private var focusedTheme: TierTheme? {
-        guard case let .theme(theme) = focusedElement else { return nil }
-        return theme
+    private var defaultFocusedIndex: Int {
+        focusableThemes.firstIndex(of: appState.selectedTheme) ?? 0
     }
 
-    private var defaultFocusedTheme: TierTheme {
-        appState.selectedTheme
-    }
 
-    private var bottomRowDefaultTheme: TierTheme? {
-        let startIndex = max(focusableThemes.count - columns, 0)
-        guard focusableThemes.indices.contains(startIndex) else { return nil }
-        return focusableThemes[startIndex]
-    }
 
-    private func handleMoveCommand(_ direction: MoveCommandDirection) {
-        guard let focused = focusedElement else { return }
-
-        switch focused {
-        case .theme(let theme):
-            handleThemeMove(direction, theme: theme)
-        case .close:
-            handleCloseMove(direction)
-        case .reset:
-            handleResetMove(direction)
-        }
-    }
-
-    private func handleThemeMove(_ direction: MoveCommandDirection, theme: TierTheme) {
-        if direction == .up, isTopRow(theme) {
-            focusedElement = .close
-            return
-        }
-
-        if direction == .down, isBottomRow(theme) {
-            focusedElement = .reset
-            return
-        }
-
-        if direction == .left, isLeftColumn(theme) {
-            focusedElement = .theme(theme)
-            return
-        }
-
-        if direction == .right, isRightColumn(theme) {
-            focusedElement = .theme(theme)
-        }
-    }
-
-    private func handleCloseMove(_ direction: MoveCommandDirection) {
-        switch direction {
-        case .up, .left, .right:
-            focusedElement = .close
-        case .down:
-            focusedElement = .theme(defaultFocusedTheme)
-        default:
-            break
-        }
-    }
-
-    private func handleResetMove(_ direction: MoveCommandDirection) {
-        switch direction {
-        case .down, .left, .right:
-            focusedElement = .reset
-        case .up:
-            if let target = bottomRowDefaultTheme {
-                focusedElement = .theme(target)
-            }
-        default:
-            break
-        }
-    }
-
-    private func index(of theme: TierTheme) -> Int? {
-        focusableThemes.firstIndex(of: theme)
-    }
-
-    private func isLeftColumn(_ theme: TierTheme) -> Bool {
-        guard let index = index(of: theme) else { return false }
-        return index % columns == 0
-    }
-
-    private func isRightColumn(_ theme: TierTheme) -> Bool {
-        guard let index = index(of: theme) else { return false }
-        if columns == 1 { return true }
-        if index % columns == columns - 1 { return true }
-        let isLastItem = index == focusableThemes.count - 1
-        let hasSingleItemLastRow = focusableThemes.count % columns == 1
-        return isLastItem && hasSingleItemLastRow
-    }
-
-    private func isTopRow(_ theme: TierTheme) -> Bool {
-        guard let index = index(of: theme) else { return false }
-        return index < columns
-    }
-
-    private func isBottomRow(_ theme: TierTheme) -> Bool {
-        guard let index = index(of: theme) else { return false }
-        return index >= max(focusableThemes.count - columns, 0)
-    }
-
-    private enum FocusElement: Hashable {
-        case theme(TierTheme)
+    private enum ThemePickerFocus: Hashable {
+        case card(Int)
         case close
-        case reset
     }
 }
 
