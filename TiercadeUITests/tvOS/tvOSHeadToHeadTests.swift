@@ -1,4 +1,4 @@
-#if canImport(XCTest)
+#if os(tvOS)
 import XCTest
 
 /// Comprehensive tests for Head-to-Head ranking mode on tvOS

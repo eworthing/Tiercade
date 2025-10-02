@@ -9,15 +9,15 @@ extension AppState {
         let hasAnyData = (tierOrder + ["unranked"]).contains { tierName in
             (tiers[tierName] ?? []).count > 0
         }
-        
+
         if hasAnyData && !showToast {
             showResetConfirmation = true
             return
         }
-        
+
         performReset(showToast: showToast)
     }
-    
+
     func performReset(showToast: Bool = false) {
         tiers = makeEmptyTiers()
         seed()
@@ -45,20 +45,20 @@ extension AppState {
             showInfoToast("Nothing to Randomize", message: "Add more items before shuffling tiers")
             return
         }
-        
+
         // Check if there's data in ranked tiers (excluding unranked)
         let hasRankedData = tierOrder.contains { tierName in
             (tiers[tierName] ?? []).count > 0
         }
-        
+
         if hasRankedData {
             showRandomizeConfirmation = true
             return
         }
-        
+
         performRandomize()
     }
-    
+
     func performRandomize() {
         var allItems: [Item] = []
         for tierName in tierOrder + ["unranked"] {

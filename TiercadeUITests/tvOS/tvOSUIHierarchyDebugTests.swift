@@ -1,4 +1,4 @@
-#if canImport(XCTest)
+#if os(tvOS)
 import XCTest
 
 /// Debug test to inspect UI hierarchy

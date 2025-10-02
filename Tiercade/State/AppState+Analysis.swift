@@ -14,9 +14,9 @@ extension AppState {
     }
 
     func toggleAnalysis() {
-#if os(tvOS)
+        #if os(tvOS)
         toggleAnalyticsSidebar()
-#else
+        #else
         if showingAnalysis {
             showingAnalysis = false
             return
@@ -31,7 +31,7 @@ extension AppState {
         if analysisData == nil {
             Task { await generateAnalysis() }
         }
-#endif
+        #endif
     }
 
     func toggleAnalyticsSidebar() {

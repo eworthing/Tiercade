@@ -352,7 +352,7 @@ struct H2HButton: View {
             )
             .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         }
-    .buttonStyle(CardButtonStyle())
+        .buttonStyle(CardButtonStyle())
         .accessibilityLabel(item.name ?? item.id)
         .accessibilityHint(item.description ?? "Head-to-head option")
         .accessibilityIdentifier("H2HButton_\(item.id)")

@@ -80,7 +80,7 @@ struct TierRowWrapper: View {
     private func tierBadge(accent: Color) -> some View {
         VStack(spacing: 8) {
             Spacer(minLength: 0)
-            
+
             VerticalTierText(
                 label: app.displayLabel(for: tier),
                 textColor: dynamicTextOn(
@@ -220,7 +220,7 @@ private struct VerticalTierText: View {
             let calculatedSize = (availableHeight - (charCount - 1) * 1) / charCount
             // Clamp between 16pt and 32pt for readability
             let fontSize = min(32, max(16, calculatedSize))
-            
+
             VStack(spacing: 1) {
                 ForEach(Array(label), id: \.self) { char in
                     Text(String(char))

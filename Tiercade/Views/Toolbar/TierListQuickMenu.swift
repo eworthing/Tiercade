@@ -56,6 +56,7 @@ struct TierListQuickMenu: View {
                 .font(.title3.weight(.semibold))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
+                .accessibilityIdentifier("Toolbar_TierListMenu_Title")
             Image(systemName: "chevron.down")
                 .font(.footnote.weight(.bold))
         }

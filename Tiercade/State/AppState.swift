@@ -87,6 +87,10 @@ final class AppState {
     // Tier display overrides (rename/recolor without core model changes)
     var tierLabels: [String: String] = [:] // tierId -> display label
     var tierColors: [String: String] = [:] // tierId -> hex color
+    // Theme selection
+    var selectedTheme: TierTheme = .smashClassic
+    var showThemePicker: Bool = false
+    var themePickerActive: Bool = false
     // Head-to-Head
     var h2hActive: Bool = false
     var h2hPool: [Item] = []
@@ -118,7 +122,7 @@ final class AppState {
     var recentTierLists: [TierListHandle] = []
     let maxRecentTierLists: Int = 6
     let quickPickMenuLimit: Int = 5
-    
+
     // Confirmation alerts
     var showRandomizeConfirmation: Bool = false
     var showResetConfirmation: Bool = false
@@ -141,7 +145,6 @@ final class AppState {
     }
 
     var h2hSkippedCount: Int { h2hSkippedPairKeys.count }
-
 
     init() {
         if !load() {

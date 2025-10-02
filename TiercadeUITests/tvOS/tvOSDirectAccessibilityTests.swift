@@ -1,4 +1,4 @@
-#if canImport(XCTest)
+#if os(tvOS)
 import XCTest
 
 /// Direct tests focusing on elements we know should work

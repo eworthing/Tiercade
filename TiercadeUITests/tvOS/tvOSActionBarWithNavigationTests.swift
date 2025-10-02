@@ -1,4 +1,4 @@
-#if canImport(XCTest)
+#if os(tvOS)
 import XCTest
 
 /// Tests that successfully navigate to ActionBar before testing it

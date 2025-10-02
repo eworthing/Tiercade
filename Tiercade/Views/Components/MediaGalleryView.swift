@@ -28,9 +28,9 @@ struct MediaGalleryView: View {
         #if os(tvOS)
         .focusSection()
         .onChange(of: selection) { _, newValue in
-            guard pages.indices.contains(newValue) else { return }
-            let announcement = "Image \(newValue + 1) of \(pages.count)"
-            AccessibilityNotification.Announcement(announcement).post()
+        guard pages.indices.contains(newValue) else { return }
+        let announcement = "Image \(newValue + 1) of \(pages.count)"
+        AccessibilityNotification.Announcement(announcement).post()
         }
         #endif
         #endif

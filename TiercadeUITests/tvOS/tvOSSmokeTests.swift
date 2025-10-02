@@ -1,4 +1,4 @@
-#if canImport(XCTest)
+#if os(tvOS)
 import XCTest
 
 final class SmokeTests: TiercadeTvOSUITestCase {

@@ -9,6 +9,15 @@ excluded:
 cyclomatic_complexity:
   warning: 7
 
+# Allow longer files and type bodies for comprehensive test suites
+file_length:
+  warning: 600
+  error: 800
+
+type_body_length:
+  warning: 400
+  error: 500
+
 identifier_name:
   min_length:
     warning: 1

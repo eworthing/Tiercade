@@ -3,6 +3,12 @@ import TiercadeCore
 
 @MainActor
 extension AppState {
+    // MARK: - Theme Picker Overlay
+    func presentThemePicker() {
+        showThemePicker = true
+        themePickerActive = true
+    }
+
     // MARK: - Selection / Multi-Select
     func toggleMultiSelect() {
         isMultiSelect.toggle()

@@ -38,6 +38,7 @@ extension AppState {
                 let tiers: Items
                 let tierLabels: [String: String]
                 let tierColors: [String: String]
+                let selectedTheme: String?
                 let createdDate: Date
                 let appVersion: String
             }
@@ -46,6 +47,7 @@ extension AppState {
                 tiers: tiers,
                 tierLabels: tierLabels,
                 tierColors: tierColors,
+                selectedTheme: selectedTheme.rawValue,
                 createdDate: Date(),
                 appVersion: "1.0"
             )
@@ -88,14 +90,19 @@ extension AppState {
                 let tiers: Items
                 let tierLabels: [String: String]
                 let tierColors: [String: String]
+                let selectedTheme: String?
             }
             if let saveData = try? JSONDecoder().decode(SaveData.self, from: data) {
                 applyLoadedTiers(saveData.tiers, isLegacy: false)
                 tierLabels = saveData.tierLabels
                 tierColors = saveData.tierColors
+                if let themeRaw = saveData.selectedTheme,
+                   let theme = TierTheme(rawValue: themeRaw) {
+                    selectedTheme = theme
+                }
                 return true
             }
-            
+
             // Fallback to old format without customizations
             let decoded = try JSONDecoder().decode(Items.self, from: data)
             applyLoadedTiers(decoded, isLegacy: false)
@@ -165,6 +172,7 @@ extension AppState {
                 let tiers: Items
                 let tierLabels: [String: String]?
                 let tierColors: [String: String]?
+                let selectedTheme: String?
                 let createdDate: Date
                 let appVersion: String
             }
@@ -181,6 +189,10 @@ extension AppState {
                 }
                 if let colors = saveData.tierColors {
                     tierColors = colors
+                }
+                if let themeRaw = saveData.selectedTheme,
+                   let theme = TierTheme(rawValue: themeRaw) {
+                    selectedTheme = theme
                 }
                 showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
                 return true
@@ -329,7 +341,7 @@ extension AppState {
             fileName: fileName,
             savedDate: saveData.createdDate
         )
-        
+
         // Restore tier customizations if present
         if let labels = saveData.tierLabels {
             tierLabels = labels
@@ -337,7 +349,7 @@ extension AppState {
         if let colors = saveData.tierColors {
             tierColors = colors
         }
-        
+
         showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
         return true
     }

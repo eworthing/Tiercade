@@ -13,5 +13,11 @@ enum TVMetrics {
     static let contentTopInset: CGFloat = max(topBarHeight, minSafeAreaVertical) + toolbarContentGap
     static let contentBottomInset: CGFloat = max(bottomBarHeight, minSafeAreaVertical)
     static let contentHorizontalPadding: CGFloat = minSafeAreaHorizontal
+
+    // Overlay metrics
+    static let overlayPadding: CGFloat = 60
+    static let overlayCornerRadius: CGFloat = 24
+    static let cardSpacing: CGFloat = 32
+    static let buttonSpacing: CGFloat = 24
 }
 #endif

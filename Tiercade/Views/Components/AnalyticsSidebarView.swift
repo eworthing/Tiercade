@@ -81,10 +81,10 @@ struct AnalyticsSidebarView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Close Analytics")
         .accessibilityHint("Double-tap to return to tier list")
-    #if os(tvOS)
+        #if os(tvOS)
         .focusable(true)
         .focused($focusedElement, equals: .close)
-    #endif
+        #endif
     }
 
     private func headerSection(totalItems: Int) -> some View {
@@ -204,10 +204,10 @@ struct AnalyticsSidebarView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Palette.surfHi)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    #if os(tvOS)
+        #if os(tvOS)
         .focusable(true)
         .focused($focusedElement, equals: .insight(index))
-    #endif
+        #endif
     }
 
     private func balanceColor(for score: Double) -> Color {

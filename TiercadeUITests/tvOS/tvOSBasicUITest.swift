@@ -1,3 +1,4 @@
+#if os(tvOS)
 import XCTest
 
 final class BasicUITest: XCTestCase {
@@ -51,3 +52,5 @@ final class BasicUITest: XCTestCase {
         XCTAssertTrue(true, "Test infrastructure works")
     }
 }
+
+#endif

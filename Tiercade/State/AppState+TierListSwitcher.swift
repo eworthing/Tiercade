@@ -110,10 +110,10 @@ extension AppState {
             }
         }
     }
-    
+
     func loadActiveTierListIfNeeded() {
         guard let handle = activeTierList else { return }
-        
+
         switch handle.source {
         case .bundled:
             guard let project = bundledProjects.first(where: { $0.id == handle.identifier }) else { return }

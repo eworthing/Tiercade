@@ -78,6 +78,7 @@ struct TierListBrowserScene: View {
                 app.dismissTierListBrowser()
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("TierListBrowser_CloseButton")
         }
     }
 

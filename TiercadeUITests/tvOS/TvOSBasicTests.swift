@@ -1,11 +1,7 @@
+#if os(tvOS)
 import XCTest
 
-final class TvOSBasicTests: XCTestCase {
-    private var app: XCUIApplication!
-
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
+final class TvOSBasicTests: TiercadeTvOSUITestCase {
 
     @MainActor
     func test_ActionBar_and_Overlays_exist() throws {
@@ -29,10 +25,9 @@ final class TvOSBasicTests: XCTestCase {
 
 private extension TvOSBasicTests {
     func prepareApp() {
-        app = XCUIApplication()
-        app.launchArguments = ["-uiTest"]
-        app.launch()
-        sleep(5)
+        if app.isRunning == false {
+            launchApp(waitingFor: launchAnchor)
+        }
     }
 
     func logElementDiagnostics() {
@@ -68,7 +63,7 @@ private extension TvOSBasicTests {
 
     func openItemMenu(using remote: XCUIRemote) {
         remote.press(.down)
-        sleep(1)
+        pause(for: 1)
         remote.press(.select)
     }
 
@@ -103,7 +98,7 @@ private extension TvOSBasicTests {
     func openGalleryIfAvailable(using remote: XCUIRemote) {
         guard app.buttons["ItemMenu_ViewDetails"].exists else { return }
         remote.press(.right)
-        sleep(1)
+        pause(for: 1)
         remote.press(.select)
 
         let gallery = app.otherElements
@@ -111,13 +106,13 @@ private extension TvOSBasicTests {
             .firstMatch
         XCTAssertTrue(gallery.waitForExistence(timeout: 5), "Gallery should appear after View Details")
 
-        remote.press(.menu)
-        sleep(1)
+    remote.press(.menu)
+    pause(for: 1)
     }
 
     func dismissItemMenu(using remote: XCUIRemote, itemMenu: XCUIElement) {
         remote.press(.menu)
-        sleep(1)
+        pause(for: 1)
         XCTAssertFalse(itemMenu.exists, "ItemMenu overlay should dismiss after Menu")
     }
 
@@ -143,9 +138,11 @@ private extension TvOSBasicTests {
             return
         }
         remote.press(.right)
-        sleep(1)
+        pause(for: 1)
         remote.press(.select)
-        sleep(1)
+        pause(for: 1)
         XCTAssertFalse(quickMove.exists, "QuickMove overlay should dismiss after Cancel")
     }
 }
+
+#endif

@@ -69,7 +69,7 @@ enum Metrics {
     static let paneLeft: CGFloat = 280
     static let paneRight: CGFloat = 320
     static let toolbarH: CGFloat = 56
-    
+
     // Toolbar button & icon sizing
     #if os(tvOS)
     static let toolbarButtonSize: CGFloat = 48

@@ -1,4 +1,4 @@
-#if canImport(XCTest)
+#if os(tvOS)
 import XCTest
 
 /// Regression suite for ActionBar visibility and navigation on tvOS.

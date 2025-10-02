@@ -1,5 +1,5 @@
 // Example: How to update BundledProjects.swift after fetching images
-// 
+//
 // This file shows the pattern for adding imageUrl to bundled tier list items.
 // After running fetch_bundled_images.sh, copy the asset names and update
 // the ItemsFactory methods in BundledProjects.swift
@@ -14,19 +14,19 @@ static let starWarsFilms: [Project.Item] = [
         id: "a-new-hope",
         title: "Episode IV — A New Hope",
         summary: "The 1977 original that launched the galaxy."
-    ),
+    )
     // ... more items
 ]
 
 // AFTER (with images):
 static func item(
-    id: String, 
-    title: String, 
+    id: String,
+    title: String,
     summary: String,
     imageUrl: String? = nil
 ) -> Project.Item {
     Project.Item(
-        id: id, 
+        id: id,
         name: title,   // Note: Item struct uses 'name', not 'title'
         description: summary,
         imageUrl: imageUrl
@@ -162,6 +162,6 @@ static let survivorWinners: [Project.Item] = [
         title: "Richard Hatch",
         summary: "Borneo pioneer and original social strategist.",
         imageUrl: "BundledTierlists/Survivor/richard-hatch"
-    ),
+    )
     // ... etc
 ]

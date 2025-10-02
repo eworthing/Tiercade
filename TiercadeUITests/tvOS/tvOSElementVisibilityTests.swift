@@ -1,4 +1,4 @@
-#if canImport(XCTest)
+#if os(tvOS)
 import XCTest
 
 /// Tests to investigate element visibility issues in the tvOS UI test hierarchy.

@@ -10,7 +10,7 @@
 //
 //  Created by PL on 9/14/25.
 //
-
+#if os(tvOS)
 import XCTest
 
 class TiercadeUITestsLaunchTests: XCTestCase {
@@ -37,3 +37,5 @@ class TiercadeUITestsLaunchTests: XCTestCase {
         add(attachment)
     }
 }
+
+#endif

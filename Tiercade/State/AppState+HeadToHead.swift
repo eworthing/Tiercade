@@ -28,12 +28,12 @@ extension AppState {
         h2hRecords = [:]
         h2hPairsQueue = pairs
         h2hDeferredPairs = []
-    h2hTotalComparisons = pairs.count
+        h2hTotalComparisons = pairs.count
         h2hCompletedComparisons = 0
         h2hSkippedPairKeys = []
         h2hPair = nil
         h2hActive = true
-    h2hActivatedAt = Date()
+        h2hActivatedAt = Date()
 
         let log = "[AppState] startH2H: poolCount=\(h2hPool.count) totalPairs=\(h2hTotalComparisons)"
         print(log)

@@ -1,4 +1,4 @@
-#if canImport(XCTest)
+#if os(tvOS)
 import XCTest
 
 /// Quick smoke tests to verify basic UI test setup and accessibility IDs
