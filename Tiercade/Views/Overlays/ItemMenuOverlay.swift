@@ -5,7 +5,13 @@ import TiercadeCore
 struct ItemMenuOverlay: View {
     @Bindable var app: AppState
     @FocusState private var focused: FocusField?
-    private enum FocusField: Hashable { case firstMove, toggle, details, remove, close }
+    private enum FocusField: Hashable {
+        case move(String)
+        case toggle
+        case details
+        case remove
+        case close
+    }
 
     var body: some View {
         if let item = app.itemMenuTarget {
@@ -22,10 +28,7 @@ struct ItemMenuOverlay: View {
                             .buttonStyle(.borderedProminent)
                             .accessibilityLabel("Move to \(app.displayLabel(for: tierId)) tier")
                             .accessibilityIdentifier("ItemMenu_Move_\(tierId)")
-                            .focused(
-                                $focused,
-                                equals: tierId == availableMoveTargets.first ? .firstMove : nil
-                            )
+                            .focused($focused, equals: .move(tierId))
                         }
                     }
                 }
@@ -69,6 +72,8 @@ struct ItemMenuOverlay: View {
             .accessibilityAddTraits(.isModal)
             .accessibilityIdentifier("ItemMenu_Overlay")
             .defaultFocus($focused, defaultFocusField)
+            .onAppear { focused = defaultFocusField }
+            .onDisappear { focused = nil }
             .focusSection()
         }
     }
@@ -84,7 +89,10 @@ private extension ItemMenuOverlay {
     }
 
     private var defaultFocusField: FocusField {
-        availableMoveTargets.isEmpty ? .toggle : .firstMove
+        if let first = availableMoveTargets.first {
+            return .move(first)
+        }
+        return .toggle
     }
 }
 #endif

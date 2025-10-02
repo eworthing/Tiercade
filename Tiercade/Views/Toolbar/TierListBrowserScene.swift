@@ -2,7 +2,9 @@ import SwiftUI
 
 struct TierListBrowserScene: View {
     @Bindable var app: AppState
-    @FocusState private var focusedHandleID: String?
+    @FocusState private var focus: FocusTarget?
+    @State private var lastFocus: FocusTarget?
+    @State private var suppressFocusReset = false
 
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 32),
@@ -50,10 +52,32 @@ struct TierListBrowserScene: View {
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
             .accessibilityIdentifier("TierListBrowser_Overlay")
-            .defaultFocus($focusedHandleID, defaultFocusID)
+            .defaultFocus($focus, defaultFocusTarget)
             #if os(tvOS)
             .focusSection()
             #endif
+            .onAppear {
+                suppressFocusReset = false
+                if let initial = defaultFocusTarget {
+                    focus = initial
+                    lastFocus = initial
+                } else {
+                    focus = .close
+                    lastFocus = .close
+                }
+            }
+            .onDisappear {
+                suppressFocusReset = true
+                focus = nil
+            }
+            .onChange(of: focus) { _, newValue in
+                guard !suppressFocusReset else { return }
+                if let newValue {
+                    lastFocus = newValue
+                } else if let lastFocus {
+                    focus = lastFocus
+                }
+            }
         }
         #if os(tvOS)
         .onExitCommand {
@@ -78,8 +102,12 @@ struct TierListBrowserScene: View {
                 app.dismissTierListBrowser()
             }
             .buttonStyle(.borderedProminent)
+            .focused($focus, equals: .close)
             .accessibilityIdentifier("TierListBrowser_CloseButton")
         }
+        #if os(tvOS)
+        .focusSection()
+        #endif
     }
 
     private func sectionHeader(title: String) -> some View {
@@ -97,7 +125,7 @@ struct TierListBrowserScene: View {
                 ) {
                     select(handle)
                 }
-                .focused($focusedHandleID, equals: handle.id)
+                .focused($focus, equals: .card(handle.id))
             }
         }
     }
@@ -119,14 +147,22 @@ struct TierListBrowserScene: View {
             .map(AppState.TierListHandle.init(bundled:))
     }
 
-    private var defaultFocusID: String? {
+    private var defaultFocusTarget: FocusTarget? {
         if let active = app.activeTierList?.id {
-            return active
+            return .card(active)
         }
         if let firstRecent = recentHandles.first?.id {
-            return firstRecent
+            return .card(firstRecent)
         }
-        return bundledHandles.first?.id
+        if let firstBundled = bundledHandles.first?.id {
+            return .card(firstBundled)
+        }
+        return .close
+    }
+
+    private enum FocusTarget: Hashable {
+        case close
+        case card(String)
     }
 }
 

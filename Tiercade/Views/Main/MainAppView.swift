@@ -13,83 +13,54 @@ struct MainAppView: View {
     @Environment(AppState.self) private var app: AppState
     #if os(tvOS)
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.resetFocus) private var resetFocus
+    @Namespace private var focusNamespace
+    @FocusState private var focusedRegion: FocusRegion?
     @FocusState private var detailFocus: DetailFocus?
+    @State private var didBootstrapFocus = false
+    @State private var lastBaseRegion: FocusRegion = .grid
     enum DetailFocus: Hashable { case close }
     #endif
 
     var body: some View {
-    let detailPresented = app.detailItem != nil
-    let headToHeadPresented = app.h2hActive
-    // Use the requested overlay visibility (showThemePicker) rather than the
-    // overlay's internal active flag. The active flag is set in the overlay's
-    // onAppear, which can introduce a race where the toolbar remains
-    // interactive briefly and focus can escape. Use showThemePicker so hit
-    // testing is blocked immediately when the overlay is requested.
-    let themePickerPresented = app.showThemePicker
-    #if os(tvOS)
-    let modalBlockingFocus = headToHeadPresented || detailPresented || themePickerPresented
-    #else
-    let modalBlockingFocus = detailPresented || headToHeadPresented || themePickerPresented
-    #endif
-
-        return Group {
-            #if os(macOS) || targetEnvironment(macCatalyst)
-            NavigationSplitView {
-                SidebarView(tierOrder: app.tierOrder)
-                    .environment(app)
-            } content: {
-                TierGridView(tierOrder: app.tierOrder)
-                    .environment(app)
-            } detail: {
-                EmptyView()
-            }
-            .toolbar { ToolbarView(app: app) }
-            #else
-            // For iOS/tvOS show content full-bleed and inject bars via safe area insets
-            ZStack {
-                TierGridView(tierOrder: app.tierOrder)
-                    .environment(app)
-                    // Add content padding to avoid overlay bars overlap
-                    .padding(.top, TVMetrics.contentTopInset)
-                    .padding(.bottom, TVMetrics.contentBottomInset)
-                    .allowsHitTesting(!modalBlockingFocus)
-                // Note: Don't use .disabled() as it removes elements from accessibility tree
-                // Only block hit testing when modals are active
-            }
-            #if os(tvOS)
-            // Top toolbar (overlay so it doesn't reduce content area)
-            .overlay(alignment: .top) {
-                TVToolbarView(app: app)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .frame(height: TVMetrics.topBarHeight)
-                    .background(.thinMaterial)
-                    .overlay(Divider().opacity(0.15), alignment: .bottom)
-                    .allowsHitTesting(!modalBlockingFocus)
-                    .accessibilityElement(children: .contain)
-                // Note: Don't use .disabled() as it removes elements from accessibility tree
-                // Only block hit testing when modals are active
-            }
-            // Bottom action bar (safe area inset to avoid covering focused rows)
-            .overlay(alignment: .bottom) {
-                TVActionBar(app: app)
-                    .allowsHitTesting(!modalBlockingFocus)
-                    .accessibilityElement(children: .contain)
-                // Note: Don't use .disabled() as it removes elements from accessibility tree
-                // Only block hit testing when modals are active
-            }
-            #else
-            // ToolbarView is ToolbarContent (not a View) on some platforms; avoid embedding it directly on tvOS
-            .overlay(alignment: .top) {
-            HStack { Text("") }
-            .environment(app)
-            }
-            #endif
-            #endif
-        }
+        let detailPresented = app.detailItem != nil
+        let headToHeadPresented = app.h2hActive
+        let quickRankPresented = app.quickRankTarget != nil
+        let tierListBrowserPresented = app.showingTierListBrowser
+        let themePickerPresented = app.showThemePicker
         #if os(tvOS)
-        .task { FocusUtils.seedFocus() }
+    _ = app.quickMoveTarget != nil
+    _ = app.itemMenuTarget != nil
+    _ = app.showAnalyticsSidebar
+        let overlayRegion = determineOverlayRegion()
+        let modalBlockingFocus = overlayRegion != nil
+        #else
+        let baseModal = detailPresented || headToHeadPresented || themePickerPresented
+        let modalBlockingFocus = baseModal || quickRankPresented || tierListBrowserPresented
+        #endif
+        return platformContent(overlayBlockingFocus: modalBlockingFocus)
+        #if os(tvOS)
+        .focusScope(focusNamespace)
+        .task {
+            FocusUtils.seedFocus()
+            bootstrapInitialFocus(for: overlayRegion)
+        }
+        .onAppear {
+            alignFocus(to: overlayRegion)
+        }
+        .onChange(of: overlayRegion) { _, newValue in
+            alignFocus(to: newValue)
+        }
         .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active { FocusUtils.seedFocus() }
+            if newPhase == .active {
+                FocusUtils.seedFocus()
+                alignFocus(to: overlayRegion)
+            }
+        }
+        .onChange(of: focusedRegion) { _, newValue in
+            if let region = newValue, !region.isOverlay {
+                lastBaseRegion = region
+            }
         }
         .onExitCommand {
             if app.showingTierListBrowser {
@@ -118,19 +89,31 @@ struct MainAppView: View {
 
                 // Quick Rank overlay
                 QuickRankOverlay(app: app)
+                    #if os(tvOS)
+                    .focused($focusedRegion, equals: .quickRank)
+                    .prefersDefaultFocus(in: focusNamespace)
+                    #endif
                     .zIndex(40)
 
                 #if os(tvOS)
                 // Quick Move overlay for tvOS Play/Pause accelerator
                 QuickMoveOverlay(app: app)
+                    .focused($focusedRegion, equals: .quickMove)
+                    .prefersDefaultFocus(in: focusNamespace)
                     .zIndex(45)
                 // Item Menu overlay (primary action)
                 ItemMenuOverlay(app: app)
+                    .focused($focusedRegion, equals: .itemMenu)
+                    .prefersDefaultFocus(in: focusNamespace)
                     .zIndex(46)
                 #endif
 
                 // Head-to-Head overlay
                 HeadToHeadOverlay(app: app)
+                    #if os(tvOS)
+                    .focused($focusedRegion, equals: .headToHead)
+                    .prefersDefaultFocus(in: focusNamespace)
+                    #endif
                     .zIndex(40)
 
                 #if os(tvOS)
@@ -141,12 +124,18 @@ struct MainAppView: View {
                             .frame(maxHeight: .infinity)
                     }
                     .allowsHitTesting(true)
+                    .focused($focusedRegion, equals: .analytics)
+                    .prefersDefaultFocus(in: focusNamespace)
                     .zIndex(52)
                 }
                 #endif
 
                 if app.showingTierListBrowser {
                     TierListBrowserScene(app: app)
+                        #if os(tvOS)
+                        .focused($focusedRegion, equals: .tierBrowser)
+                        .prefersDefaultFocus(in: focusNamespace)
+                        #endif
                         .transition(.opacity)
                         .zIndex(53)
                 }
@@ -160,10 +149,18 @@ struct MainAppView: View {
                     // XCTest sees elements, causing flaky existence checks.
                     if ProcessInfo.processInfo.arguments.contains("-uiTest") {
                         ThemePickerOverlay(appState: app)
+                            #if os(tvOS)
+                            .focused($focusedRegion, equals: .themePicker)
+                            .prefersDefaultFocus(in: focusNamespace)
+                            #endif
                             .zIndex(54)
                     } else {
                         ThemePickerOverlay(appState: app)
                             .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                            #if os(tvOS)
+                            .focused($focusedRegion, equals: .themePicker)
+                            .prefersDefaultFocus(in: focusNamespace)
+                            #endif
                             .zIndex(54)
                     }
                 }
@@ -177,6 +174,21 @@ struct MainAppView: View {
                     }
                     .zIndex(60)
                 }
+
+                // Build timestamp (DEBUG only, bottom-right corner)
+                #if DEBUG
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        BuildInfoView()
+                            .padding(.trailing, 16)
+                            .padding(.bottom, 16)
+                    }
+                }
+                .zIndex(61)
+                .allowsHitTesting(false)
+                #endif
 
                 // Bottom action bar is inset on tvOS via safeAreaInset above; no overlay here
 
@@ -192,6 +204,8 @@ struct MainAppView: View {
                     .defaultFocus($detailFocus, .close)
                     .onAppear { detailFocus = .close }
                     .onDisappear { detailFocus = nil }
+                    .focused($focusedRegion, equals: .detail)
+                    .prefersDefaultFocus(in: focusNamespace)
                     .transition(
                         .move(edge: .trailing)
                             .combined(with: .opacity)
@@ -252,6 +266,104 @@ struct MainAppView: View {
             Text("This will delete all items and reset the tier list. This action cannot be undone.")
         }
     }
+}
+
+private extension MainAppView {
+    @ViewBuilder
+    func platformContent(overlayBlockingFocus: Bool) -> some View {
+        #if os(macOS) || targetEnvironment(macCatalyst)
+        NavigationSplitView {
+            SidebarView(tierOrder: app.tierOrder)
+                .environment(app)
+        } content: {
+            TierGridView(tierOrder: app.tierOrder)
+                .environment(app)
+        } detail: {
+            EmptyView()
+        }
+        .toolbar { ToolbarView(app: app) }
+        #else
+        // For iOS/tvOS show content full-bleed and inject bars via safe area insets
+        ZStack {
+            TierGridView(tierOrder: app.tierOrder)
+                .environment(app)
+                // Add content padding to avoid overlay bars overlap
+                .padding(.top, TVMetrics.contentTopInset)
+                .padding(.bottom, TVMetrics.contentBottomInset)
+                .disabled(overlayBlockingFocus)
+            #if os(tvOS)
+                .focusSection()
+                .focused($focusedRegion, equals: .grid)
+                .prefersDefaultFocus(in: focusNamespace)
+            #endif
+        }
+        #if os(tvOS)
+        // Top toolbar (overlay so it doesn't reduce content area)
+        .overlay(alignment: .top) {
+            TVToolbarView(app: app)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: TVMetrics.topBarHeight)
+                .background(.thinMaterial)
+                .overlay(Divider().opacity(0.15), alignment: .bottom)
+                .focused($focusedRegion, equals: .toolbar)
+                .prefersDefaultFocus(in: focusNamespace)
+                .disabled(overlayBlockingFocus)
+                .accessibilityElement(children: AccessibilityChildBehavior.contain)
+        }
+        // Bottom action bar (safe area inset to avoid covering focused rows)
+        .overlay(alignment: .bottom) {
+            TVActionBar(app: app)
+                .focused($focusedRegion, equals: .actionBar)
+                .prefersDefaultFocus(in: focusNamespace)
+                .disabled(overlayBlockingFocus)
+                .accessibilityElement(children: AccessibilityChildBehavior.contain)
+        }
+        #else
+        // ToolbarView is ToolbarContent (not a View) on some platforms; avoid embedding it directly on tvOS
+        .overlay(alignment: .top) {
+            HStack { Text("") }
+                .environment(app)
+        }
+        #endif
+        #endif
+    }
+
+    #if os(tvOS)
+    private func determineOverlayRegion() -> FocusRegion? {
+        let candidates: [FocusRegion?] = [
+            app.h2hActive ? .headToHead : nil,
+            app.detailItem != nil ? .detail : nil,
+            app.showThemePicker ? .themePicker : nil,
+            app.showingTierListBrowser ? .tierBrowser : nil,
+            app.itemMenuTarget != nil ? .itemMenu : nil,
+            app.quickMoveTarget != nil ? .quickMove : nil,
+            app.quickRankTarget != nil ? .quickRank : nil,
+            app.showAnalyticsSidebar ? .analytics : nil
+        ]
+        return candidates.compactMap { $0 }.first
+    }
+
+    @MainActor
+    private func alignFocus(to overlay: FocusRegion?) {
+        let target: FocusRegion = {
+            if let overlay {
+                return overlay
+            }
+            return lastBaseRegion
+        }()
+        if focusedRegion != target {
+            focusedRegion = target
+        }
+        resetFocus(in: focusNamespace)
+    }
+
+    @MainActor
+    private func bootstrapInitialFocus(for overlay: FocusRegion?) {
+        guard !didBootstrapFocus else { return }
+        didBootstrapFocus = true
+        alignFocus(to: overlay)
+    }
+    #endif
 }
 
 // Small preview

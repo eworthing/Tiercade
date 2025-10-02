@@ -5,7 +5,6 @@ import TiercadeCore
 struct QuickMoveOverlay: View {
     @Bindable var app: AppState
 
-    private let primaryTargets = ["S", "A", "B", "C", "unranked"]
     @FocusState private var focused: FocusField?
 
     private enum FocusField: Hashable { case s, a, b, c, u, more, cancel }
@@ -81,7 +80,6 @@ struct QuickMoveOverlay: View {
                     .frame(height: 420)
                 }
                 .frame(width: 440, height: 440)
-                .focusSection()
 
                 HStack(spacing: 24) {
                     Button("More…") {
@@ -109,6 +107,9 @@ struct QuickMoveOverlay: View {
             .accessibilityAddTraits(.isModal)
             .accessibilityIdentifier("QuickMove_Overlay")
             .defaultFocus($focused, .s)
+            .onAppear { focused = .s }
+            .onDisappear { focused = nil }
+            .focusSection()
         }
     }
 
