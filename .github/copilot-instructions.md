@@ -30,6 +30,8 @@ When the question involves Apple platforms (iOS, macOS, tvOS, visionOS) or Apple
 - **Head-to-Head overlay**: Keep the Skip card (`H2H_Skip`) centered with the `clock.arrow.circlepath` glyph, surface the live skip counter (`H2H_SkippedCount`), default focus to the left option while a pair is active, and fall through to Finish when the queue empties. Ensure the Exit command routes through `cancelH2H(fromExitCommand:)` so the debounce window remains intact.
 - **Tokens**: Use `Design/` helpers for typography/spacing/colors (no hardcoded values). Liquid Glass on chrome only.
 - **Tests**: New tests use Swift Testing. UI tests: `XCUIRemote` + `-uiTest` arg; artifacts to `/tmp`. After builds, manually verify focus/dismissal in simulator.
+- **Accessibility bug pattern**: NEVER add `.accessibilityIdentifier()` to parent containers with `.accessibilityElement(children: .contain)` - this overrides all child IDs. Keep IDs on leaf elements only (buttons, cards, scrollviews). Both ActionBar and TierRow were fixed by removing parent IDs.
+- **UI test strategy**: Focus on existence checks (`app.buttons["ID"].exists`), element counting, and component verification. Avoid complex navigation workflows (XCUIRemote navigation is too slow, tests timeout at ~12s). Production suite: 11 tests (~2min runtime, 100% passing) covering smoke tests, accessibility validation, and component structure.
 
 ### Build & verify
 - **tvOS build**: VS Code task or `xcodebuild -project Tiercade.xcodeproj -scheme Tiercade -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest'`

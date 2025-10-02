@@ -48,20 +48,28 @@ struct UnrankedView: View {
         if !filteredItems.isEmpty {
             VStack(alignment: .leading, spacing: Metrics.grid) {
                 header
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 24)]) {
-                    ForEach(filteredItems, id: \.id) { item in
-                        #if os(tvOS)
-                        CardView(item: item)
-                            .focused($focusedItemId, equals: item.id)
-                        #else
-                        CardView(item: item)
-                            .draggable(item.id)
-                        #endif
-                    }
-                }
                 #if os(tvOS)
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 24) {
+                        ForEach(filteredItems, id: \.id) { item in
+                            CardView(item: item)
+                                .focused($focusedItemId, equals: item.id)
+                        }
+                    }
+                    .padding(.bottom, Metrics.grid * 0.5)
+                }
                 .focusSection()
                 .defaultFocus($focusedItemId, filteredItems.first?.id)
+                #else
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 10) {
+                        ForEach(filteredItems, id: \.id) { item in
+                            CardView(item: item)
+                                .draggable(item.id)
+                        }
+                    }
+                    .padding(.bottom, Metrics.grid * 0.5)
+                }
                 #endif
             }
             .padding(Metrics.grid * 1.5)
@@ -246,13 +254,21 @@ private struct ThumbnailView: View {
                             case .empty:
                                 ProgressView()
                             case .success(let image):
-                                image.resizable().scaledToFill()
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
                             case .failure:
                                 placeholder
                             @unknown default:
                                 placeholder
                             }
                         }
+                        .frame(
+                            minWidth: 120,
+                            idealWidth: 140,
+                            minHeight: 168,
+                            idealHeight: 196
+                        )
                         .clipped()
                     } else {
                         placeholder

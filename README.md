@@ -162,14 +162,39 @@ cd TiercadeCore && swift test
 # iOS app tests (example, adjust device name as needed)
 xcodebuild test -project Tiercade.xcodeproj -scheme Tiercade -destination 'platform=iOS Simulator,name=iPhone 16'
 
-# tvOS UI tests (example using simulator UDID)
-# xcodebuild test -project Tiercade.xcodeproj -scheme Tiercade -destination "platform=tvOS Simulator,id=<SIM_UDID>"
+# tvOS UI tests (recommended for accessibility verification)
+xcodebuild test -project Tiercade.xcodeproj -scheme Tiercade \
+  -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' \
+  -only-testing:TiercadeUITests/QuickSmokeTests
 ```
 
 ### **Test Architecture**
 - **TiercadeCore Tests** - Platform-agnostic logic testing
 - **TiercadeTests** - iOS-specific functionality testing  
 - **TiercadeUITests** - User interface and interaction testing
+  - `QuickSmokeTests` (3 tests, ~23s) - Essential smoke tests for critical UI elements
+  - `DirectAccessibilityTests` (5 tests, ~65s) - Comprehensive accessibility verification
+  - `HeadToHeadSimplifiedTests` (3 tests, ~20s) - H2H overlay component verification
+  - **Total Production Suite: 11 tests, ~2min runtime, 100% passing**
+
+### **tvOS UI Testing Best Practices**
+tvOS UI testing excels at **accessibility verification** but has limitations with **complex navigation workflows**:
+
+**✅ What Works Well:**
+- Existence checks (`app.buttons["ID"].exists`)
+- Element counting and label verification
+- Component structure validation
+- Accessibility identifier verification
+
+**❌ Limitations:**
+- Complex focus-based navigation (slow, unreliable)
+- Multi-step workflows requiring extensive XCUIRemote navigation
+- Tests timing out when navigation exceeds ~12 seconds
+
+**Recommended Approach:**
+- Use UI tests for accessibility and component verification
+- Use manual testing for complex multi-step workflows
+- Keep tests simple, fast, and focused on existence checks
 
 ## 🛠️ Development
 

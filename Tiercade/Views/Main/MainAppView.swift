@@ -20,11 +20,10 @@ struct MainAppView: View {
     var body: some View {
         let detailPresented = app.detailItem != nil
     let headToHeadPresented = app.h2hActive
-    let bundledSelectorPresented = app.showingBundledSelector
         #if os(tvOS)
-    let modalBlockingFocus = headToHeadPresented || detailPresented || bundledSelectorPresented
+    let modalBlockingFocus = headToHeadPresented || detailPresented
         #else
-    let modalBlockingFocus = detailPresented || headToHeadPresented || bundledSelectorPresented
+    let modalBlockingFocus = detailPresented || headToHeadPresented
         #endif
 
         return Group {
@@ -48,7 +47,8 @@ struct MainAppView: View {
                     .padding(.top, TVMetrics.contentTopInset)
                     .padding(.bottom, TVMetrics.contentBottomInset)
                     .allowsHitTesting(!modalBlockingFocus)
-                    .disabled(modalBlockingFocus)
+                    // Note: Don't use .disabled() as it removes elements from accessibility tree
+                    // Only block hit testing when modals are active
             }
             #if os(tvOS)
             // Top toolbar (overlay so it doesn't reduce content area)
@@ -59,17 +59,17 @@ struct MainAppView: View {
                     .background(.thinMaterial)
                     .overlay(Divider().opacity(0.15), alignment: .bottom)
                     .allowsHitTesting(!modalBlockingFocus)
-                    .disabled(modalBlockingFocus)
+                    .accessibilityElement(children: .contain)
+                    // Note: Don't use .disabled() as it removes elements from accessibility tree
+                    // Only block hit testing when modals are active
             }
             // Bottom action bar (safe area inset to avoid covering focused rows)
             .overlay(alignment: .bottom) {
                 TVActionBar(app: app)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: TVMetrics.bottomBarHeight)
-                    .background(.thinMaterial)
-                    .overlay(Divider().opacity(0.15), alignment: .top)
                     .allowsHitTesting(!modalBlockingFocus)
-                    .disabled(modalBlockingFocus)
+                    .accessibilityElement(children: .contain)
+                    // Note: Don't use .disabled() as it removes elements from accessibility tree
+                    // Only block hit testing when modals are active
             }
             #else
             // ToolbarView is ToolbarContent (not a View) on some platforms; avoid embedding it directly on tvOS
@@ -85,9 +85,9 @@ struct MainAppView: View {
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active { FocusUtils.seedFocus() }
         }
-        .onExitCommand {
-            if app.showingBundledSelector {
-                app.dismissBundledTierlists()
+                .onExitCommand {
+            if app.showingTierListBrowser {
+                app.dismissTierListBrowser()
             } else if app.showAnalyticsSidebar {
                 app.closeAnalyticsSidebar()
             } else if app.h2hActive {
@@ -139,10 +139,10 @@ struct MainAppView: View {
                 }
 #endif
 
-                if app.showingBundledSelector {
-                    BundledTierlistSelector(app: app)
-                        .zIndex(51)
+                if app.showingTierListBrowser {
+                    TierListBrowserScene(app: app)
                         .transition(.opacity)
+                        .zIndex(53)
                 }
 
                 // Toast messages (bottom)
@@ -241,7 +241,7 @@ struct TVToolbarView: View {
     @FocusState private var focusedControl: Control?
 
     private enum Control: Hashable {
-        case undo, redo, library, randomize, reset, h2h, analytics
+        case undo, redo, library, randomize, reset, tierMenu, h2h, analytics
     }
 
     var body: some View {
@@ -272,61 +272,66 @@ struct TVToolbarView: View {
                     .font(.system(size: Metrics.toolbarIconSize))
                     .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
-                .buttonStyle(.tvRemote(.primary))
-                .disabled(!app.canUndo)
-                .focused($focusedControl, equals: .undo)
-                .accessibilityLabel("Undo")
-                .focusTooltip("Undo")
+            .buttonStyle(.tvRemote(.primary))
+            .disabled(!app.canUndo)
+            .focused($focusedControl, equals: .undo)
+            .accessibilityLabel("Undo")
+            .focusTooltip("Undo")
 
             Button(action: { app.redo() }, label: {
                 Image(systemName: "arrow.uturn.forward")
                     .font(.system(size: Metrics.toolbarIconSize))
                     .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
-                .buttonStyle(.tvRemote(.primary))
-                .disabled(!app.canRedo)
-                .focused($focusedControl, equals: .redo)
-                .accessibilityLabel("Redo")
-                .focusTooltip("Redo")
+            .buttonStyle(.tvRemote(.primary))
+            .disabled(!app.canRedo)
+            .focused($focusedControl, equals: .redo)
+            .accessibilityLabel("Redo")
+            .focusTooltip("Redo")
 
             Divider()
 
-            Button(action: { app.presentBundledTierlists() }, label: {
+            Button(action: { app.presentTierListBrowser() }, label: {
                 Image(systemName: "square.grid.2x2")
                     .font(.system(size: Metrics.toolbarIconSize))
                     .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
-                .buttonStyle(.tvRemote(.primary))
-                .focused($focusedControl, equals: .library)
-                .accessibilityIdentifier("Toolbar_BundledLibrary")
-                .accessibilityLabel("Bundled Tier Lists")
-                .accessibilityHint("Browse built-in tier lists to start ranking")
-                .focusTooltip("Tier Library")
-                .disabled(app.showingBundledSelector)
+            .buttonStyle(.tvRemote(.primary))
+            .focused($focusedControl, equals: .library)
+            .accessibilityIdentifier("Toolbar_BundledLibrary")
+            .accessibilityLabel("Bundled Tier Lists")
+            .accessibilityHint("Browse built-in tier lists to start ranking")
+            .focusTooltip("Tier Library")
+            .disabled(app.showingTierListBrowser)
 
             Button(action: { app.randomize() }, label: {
                 Image(systemName: "shuffle")
                     .font(.system(size: Metrics.toolbarIconSize))
                     .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
-                .buttonStyle(.tvRemote(.primary))
-                .disabled(!randomizeEnabled)
-                .accessibilityIdentifier("Toolbar_Randomize")
-                .focused($focusedControl, equals: .randomize)
-                .accessibilityLabel("Randomize")
-                .accessibilityHint(randomizeHint)
-                .focusTooltip(randomizeTooltip)
+            .buttonStyle(.tvRemote(.primary))
+            .disabled(!randomizeEnabled)
+            .accessibilityIdentifier("Toolbar_Randomize")
+            .focused($focusedControl, equals: .randomize)
+            .accessibilityLabel("Randomize")
+            .accessibilityHint(randomizeHint)
+            .focusTooltip(randomizeTooltip)
 
             Button(action: { app.reset() }, label: {
                 Image(systemName: "trash")
                     .font(.system(size: Metrics.toolbarIconSize))
                     .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
-                .buttonStyle(.tvRemote(.primary))
-                .accessibilityIdentifier("Toolbar_Reset")
-                .focused($focusedControl, equals: .reset)
-                .accessibilityLabel("Reset")
-                .focusTooltip("Reset")
+            .buttonStyle(.tvRemote(.primary))
+            .accessibilityIdentifier("Toolbar_Reset")
+            .focused($focusedControl, equals: .reset)
+            .accessibilityLabel("Reset")
+            .focusTooltip("Reset")
+
+            TierListQuickMenu(app: app)
+                .focused($focusedControl, equals: .tierMenu)
+                .focusTooltip("Choose tier list")
+                .padding(.leading, 12)
 
             Spacer(minLength: 0)
 
@@ -335,27 +340,27 @@ struct TVToolbarView: View {
                     .font(.system(size: Metrics.toolbarIconSize * 0.9))
                     .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
-                .buttonStyle(.tvRemote(.primary))
-                .accessibilityIdentifier("Toolbar_H2H")
-                .disabled(!headToHeadEnabled)
-                .focused($focusedControl, equals: .h2h)
-                .accessibilityLabel("Head to Head")
-                .accessibilityHint(headToHeadHint)
-                .focusTooltip(headToHeadTooltip)
+            .buttonStyle(.tvRemote(.primary))
+            .accessibilityIdentifier("Toolbar_H2H")
+            .disabled(!headToHeadEnabled)
+            .focused($focusedControl, equals: .h2h)
+            .accessibilityLabel("Head to Head")
+            .accessibilityHint(headToHeadHint)
+            .focusTooltip(headToHeadTooltip)
 
             Button(action: { app.toggleAnalyticsSidebar() }, label: {
                 Image(systemName: "chart.bar.fill")
                     .font(.system(size: Metrics.toolbarIconSize))
                     .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
-                .buttonStyle(.tvRemote(.primary))
-                .accessibilityIdentifier("Toolbar_Analytics")
-                .disabled(!analyticsEnabled)
-                .focused($focusedControl, equals: .analytics)
-                .accessibilityLabel("Analytics")
-                .accessibilityValue(analyticsActive ? "Visible" : "Hidden")
-                .accessibilityHint(analyticsHint)
-                .focusTooltip(analyticsTooltip)
+            .buttonStyle(.tvRemote(.primary))
+            .accessibilityIdentifier("Toolbar_Analytics")
+            .disabled(!analyticsEnabled)
+            .focused($focusedControl, equals: .analytics)
+            .accessibilityLabel("Analytics")
+            .accessibilityValue(analyticsActive ? "Visible" : "Hidden")
+            .accessibilityHint(analyticsHint)
+            .focusTooltip(analyticsTooltip)
         }
         .lineLimit(1)
         .padding(.horizontal, TVMetrics.barHorizontalPadding)
