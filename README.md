@@ -56,7 +56,6 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **Deferred Skip Flow** - The Head-to-Head overlay now features a dedicated Skip card with a recirculating clock icon, updates the skipped count live, and automatically resurfaces deferred pairs after all first-pass matchups.
 - **Focus Tooltips** - Custom tooltips surface helpful hints (e.g. “Randomize”, “Lock Tier”) when buttons receive focus, guiding new users through tier management on the TV.
 - **Media Playback** - Item detail pages can promote images and video with full-screen playback support that respects tvOS playback gestures.
-
 ## 🏗️ Architecture
 
 ### **Technical Stack**
