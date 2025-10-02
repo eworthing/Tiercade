@@ -112,14 +112,20 @@ final class AppState {
     var draggingId: String?
     var isProcessingSearch: Bool = false
     var showAnalyticsSidebar: Bool = false
-    var showingBundledSelector: Bool = false
+    var showingTierListBrowser: Bool = false
     let bundledProjects: [BundledProject] = BundledProjects.all
+    var activeTierList: TierListHandle?
+    var recentTierLists: [TierListHandle] = []
+    let maxRecentTierLists: Int = 6
+    let quickPickMenuLimit: Int = 5
     
     // Confirmation alerts
     var showRandomizeConfirmation: Bool = false
     var showResetConfirmation: Bool = false
 
     let storageKey = "Tiercade.tiers.v1"
+    let tierListStateKey = "Tiercade.tierlist.active.v1"
+    let tierListRecentsKey = "Tiercade.tierlist.recents.v1"
     var autosaveTask: Task<Void, Never>?
     let autosaveInterval: TimeInterval = 30.0 // Auto-save every 30 seconds
 
@@ -136,6 +142,7 @@ final class AppState {
 
     var h2hSkippedCount: Int { h2hSkippedPairKeys.count }
 
+
     init() {
         if !load() {
             seed()
@@ -149,6 +156,8 @@ final class AppState {
         let unrankedCount = tiers["unranked"]?.count ?? 0
         let initMsg = "init: tiers counts=\(tierSummary) unranked=\(unrankedCount)"
         logEvent(initMsg)
+        restoreTierListState()
+        loadActiveTierListIfNeeded()
     }
 
     // Write a small debug file to /tmp to make logs visible from the host
@@ -241,11 +250,14 @@ final class AppState {
     }
 
     func seed() {
-        tiers["unranked"] = [
-            Item(id: "kyle48", name: "Kyle Fraser", seasonString: "48"),
-            Item(id: "parvati", name: "Parvati Shallow", seasonString: "Multiple"),
-            Item(id: "sandra", name: "Sandra Diaz-Twine", seasonString: "Multiple")
-        ]
+        // Load the first bundled project as default instead of placeholder items
+        guard let defaultProject = bundledProjects.first else {
+            // Fallback to empty state if no bundled projects available
+            tiers["unranked"] = []
+            return
+        }
+        applyBundledProject(defaultProject)
+        logEvent("seed: loaded default bundled project \(defaultProject.id)")
     }
 
     func undo() {

@@ -109,7 +109,13 @@ extension AppState {
     func displayLabel(for tierId: String) -> String { tierLabels[tierId] ?? tierId }
 
     func setDisplayLabel(_ label: String, for tierId: String) {
+        // Check for duplicate labels
+        let existingTiersWithLabel = tierLabels.filter { $0.key != tierId && $0.value == label }
+        if !existingTiersWithLabel.isEmpty {
+            showInfoToast("Duplicate Name", message: "Another tier already has this name")
+        }
         tierLabels[tierId] = label
+        markAsChanged()
     }
 
     func displayColorHex(for tierId: String) -> String? { tierColors[tierId] }

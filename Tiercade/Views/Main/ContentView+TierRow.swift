@@ -32,6 +32,8 @@ struct TierRowWrapper: View {
                 tierBadge(accent: accent)
                 tierContent(accent: accent)
             }
+            // NOTE: Don't set accessibilityIdentifier on parent - it overrides children!
+            // Individual cards and buttons have their own IDs
             .background(
                 RoundedRectangle(cornerRadius: 12).fill(Color.cardBackground)
             )
@@ -76,15 +78,18 @@ struct TierRowWrapper: View {
     }
 
     private func tierBadge(accent: Color) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
+            Spacer(minLength: 0)
+            
             VerticalTierText(
                 label: app.displayLabel(for: tier),
                 textColor: dynamicTextOn(
                     hex: app.displayColorHex(for: tier) ?? defaultHex(for: tier)
                 )
             )
+            .layoutPriority(1)
 
-            Spacer()
+            Spacer(minLength: 0)
 
             #if os(tvOS)
             TierControlButtons(
@@ -98,7 +103,7 @@ struct TierRowWrapper: View {
             )
             #endif
         }
-        .padding(.vertical, Metrics.grid * 1.5)
+        .padding(.vertical, Metrics.grid)
         .padding(.horizontal, Metrics.grid)
         .frame(width: 96)
         .background(
@@ -147,6 +152,7 @@ struct TierRowWrapper: View {
             }
             .padding(.bottom, Metrics.grid * 0.5)
         }
+        .accessibilityIdentifier("TierRow_\(tier)")
         .focusSection()
         .defaultFocus($focusedItemId, filteredCards.first?.id)
         #else
@@ -206,14 +212,28 @@ private struct VerticalTierText: View {
     let textColor: Color
 
     var body: some View {
-        VStack(spacing: 4) {
-            ForEach(Array(label), id: \.self) { char in
-                Text(String(char))
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundColor(textColor)
-                    .frame(width: 56)
+        GeometryReader { geometry in
+            let availableHeight = geometry.size.height
+            let charCount = CGFloat(label.count)
+            // Calculate ideal font size based on available space
+            // Reserve 1pt spacing between chars: (availableHeight - (charCount-1)*1) / charCount
+            let calculatedSize = (availableHeight - (charCount - 1) * 1) / charCount
+            // Clamp between 16pt and 32pt for readability
+            let fontSize = min(32, max(16, calculatedSize))
+            
+            VStack(spacing: 1) {
+                ForEach(Array(label), id: \.self) { char in
+                    Text(String(char))
+                        .font(.system(size: fontSize, weight: .heavy, design: .default))
+                        .tracking(-0.5)
+                        .foregroundColor(textColor)
+                        .minimumScaleFactor(0.5)
+                        .frame(width: 56)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
+        .frame(maxHeight: .infinity)
     }
 }
 
@@ -233,6 +253,7 @@ private struct TierControlButtons: View {
                     .foregroundColor(textColor)
             })
             .buttonStyle(.plain)
+            .accessibilityIdentifier("TierRow_\(tier)_Lock")
             .accessibilityLabel(isLocked ? "Unlock Tier" : "Lock Tier")
             .focusTooltip(isLocked ? "Unlock" : "Lock")
 
@@ -242,6 +263,7 @@ private struct TierControlButtons: View {
                     .foregroundColor(textColor)
             })
             .buttonStyle(.plain)
+            .accessibilityIdentifier("TierRow_\(tier)_Menu")
             .accessibilityLabel("Tier Menu")
             .focusTooltip("Menu")
         }

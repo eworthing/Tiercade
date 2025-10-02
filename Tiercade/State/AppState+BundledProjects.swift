@@ -3,17 +3,6 @@ import TiercadeCore
 
 @MainActor
 extension AppState {
-    func presentBundledTierlists() {
-        showingBundledSelector = true
-        logEvent("bundledSelector: presented")
-    }
-
-    func dismissBundledTierlists() {
-        guard showingBundledSelector else { return }
-        showingBundledSelector = false
-        logEvent("bundledSelector: dismissed")
-    }
-
     func applyBundledProject(_ bundled: BundledProject) {
         let state = resolvedTierState(for: bundled)
         tierOrder = state.order
@@ -24,12 +13,12 @@ extension AppState {
         history = HistoryLogic.initHistory(tiers, limit: history.limit)
         markAsChanged()
         currentFileName = bundled.id
-        showingBundledSelector = false
         showSuccessToast("Loaded \(bundled.title)", message: "Bundled tier list ready to rank")
         let counts = tierOrder
             .map { "\($0):\(tiers[$0]?.count ?? 0)" }
             .joined(separator: ", ")
         logEvent("applyBundledProject id=\(bundled.id) counts=\(counts)")
+        registerTierListSelection(TierListHandle(bundled: bundled))
     }
 }
 
