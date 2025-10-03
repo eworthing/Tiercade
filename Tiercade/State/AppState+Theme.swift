@@ -7,6 +7,7 @@ extension AppState {
     /// Applies the selected theme to all tiers
     func applyTheme(_ theme: TierTheme) {
         selectedTheme = theme
+        selectedThemeID = theme.id
         applyCurrentTheme()
         try? save()
         showSuccessToast("Theme '\(theme.displayName)' applied")
@@ -14,9 +15,10 @@ extension AppState {
 
     /// Applies the currently selected theme to all tier colors
     func applyCurrentTheme() {
-        for tierId in tierOrder + ["unranked"] {
-            tierColors[tierId] = selectedTheme.color(for: tierId)
+        for (index, tierId) in tierOrder.enumerated() {
+            tierColors[tierId] = selectedTheme.colorHex(forRank: tierId, fallbackIndex: index)
         }
+        tierColors["unranked"] = selectedTheme.unrankedColorHex
         hasUnsavedChanges = true
     }
 

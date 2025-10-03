@@ -6,9 +6,15 @@ import TiercadeCore
 struct ThemePickerOverlay: View {
     @Bindable var appState: AppState
     @FocusState private var focus: ThemePickerFocus?
-    private let columns = 2
     @State private var lastFocus: ThemePickerFocus = .card(0)
     @State private var suppressFocusReset = false
+
+    private var gridColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: TVMetrics.cardSpacing),
+            GridItem(.flexible(), spacing: TVMetrics.cardSpacing)
+        ]
+    }
 
     var body: some View {
         ZStack {
@@ -22,26 +28,19 @@ struct ThemePickerOverlay: View {
                 headerSection
 
                 ScrollView {
-                    LazyVGrid(
-                        columns: [
-                            GridItem(.flexible(), spacing: TVMetrics.cardSpacing),
-                            GridItem(.flexible(), spacing: TVMetrics.cardSpacing)
-                        ],
-                        spacing: TVMetrics.cardSpacing
-                    ) {
+                    LazyVGrid(columns: gridColumns, spacing: TVMetrics.cardSpacing) {
                         ForEach(Array(focusableThemes.enumerated()), id: \.offset) { idx, theme in
                             ThemeCard(
                                 theme: theme,
                                 isSelected: appState.selectedTheme == theme,
-                                isFocused: focus == .card(idx),
-                                action: {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        appState.applyTheme(theme)
-                                    }
+                                isFocused: focus == .card(idx)
+                            ) {
+                                withAnimation(.spring(response: 0.3)) {
+                                    appState.applyTheme(theme)
                                 }
-                            )
+                            }
                             .focused($focus, equals: .card(idx))
-                            .accessibilityIdentifier("ThemeCard_\(theme.rawValue)")
+                            .accessibilityIdentifier("ThemeCard_\(theme.slug)")
                         }
                     }
                     .padding(TVMetrics.overlayPadding)
@@ -143,14 +142,12 @@ struct ThemePickerOverlay: View {
     }
 
     private var focusableThemes: [TierTheme] {
-        TierTheme.allCases
+        TierThemeCatalog.allThemes
     }
 
     private var defaultFocusedIndex: Int {
         focusableThemes.firstIndex(of: appState.selectedTheme) ?? 0
     }
-
-
 
     private enum ThemePickerFocus: Hashable {
         case card(Int)
@@ -166,8 +163,6 @@ private struct ThemeCard: View {
     let action: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
-
-    private let previewTiers = ["S", "A", "B", "C"]
 
     var body: some View {
         Button(action: action) {
@@ -194,18 +189,18 @@ private struct ThemeCard: View {
                 }
 
                 HStack(spacing: 8) {
-                    ForEach(previewTiers, id: \.self) { tier in
+                    ForEach(Array(theme.previewTiers), id: \.id) { tier in
                         VStack(spacing: 4) {
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(theme.swiftUIColor(for: tier))
+                                .fill(ColorUtilities.color(hex: tier.colorHex))
                                 .frame(height: 60)
                                 .overlay(
-                                    Text(tier)
+                                    Text(tier.name)
                                         .font(.title3)
                                         .fontWeight(.bold)
                                         .foregroundColor(
                                             ColorUtilities.accessibleTextColor(
-                                                onBackground: theme.color(for: tier)
+                                                onBackground: tier.colorHex
                                             )
                                         )
                                 )

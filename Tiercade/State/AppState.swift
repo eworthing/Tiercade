@@ -88,7 +88,8 @@ final class AppState {
     var tierLabels: [String: String] = [:] // tierId -> display label
     var tierColors: [String: String] = [:] // tierId -> hex color
     // Theme selection
-    var selectedTheme: TierTheme = .smashClassic
+    var selectedThemeID: UUID = TierThemeCatalog.defaultTheme.id
+    var selectedTheme: TierTheme = TierThemeCatalog.defaultTheme
     var showThemePicker: Bool = false
     var themePickerActive: Bool = false
     // Head-to-Head
@@ -147,7 +148,15 @@ final class AppState {
     var h2hSkippedCount: Int { h2hSkippedPairKeys.count }
 
     init() {
-        if !load() {
+        let didLoad = load()
+        if !didLoad {
+            seed()
+        } else if isLegacyBundledListPlaceholder(tiers) {
+            logEvent("init: detected legacy bundled list placeholder; reseeding default project")
+            let defaults = UserDefaults.standard
+            defaults.removeObject(forKey: storageKey)
+            defaults.removeObject(forKey: tierListStateKey)
+            defaults.removeObject(forKey: tierListRecentsKey)
             seed()
         }
         history = HistoryLogic.initHistory(tiers, limit: 80)
@@ -260,7 +269,22 @@ final class AppState {
             return
         }
         applyBundledProject(defaultProject)
+        let fallbackTheme = TierThemeCatalog.defaultTheme
+        selectedTheme = fallbackTheme
+        selectedThemeID = fallbackTheme.id
+        applyCurrentTheme()
         logEvent("seed: loaded default bundled project \(defaultProject.id)")
+    }
+
+    private func isLegacyBundledListPlaceholder(_ tiers: Items) -> Bool {
+        let placeholderIDs = Set(BundledProjects.all.map(\.id))
+        guard !placeholderIDs.isEmpty else { return false }
+
+        let allItems = tiers.values.flatMap { $0 }
+        guard allItems.count == placeholderIDs.count else { return false }
+
+        let itemIDs = Set(allItems.map(\.id))
+        return itemIDs == placeholderIDs
     }
 
     func undo() {

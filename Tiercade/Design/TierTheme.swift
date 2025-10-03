@@ -1,146 +1,142 @@
 import SwiftUI
+import SwiftData
 
-/// Theme configurations for tier list color schemes
-/// Provides curated color palettes following tvOS design guidelines
-enum TierTheme: String, CaseIterable, Identifiable, Sendable {
-    case smashClassic
-    case heatmapGradient
-    case pastel
-    case monochrome
-    case rainbow
-    case darkNeon
-    case nord
+struct TierTheme: Identifiable, Hashable, Sendable {
+    struct Tier: Identifiable, Hashable, Sendable {
+        let id: UUID
+        let index: Int
+        let name: String
+        let colorHex: String
+        let isUnranked: Bool
 
-    var id: String { rawValue }
-
-    /// Human-readable display name for the theme
-    var displayName: String {
-        switch self {
-        case .smashClassic: return "Smash Classic"
-        case .heatmapGradient: return "Heatmap Gradient"
-        case .pastel: return "Pastel"
-        case .monochrome: return "Monochrome"
-        case .rainbow: return "Rainbow"
-        case .darkNeon: return "Dark Neon"
-        case .nord: return "Nord"
+        func matches(identifier: String) -> Bool {
+            let normalized = identifier.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let nameNormalized = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if normalized == nameNormalized { return true }
+            if normalized == "unranked" { return isUnranked }
+            if let numeric = Int(normalized) { return numeric == index }
+            return false
         }
     }
 
-    /// Short description of the theme's visual style
-    var description: String {
-        switch self {
-        case .smashClassic: return "Classic tier list colors"
-        case .heatmapGradient: return "Heat intensity gradient"
-        case .pastel: return "Soft, muted tones"
-        case .monochrome: return "Grayscale spectrum"
-        case .rainbow: return "Full color spectrum"
-        case .darkNeon: return "Vibrant neon on dark"
-        case .nord: return "Scandinavian palette"
+    static let fallbackColor = "#000000"
+
+    let id: UUID
+    let slug: String
+    let displayName: String
+    let shortDescription: String
+    let tiers: [Tier]
+
+    init(id: UUID, slug: String, displayName: String, shortDescription: String, tiers: [Tier]) {
+        self.id = id
+        self.slug = slug
+        self.displayName = displayName
+        self.shortDescription = shortDescription
+        self.tiers = tiers.sorted { lhs, rhs in
+            if lhs.isUnranked != rhs.isUnranked { return !lhs.isUnranked }
+            return lhs.index < rhs.index
         }
     }
 
-    /// Returns the hex color string for a given tier identifier
-    /// - Parameter tier: The tier identifier (e.g., "S", "A", "B")
-    /// - Returns: Hex color string including # prefix
-    func color(for tier: String) -> String {
-        switch self {
-        // 1. Smash Classic
-        case .smashClassic:
-            switch tier.lowercased() {
-            case "s": return "#FF0000"
-            case "a": return "#FF8000"
-            case "b": return "#FFFF00"
-            case "c": return "#00FF00"
-            case "d": return "#0000FF"
-            case "f": return "#808080"
-            case "unranked": return "#6B7280"
-            default: return "#000000"
-            }
-
-        // 2. Heatmap Gradient
-        case .heatmapGradient:
-            switch tier.lowercased() {
-            case "s": return "#FF0000"
-            case "a": return "#FF8000"
-            case "b": return "#FFFF00"
-            case "c": return "#00FF00"
-            case "d": return "#0080FF"
-            case "f": return "#8000FF"
-            case "unranked": return "#808080"
-            default: return "#000000"
-            }
-
-        // 3. Pastel
-        case .pastel:
-            switch tier.lowercased() {
-            case "s": return "#FFB3BA"
-            case "a": return "#FFDFBA"
-            case "b": return "#FFFFBA"
-            case "c": return "#BAFFC9"
-            case "d": return "#BAE1FF"
-            case "f": return "#E2E2E2"
-            case "unranked": return "#CCCCCC"
-            default: return "#000000"
-            }
-
-        // 4. Monochrome
-        case .monochrome:
-            switch tier.lowercased() {
-            case "s": return "#000000"
-            case "a": return "#4C4C4C"
-            case "b": return "#7F7F7F"
-            case "c": return "#B3B3B3"
-            case "d": return "#CCCCCC"
-            case "f": return "#FFFFFF"
-            case "unranked": return "#808080"
-            default: return "#000000"
-            }
-
-        // 5. Rainbow
-        case .rainbow:
-            switch tier.lowercased() {
-            case "s": return "#FF0000"
-            case "a": return "#FF8000"
-            case "b": return "#FFFF00"
-            case "c": return "#00FF00"
-            case "d": return "#0000FF"
-            case "f": return "#8B00FF"
-            case "unranked": return "#808080"
-            default: return "#000000"
-            }
-
-        // 6. Dark Neon
-        case .darkNeon:
-            switch tier.lowercased() {
-            case "s": return "#FF2A6D"
-            case "a": return "#FF7A00"
-            case "b": return "#FFD300"
-            case "c": return "#39FF14"
-            case "d": return "#00E5FF"
-            case "f": return "#7C00FF"
-            case "unranked": return "#374151"
-            default: return "#000000"
-            }
-
-        // 7. Nord
-        case .nord:
-            switch tier.lowercased() {
-            case "s": return "#BF616A"
-            case "a": return "#D08770"
-            case "b": return "#EBCB8B"
-            case "c": return "#A3BE8C"
-            case "d": return "#88C0D0"
-            case "f": return "#5E81AC"
-            case "unranked": return "#4C566A"
-            default: return "#000000"
-            }
+    init(entity: TierThemeEntity) {
+        let mappedTiers = entity.tiers.map { tier in
+            Tier(
+                id: tier.tierID,
+                index: tier.index,
+                name: tier.name,
+                colorHex: tier.colorHex,
+                isUnranked: tier.isUnranked
+            )
         }
+        self.init(
+            id: entity.themeID,
+            slug: entity.slug,
+            displayName: entity.displayName,
+            shortDescription: entity.shortDescription,
+            tiers: mappedTiers
+        )
     }
 
-    /// Returns a SwiftUI Color for the given tier
-    /// - Parameter tier: The tier identifier
-    /// - Returns: SwiftUI Color instance
-    func swiftUIColor(for tier: String) -> Color {
-        ColorUtilities.color(hex: color(for: tier))
+    var description: String { shortDescription }
+
+    var rankedTiers: [Tier] {
+        tiers.filter { !$0.isUnranked }.sorted { $0.index < $1.index }
+    }
+
+    var unrankedTier: Tier? {
+        tiers.first(where: \Tier.isUnranked)
+    }
+
+    var unrankedColorHex: String {
+        unrankedTier?.colorHex ?? Self.fallbackColor
+    }
+
+    var previewTiers: ArraySlice<Tier> {
+        ArraySlice(rankedTiers.prefix(4))
+    }
+
+    func colorHex(forRankIndex index: Int) -> String? {
+        rankedTiers.first { $0.index == index }?.colorHex
+    }
+
+    func colorHex(forIdentifier identifier: String) -> String? {
+        tiers.first { $0.matches(identifier: identifier) }?.colorHex
+    }
+
+    func colorHex(forRank identifier: String, fallbackIndex: Int? = nil) -> String {
+        if identifier.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "unranked" {
+            return unrankedColorHex
+        }
+
+        if let direct = colorHex(forIdentifier: identifier) {
+            return direct
+        }
+
+        if let fallbackIndex, let indexed = colorHex(forRankIndex: fallbackIndex) {
+            return indexed
+        }
+
+        return Self.fallbackColor
+    }
+
+    func swiftUIColor(forRank identifier: String, fallbackIndex: Int? = nil) -> Color {
+        ColorUtilities.color(hex: colorHex(forRank: identifier, fallbackIndex: fallbackIndex))
+    }
+
+    func swiftUIColor(forRankIndex index: Int) -> Color {
+        ColorUtilities.color(hex: colorHex(forRankIndex: index) ?? Self.fallbackColor)
+    }
+}
+
+@MainActor
+enum TierThemeCatalog {
+    private static let cachedThemes: [TierTheme] = TierThemeSeeds.defaults.map(TierTheme.init(entity:))
+    private static let themesByID: [UUID: TierTheme] = Dictionary(
+        uniqueKeysWithValues: cachedThemes.map { ($0.id, $0) }
+    )
+    private static let themesBySlug: [String: TierTheme] = Dictionary(
+        uniqueKeysWithValues: cachedThemes.map { ($0.slug.lowercased(), $0) }
+    )
+
+    static var allThemes: [TierTheme] {
+        cachedThemes
+    }
+
+    static var defaultTheme: TierTheme {
+        themesBySlug["smashclassic"] ?? cachedThemes.first ?? TierTheme(
+            id: UUID(),
+            slug: "default",
+            displayName: "Default",
+            shortDescription: "Default color palette",
+            tiers: []
+        )
+    }
+
+    static func theme(id: UUID) -> TierTheme? {
+        themesByID[id]
+    }
+
+    static func theme(slug: String) -> TierTheme? {
+        themesBySlug[slug.lowercased()]
     }
 }

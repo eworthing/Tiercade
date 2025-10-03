@@ -1,69 +1,194 @@
-````instructions
-````instructions
 ```instructions
-When the question involves Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (SwiftUI, UIKit, Focus, HIG), consult authoritative Apple documentation via the apple-docs MCP tools before other sources.
+When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (SwiftUI, UIKit, Focus, HIG), consult authoritative Apple documentation via apple-docs MCP tools before other sources.
 ```
 
-## Tiercade playbook for AI agents
+# Tiercade AI Agent Instructions
 
-### Modernization mandates (OS 26 / Swift 6)
-- Target iOS/iPadOS/tvOS/macOS 26 with Swift 6 toolchains. Enable **strict concurrency = complete** (`.enableUpcomingFeature("StrictConcurrency")` + `.unsafeFlags(["-strict-concurrency=complete"])`).
-- **State**: `@Observable`+`@Bindable` (never `ObservableObject`/`@Published`). Use actors/`@MainActor` for isolation.
-- **UI**: SwiftUI only. `NavigationStack`/`NavigationSplitView` (no `NavigationView`). UIKit only via representables.
-- **Persistence**: SwiftData (`@Model`, `@Query`) for new features. Migrate Core Data incrementally.
-- **Async**: Structured concurrency (`async`/`await`, `AsyncSequence`, `AsyncStream`, `TaskGroup`). Phase out Combine.
-- **Testing**: Swift Testing (`@Test`, `#expect`) for new tests. Migrate XCTest gradually.
-- **Dependencies**: SwiftPM only. Use SPM traits for feature flags: `traits: [.featureFlag("offline-mode")]`
-- **Lint**: `cyclomatic_complexity` warning at 8, error at 12.
+A SwiftUI tier list management app targeting tvOS 26+/iOS 26+ with Swift 6 strict concurrency. Primary platform is tvOS with remote-first UX patterns.
 
-**Critical migrations:** `ObservableObject`→`@Observable` | Combine→`AsyncSequence` | `NavigationView`→`NavigationStack` | Core Data→SwiftData | XCTest→Swift Testing | callbacks→`async/await` | queues→actors
+## Swift 6 / OS 26 Modernization Mandates
 
-### Architecture & state flow
-- **Structure**: SwiftUI tvOS app; partials in `Views/{Main,Overlays,Toolbar}` composed in `MainAppView.swift`. Business logic in `TiercadeCore` (never recreate TL* aliases).
-- **State**: `@MainActor @Observable AppState` (`State/AppState.swift` + extensions). Flow: View → `AppState` method → TiercadeCore → mutate `tiers`/history → UI refresh.
-- **History**: Route mutations through `move(_:to:)`, `batchMove(_:to:)`, `clearTier(_:)`, `undo()`, `redo()` (auto-calls `HistoryLogic.saveSnapshot`).
-- **Async ops**: Wrap with `withLoadingIndicator(message:operation:)` + `updateProgress(_:)`. Show toasts via `AppState+Toast` (`showSuccessToast`, etc.).
-- **Persistence**: `AppState+Persistence.swift` (UserDefaults + async file I/O). Export via `AppState+ExportImport.exportToFormat(.text/.json/.markdown/.csv/.png/.pdf)` (tvOS excludes PDF via `#if os(tvOS)`). Import: prefer `ModelResolver.loadProject` → `resolveTiers`.
+**Target:** iOS/iPadOS/tvOS/macOS 26 with Swift 6 strict concurrency
+- **Strict concurrency:** `.enableUpcomingFeature("StrictConcurrency")` + `.unsafeFlags(["-strict-concurrency=complete"])`
+- **State management:** `@Observable` + `@Bindable` + `@MainActor` (never `ObservableObject`/`@Published`)
+- **UI:** SwiftUI only. `NavigationStack`/`NavigationSplitView` (no deprecated `NavigationView`)
+- **Async:** Structured concurrency (`async`/`await`, `AsyncSequence`, `TaskGroup`). Phase out Combine
+- **Testing:** Swift Testing (`@Test`, `#expect`) for new tests. Migrate XCTest incrementally
+- **Persistence:** SwiftData (`@Model`, `@Query`) for new features. Migrate Core Data gradually
+- **Dependencies:** SwiftPM only. Use SPM traits: `traits: [.featureFlag("feature-name")]`
+- **Complexity:** `cyclomatic_complexity` warning at 8, error at 12
 
-### tvOS UX & testing
-- **Focus**: Overlays in `Views/Overlays/` use `.focusSection()`/`.focusable()`. Expose accessibility IDs: `Toolbar_{H2H,Randomize,Reset}`, `QuickMove_{Overlay,S,A,B,C,U,More,Cancel}`, `ActionBar_{MultiSelect,Move_S,ClearSelection}`.
-- **Head-to-Head overlay**: Keep the Skip card (`H2H_Skip`) centered with the `clock.arrow.circlepath` glyph, surface the live skip counter (`H2H_SkippedCount`), default focus to the left option while a pair is active, and fall through to Finish when the queue empties. Ensure the Exit command routes through `cancelH2H(fromExitCommand:)` so the debounce window remains intact.
-- **Tokens**: Use `Design/` helpers for typography/spacing/colors (no hardcoded values). Liquid Glass on chrome only.
-- **Tests**: New tests use Swift Testing. UI tests: `XCUIRemote` + `-uiTest` arg; artifacts to `/tmp`. After builds, manually verify focus/dismissal in simulator.
-- **Accessibility bug pattern**: NEVER add `.accessibilityIdentifier()` to parent containers with `.accessibilityElement(children: .contain)` - this overrides all child IDs. Keep IDs on leaf elements only (buttons, cards, scrollviews). Both ActionBar and TierRow were fixed by removing parent IDs.
-- **UI test strategy**: Focus on existence checks (`app.buttons["ID"].exists`), element counting, and component verification. Avoid complex navigation workflows (XCUIRemote navigation is too slow, tests timeout at ~12s). Production suite: 11 tests (~2min runtime, 100% passing) covering smoke tests, accessibility validation, and component structure.
+**Migration priorities:** `ObservableObject`→`@Observable` | Combine→`AsyncSequence` | `NavigationView`→`NavigationStack` | Core Data→SwiftData | XCTest→Swift Testing | callbacks→`async/await` | queues→actors
 
-### Build & verify
-- **tvOS build**: VS Code task or `xcodebuild -project Tiercade.xcodeproj -scheme Tiercade -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest'`
-- **Core tests**: `cd TiercadeCore && swift test`
-- **Full pipeline**: `./tools/tvOS_build_and_test.sh` → `./tools/tvOS_smoketest.sh` (artifacts to `/tmp`)
+## Architecture & Data Flow
 
-### Data & patterns
-- **Tier order**: `["S","A","B","C","D","F","unranked"]`. Respect `displayLabel`/`displayColorHex` overrides.
-- **Items**: Use TiercadeCore `Item` (fields: name, seasonString/number, imageUrl).
-- **Commits**: Conventional Commits (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`). Scope when helpful: `feat(tvOS): quick move`.
+### Structure
+- **App:** SwiftUI tvOS app with iOS support. Views in `Views/{Main,Overlays,Toolbar}` composed in `MainAppView.swift`
+- **Core logic:** `TiercadeCore` Swift package (iOS 17+/macOS 14+/tvOS 17+) — platform-agnostic models and logic
+  - Models: `Item`, `Items` (typealias for `[String: [Item]]`), `TierConfig`, `History`
+  - Logic: `TierLogic`, `HistoryLogic`, `HeadToHeadLogic`, `RandomUtils`
+  - **Never recreate TL* aliases** — import from TiercadeCore directly
 
-### Key paths
-`State/` (AppState) | `Views/` (UI) | `Design/` (tokens) | `Export/` (renderers) | `Util/` (helpers) | `TiercadeCore/Sources/` (logic) | `tools/` (scripts)
+### State Management
+**Central state:** `@MainActor @Observable final class AppState` in `State/AppState.swift`
+- Extensions in `State/AppState+*.swift`: `+Persistence`, `+Export`, `+Import`, `+Analysis`, `+Toast`, `+Progress`, `+HeadToHead`, `+Selection`, `+Theme`, etc.
+- **Flow:** View → `AppState` method → TiercadeCore logic → mutate `tiers`/history → SwiftUI auto-refresh
 
-### IDE notes
-SourceKit false positives ("No such module 'TiercadeCore'") are common—trust `xcodebuild`. Debug logs: `/tmp/tiercade_debug.log` via `AppState.appendDebugFile`.
-````
+### Core State Properties
+```swift
+var tiers: Items = ["S":[],"A":[],"B":[],"C":[],"D":[],"F":[],"unranked":[]]
+var tierOrder: [String] = ["S","A","B","C","D","F"]
+var selection: Set<String> = []
+var h2hActive: Bool, h2hPair: (Item, Item)?
+var tierLabels: [String: String], tierColors: [String: String]
+var selectedTheme: TierTheme
+```
 
-## Tiercade playbook for AI agents
-- **Architecture snapshot**: SwiftUI-only tvOS client under `Tiercade/` with modular partials (`Views/Main`, `Views/Overlays`, `Views/Toolbar`) composed in `MainAppView.swift`.
-- **Shared logic**: Keep business rules in `TiercadeCore` (models + `TierLogic`/`HistoryLogic`/`HeadToHeadLogic`); never recreate TL* aliases.
-- **State flow**: Views call `AppState` methods (`Tiercade/State/AppState.swift` + extensions) → TiercadeCore → mutate `tiers`/history → UI updates; always route mutations through helpers like `move`, `batchMove`, `clearTier`, and add `HistoryLogic.saveSnapshot`.
-- **Observation & concurrency**: All new state is `@MainActor @Observable`; replace `ObservableObject`/`@Published` when touched. Use `async/await`, `AsyncSequence`, actors, and keep strict concurrency enabled via `.enableUpcomingFeature("StrictConcurrency")` + `-strict-concurrency=complete`.
-- **Persistence & progress**: For save/load use `AppState+Persistence` (UserDefaults + file I/O). Wrap async work with `withLoadingIndicator(message:operation:)` and `updateProgress(_:)`; surface feedback via `AppState+Toast`.
-- **Overlays & focus**: tvOS modals live under `Views/Overlays/` (QuickMove, QuickRank, BundledTierlistSelector). Ensure `.focusSection()`/`.focusable()` and expose accessibility IDs (`Toolbar_H2H`, `QuickMove_Overlay`, `ActionBar_MultiSelect`, etc.) so UI tests in `TiercadeUITests` stay green.
-- **Design tokens**: Pull typography, spacing, and colors from `Tiercade/Design/` helpers (avoid hard-coded values); Liquid Glass chrome stays on toolbars/overlays.
-- **Export/import**: Extend `AppState+ExportImport.swift` for format work. tvOS excludes PDF via `#if os(tvOS)`. Prefer `ModelResolver.loadProject` → `resolveTiers` when importing JSON.
-- **Directory map**: `Tiercade/State/` (AppState + extensions), `Tiercade/Views/` (SwiftUI surfaces), `Tiercade/Export/`, `Tiercade/Util/` (focus + helpers), `TiercadeCore/Sources/` (domain logic), `tools/` (automation scripts).
-- **Build & verify**: Run the VS Code task “Build tvOS Tiercade (Debug)” (`xcodebuild -project Tiercade.xcodeproj -scheme Tiercade -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest'`). Core unit tests: `cd TiercadeCore && swift test`. Full pipeline + screenshots/logs: `./tools/tvOS_build_and_test.sh` → `./tools/tvOS_smoketest.sh`.
-- **Manual tvOS review**: After builds, keep the Apple TV simulator open, exercise touched surfaces with Siri Remote/keyboard, and confirm overlays dismiss via the Exit button.
-- **Testing direction**: New tests use Swift Testing (`@Test`, `#expect`). UI automation relies on `XCUIRemote` with the `-uiTest` launch arg; screenshots/logs land in `/tmp`.
-- **Data shape contracts**: Maintain tier order `["S","A","B","C","D","F","unranked"]`, respect `displayLabel`/`displayColorHex`, and seed tiers with TiercadeCore `Item` helpers.
-- **SwiftData strategy**: New persistence adopts SwiftData (`@Model`, `@Query`); migrate remaining Core Data modules gradually without expanding scope.
-- **Debug aids**: `AppState.appendDebugFile` mirrors logs to `/tmp/tiercade_debug.log`. SourceKit “No such module” squiggles are common—trust `xcodebuild` output instead.
-````
+### State Mutation Pattern
+**Always route through AppState methods** that call TiercadeCore logic:
+```swift
+// Correct pattern - no direct mutation methods in AppState.swift
+// Mutations happen via TiercadeCore in extension methods:
+func moveItem(_ id: String, to tier: String) {
+    tiers = TierLogic.moveItem(tiers, itemId: id, targetTierName: tier)
+    // History auto-captured by HistoryLogic
+}
+```
+
+### Async Operations & Progress
+Wrap long operations with loading indicators and progress tracking:
+```swift
+await withLoadingIndicator(message: "Loading...") {
+    updateProgress(0.5)
+    // async work
+}
+// Shows toast on success/error via AppState+Toast
+```
+
+### Persistence
+- **Auto-save:** UserDefaults via `AppState+Persistence.swift` (save/load/autoSave)
+- **Export:** `exportToFormat(.text/.json/.markdown/.csv/.png/.pdf)` — tvOS excludes PDF via `#if os(tvOS)`
+- **Import:** Use `ModelResolver.loadProject(from: data)` → `resolveTiers()` for JSON/CSV
+
+## tvOS UX & Focus Management
+
+### Focus System
+- **Overlays:** `Views/Overlays/` use `.focusSection()` + `.focusable()`
+- **Modal blocking:** Set `.allowsHitTesting(!modalActive)` on background (never `.disabled()` — breaks accessibility)
+- **Accessibility IDs:** Required for UI tests. Convention: `{Component}_{Action}` (e.g., `Toolbar_H2H`, `QuickMove_Overlay`, `ActionBar_MultiSelect`)
+- **tvOS 26 interactions:** Use `.focusable(interactions: .activate)` for action-only surfaces and opt into additional interactions (text entry, directional input) only when needed so the new multi-mode focus model stays predictable on remote hardware.
+- **Focus effects:** When supplying custom focus visuals, gate the system halo with `.focusEffectDisabled(_:)` and validate both the default glass halo and any overrides using the Apple TV 4K (3rd gen) tvOS 26 simulator profile.
+
+**Critical bug pattern:** NEVER add `.accessibilityIdentifier()` to parent containers with `.accessibilityElement(children: .contain)` — this overrides all child IDs. Apply to leaf elements only (buttons, cards, specific views).
+
+### Exit Command Pattern
+tvOS Exit button (Menu/⌘) should dismiss modals, not exit app:
+```swift
+#if os(tvOS)
+.onExitCommand { app.dismissCurrentOverlay() }
+#endif
+```
+
+### Head-to-Head Overlay Specifics
+- **Skip card:** Centered with `clock.arrow.circlepath` icon, live counter (`H2H_SkippedCount`)
+- **Focus default:** Left option when pair is active
+- **Queue exhaustion:** Auto-show Finish button when queue empties
+- **Exit handling:** Route through `cancelH2H(fromExitCommand:)` for debounce
+
+### Design Tokens
+**Use `Design/` helpers exclusively** — no hardcoded values
+- Colors: `Palette.primary`, `Palette.text`, `Palette.tierS`, etc.
+- Typography: `TypeScale.h1`, `TypeScale.body`, etc.
+- Spacing: `Metrics.padding`, `Metrics.cardPadding`, `TVMetrics.topBarHeight`
+- Effects: Apply Liquid Glass with SwiftUI’s tvOS 26 APIs — `glassEffect(_:in:)`, `GlassEffectContainer`, and `buttonStyle(.glass)`/`GlassProminentButtonStyle` — for chrome surfaces in our tvOS 26 target; fallbacks are optional and only necessary if we later choose to support older devices.
+
+## Build & Test
+
+### Build Commands
+**VS Code task:** "Build tvOS Tiercade (Debug)"
+**Manual:**
+```bash
+xcodebuild -project Tiercade.xcodeproj -scheme Tiercade \
+  -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest'
+```
+
+### Test Commands
+```bash
+# Core logic tests (Swift Testing)
+cd TiercadeCore && swift test
+
+# Full pipeline (build + UI tests + artifacts)
+./tools/tvOS_build_and_test.sh
+
+# Artifacts land in /tmp:
+# - tiercade_ui_before.png, tiercade_ui_after.png
+# - tiercade_debug.log
+# - tiercade_build_and_test.log
+```
+
+### UI Test Strategy
+- **Framework:** Swift Testing for new tests. UI tests use `XCUIRemote.shared` for tvOS remote simulation
+- **Launch arg:** `-uiTest` enables test-only hooks
+- **Focus:** Existence checks (`app.buttons["ID"].exists`), element counts, component verification
+- **Avoid:** Complex navigation (XCUIRemote too slow, causes timeouts ~12s)
+- **Current suite:** 11 tests, ~2min runtime, 100% passing
+
+### Manual Verification
+- Validate visuals in the latest tvOS 26 Apple TV 4K simulator; that environment mirrors the focus halos and Liquid Glass chrome we care about.
+- After builds: Keep simulator open, test focus/dismissal with Siri Remote simulator (or Mac keyboard arrows/Space/ESC)
+
+## Data Contracts & Patterns
+
+### Tier Structure
+**Order:** `["S","A","B","C","D","F","unranked"]` (always respect `displayLabel`/`displayColorHex` overrides)
+**Items:** TiercadeCore `Item` type:
+```swift
+Item(id: String, attributes: [String: Any])
+// Key fields: name, seasonString/seasonNumber, imageUrl
+```
+
+### Error Handling
+Use typed errors (Swift 6 pattern):
+```swift
+enum ExportError: Error { case formatNotSupported, dataEncodingFailed, ... }
+enum ImportError: Error { case invalidFormat, missingRequiredField, ... }
+```
+
+### Commits
+Conventional Commits: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`
+Add scope for clarity: `feat(tvOS): implement quick move overlay`
+
+## Key Directories
+```
+Tiercade/
+  State/           # AppState + extensions
+  Views/           # Main, Overlays, Toolbar, Components
+  Design/          # Tokens (Palette, Metrics, TypeScale, TVMetrics)
+  Export/          # Format renderers
+  Util/            # Focus helpers, utilities
+TiercadeCore/      # Platform-agnostic Swift package
+  Sources/         # Models, Logic, Formatters
+  Tests/           # Swift Testing unit tests
+tools/             # Build/test automation, image fetching
+```
+
+## Debugging Notes
+
+### SourceKit False Positives
+"No such module 'TiercadeCore'" errors in Xcode/SourceKit are common — **trust `xcodebuild` output**
+
+### Debug Logging
+`AppState.appendDebugFile(message)` writes to `/tmp/tiercade_debug.log`
+
+### Image Asset Management
+```bash
+export TMDB_API_KEY='your-key'
+./tools/fetch_bundled_images.sh  # Fetch images for bundled tierlists
+# See tools/README_IMAGES.md for details
+```
+
+### Common Issues
+1. **Build fails:** Check TiercadeCore is added as local package dependency
+2. **UI test timeouts:** Reduce navigation complexity, use direct element access
+3. **Focus loss:** Verify `.focusSection()` boundaries, check accessibility ID placement
+4. tvOS 26 requires TLS 1.2+ by default for outbound network requests; ensure remote endpoints negotiate an acceptable cipher suite or customize `NWProtocolTLS.Options` if absolutely necessary.

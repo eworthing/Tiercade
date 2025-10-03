@@ -1,7 +1,6 @@
 #if os(tvOS)
 import XCTest
 
-
 class ThemePickerOverlayFocusTests: XCTestCase {
     override func setUp() {
         super.setUp()

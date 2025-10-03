@@ -10,7 +10,7 @@ struct BuildInfoView: View {
         return ""
         #endif
     }
-    
+
     private var formattedBuildTime: String {
         #if DEBUG
         let now = Date()
@@ -21,7 +21,7 @@ struct BuildInfoView: View {
         return ""
         #endif
     }
-    
+
     var body: some View {
         #if DEBUG
         Text("Build: \(formattedBuildTime)")
