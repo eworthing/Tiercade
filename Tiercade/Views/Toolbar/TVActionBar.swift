@@ -13,25 +13,68 @@ struct TVActionBar: View {
 
             HStack(spacing: 20) {
                 Button {
-                    app.isMultiSelect.toggle()
-                    if !app.isMultiSelect { app.clearSelection() }
+                    withAnimation(.snappy(duration: 0.18, extraBounce: 0.04)) {
+                        app.isMultiSelect.toggle()
+                        if !app.isMultiSelect { app.clearSelection() }
+                    }
                 } label: {
-                    HStack(spacing: 12) {
-                        Text("Multi-Select")
+                    HStack(spacing: 16) {
+                        Image(systemName: app.isMultiSelect ? "checkmark.circle.fill" : "circle")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(app.isMultiSelect ? Palette.brand : Palette.textDim)
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Multi-Select")
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(.primary)
+
+                            Text("Enabled")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Palette.brand)
+                                .opacity(app.isMultiSelect ? 1 : 0)
+                                .accessibilityHidden(!app.isMultiSelect)
+                        }
+
+                        Spacer()
+
                         if app.isMultiSelect {
                             Capsule()
-                                .fill(Color.white.opacity(0.2))
-                                .frame(width: 2, height: 24)
-                            Text("\(app.selection.count)")
-                                .font(.callout.weight(.semibold))
-                                .transition(.scale.combined(with: .opacity))
+                                .fill(Palette.brand.opacity(0.28))
+                                .overlay(
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "square.stack.3d.up.fill")
+                                            .font(.callout.weight(.semibold))
+                                        Text("Active · \(app.selection.count)")
+                                            .font(.callout.weight(.semibold))
+                                    }
+                                        .foregroundStyle(Color.white)
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 6)
+                                )
                                 .accessibilityIdentifier("ActionBar_SelectionCount")
+                                .transition(.move(edge: .trailing).combined(with: .opacity))
                         }
                     }
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 14)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(multiSelectBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                    .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                 }
                 .buttonStyle(.tvRemote(.secondary))
+                .animation(.easeOut(duration: 0.18), value: app.isMultiSelect)
                 .accessibilityIdentifier("ActionBar_MultiSelect")
+                .accessibilityValue(
+                    app.isMultiSelect
+                        ? "Multi-select on with \(app.selection.count) selected"
+                        : "Multi-select off"
+                )
+                .accessibilityHint(
+                    app.isMultiSelect
+                        ? "Press to exit multi-select"
+                        : "Press to enable multi-select"
+                )
 
                 Divider().frame(height: 28)
 
@@ -64,6 +107,18 @@ struct TVActionBar: View {
         // For UI testing, we need elements to be accessible even when not focused
         // NOTE: Don't set accessibilityIdentifier on the container - it overrides children!
         .accessibilityElement(children: .contain)
+    }
+
+    private var multiSelectBackground: some View {
+        RoundedRectangle(cornerRadius: 28, style: .continuous)
+            .fill(app.isMultiSelect ? Palette.brand.opacity(0.22) : Color.white.opacity(0.04))
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(
+                        app.isMultiSelect ? Palette.brand : Color.white.opacity(0.12),
+                        lineWidth: app.isMultiSelect ? 2 : 1
+                    )
+            )
     }
 }
 #endif

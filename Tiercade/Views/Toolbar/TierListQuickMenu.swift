@@ -49,6 +49,45 @@ struct TierListQuickMenu: View {
     }
 
     private var menuLabel: some View {
+        #if os(tvOS)
+        VStack(spacing: 10) {
+            Text("Tier Library")
+                .font(TypeScale.body)
+                .fontWeight(.semibold)
+                .foregroundStyle(Palette.textDim)
+
+            HStack(spacing: 14) {
+                Image(systemName: "square.grid.2x2")
+                    .font(.system(size: 38, weight: .semibold))
+
+                Text(app.activeTierDisplayName)
+                    .font(TypeScale.h3)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .accessibilityIdentifier("Toolbar_TierListMenu_Title")
+            }
+            .foregroundStyle(Palette.text)
+
+            Text("Browse bundled & saved lists")
+                .font(TypeScale.label)
+                .fontWeight(.semibold)
+                .foregroundStyle(Palette.textDim)
+                .opacity(0.9)
+        }
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 44)
+        .padding(.vertical, 22)
+        .frame(minWidth: 420)
+        .background(
+            RoundedRectangle(cornerRadius: 36, style: .continuous)
+                .fill(Color.white.opacity(0.16))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 36, style: .continuous)
+                        .stroke(Color.white.opacity(0.28), lineWidth: 1.2)
+                )
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 36, style: .continuous))
+        #else
         HStack(spacing: 12) {
             Image(systemName: "list.bullet.rectangle")
                 .font(.system(size: 22, weight: .semibold))
@@ -75,6 +114,7 @@ struct TierListQuickMenu: View {
                     )
                 )
         )
+        #endif
     }
 
     private func quickPickButton(for handle: TierListHandle) -> some View {
