@@ -2,6 +2,58 @@ import Foundation
 import SwiftUI
 import TiercadeCore
 
+private struct CodableTheme: Codable {
+    struct CodableTier: Codable {
+        let id: UUID
+        let index: Int
+        let name: String
+        let colorHex: String
+        let isUnranked: Bool
+    }
+
+    let id: UUID
+    let slug: String
+    let name: String
+    let description: String
+    let tiers: [CodableTier]
+
+    init(theme: TierTheme) {
+        id = theme.id
+        slug = theme.slug
+        name = theme.displayName
+        description = theme.shortDescription
+        tiers = theme.tiers.map { tier in
+            CodableTier(
+                id: tier.id,
+                index: tier.index,
+                name: tier.name,
+                colorHex: tier.colorHex,
+                isUnranked: tier.isUnranked
+            )
+        }
+    }
+
+    func toTheme() -> TierTheme {
+        let tierModels = tiers.map { tier in
+            TierTheme.Tier(
+                id: tier.id,
+                index: tier.index,
+                name: tier.name,
+                colorHex: tier.colorHex,
+                isUnranked: tier.isUnranked
+            )
+        }
+
+        return TierTheme(
+            id: id,
+            slug: slug,
+            displayName: name,
+            shortDescription: description,
+            tiers: tierModels
+        )
+    }
+}
+
 @MainActor
 extension AppState {
     // MARK: - Enhanced Persistence
@@ -14,12 +66,14 @@ extension AppState {
                 let tierLabels: [String: String]
                 let tierColors: [String: String]
                 let selectedThemeID: String?
+                let customThemes: [CodableTheme]
             }
             let saveData = SaveData(
                 tiers: tiers,
                 tierLabels: tierLabels,
                 tierColors: tierColors,
-                selectedThemeID: selectedThemeID.uuidString
+                selectedThemeID: selectedThemeID.uuidString,
+                customThemes: customThemes.map(CodableTheme.init)
             )
             let data = try JSONEncoder().encode(saveData)
             UserDefaults.standard.set(data, forKey: storageKey)
@@ -45,6 +99,7 @@ extension AppState {
                 let tierLabels: [String: String]
                 let tierColors: [String: String]
                 let selectedThemeID: String?
+                let customThemes: [CodableTheme]
                 let createdDate: Date
                 let appVersion: String
             }
@@ -54,6 +109,7 @@ extension AppState {
                 tierLabels: tierLabels,
                 tierColors: tierColors,
                 selectedThemeID: selectedThemeID.uuidString,
+                customThemes: customThemes.map(CodableTheme.init),
                 createdDate: Date(),
                 appVersion: "1.0"
             )
@@ -82,6 +138,8 @@ extension AppState {
     func load() -> Bool {
         guard let data = UserDefaults.standard.data(forKey: storageKey) else { return false }
 
+        restoreCustomThemes([])
+
         if loadModernFormat(from: data) {
             return true
         }
@@ -97,11 +155,13 @@ extension AppState {
                 let tierLabels: [String: String]
                 let tierColors: [String: String]
                 let selectedThemeID: String?
+                let customThemes: [CodableTheme]?
             }
             if let saveData = try? JSONDecoder().decode(SaveData.self, from: data) {
                 applyLoadedTiers(saveData.tiers, isLegacy: false)
                 tierLabels = saveData.tierLabels
                 tierColors = saveData.tierColors
+                restoreCustomThemes(saveData.customThemes ?? [])
                 restoreTheme(themeIDString: saveData.selectedThemeID)
                 return true
             }
@@ -124,6 +184,7 @@ extension AppState {
 
             let newTiers = parseLegacyTiers(from: tierData)
             applyLoadedTiers(newTiers, isLegacy: true)
+            restoreCustomThemes([])
             return true
         } catch {
             print("Legacy load failed: \(error)")
@@ -166,7 +227,7 @@ extension AppState {
     private func restoreTheme(themeIDString: String?) {
         if let themeIDString,
            let uuid = UUID(uuidString: themeIDString),
-           let theme = TierThemeCatalog.theme(id: uuid) {
+           let theme = theme(with: uuid) {
             selectedThemeID = uuid
             selectedTheme = theme
             return
@@ -175,6 +236,14 @@ extension AppState {
         let fallback = TierThemeCatalog.defaultTheme
         selectedTheme = fallback
         selectedThemeID = fallback.id
+    }
+
+    private func restoreCustomThemes(_ codableThemes: [CodableTheme]) {
+        let restored = codableThemes.map { $0.toTheme() }
+        customThemes = restored.sorted {
+            $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+        }
+        customThemeIDs = Set(restored.map(\TierTheme.id))
     }
 
     @discardableResult
@@ -190,6 +259,7 @@ extension AppState {
                 let tierLabels: [String: String]?
                 let tierColors: [String: String]?
                 let selectedThemeID: String?
+                let customThemes: [CodableTheme]?
                 let createdDate: Date
                 let appVersion: String
             }
@@ -206,6 +276,11 @@ extension AppState {
                 }
                 if let colors = saveData.tierColors {
                     tierColors = colors
+                }
+                if let custom = saveData.customThemes {
+                    restoreCustomThemes(custom)
+                } else {
+                    restoreCustomThemes([])
                 }
                 restoreTheme(themeIDString: saveData.selectedThemeID)
                 showSuccessToast("File Loaded", message: "Loaded \(fileName).json")

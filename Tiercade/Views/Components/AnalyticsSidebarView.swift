@@ -10,35 +10,53 @@ struct AnalyticsSidebarView: View {
     private enum FocusElement: Hashable {
         case close
         case insight(Int)
+        case backgroundTrap // Traps focus escaping to toolbar/grid
     }
 
     var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width * 0.65
-            ZStack(alignment: .topTrailing) {
-                sidebarContent
-                    .frame(width: width, height: proxy.size.height, alignment: .top)
+            ZStack(alignment: .trailing) {
+                // Focus-trapping background: Focusable to catch stray focus and redirect back
+                Color.black.opacity(0.55)
+                    .ignoresSafeArea()
+                    .onTapGesture { app.closeAnalyticsSidebar() }
+                    .accessibilityHidden(true)
+                    .focusable()
+                    .focused($focusedElement, equals: .backgroundTrap)
 
-                closeButton
-                    .padding(60)
+                ZStack(alignment: .topTrailing) {
+                    sidebarContent
+                        .frame(width: width, height: proxy.size.height, alignment: .top)
+
+                    closeButton
+                        .padding(60)
+                }
+                .frame(width: width, height: proxy.size.height, alignment: .top)
+                .background(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.2), radius: 24, x: -8, y: 0)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Analytics Sidebar")
+                .accessibilityHint("View tier distribution statistics and balance score")
+                .accessibilityAddTraits(.isModal)
+                #if os(tvOS)
+                .focusSection()
+                .defaultFocus($focusedElement, .close)
+                .onAppear { focusedElement = .close }
+                .onDisappear { focusedElement = nil }
+                .onChange(of: focusedElement) { _, newValue in
+                    // Redirect background trap to close button
+                    if case .backgroundTrap = newValue {
+                        focusedElement = .close
+                    }
+                }
+                .onExitCommand { app.closeAnalyticsSidebar() }
+                #endif
             }
-            .frame(width: width, height: proxy.size.height, alignment: .top)
-            .background(.ultraThinMaterial)
-            .shadow(color: .black.opacity(0.2), radius: 24, x: -8, y: 0)
             .transition(
                 .move(edge: .trailing)
                     .combined(with: .opacity)
             )
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Analytics Sidebar")
-            .accessibilityHint("View tier distribution statistics and balance score")
-            #if os(tvOS)
-            .focusSection()
-            .defaultFocus($focusedElement, .close)
-            .onAppear { focusedElement = .close }
-            .onDisappear { focusedElement = nil }
-            .onExitCommand { app.closeAnalyticsSidebar() }
-            #endif
             .animation(.easeInOut(duration: 0.35), value: app.showAnalyticsSidebar)
         }
     }
@@ -71,20 +89,12 @@ struct AnalyticsSidebarView: View {
     }
 
     private var closeButton: some View {
-        Button {
+        Button("Close", role: .close) {
             app.closeAnalyticsSidebar()
-        } label: {
-            Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 44, weight: .bold))
-                .symbolRenderingMode(.hierarchical)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Close Analytics")
-        .accessibilityHint("Double-tap to return to tier list")
-        #if os(tvOS)
-        .focusable(true)
+        .buttonStyle(.borderedProminent)
         .focused($focusedElement, equals: .close)
-        #endif
+        .accessibilityIdentifier("Analytics_Close")
     }
 
     private func headerSection(totalItems: Int) -> some View {

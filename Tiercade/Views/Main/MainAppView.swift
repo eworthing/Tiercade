@@ -18,18 +18,16 @@ struct MainAppView: View {
     #endif
 
     var body: some View {
+    @Bindable var app = app
     let detailPresented = app.detailItem != nil
     let headToHeadPresented = app.h2hActive
-    // Use the requested overlay visibility (showThemePicker) rather than the
-    // overlay's internal active flag. The active flag is set in the overlay's
-    // onAppear, which can introduce a race where the toolbar remains
-    // interactive briefly and focus can escape. Use showThemePicker so hit
-    // testing is blocked immediately when the overlay is requested.
-    let themePickerPresented = app.showThemePicker
+    let themeCreatorPresented = app.showThemeCreator
+    // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
+    // which provides automatic focus containment via separate presentation context
     #if os(tvOS)
-    let modalBlockingFocus = headToHeadPresented || detailPresented || themePickerPresented
+    let modalBlockingFocus = headToHeadPresented || detailPresented || themeCreatorPresented
     #else
-    let modalBlockingFocus = detailPresented || headToHeadPresented || themePickerPresented
+    let modalBlockingFocus = detailPresented || headToHeadPresented || themeCreatorPresented
     #endif
 
         return Group {
@@ -59,7 +57,7 @@ struct MainAppView: View {
             #if os(tvOS)
             // Top toolbar (overlay so it doesn't reduce content area)
             .overlay(alignment: .top) {
-                TVToolbarView(app: app)
+                TVToolbarView(app: app, modalActive: modalBlockingFocus)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .frame(height: TVMetrics.topBarHeight)
                     .background(.thinMaterial)
@@ -92,7 +90,9 @@ struct MainAppView: View {
             if newPhase == .active { FocusUtils.seedFocus() }
         }
         .onExitCommand {
-            if app.showingTierListBrowser {
+            if app.showThemeCreator {
+                app.cancelThemeCreation(returnToThemePicker: false)
+            } else if app.showingTierListBrowser {
                 app.dismissTierListBrowser()
             } else if app.showAnalyticsSidebar {
                 app.closeAnalyticsSidebar()
@@ -166,6 +166,14 @@ struct MainAppView: View {
                             .transition(.opacity.combined(with: .scale(scale: 0.9)))
                             .zIndex(54)
                     }
+                }
+
+                if app.showThemeCreator, let draft = app.themeDraft {
+                    AccessibilityBridgeView()
+
+                    ThemeCreatorOverlay(appState: app, draft: draft)
+                        .transition(.opacity.combined(with: .scale(scale: 0.94)))
+                        .zIndex(55)
                 }
 
                 // Toast messages (bottom)
@@ -272,11 +280,27 @@ private struct AccessibilityBridgeView: View {
 // Simple tvOS-friendly toolbar exposing essential actions as buttons.
 struct TVToolbarView: View {
     @Bindable var app: AppState
+    var modalActive: Bool = false
     // Seed and manage initial focus for tvOS toolbar controls
     @FocusState private var focusedControl: Control?
 
     private enum Control: Hashable {
         case undo, redo, randomize, reset, library, h2h, analytics, theme
+    }
+
+    private var buildTimestamp: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return "Build: \(formatter.string(from: buildDate))"
+    }
+
+    private var buildDate: Date {
+        // Use compile time - this gets updated on every build
+        #if DEBUG
+        return Date()
+        #else
+        return Bundle.main.object(forInfoDictionaryKey: "BuildDate") as? Date ?? Date()
+        #endif
     }
 
     var body: some View {
@@ -400,8 +424,16 @@ struct TVToolbarView: View {
             .accessibilityLabel("Tier Themes")
             .accessibilityHint("Choose a color theme for your tiers")
             .focusTooltip("Tier Themes")
+
+            Spacer(minLength: 32)
+
+            // Build timestamp for development
+            Text(buildTimestamp)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .opacity(0.6)
+                .fixedSize()
         }
-        .lineLimit(1)
         .padding(.horizontal, TVMetrics.barHorizontalPadding)
         .padding(.vertical, TVMetrics.barVerticalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -409,7 +441,6 @@ struct TVToolbarView: View {
         .fixedSize(horizontal: false, vertical: true)
         #if os(tvOS)
         .focusSection()
-        // Don't seed default focus here; let grid own initial focus for tvOS
         #endif
         .onChange(of: app.showAnalyticsSidebar) { _, isPresented in
             if !isPresented {

@@ -119,4 +119,29 @@ struct TiercadeTests {
         #expect(true)
     }
 
+    @Test("Completing theme creation registers a custom theme")
+    func createCustomTheme() async throws {
+        let appState = AppState()
+        appState.customThemes = []
+        appState.customThemeIDs = []
+        appState.themeDraft = nil
+
+        let baseTheme = appState.selectedTheme
+
+        appState.beginThemeCreation(baseTheme: baseTheme)
+        appState.updateThemeDraftName("Test Custom Theme")
+        appState.updateThemeDraftDescription("Verifies theme creation workflow")
+
+        if let tierID = appState.themeDraft?.tiers.first?.id {
+            appState.selectThemeDraftTier(tierID)
+            appState.assignColorToActiveTier("#FFAA00")
+        }
+
+        appState.completeThemeCreation()
+
+        #expect(appState.customThemes.contains { $0.displayName == "Test Custom Theme" })
+        #expect(appState.selectedTheme.displayName == "Test Custom Theme")
+        #expect(appState.isCustomTheme(appState.selectedTheme))
+    }
+
 }
