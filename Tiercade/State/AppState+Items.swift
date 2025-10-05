@@ -60,30 +60,47 @@ extension AppState {
     }
 
     func performRandomize() {
+        // Collect all items from all tiers (including unranked)
         var allItems: [Item] = []
-        for tierName in tierOrder + ["unranked"] {
+        for tierName in Array(tiers.keys) {
             allItems.append(contentsOf: tiers[tierName] ?? [])
         }
 
-        var newTiers = tiers
-        for tierName in tierOrder + ["unranked"] {
+        guard !allItems.isEmpty else { return }
+
+        // Build fresh tiers dictionary - ONLY include tiers from tierOrder plus unranked
+        var newTiers: Items = [:]
+        for tierName in tierOrder {
             newTiers[tierName] = []
         }
+        newTiers["unranked"] = []
 
+        // Shuffle all items
         allItems.shuffle()
-        let tiersToFill = tierOrder
-        let itemsPerTier = max(1, allItems.count / tiersToFill.count)
 
-        for (index, item) in allItems.enumerated() {
-            let tierIndex = min(index / itemsPerTier, tiersToFill.count - 1)
-            let tierName = tiersToFill[tierIndex]
-            newTiers[tierName, default: []].append(item)
+        // Distribute to ranked tiers only (NOT unranked)
+        var remainingItems = allItems
+
+        // If we have enough items, guarantee at least 1 item per tier
+        if allItems.count >= tierOrder.count {
+            for tierName in tierOrder {
+                if let item = remainingItems.popLast() {
+                    newTiers[tierName, default: []].append(item)
+                }
+            }
+        }
+
+        // Randomly distribute remaining items across ranked tiers only
+        for item in remainingItems {
+            let randomTierName = tierOrder.randomElement() ?? tierOrder[0]
+            newTiers[randomTierName, default: []].append(item)
         }
 
         tiers = newTiers
         history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
-        showSuccessToast("Tiers Randomized", message: "All items have been redistributed randomly")
+
+        showSuccessToast("Tiers Randomized", message: "All \(allItems.count) items distributed randomly")
         announce("Tiers randomized")
     }
 

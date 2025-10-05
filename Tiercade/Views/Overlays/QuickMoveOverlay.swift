@@ -7,14 +7,17 @@ struct QuickMoveOverlay: View {
 
     @FocusState private var focused: FocusField?
 
-    private enum FocusField: Hashable { case s, a, b, c, u, more, cancel }
+    private enum FocusField: Hashable { case s, a, b, c, u, more, cancel, backgroundTrap }
 
     var body: some View {
         if let item = app.quickMoveTarget {
             ZStack {
+                // Focus-trapping background: Focusable to catch stray focus and redirect back
                 Color.black.opacity(0.65)
                     .ignoresSafeArea()
                     .onTapGesture { app.cancelQuickMove() }
+                    .focusable()
+                    .focused($focused, equals: .backgroundTrap)
                     .accessibilityHidden(true)
 
                 VStack(spacing: 16) {
