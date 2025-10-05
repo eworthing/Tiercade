@@ -134,36 +134,41 @@ struct QuickRankOverlay: View {
     }
     var body: some View {
         if let item = app.quickRankTarget {
-            VStack(spacing: 12) {
-                // mark overlay for UI tests
-                Text("Quick Rank: \(item.name ?? item.id)").font(.headline)
-                HStack(spacing: 8) {
-                    ForEach(app.tierOrder, id: \.self) { tier in
-                        Button(tier) { app.commitQuickRank(to: tier) }
-                            .buttonStyle(PrimaryButtonStyle())
-                            .accessibilityIdentifier("QuickRank_Tier_\(tier)")
-                            .focused($focused, equals: .tier(tier))
+            ZStack {
+                Color.black.opacity(0.65)
+                    .ignoresSafeArea()
+                    .onTapGesture { app.cancelQuickRank() }
+                    .accessibilityHidden(true)
+
+                VStack(spacing: 12) {
+                    // mark overlay for UI tests
+                    Text("Quick Rank: \(item.name ?? item.id)").font(.headline)
+                    HStack(spacing: 8) {
+                        ForEach(app.tierOrder, id: \.self) { tier in
+                            Button(tier) { app.commitQuickRank(to: tier) }
+                                .buttonStyle(PrimaryButtonStyle())
+                                .accessibilityIdentifier("QuickRank_Tier_\(tier)")
+                                .focused($focused, equals: .tier(tier))
+                        }
+                        Button("Cancel", role: .cancel) { app.cancelQuickRank() }
+                            .accessibilityHint("Cancel quick rank")
+                            .accessibilityIdentifier("QuickRank_Cancel")
+                            .focused($focused, equals: .cancel)
                     }
-                    Button("Cancel", role: .cancel) { app.cancelQuickRank() }
-                        .accessibilityHint("Cancel quick rank")
-                        .accessibilityIdentifier("QuickRank_Cancel")
-                        .focused($focused, equals: .cancel)
                 }
+                .accessibilityIdentifier("QuickRank_Overlay")
+                .padding(Metrics.grid * 1.5)
+                .background(.thinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(Metrics.grid)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isModal)
+                .focusSection()
+                .defaultFocus($focused, defaultFocusField)
+                .onAppear { focused = defaultFocusField }
+                .onDisappear { focused = nil }
             }
-            .accessibilityIdentifier("QuickRank_Overlay")
-            .padding(Metrics.grid * 1.5)
-            .background(.thinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .padding(Metrics.grid)
             .transition(.move(edge: .bottom).combined(with: .opacity))
-            #if os(macOS) || os(tvOS)
-            .focusable(true)
-            .accessibilityAddTraits(.isModal)
-            .defaultFocus($focused, defaultFocusField)
-            .onAppear { focused = defaultFocusField }
-            .onDisappear { focused = nil }
-            .focusSection()
-            #endif
         }
     }
 
@@ -258,20 +263,20 @@ struct HeadToHeadOverlay: View {
                     }
 
                     HStack(spacing: 16) {
-                        Button("Finish") {
-                            app.finishH2H()
-                        }
-                        .buttonStyle(TVRemoteButtonStyle(role: .primary))
-                        .accessibilityIdentifier("H2H_Finish")
-                        .focused($focused, equals: .finish)
-
                         Button("Cancel", role: .cancel) {
                             app.cancelH2H()
                         }
-                        .buttonStyle(TVRemoteButtonStyle(role: .secondary))
+                        .buttonStyle(.borderedProminent)
                         .accessibilityHint("Cancel head-to-head and return to the main view")
                         .accessibilityIdentifier("H2H_Cancel")
                         .focused($focused, equals: .cancel)
+
+                        Button("Finish") {
+                            app.finishH2H()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier("H2H_Finish")
+                        .focused($focused, equals: .finish)
                     }
                 }
                 .padding(Metrics.grid * 2)
@@ -365,6 +370,7 @@ struct HeadToHeadOverlay: View {
         switch current {
         case .right: return .skip
         case .skip: return .left
+        case .finish: return .cancel
         default: return nil
         }
     }
@@ -373,6 +379,7 @@ struct HeadToHeadOverlay: View {
         switch current {
         case .left: return .skip
         case .skip: return .right
+        case .cancel: return .finish
         default: return nil
         }
     }
@@ -391,7 +398,7 @@ struct HeadToHeadOverlay: View {
     private func downTarget(from current: FocusField) -> FocusField? {
         switch current {
         case .left, .right, .skip:
-            return .finish
+            return .cancel
         default:
             return nil
         }

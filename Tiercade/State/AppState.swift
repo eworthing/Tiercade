@@ -92,6 +92,11 @@ final class AppState {
     var selectedTheme: TierTheme = TierThemeCatalog.defaultTheme
     var showThemePicker: Bool = false
     var themePickerActive: Bool = false
+    var customThemes: [TierTheme] = []
+    var customThemeIDs: Set<UUID> = []
+    var showThemeCreator: Bool = false
+    var themeCreatorActive: Bool = false
+    var themeDraft: ThemeDraft?
     // Head-to-Head
     var h2hActive: Bool = false
     var h2hPool: [Item] = []
@@ -273,6 +278,9 @@ final class AppState {
         selectedTheme = fallbackTheme
         selectedThemeID = fallbackTheme.id
         applyCurrentTheme()
+        customThemes = []
+        customThemeIDs = []
+        themeDraft = nil
         logEvent("seed: loaded default bundled project \(defaultProject.id)")
     }
 
