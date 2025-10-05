@@ -29,8 +29,9 @@ extension AppState {
 
     func move(_ id: String, to tier: String) {
         if lockedTiers.contains(tier) {
-            showErrorToast("Tier Locked", message: "Cannot move into \(tier)")
-            announce("Tier \(tier) is locked. Move canceled.")
+            let displayTier = displayLabel(for: tier)
+            showErrorToast("Tier Locked", message: "Cannot move into \(displayTier)")
+            announce("Tier \(displayTier) is locked. Move canceled.")
             return
         }
         let next = TierLogic.moveItem(tiers, itemId: id, targetTierName: tier)
@@ -38,12 +39,13 @@ extension AppState {
         tiers = next
         history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
+        let displayTier = displayLabel(for: tier)
         if let name = tiers[tier]?.first(where: { $0.id == id })?.name {
-            showInfoToast("Moved", message: "Moved ‘\(name)’ to \(tier)")
-            announce("Moved ‘\(name)’ to \(tier) tier")
+            showInfoToast("Moved", message: "Moved '\(name)' to \(displayTier)")
+            announce("Moved '\(name)' to \(displayTier) tier")
         } else {
-            showInfoToast("Moved", message: "Moved to \(tier)")
-            announce("Moved to \(tier) tier")
+            showInfoToast("Moved", message: "Moved to \(displayTier)")
+            announce("Moved to \(displayTier) tier")
         }
         let counts = tierOrder
             .map { "\($0):\(tiers[$0]?.count ?? 0)" }
@@ -53,9 +55,10 @@ extension AppState {
 
     func batchMove(_ ids: [String], to tier: String) {
         guard !ids.isEmpty else { return }
+        let displayTier = displayLabel(for: tier)
         guard !lockedTiers.contains(tier) else {
-            showErrorToast("Tier Locked", message: "Cannot move into \(tier)")
-            announce("Tier \(tier) is locked. Move canceled.")
+            showErrorToast("Tier Locked", message: "Cannot move into \(displayTier)")
+            announce("Tier \(displayTier) is locked. Move canceled.")
             return
         }
         var next = tiers
@@ -67,9 +70,9 @@ extension AppState {
         history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
         clearSelection()
-        showSuccessToast("Moved Items", message: "Moved \(ids.count) item(s) to \(tier)")
+        showSuccessToast("Moved Items", message: "Moved \(ids.count) item(s) to \(displayTier)")
         let count = ids.count
-        let announcement = "Moved \(count) item\(count == 1 ? "" : "s") to \(tier) tier"
+        let announcement = "Moved \(count) item\(count == 1 ? "" : "s") to \(displayTier) tier"
         announce(announcement)
     }
 
@@ -92,9 +95,10 @@ extension AppState {
         tiers = next
         history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
-        let toastMessage = "Moved all items from \(tier) tier to unranked"
+        let displayTier = displayLabel(for: tier)
+        let toastMessage = "Moved all items from \(displayTier) tier to Unranked"
         showInfoToast("Tier Cleared", message: toastMessage)
-        let announcement = "Cleared \(tier) tier. Moved \(moving.count) item\(moving.count == 1 ? "" : "s") to unranked"
+        let announcement = "Cleared \(displayTier) tier. Moved \(moving.count) item\(moving.count == 1 ? "" : "s") to Unranked"
         announce(announcement)
     }
 

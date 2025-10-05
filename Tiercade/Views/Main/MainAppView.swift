@@ -22,10 +22,12 @@ struct MainAppView: View {
     let detailPresented = app.detailItem != nil
     let headToHeadPresented = app.h2hActive
     let themeCreatorPresented = app.showThemeCreator
+    let itemMenuPresented = app.itemMenuTarget != nil
+    let quickMovePresented = app.quickMoveTarget != nil
     // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
     // which provides automatic focus containment via separate presentation context
     #if os(tvOS)
-    let modalBlockingFocus = headToHeadPresented || detailPresented || themeCreatorPresented
+    let modalBlockingFocus = headToHeadPresented || detailPresented || themeCreatorPresented || itemMenuPresented || quickMovePresented
     #else
     let modalBlockingFocus = detailPresented || headToHeadPresented || themeCreatorPresented
     #endif
@@ -90,7 +92,11 @@ struct MainAppView: View {
             if newPhase == .active { FocusUtils.seedFocus() }
         }
         .onExitCommand {
-            if app.showThemeCreator {
+            if app.itemMenuTarget != nil {
+                app.dismissItemMenu()
+            } else if app.quickMoveTarget != nil {
+                app.cancelQuickMove()
+            } else if app.showThemeCreator {
                 app.cancelThemeCreation(returnToThemePicker: false)
             } else if app.showingTierListBrowser {
                 app.dismissTierListBrowser()
