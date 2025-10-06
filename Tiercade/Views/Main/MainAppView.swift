@@ -11,6 +11,7 @@ import Foundation
 
 struct MainAppView: View {
     @Environment(AppState.self) private var app: AppState
+    @State private var editMode: EditMode = .inactive
     #if os(tvOS)
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var detailFocus: DetailFocus?
@@ -49,6 +50,7 @@ struct MainAppView: View {
             ZStack {
                 TierGridView(tierOrder: app.tierOrder)
                     .environment(app)
+                    .environment(\.editMode, $editMode)
                     // Add content padding to avoid overlay bars overlap
                     .padding(.top, TVMetrics.contentTopInset)
                     .padding(.bottom, TVMetrics.contentBottomInset)
@@ -72,6 +74,7 @@ struct MainAppView: View {
             // Bottom action bar (safe area inset to avoid covering focused rows)
             .overlay(alignment: .bottom) {
                 TVActionBar(app: app)
+                    .environment(\.editMode, $editMode)
                     .allowsHitTesting(!modalBlockingFocus)
                     .accessibilityElement(children: .contain)
                 // Note: Don't use .disabled() as it removes elements from accessibility tree
@@ -106,6 +109,10 @@ struct MainAppView: View {
                 app.cancelH2H(fromExitCommand: true)
             } else if detailPresented {
                 app.detailItem = nil
+            } else if editMode == .active {
+                // Exit selection mode when Menu button pressed with no overlays active
+                editMode = .inactive
+                app.clearSelection()
             }
         }
         #endif

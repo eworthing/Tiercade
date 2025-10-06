@@ -110,7 +110,13 @@ struct TierTheme: Identifiable, Hashable, Sendable {
 
 @MainActor
 enum TierThemeCatalog {
-    private static let cachedThemes: [TierTheme] = TierThemeSeeds.defaults.map(TierTheme.init(entity:))
+    private static let cachedThemes: [TierTheme] = {
+        var themes: [TierTheme] = []
+        for entity in TierThemeSeeds.defaults {
+            themes.append(TierTheme(entity: entity))
+        }
+        return themes
+    }()
     private static let themesByID: [UUID: TierTheme] = Dictionary(
         uniqueKeysWithValues: cachedThemes.map { ($0.id, $0) }
     )

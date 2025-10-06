@@ -4,6 +4,11 @@ import TiercadeCore
 #if os(tvOS)
 struct TVActionBar: View {
     @Bindable var app: AppState
+    @Environment(\.editMode) private var editMode
+
+    private var isMultiSelectActive: Bool {
+        editMode?.wrappedValue == .active
+    }
 
     var body: some View {
         ZStack {
@@ -14,14 +19,14 @@ struct TVActionBar: View {
             HStack(spacing: 20) {
                 Button {
                     withAnimation(.snappy(duration: 0.18, extraBounce: 0.04)) {
-                        app.isMultiSelect.toggle()
-                        if !app.isMultiSelect { app.clearSelection() }
+                        editMode?.wrappedValue = isMultiSelectActive ? .inactive : .active
+                        if !isMultiSelectActive { app.clearSelection() }
                     }
                 } label: {
                     HStack(spacing: 16) {
-                        Image(systemName: app.isMultiSelect ? "checkmark.circle.fill" : "circle")
+                        Image(systemName: isMultiSelectActive ? "checkmark.circle.fill" : "circle")
                             .font(.title2.weight(.semibold))
-                            .foregroundStyle(app.isMultiSelect ? Palette.brand : Palette.textDim)
+                            .foregroundStyle(isMultiSelectActive ? Palette.brand : Palette.textDim)
 
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Multi-Select")
@@ -31,13 +36,13 @@ struct TVActionBar: View {
                             Text("Enabled")
                                 .font(.footnote.weight(.semibold))
                                 .foregroundStyle(Palette.brand)
-                                .opacity(app.isMultiSelect ? 1 : 0)
-                                .accessibilityHidden(!app.isMultiSelect)
+                                .opacity(isMultiSelectActive ? 1 : 0)
+                                .accessibilityHidden(!isMultiSelectActive)
                         }
 
                         Spacer()
 
-                        if app.isMultiSelect {
+                        if isMultiSelectActive {
                             Capsule()
                                 .fill(Palette.brand.opacity(0.28))
                                 .overlay(
@@ -63,17 +68,18 @@ struct TVActionBar: View {
                     .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                 }
                 .buttonStyle(.tvRemote(.secondary))
-                .animation(.easeOut(duration: 0.18), value: app.isMultiSelect)
+                .animation(.easeOut(duration: 0.18), value: isMultiSelectActive)
                 .accessibilityIdentifier("ActionBar_MultiSelect")
+                .accessibilityLabel(isMultiSelectActive ? "Exit Selection Mode" : "Enter Selection Mode")
                 .accessibilityValue(
-                    app.isMultiSelect
-                        ? "Multi-select on with \(app.selection.count) selected"
-                        : "Multi-select off"
+                    isMultiSelectActive
+                        ? "\(app.selection.count) items selected"
+                        : "Selection mode inactive"
                 )
                 .accessibilityHint(
-                    app.isMultiSelect
-                        ? "Press to exit multi-select"
-                        : "Press to enable multi-select"
+                    isMultiSelectActive
+                        ? "Press to exit selection mode and clear selection"
+                        : "Press to enable item selection"
                 )
 
                 Divider().frame(height: 28)
@@ -81,6 +87,8 @@ struct TVActionBar: View {
                 ForEach(app.tierOrder.prefix(4), id: \.self) { t in
                     Button("Move to \(t)") {
                         app.batchMove(Array(app.selection), to: t)
+                        // Exit selection mode after batch operation (Photos.app style)
+                        editMode?.wrappedValue = .inactive
                     }
                     .buttonStyle(.tvRemote(.primary))
                     .disabled(app.selection.isEmpty)
@@ -111,12 +119,12 @@ struct TVActionBar: View {
 
     private var multiSelectBackground: some View {
         RoundedRectangle(cornerRadius: 28, style: .continuous)
-            .fill(app.isMultiSelect ? Palette.brand.opacity(0.22) : Color.white.opacity(0.04))
+            .fill(isMultiSelectActive ? Palette.brand.opacity(0.22) : Color.white.opacity(0.04))
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .stroke(
-                        app.isMultiSelect ? Palette.brand : Color.white.opacity(0.12),
-                        lineWidth: app.isMultiSelect ? 2 : 1
+                        isMultiSelectActive ? Palette.brand : Color.white.opacity(0.12),
+                        lineWidth: isMultiSelectActive ? 2 : 1
                     )
             )
     }

@@ -125,6 +125,11 @@ struct CardView: View {
     let item: Item
     @Environment(AppState.self) var app
     @Environment(\.isFocused) var isFocused: Bool
+    @Environment(\.editMode) private var editMode
+
+    private var isMultiSelectActive: Bool {
+        editMode?.wrappedValue == .active
+    }
 
     private static let tierLookup: [String: Tier] = [
         "S": .s,
@@ -144,7 +149,7 @@ struct CardView: View {
         Button(
             action: {
                 #if os(tvOS)
-                if app.isMultiSelect {
+                if isMultiSelectActive {
                     app.toggleSelection(item.id)
                 } else {
                     app.presentItemMenu(item)
@@ -172,7 +177,7 @@ struct CardView: View {
                 }
                 #if os(tvOS)
                 .overlay(alignment: .topTrailing) {
-                    if app.isMultiSelect && app.isSelected(item.id) {
+                    if isMultiSelectActive && app.isSelected(item.id) {
                         Image(systemName: "checkmark.circle.fill")
                             .symbolRenderingMode(.palette)
                             .foregroundStyle(.white, Color.accentColor)
@@ -213,7 +218,7 @@ struct CardView: View {
         #endif
         #if os(tvOS)
         .onPlayPauseCommand {
-            if app.isMultiSelect {
+            if isMultiSelectActive {
                 app.toggleSelection(item.id)
             } else {
                 app.beginQuickMove(item)

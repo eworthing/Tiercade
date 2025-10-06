@@ -9,7 +9,7 @@ import TiercadeCore
 
 // MARK: - Export & Import System Types
 
-enum ExportFormat: CaseIterable {
+nonisolated enum ExportFormat: CaseIterable {
     case text, json, markdown, csv, png, pdf
 
     var fileExtension: String {
@@ -75,9 +75,8 @@ final class AppState {
     var quickRankTarget: Item?
     // tvOS quick move (Play/Pause accelerator)
     var quickMoveTarget: Item?
-    // Multi-select state for batch operations
+    // Multi-select state for batch operations (driven by editMode environment)
     var selection: Set<String> = []
-    var isMultiSelect: Bool = false
     // Detail overlay routing
     var detailItem: Item?
     // Item menu overlay routing (tvOS primary action)
