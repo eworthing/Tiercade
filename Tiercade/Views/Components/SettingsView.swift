@@ -1,6 +1,8 @@
 import SwiftUI
+import Observation
 
 struct SettingsView: View {
+    @Bindable var app: AppState
     @AppStorage("ui.theme") private var themeRaw: String = ThemePreference.system.rawValue
     @Environment(\.dismiss) private var dismiss
 
@@ -17,6 +19,18 @@ struct SettingsView: View {
                         ThemeOptionRow(option: option, selectionRaw: $themeRaw)
                             .listRowInsets(EdgeInsets(top: 12, leading: 32, bottom: 12, trailing: 32))
                             .listRowBackground(Color.clear)
+                    }
+                }
+
+                Section("Card Size") {
+                    ForEach(CardDensityPreference.allCases) { option in
+                        CardDensityOptionRow(
+                            option: option,
+                            isSelected: app.cardDensityPreference == option,
+                            onSelect: { app.setCardDensityPreference(option) }
+                        )
+                        .listRowInsets(EdgeInsets(top: 12, leading: 32, bottom: 12, trailing: 32))
+                        .listRowBackground(Color.clear)
                     }
                 }
 
@@ -85,6 +99,48 @@ private struct CloseButton: View {
 
 private extension ThemePreference {
     var displayName: String { rawValue.capitalized }
+}
+
+private struct CardDensityOptionRow: View {
+    let option: CardDensityPreference
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 16) {
+                Image(systemName: option.symbolName)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(option.displayName)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text(option.detailDescription)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.secondary)
+                }
+
+                Spacer()
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(Color.white)
+                        .accessibilityHidden(true)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        #if os(tvOS)
+        .buttonStyle(.tvRemote(.list))
+        #else
+        .buttonStyle(.plain)
+        #endif
+        .accessibilityIdentifier("Settings_CardSize_\(option.displayName)")
+        .accessibilityValue(isSelected ? "Selected" : "Not Selected")
+    }
 }
 
 private extension SettingsView {

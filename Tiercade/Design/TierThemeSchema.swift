@@ -3,30 +3,33 @@ import SwiftData
 
 @Model
 final class TierColorEntity {
-    @Attribute(.unique) var tierID: UUID
+    var tierID: UUID
     var index: Int
     var name: String
     var colorHex: String
     var isUnranked: Bool
+    @Relationship(inverse: \TierThemeEntity.tiers) var theme: TierThemeEntity?
 
     init(
         tierID: UUID = UUID(),
         index: Int,
         name: String,
         colorHex: String,
-        isUnranked: Bool = false
+        isUnranked: Bool = false,
+        theme: TierThemeEntity? = nil
     ) {
         self.tierID = tierID
         self.index = index
         self.name = name
         self.colorHex = colorHex
         self.isUnranked = isUnranked
+        self.theme = theme
     }
 }
 
 @Model
 final class TierThemeEntity {
-    @Attribute(.unique) var themeID: UUID
+    var themeID: UUID
     var slug: String
     var displayName: String
     var shortDescription: String
@@ -43,18 +46,24 @@ final class TierThemeEntity {
         self.slug = slug
         self.displayName = displayName
         self.shortDescription = shortDescription
-        self.tiers = tiers.sorted { left, right in
+        let orderedTiers = tiers.sorted { left, right in
             if left.isUnranked != right.isUnranked {
                 return !left.isUnranked
             }
             return left.index < right.index
+        }
+        self.tiers = orderedTiers
+        for tier in self.tiers {
+            tier.theme = self
         }
     }
 }
 
 @MainActor
 enum TierThemeSeeds {
-    static let defaults: [TierThemeEntity] = [
+    static let defaults: [TierThemeEntity] = seedDefinitions
+
+    private static let seedDefinitions: [TierThemeEntity] = [
         TierThemeEntity(
             themeID: UUID(uuidString: "E96B8A5D-7E1F-4B6C-9D4A-8BC3F46F2E9C")!,
             slug: "smashClassic",

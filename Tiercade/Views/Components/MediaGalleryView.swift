@@ -41,33 +41,30 @@ private struct GalleryPage: View {
     let uri: String
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                AsyncImage(url: URL(string: uri)) { phase in
-                    switch phase {
-                    case .empty:
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFit()
-                    case .failure:
-                        ZStack {
-                            Color.secondary.opacity(0.2)
-                            Image(systemName: "photo")
-                                .imageScale(.large)
-                                .foregroundStyle(.secondary)
-                        }
-                    @unknown default:
-                        EmptyView()
+        ZStack {
+            AsyncImage(url: URL(string: uri)) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFit()
+                case .failure:
+                    ZStack {
+                        Color.secondary.opacity(0.2)
+                        Image(systemName: "photo")
+                            .imageScale(.large)
+                            .foregroundStyle(.secondary)
                     }
+                @unknown default:
+                    EmptyView()
                 }
-                .frame(width: proxy.size.width, height: proxy.size.height)
             }
-            .frame(width: proxy.size.width, height: proxy.size.height)
-            .background(Color.clear)
-            .accessibilityIdentifier("Gallery_Page_\(uri)")
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.clear)
+        .accessibilityIdentifier("Gallery_Page_\(uri)")
     }
 }

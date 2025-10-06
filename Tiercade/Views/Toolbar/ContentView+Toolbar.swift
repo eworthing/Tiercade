@@ -141,7 +141,7 @@ struct BottomToolbarSheets: ToolbarContent {
         ToolbarItem(placement: .bottomBar) {
             EmptyView()
                 .sheet(isPresented: $showingSettings) {
-                    SettingsView()
+                    SettingsView(app: app)
                 }
                 .sheet(isPresented: $showingExportFormatSheet) {
                     ExportFormatSheetView(
@@ -243,7 +243,7 @@ struct MacAndTVToolbarSheets: ToolbarContent {
                     Text("Select a tier list file to load.")
                 }
                 .sheet(isPresented: $showingSettings) {
-                    SettingsView()
+                    SettingsView(app: app)
                 }
         }
     }

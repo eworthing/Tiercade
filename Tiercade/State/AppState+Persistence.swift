@@ -54,6 +54,15 @@ private struct CodableTheme: Codable {
     }
 }
 
+private struct PersistenceSnapshot: Sendable {
+    let tiers: Items
+    let tierLabels: [String: String]
+    let tierColors: [String: String]
+    let selectedThemeID: UUID
+    let customThemes: [CodableTheme]
+    let cardDensityPreference: CardDensityPreference
+}
+
 @MainActor
 extension AppState {
     // MARK: - Enhanced Persistence
@@ -67,13 +76,15 @@ extension AppState {
                 let tierColors: [String: String]
                 let selectedThemeID: String?
                 let customThemes: [CodableTheme]
+                let cardDensityPreference: String
             }
             let saveData = SaveData(
                 tiers: tiers,
                 tierLabels: tierLabels,
                 tierColors: tierColors,
                 selectedThemeID: selectedThemeID.uuidString,
-                customThemes: customThemes.map(CodableTheme.init)
+                customThemes: customThemes.map(CodableTheme.init),
+                cardDensityPreference: cardDensityPreference.rawValue
             )
             let data = try JSONEncoder().encode(saveData)
             UserDefaults.standard.set(data, forKey: storageKey)
@@ -85,9 +96,72 @@ extension AppState {
         }
     }
 
+    // Swift 6.2 pattern: async save with background encoding
+    func saveAsync() async throws(PersistenceError) {
+        // Capture state and convert to Codable on MainActor
+        let tiersSnapshot = tiers
+        let labelsSnapshot = tierLabels
+        let colorsSnapshot = tierColors
+        let themeIDSnapshot = selectedThemeID
+        let codableThemes = customThemes.map { CodableTheme(theme: $0) }
+        let densitySnapshot = cardDensityPreference
+
+        let snapshot = PersistenceSnapshot(
+            tiers: tiersSnapshot,
+            tierLabels: labelsSnapshot,
+            tierColors: colorsSnapshot,
+            selectedThemeID: themeIDSnapshot,
+            customThemes: codableThemes,
+            cardDensityPreference: densitySnapshot
+        )
+
+        // Encode on background thread pool
+        let data = try await encodeAppState(snapshot: snapshot)
+
+        // Save and update state on MainActor
+        UserDefaults.standard.set(data, forKey: storageKey)
+        hasUnsavedChanges = false
+        lastSavedTime = Date()
+    }
+
     func autoSave() throws(PersistenceError) {
         guard hasUnsavedChanges else { return }
         try save()
+    }
+
+    func autoSaveAsync() async {
+        guard hasUnsavedChanges else { return }
+        try? await saveAsync()
+    }
+
+    // Swift 6.2 pattern: heavy JSON encoding on background via Task.detached
+    nonisolated
+    private func encodeAppState(
+        snapshot: PersistenceSnapshot
+    ) async throws(PersistenceError) -> Data {
+        struct SaveData: Codable {
+            let tiers: Items
+            let tierLabels: [String: String]
+            let tierColors: [String: String]
+            let selectedThemeID: String?
+            let customThemes: [CodableTheme]
+            let cardDensityPreference: String
+        }
+
+        let saveData = SaveData(
+            tiers: snapshot.tiers,
+            tierLabels: snapshot.tierLabels,
+            tierColors: snapshot.tierColors,
+            selectedThemeID: snapshot.selectedThemeID.uuidString,
+            customThemes: snapshot.customThemes,
+            cardDensityPreference: snapshot.cardDensityPreference.rawValue
+        )
+
+        do {
+            return try JSONEncoder().encode(saveData)
+        } catch {
+            throw PersistenceError.encodingFailed("JSONEncoder failed: \(error.localizedDescription)")
+        }
     }
 
     func saveToFile(named fileName: String) throws(PersistenceError) {
@@ -102,6 +176,7 @@ extension AppState {
                 let customThemes: [CodableTheme]
                 let createdDate: Date
                 let appVersion: String
+                let cardDensityPreference: String
             }
 
             let saveData = AppSaveFile(
@@ -111,7 +186,8 @@ extension AppState {
                 selectedThemeID: selectedThemeID.uuidString,
                 customThemes: customThemes.map(CodableTheme.init),
                 createdDate: Date(),
-                appVersion: "1.0"
+                appVersion: "1.0",
+                cardDensityPreference: cardDensityPreference.rawValue
             )
 
             let data = try encoder.encode(saveData)
@@ -156,6 +232,7 @@ extension AppState {
                 let tierColors: [String: String]
                 let selectedThemeID: String?
                 let customThemes: [CodableTheme]?
+                let cardDensityPreference: String?
             }
             if let saveData = try? JSONDecoder().decode(SaveData.self, from: data) {
                 applyLoadedTiers(saveData.tiers, isLegacy: false)
@@ -163,6 +240,7 @@ extension AppState {
                 tierColors = saveData.tierColors
                 restoreCustomThemes(saveData.customThemes ?? [])
                 restoreTheme(themeIDString: saveData.selectedThemeID)
+                restoreCardDensityPreference(rawValue: saveData.cardDensityPreference)
                 return true
             }
 
@@ -185,6 +263,7 @@ extension AppState {
             let newTiers = parseLegacyTiers(from: tierData)
             applyLoadedTiers(newTiers, isLegacy: true)
             restoreCustomThemes([])
+            restoreCardDensityPreference(rawValue: nil)
             return true
         } catch {
             print("Legacy load failed: \(error)")
@@ -262,6 +341,7 @@ extension AppState {
                 let customThemes: [CodableTheme]?
                 let createdDate: Date
                 let appVersion: String
+                let cardDensityPreference: String?
             }
 
             if let saveData = try? JSONDecoder().decode(AppSaveFile.self, from: data) {
@@ -270,19 +350,11 @@ extension AppState {
                     fileName: fileName,
                     savedDate: saveData.createdDate
                 )
-                // Restore tier customizations if present
-                if let labels = saveData.tierLabels {
-                    tierLabels = labels
-                }
-                if let colors = saveData.tierColors {
-                    tierColors = colors
-                }
-                if let custom = saveData.customThemes {
-                    restoreCustomThemes(custom)
-                } else {
-                    restoreCustomThemes([])
-                }
+                tierLabels = saveData.tierLabels ?? tierLabels
+                tierColors = saveData.tierColors ?? tierColors
+                restoreCustomThemes(saveData.customThemes ?? [])
                 restoreTheme(themeIDString: saveData.selectedThemeID)
+                restoreCardDensityPreference(rawValue: saveData.cardDensityPreference)
                 showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
                 return true
             }
@@ -294,6 +366,7 @@ extension AppState {
                     fileName: fileName,
                     savedDate: Date()
                 )
+                restoreCardDensityPreference(rawValue: nil)
                 showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
                 return true
             }
@@ -349,13 +422,15 @@ extension AppState {
                 let tierColors: [String: String]
                 let createdDate: Date
                 let appVersion: String
+                let cardDensityPreference: String
             }
             let saveData = AppSaveFile(
                 tiers: tiers,
                 tierLabels: tierLabels,
                 tierColors: tierColors,
                 createdDate: Date(),
-                appVersion: "1.0"
+                appVersion: "1.0",
+                cardDensityPreference: cardDensityPreference.rawValue
             )
 
             let data = try JSONEncoder().encode(saveData)
@@ -419,6 +494,7 @@ extension AppState {
             let tierColors: [String: String]?
             let createdDate: Date
             let appVersion: String
+            let cardDensityPreference: String?
         }
 
         guard let saveData = try? JSONDecoder().decode(AppSaveFile.self, from: data) else {
@@ -438,6 +514,7 @@ extension AppState {
         if let colors = saveData.tierColors {
             tierColors = colors
         }
+        restoreCardDensityPreference(rawValue: saveData.cardDensityPreference)
 
         showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
         return true
@@ -456,6 +533,7 @@ extension AppState {
             fileName: fileName,
             savedDate: Date()
         )
+        restoreCardDensityPreference(rawValue: nil)
         updateProgress(1.0)
         showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
         return true

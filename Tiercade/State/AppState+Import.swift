@@ -11,22 +11,14 @@ extension AppState {
             try await withLoadingIndicator(message: "Importing JSON data...") {
                 updateProgress(0.2)
 
-                let importData = try parseJSONData(jsonString)
-                updateProgress(0.4)
-
-                guard let tierData = importData["tiers"] as? [String: [[String: String]]] else {
-                    throw ImportError.missingRequiredField("tiers")
-                }
-                updateProgress(0.6)
-
-                let newTiers = convertTierData(tierData)
+                // Heavy JSON parsing and conversion on background thread pool
+                let newTiers = try await parseAndConvertJSON(jsonString)
                 updateProgress(0.8)
 
-                await MainActor.run {
-                    tiers = newTiers
-                    history = HistoryLogic.initHistory(tiers, limit: history.limit)
-                    markAsChanged()
-                }
+                // State updates on MainActor
+                tiers = newTiers
+                history = HistoryLogic.initHistory(tiers, limit: history.limit)
+                markAsChanged()
                 updateProgress(1.0)
 
                 showSuccessToast("Import Complete", message: "Successfully imported tier list")
@@ -38,24 +30,29 @@ extension AppState {
         }
     }
 
-    private func parseJSONData(_ jsonString: String) throws(ImportError) -> [String: Any] {
+    // Swift 6.2 pattern: heavy JSON work runs on background thread pool via Task.detached
+    nonisolated
+    private func parseAndConvertJSON(_ jsonString: String) async throws(ImportError) -> Items {
         guard let jsonData = jsonString.data(using: .utf8) else {
             throw ImportError.invalidFormat("String is not valid UTF-8")
         }
 
+        let importData: [String: Any]
         do {
             guard let data = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
                 throw ImportError.parsingFailed("Invalid JSON structure")
             }
-            return data
+            importData = data
         } catch {
             throw ImportError.parsingFailed("JSON parsing failed: \(error.localizedDescription)")
         }
-    }
 
-    private func convertTierData(_ tierData: [String: [[String: String]]]) -> Items {
+        guard let tierData = importData["tiers"] as? [String: [[String: String]]] else {
+            throw ImportError.missingRequiredField("tiers")
+        }
+
+        // Convert tier data (pure transformation)
         var newTiers: Items = [:]
-
         for (tierName, itemData) in tierData {
             newTiers[tierName] = itemData.compactMap { data in
                 guard let id = data["id"], !id.isEmpty else { return nil }
@@ -75,20 +72,14 @@ extension AppState {
             try await withLoadingIndicator(message: "Importing CSV data...") {
                 updateProgress(0.2)
 
-                let lines = csvString.components(separatedBy: .newlines)
-                guard lines.count > 1 else {
-                    throw ImportError.invalidData("CSV file appears to be empty")
-                }
-                updateProgress(0.4)
-
-                let newTiers = parseCSVLines(lines)
+                // Heavy CSV parsing on background thread pool
+                let newTiers = try await parseCSVInBackground(csvString)
                 updateProgress(0.8)
 
-                await MainActor.run {
-                    tiers = newTiers
-                    history = HistoryLogic.initHistory(tiers, limit: history.limit)
-                    markAsChanged()
-                }
+                // State updates on MainActor
+                tiers = newTiers
+                history = HistoryLogic.initHistory(tiers, limit: history.limit)
+                markAsChanged()
                 updateProgress(1.0)
 
                 showSuccessToast("Import Complete", message: "Successfully imported CSV data")
@@ -100,7 +91,14 @@ extension AppState {
         }
     }
 
-    private func parseCSVLines(_ lines: [String]) -> Items {
+    // Swift 6.2 pattern: heavy CSV parsing runs on background thread pool via Task.detached
+    nonisolated
+    private func parseCSVInBackground(_ csvString: String) async throws(ImportError) -> Items {
+        let lines = csvString.components(separatedBy: .newlines)
+        guard lines.count > 1 else {
+            throw ImportError.invalidData("CSV file appears to be empty")
+        }
+
         var newTiers: Items = [
             "S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []
         ]
@@ -108,18 +106,18 @@ extension AppState {
         for line in lines.dropFirst() {
             guard !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
 
-            let components = parseCSVLine(line)
+            let components = Self.parseCSVLine(line)
             guard components.count >= 3 else { continue }
 
-            if let item = createItemFromCSVComponents(components) {
-                addItemToTier(item, tier: components[2], in: &newTiers)
+            if let item = Self.createItemFromCSVComponents(components) {
+                Self.addItemToTier(item, tier: components[2], in: &newTiers)
             }
         }
 
         return newTiers
     }
 
-    private func createItemFromCSVComponents(_ components: [String]) -> Item? {
+    nonisolated private static func createItemFromCSVComponents(_ components: [String]) -> Item? {
         let name = components[0].trimmingCharacters(in: .whitespacesAndNewlines)
         let season = components[1].trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -134,7 +132,7 @@ extension AppState {
         return Item(id: id, attributes: attributes.isEmpty ? nil : attributes)
     }
 
-    private func addItemToTier(_ item: Item, tier: String, in tiers: inout Items) {
+    nonisolated private static func addItemToTier(_ item: Item, tier: String, in tiers: inout Items) {
         let tierKey = tier.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedKey = tierKey.lowercased() == "unranked" ? "unranked" : tierKey.uppercased()
 
@@ -147,7 +145,30 @@ extension AppState {
 
     func importFromJSON(url: URL) async throws(ImportError) {
         do {
-            let project = try ModelResolver.loadProject(from: url)
+            // File I/O and parsing on background thread pool
+            let (newTiers, newOrder) = try await loadProjectFromFile(url)
+
+            // State updates on MainActor
+            tierOrder = newOrder
+            tiers = newTiers
+            history = HistoryLogic.initHistory(tiers, limit: history.limit)
+            markAsChanged()
+
+            showSuccessToast("Import Complete", message: "Project loaded successfully")
+        } catch let error as NSError where error.domain == "Tiercade" {
+            throw ImportError.invalidData(error.localizedDescription)
+        } catch let error as ImportError {
+            throw error
+        } catch {
+            throw ImportError.invalidData("Could not read JSON file: \(error.localizedDescription)")
+        }
+    }
+
+    // Swift 6.2 pattern: file I/O and ModelResolver on background via Task.detached
+    nonisolated
+    private func loadProjectFromFile(_ url: URL) async throws(ImportError) -> (Items, [String]) {
+        do {
+            let project = try await ModelResolver.loadProjectAsync(from: url)
             let resolvedTiers = ModelResolver.resolveTiers(from: project)
             var newTiers: Items = [:]
             var newOrder: [String] = []
@@ -157,37 +178,43 @@ extension AppState {
                     Item(id: item.id, name: item.title, imageUrl: item.thumbUri)
                 }
             }
-            await MainActor.run {
-                tierOrder = newOrder
-                tiers = newTiers
-                history = HistoryLogic.initHistory(tiers, limit: history.limit)
-                markAsChanged()
-            }
-            showSuccessToast("Import Complete", message: "Project loaded successfully")
-        } catch let error as NSError where error.domain == "Tiercade" {
-            throw ImportError.invalidData(error.localizedDescription)
+            return (newTiers, newOrder)
         } catch {
+            // Fallback: try loading as plain JSON
             do {
                 let data = try Data(contentsOf: url)
                 let content = String(data: data, encoding: .utf8) ?? ""
-                try await importFromJSON(content)
+                let newTiers = try await parseAndConvertJSON(content)
+                return (newTiers, ["S", "A", "B", "C", "D", "F"])
             } catch {
-                throw ImportError.invalidData("Could not read JSON file: \(error.localizedDescription)")
+                throw ImportError.invalidData("Could not load project or JSON: \(error.localizedDescription)")
             }
         }
     }
 
     func importFromCSV(url: URL) async throws(ImportError) {
+        // File I/O on background thread pool
+        let content = try await loadCSVFromFile(url)
+
+        // Reuse existing CSV import logic
+        try await importFromCSV(content)
+    }
+
+    // Swift 6.2 pattern: file I/O on background via Task.detached
+    nonisolated
+    private func loadCSVFromFile(_ url: URL) async throws(ImportError) -> String {
         do {
             let data = try Data(contentsOf: url)
-            let content = String(data: data, encoding: .utf8) ?? ""
-            try await importFromCSV(content)
+            guard let content = String(data: data, encoding: .utf8) else {
+                throw ImportError.invalidFormat("CSV file is not valid UTF-8")
+            }
+            return content
         } catch {
             throw ImportError.invalidData("Could not read CSV file: \(error.localizedDescription)")
         }
     }
 
-    private func parseCSVLine(_ line: String) -> [String] {
+    nonisolated private static func parseCSVLine(_ line: String) -> [String] {
         var components: [String] = []
         var currentComponent = ""
         var insideQuotes = false

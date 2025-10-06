@@ -42,12 +42,28 @@ public struct ResolvedTier {
 }
 
 public enum ModelResolver {
+    // Synchronous API (maintained for compatibility)
     public static func loadProject(from url: URL) throws -> Project {
         let data = try Data(contentsOf: url)
         return try decodeProject(from: data)
     }
 
     public static func decodeProject(from data: Data) throws -> Project {
+        let decoder = jsonDecoder()
+        let project = try decoder.decode(Project.self, from: data)
+        try ProjectValidation.validateOfflineV1(project)
+        return project
+    }
+
+    // Swift 6.2 @concurrent pattern: async API for background file I/O and decoding
+    @concurrent
+    public static func loadProjectAsync(from url: URL) async throws -> Project {
+        let data = try Data(contentsOf: url)
+        return try await decodeProjectAsync(from: data)
+    }
+
+    @concurrent
+    public static func decodeProjectAsync(from data: Data) async throws -> Project {
         let decoder = jsonDecoder()
         let project = try decoder.decode(Project.self, from: data)
         try ProjectValidation.validateOfflineV1(project)

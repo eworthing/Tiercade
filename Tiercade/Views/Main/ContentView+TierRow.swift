@@ -143,14 +143,19 @@ struct TierRowWrapper: View {
     @ViewBuilder
     private var cardsSection: some View {
         #if os(tvOS)
+        let layout = TVMetrics.cardLayout(
+            for: filteredCards.count,
+            preference: app.cardDensityPreference
+        )
         ScrollView(.horizontal) {
-            LazyHStack(spacing: 24) {
+            LazyHStack(spacing: layout.interItemSpacing) {
                 ForEach(filteredCards, id: \.id) { item in
-                    CardView(item: item)
+                    CardView(item: item, layout: layout)
                         .focused($focusedItemId, equals: item.id)
                 }
             }
-            .padding(.bottom, Metrics.grid * 0.5)
+            .padding(.horizontal, layout.contentPadding)
+            .padding(.bottom, layout.interItemSpacing * 0.5)
         }
         .accessibilityIdentifier("TierRow_\(tier)")
         .focusSection()

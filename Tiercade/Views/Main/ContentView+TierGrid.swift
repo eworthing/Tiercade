@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 import TiercadeCore
 
 // MARK: - Tier grid
@@ -49,15 +50,20 @@ struct UnrankedView: View {
             VStack(alignment: .leading, spacing: Metrics.grid) {
                 header
                 #if os(tvOS)
-                ScrollView(.horizontal) {
-                    LazyHStack(spacing: 24) {
-                        ForEach(filteredItems, id: \.id) { item in
-                            CardView(item: item)
-                                .focused($focusedItemId, equals: item.id)
+                    let layout = TVMetrics.cardLayout(
+                        for: filteredItems.count,
+                        preference: app.cardDensityPreference
+                    )
+                    ScrollView(.horizontal) {
+                        LazyHStack(spacing: layout.interItemSpacing) {
+                            ForEach(filteredItems, id: \.id) { item in
+                                CardView(item: item, layout: layout)
+                                    .focused($focusedItemId, equals: item.id)
+                            }
                         }
+                        .padding(.horizontal, layout.contentPadding)
+                        .padding(.bottom, layout.interItemSpacing * 0.5)
                     }
-                    .padding(.bottom, Metrics.grid * 0.5)
-                }
                 .focusSection()
                 .defaultFocus($focusedItemId, filteredItems.first?.id)
                 #else
@@ -126,6 +132,9 @@ struct CardView: View {
     @Environment(AppState.self) var app
     @Environment(\.isFocused) var isFocused: Bool
     @Environment(\.editMode) private var editMode
+    #if os(tvOS)
+    let layout: TVCardLayout
+    #endif
 
     private var isMultiSelectActive: Bool {
         editMode?.wrappedValue == .active
@@ -159,36 +168,7 @@ struct CardView: View {
                 #endif
             },
             label: {
-                ZStack(alignment: .topLeading) {
-                    VStack(spacing: 8) {
-                        ThumbnailView(item: item)
-                        Text("S \(item.seasonString ?? "?")")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(Metrics.grid)
-                    .background(Color.cardBackground)
-                    .cornerRadius(12)
-
-                    #if !os(tvOS)
-                    TierBadgeView(tier: tierForItem(item))
-                        .padding(10)
-                    #endif
-                }
-                #if os(tvOS)
-                .overlay(alignment: .topTrailing) {
-                    if isMultiSelectActive && app.isSelected(item.id) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .symbolRenderingMode(.palette)
-                            .foregroundStyle(.white, Color.accentColor)
-                            .padding(6)
-                            .background(
-                                Circle().fill(Color.black.opacity(0.4))
-                            )
-                            .offset(x: 6, y: -6)
-                    }
-                }
-                #endif
+                cardBody
             }
         )
         #if os(tvOS)
@@ -205,8 +185,17 @@ struct CardView: View {
             y: app.draggingId == item.id ? 12 : 4
         )
         .contentShape(Rectangle())
-        .accessibilityLabel(item.name ?? item.id)
-        .punchyFocus(tier: tierForItem(item), cornerRadius: 12)
+        .accessibilityLabel(displayLabel)
+        .punchyFocus(
+            tier: tierForItem(item),
+            cornerRadius: {
+                #if os(tvOS)
+                layout.cornerRadius
+                #else
+                12
+                #endif
+            }()
+        )
         #if os(macOS)
         .accessibilityAddTraits(.isButton)
         #endif
@@ -237,12 +226,120 @@ struct CardView: View {
         }
         #endif
     }
+
+    private var displayLabel: String {
+        if let name = item.name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+            return name
+        }
+        return item.id
+    }
+
+    @ViewBuilder
+    private var cardBody: some View {
+        #if os(tvOS)
+        tvOSCardBody
+        #else
+        defaultCardBody
+        #endif
+    }
+
+    #if os(tvOS)
+    private var tvOSCardBody: some View {
+        let showsOnCardText = layout.density.showsOnCardText
+
+        return VStack(alignment: .leading, spacing: layout.verticalContentSpacing) {
+            ThumbnailView(item: item, layout: layout)
+            if showsOnCardText {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(displayLabel)
+                        .font(layout.titleFont)
+                        .foregroundColor(Color.textPrimary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .minimumScaleFactor(0.82)
+                    if let metadata = metadataText {
+                        Text(metadata)
+                            .font(layout.metadataFont)
+                            .foregroundStyle(Color.textSecondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(layout.contentPadding)
+        .frame(width: layout.cardWidth, alignment: .leading)
+        .background(Color.cardBackground)
+        .cornerRadius(layout.cornerRadius)
+        .overlay(
+            RoundedRectangle(cornerRadius: layout.cornerRadius)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+        )
+        .overlay(alignment: .topTrailing) {
+            if isMultiSelectActive && app.isSelected(item.id) {
+                selectionBadge
+            }
+        }
+    }
+
+    private var metadataText: String? {
+        guard layout.density.showsOnCardText else { return nil }
+        if let status = item.status?.trimmingCharacters(in: .whitespacesAndNewlines), !status.isEmpty {
+            return status
+        }
+        if let season = item.seasonString?.trimmingCharacters(in: .whitespacesAndNewlines), !season.isEmpty {
+            return "Season \(season)"
+        }
+        return nil
+    }
+
+    private var selectionBadge: some View {
+        Image(systemName: "checkmark.circle.fill")
+            .symbolRenderingMode(.palette)
+            .foregroundStyle(.white, Color.accentColor)
+            .padding(.all, 6)
+            .background(
+                Circle().fill(Color.black.opacity(0.4))
+            )
+            .offset(x: layout.contentPadding * 0.2, y: -layout.contentPadding * 0.2)
+    }
+    #else
+    private var defaultCardBody: some View {
+        ZStack(alignment: .topLeading) {
+            VStack(spacing: 8) {
+                ThumbnailView(item: item)
+                Text("S \(item.seasonString ?? "?")")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(Metrics.grid)
+            .background(Color.cardBackground)
+            .cornerRadius(12)
+
+            TierBadgeView(tier: tierForItem(item))
+                .padding(10)
+        }
+    }
+    #endif
 }
 
 private struct ThumbnailView: View {
     let item: Item
+    #if os(tvOS)
+    let layout: TVCardLayout
+    #endif
 
     var body: some View {
+        #if os(tvOS)
+        RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous)
+            .fill(Color.clear)
+            .frame(width: layout.thumbnailSize.width, height: layout.thumbnailSize.height)
+            .overlay {
+                thumbnailContent
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: max(layout.cornerRadius - 4, 8), style: .continuous)
+                    )
+            }
+        #else
         RoundedRectangle(cornerRadius: 8)
             .frame(
                 minWidth: 120,
@@ -251,38 +348,80 @@ private struct ThumbnailView: View {
                 idealHeight: 196
             )
             .overlay {
-                Group {
-                    if let asset = item.imageUrl ?? item.videoUrl,
-                       let url = URL(string: asset) {
-                        AsyncImage(url: url) { phase in
-                            switch phase {
-                            case .empty:
-                                ProgressView()
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                            case .failure:
-                                placeholder
-                            @unknown default:
-                                placeholder
-                            }
-                        }
-                        .frame(
-                            minWidth: 120,
-                            idealWidth: 140,
-                            minHeight: 168,
-                            idealHeight: 196
-                        )
-                        .clipped()
-                    } else {
-                        placeholder
-                    }
-                }
+                thumbnailContent
             }
+        #endif
     }
 
+    @ViewBuilder
+    private var thumbnailContent: some View {
+        if let asset = item.imageUrl ?? item.videoUrl,
+           let url = URL(string: asset) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView()
+                case .success(let image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                case .failure:
+                    placeholder
+                @unknown default:
+                    placeholder
+                }
+            }
+            #if os(tvOS)
+            .frame(width: layout.thumbnailSize.width, height: layout.thumbnailSize.height)
+            #else
+            .frame(
+                minWidth: 120,
+                idealWidth: 140,
+                minHeight: 168,
+                idealHeight: 196
+            )
+            #endif
+            .clipped()
+        } else {
+            placeholder
+        }
+    }
+
+    @ViewBuilder
     private var placeholder: some View {
+        #if os(tvOS)
+        if layout.density == .ultraMicro {
+            RoundedRectangle(cornerRadius: max(layout.cornerRadius - 4, 6), style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Palette.brand, Palette.brand.opacity(0.7)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .overlay(
+                    Image(systemName: "wand.and.stars")
+                        .font(
+                            .system(
+                                size: min(layout.thumbnailSize.width, layout.thumbnailSize.height) * 0.32,
+                                weight: .semibold
+                            )
+                        )
+                        .foregroundStyle(Color.white.opacity(0.78))
+                )
+        } else {
+            RoundedRectangle(cornerRadius: max(layout.cornerRadius - 4, 8), style: .continuous)
+                .fill(Palette.brand)
+                .overlay(
+                    Text(String((item.name ?? item.id).prefix(18)))
+                        .font(layout.titleFont)
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.7)
+                        .padding(.horizontal, 12)
+                )
+        }
+        #else
         RoundedRectangle(cornerRadius: 8)
             .fill(Palette.brand)
             .overlay(
@@ -290,6 +429,7 @@ private struct ThumbnailView: View {
                     .font(.headline)
                     .foregroundStyle(.white)
             )
+        #endif
     }
 }
 

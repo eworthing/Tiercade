@@ -114,15 +114,15 @@ struct PunchyFocusStyle: ViewModifier {
         #if os(tvOS)
         // Strong, TV-friendly focus treatment: larger scale, bright dual ring, and accent glow
         let outerRing = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .stroke(tier.color.opacity(isFocused ? 0.95 : 0.0), lineWidth: 5)
+            .stroke(tier.color.opacity(isFocused ? 0.95 : 0.0), lineWidth: 4)
         let innerRing = RoundedRectangle(cornerRadius: max(cornerRadius - 2, 4), style: .continuous)
             .inset(by: 1)
-            .stroke(Color.white.opacity(isFocused ? 0.85 : 0.0), lineWidth: 2.5)
+            .stroke(Color.white.opacity(isFocused ? 0.85 : 0.0), lineWidth: 2)
 
         return content
-            .scaleEffect(isFocused ? 1.12 : 1.0)
-            .shadow(color: tier.color.opacity(isFocused ? 0.55 : 0.0), radius: isFocused ? 36 : 0, x: 0, y: 0)
-            .shadow(color: tier.color.opacity(isFocused ? 0.70 : 0.0), radius: isFocused ? 64 : 0, x: 0, y: 0)
+            .scaleEffect(isFocused ? 1.07 : 1.0)
+            .shadow(color: tier.color.opacity(isFocused ? 0.55 : 0.0), radius: isFocused ? 28 : 0, x: 0, y: 0)
+            .shadow(color: tier.color.opacity(isFocused ? 0.70 : 0.0), radius: isFocused ? 52 : 0, x: 0, y: 0)
             .overlay(outerRing.blur(radius: isFocused ? 0.5 : 0))
             .overlay(innerRing)
             .zIndex(isFocused ? 10 : 0)

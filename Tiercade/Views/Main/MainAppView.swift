@@ -28,7 +28,11 @@ struct MainAppView: View {
     // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
     // which provides automatic focus containment via separate presentation context
     #if os(tvOS)
-    let modalBlockingFocus = headToHeadPresented || detailPresented || themeCreatorPresented || itemMenuPresented || quickMovePresented
+    let modalBlockingFocus = headToHeadPresented
+        || detailPresented
+        || themeCreatorPresented
+        || itemMenuPresented
+        || quickMovePresented
     #else
     let modalBlockingFocus = detailPresented || headToHeadPresented || themeCreatorPresented
     #endif
@@ -298,7 +302,7 @@ struct TVToolbarView: View {
     @FocusState private var focusedControl: Control?
 
     private enum Control: Hashable {
-        case undo, redo, randomize, reset, library, h2h, analytics, theme
+        case undo, redo, randomize, reset, library, h2h, analytics, density, theme
     }
 
     private var buildTimestamp: String {
@@ -337,7 +341,8 @@ struct TVToolbarView: View {
             }
             return "Add items before opening analytics"
         }()
-        let analyticsTooltip = analyticsActive ? "Hide Analytics" : "Show Analytics"
+    let analyticsTooltip = analyticsActive ? "Hide Analytics" : "Show Analytics"
+    let cardDensityValue = app.cardDensityPreference
         HStack(spacing: 16) {
             Button(action: { app.undo() }, label: {
                 Image(systemName: "arrow.uturn.backward")
@@ -425,6 +430,19 @@ struct TVToolbarView: View {
             .accessibilityValue(analyticsActive ? "Visible" : "Hidden")
             .accessibilityHint(analyticsHint)
             .focusTooltip(analyticsTooltip)
+
+            Button(action: { app.cycleCardDensityPreference() }, label: {
+                Image(systemName: cardDensityValue.symbolName)
+                    .font(.system(size: Metrics.toolbarIconSize))
+                    .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
+            })
+            .buttonStyle(.tvRemote(.primary))
+            .accessibilityIdentifier("Toolbar_CardSize")
+            .focused($focusedControl, equals: .density)
+            .accessibilityLabel("Card Size")
+            .accessibilityValue(cardDensityValue.displayName)
+            .accessibilityHint("Cycle through card density presets")
+            .focusTooltip(cardDensityValue.focusTooltip)
 
             Button(action: { app.toggleThemePicker() }, label: {
                 Image(systemName: "paintpalette.fill")
