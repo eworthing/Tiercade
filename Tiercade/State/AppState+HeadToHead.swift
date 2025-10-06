@@ -38,7 +38,7 @@ extension AppState {
         let log = "[AppState] startH2H: poolCount=\(h2hPool.count) totalPairs=\(h2hTotalComparisons)"
         print(log)
         NSLog("%@", log)
-        appendDebugFile("startH2H: poolCount=\(h2hPool.count) totalPairs=\(h2hTotalComparisons)")
+        Task { await appendDebugFile("startH2H: poolCount=\(h2hPool.count) totalPairs=\(h2hTotalComparisons)") }
 
         nextH2HPair()
     }
@@ -52,7 +52,7 @@ extension AppState {
             let recycle = "[AppState] nextH2HPair: recycling skipped pairs count=\(h2hPairsQueue.count)"
             print(recycle)
             NSLog("%@", recycle)
-            appendDebugFile("nextH2HPair: recycling skipped pairs count=\(h2hPairsQueue.count)")
+            Task { await appendDebugFile("nextH2HPair: recycling skipped pairs count=\(h2hPairsQueue.count)") }
         }
 
         guard !h2hPairsQueue.isEmpty else {
@@ -60,7 +60,7 @@ extension AppState {
             let message = "[AppState] nextH2HPair: no remaining pairs"
             print(message)
             NSLog("%@", message)
-            appendDebugFile("nextH2HPair: queueEmpty")
+            Task { await appendDebugFile("nextH2HPair: queueEmpty") }
             return
         }
 
@@ -69,7 +69,7 @@ extension AppState {
         let message = "[AppState] nextH2HPair: pair=\(pair.0.id)-\(pair.1.id) remainingQueue=\(h2hPairsQueue.count)"
         print(message)
         NSLog("%@", message)
-        appendDebugFile("nextH2HPair: pair=\(pair.0.id)-\(pair.1.id) remainingQueue=\(h2hPairsQueue.count)")
+        Task { await appendDebugFile("nextH2HPair: pair=\(pair.0.id)-\(pair.1.id) remainingQueue=\(h2hPairsQueue.count)") }
     }
 
     func voteH2H(winner: Item) {
@@ -92,7 +92,7 @@ extension AppState {
         ].joined(separator: " ")
         print(message)
         NSLog("%@", message)
-        appendDebugFile("voteH2H: winner=\(winner.id) completed=\(h2hCompletedComparisons)/\(h2hTotalComparisons)")
+        Task { await appendDebugFile("voteH2H: winner=\(winner.id) completed=\(h2hCompletedComparisons)/\(h2hTotalComparisons)") }
     }
 
     func skipCurrentH2HPair() {
@@ -103,7 +103,7 @@ extension AppState {
         let message = "[AppState] skipH2H: pair=\(pair.0.id)-\(pair.1.id) deferredCount=\(h2hDeferredPairs.count)"
         print(message)
         NSLog("%@", message)
-        appendDebugFile("skipH2H: pair=\(pair.0.id)-\(pair.1.id) deferredCount=\(h2hDeferredPairs.count)")
+        Task { await appendDebugFile("skipH2H: pair=\(pair.0.id)-\(pair.1.id) deferredCount=\(h2hDeferredPairs.count)") }
         nextH2HPair()
     }
 
@@ -122,19 +122,19 @@ extension AppState {
         let message = "[AppState] finishH2H: finished and distributed; counts: \(summary)"
         print(message)
         NSLog("%@", message)
-        appendDebugFile("finishH2H: counts=\(summary)")
+        Task { await appendDebugFile("finishH2H: counts=\(summary)") }
     }
 
     func cancelH2H(fromExitCommand: Bool = false) {
         guard h2hActive else { return }
         if fromExitCommand, let activatedAt = h2hActivatedAt, Date().timeIntervalSince(activatedAt) < 0.35 {
-            appendDebugFile("cancelH2H: ignored exitCommand within debounce window")
+            Task { await appendDebugFile("cancelH2H: ignored exitCommand within debounce window") }
             return
         }
         resetH2HSession()
         showInfoToast("Head-to-Head Cancelled", message: "No changes were made.")
         let trigger = fromExitCommand ? "exitCommand" : "user"
-        appendDebugFile("cancelH2H: trigger=\(trigger)")
+        Task { await appendDebugFile("cancelH2H: trigger=\(trigger)") }
     }
 
     private func resetH2HSession(clearRecords: Bool = true) {

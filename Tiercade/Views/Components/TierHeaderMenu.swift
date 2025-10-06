@@ -33,7 +33,19 @@ struct TierHeaderView: View {
             .accessibilityLabel("Tier Menu")
             .focusTooltip("Menu")
         }
-        .simultaneousGesture(LongPressGesture(minimumDuration: 0.6).onEnded { _ in showMenu = true })
+        .contextMenu {
+            Button("Edit Tier…") {
+                showMenu = true
+            }
+
+            Button(app.isTierLocked(tierId) ? "Unlock Tier" : "Lock Tier") {
+                app.toggleTierLocked(tierId)
+            }
+
+            Button("Clear Tier", role: .destructive) {
+                app.clearTier(tierId)
+            }
+        }
         .sheet(isPresented: $showMenu, content: {
             TierLabelEditor(app: app, tierId: tierId, showMenu: $showMenu)
         })

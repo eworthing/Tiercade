@@ -86,6 +86,8 @@ final class AppState {
     // Tier display overrides (rename/recolor without core model changes)
     var tierLabels: [String: String] = [:] // tierId -> display label
     var tierColors: [String: String] = [:] // tierId -> hex color
+    // Layout preferences
+    var cardDensityPreference: CardDensityPreference = .compact
     // Theme selection
     var selectedThemeID: UUID = TierThemeCatalog.defaultTheme.id
     var selectedTheme: TierTheme = TierThemeCatalog.defaultTheme
@@ -177,53 +179,52 @@ final class AppState {
     }
 
     // Write a small debug file to /tmp to make logs visible from the host
-    nonisolated func appendDebugFile(_ message: String) {
-        DispatchQueue.global(qos: .utility).async {
-            let path = "/tmp/tiercade_debug.log"
-            let ts = ISO8601DateFormatter().string(from: Date())
-            let pid = ProcessInfo.processInfo.processIdentifier
-            let line = "\(ts) [pid:\(pid)] \(message)\n"
-            if !FileManager.default.fileExists(atPath: path) {
+    // Uses Task.detached to ensure file I/O runs on background thread pool
+    nonisolated func appendDebugFile(_ message: String) async {
+        let path = "/tmp/tiercade_debug.log"
+        let ts = ISO8601DateFormatter().string(from: Date())
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let line = "\(ts) [pid:\(pid)] \(message)\n"
+        if !FileManager.default.fileExists(atPath: path) {
+            let attributes: [FileAttributeKey: Any] = [
+                .posixPermissions: 0o644
+            ]
+            FileManager.default.createFile(
+                atPath: path,
+                contents: Data(line.utf8),
+                attributes: attributes
+            )
+        } else {
+            if let fh = try? FileHandle(forWritingTo: URL(fileURLWithPath: path)) {
+                do {
+                    try fh.seekToEnd()
+                    try fh.write(contentsOf: Data(line.utf8))
+                    try fh.close()
+                } catch {
+                    // ignore
+                }
+            }
+        }
+        // Also write to Documents so host tools can easily retrieve the file
+        if let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let docPath = docs.appendingPathComponent("tiercade_debug.log")
+            if !FileManager.default.fileExists(atPath: docPath.path) {
                 let attributes: [FileAttributeKey: Any] = [
                     .posixPermissions: 0o644
                 ]
                 FileManager.default.createFile(
-                    atPath: path,
+                    atPath: docPath.path,
                     contents: Data(line.utf8),
                     attributes: attributes
                 )
             } else {
-                if let fh = try? FileHandle(forWritingTo: URL(fileURLWithPath: path)) {
+                if let fh = try? FileHandle(forWritingTo: docPath) {
                     do {
                         try fh.seekToEnd()
                         try fh.write(contentsOf: Data(line.utf8))
                         try fh.close()
                     } catch {
                         // ignore
-                    }
-                }
-            }
-            // Also write to Documents so host tools can easily retrieve the file
-            if let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-                let docPath = docs.appendingPathComponent("tiercade_debug.log")
-                if !FileManager.default.fileExists(atPath: docPath.path) {
-                    let attributes: [FileAttributeKey: Any] = [
-                        .posixPermissions: 0o644
-                    ]
-                    FileManager.default.createFile(
-                        atPath: docPath.path,
-                        contents: Data(line.utf8),
-                        attributes: attributes
-                    )
-                } else {
-                    if let fh = try? FileHandle(forWritingTo: docPath) {
-                        do {
-                            try fh.seekToEnd()
-                            try fh.write(contentsOf: Data(line.utf8))
-                            try fh.close()
-                        } catch {
-                            // ignore
-                        }
                     }
                 }
             }
@@ -248,9 +249,9 @@ final class AppState {
     }
 
     @MainActor
-    private func performAutosaveIfNeeded() {
+    private func performAutosaveIfNeeded() async {
         if hasUnsavedChanges {
-            try? autoSave()
+            await autoSaveAsync()
         }
     }
 
@@ -262,7 +263,8 @@ final class AppState {
         let formatted = "[AppState] \(message)"
         print(formatted)
         NSLog("%@", formatted)
-        appendDebugFile(formatted)
+        // Fire-and-forget async logging to avoid blocking caller
+        Task { await appendDebugFile(formatted) }
     }
 
     func seed() {
@@ -277,6 +279,7 @@ final class AppState {
         selectedTheme = fallbackTheme
         selectedThemeID = fallbackTheme.id
         applyCurrentTheme()
+    cardDensityPreference = .compact
         customThemes = []
         customThemeIDs = []
         themeDraft = nil
