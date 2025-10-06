@@ -1,4 +1,9 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 #if os(iOS)
 import UniformTypeIdentifiers
 #endif
@@ -10,6 +15,16 @@ import TiercadeCore
 struct ToastView: View {
     let toast: ToastMessage
     @State private var isVisible = false
+    @Environment(AppState.self) private var app
+    private static let symbolMap: [String: String] = [
+        "{undo}": "arrow.uturn.backward.circle",
+        "{redo}": "arrow.uturn.forward.circle",
+        "{lock}": "lock.circle",
+        "{import}": "tray.and.arrow.down.fill",
+        "{export}": "square.and.arrow.up",
+        "{file}": "doc.text",
+        "{warning}": "exclamationmark.triangle.fill"
+    ]
 
     var body: some View {
         HStack(spacing: 12) {
@@ -24,7 +39,7 @@ struct ToastView: View {
                     .foregroundColor(.primary)
 
                 if let message = toast.message {
-                    Text(message)
+                    parseMessageWithSymbols(message)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -33,8 +48,11 @@ struct ToastView: View {
             Spacer()
 
             if let title = toast.actionTitle, let action = toast.action {
-                Button(title) { action() }
-                    .buttonStyle(.borderedProminent)
+                Button(title) {
+                    action()
+                    app.dismissToast()
+                }
+                .buttonStyle(.borderedProminent)
             }
         }
         .padding(.horizontal, Metrics.grid * 2)
@@ -54,6 +72,14 @@ struct ToastView: View {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 isVisible = true
             }
+
+            // Auto-dismiss after duration
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(toast.duration))
+                if app.currentToast?.id == toast.id {
+                    app.dismissToast()
+                }
+            }
         }
         .onDisappear {
             isVisible = false
@@ -61,6 +87,58 @@ struct ToastView: View {
         #if os(macOS)
         .focusable(true)
         .accessibilityAddTraits(.isModal)
+        #endif
+    }
+
+    /// Parses message text and converts symbol markers like {undo} to inline SF Symbols
+    private func parseMessageWithSymbols(_ message: String) -> Text {
+        let attributedString = NSMutableAttributedString()
+        var remaining = message
+
+        while let openBrace = remaining.firstIndex(of: "{"),
+              let closeBrace = remaining[openBrace...].firstIndex(of: "}") {
+            let beforeMarker = String(remaining[..<openBrace])
+            if !beforeMarker.isEmpty {
+                attributedString.append(NSAttributedString(string: beforeMarker))
+            }
+
+            let marker = String(remaining[openBrace...closeBrace])
+            if let symbolName = Self.symbolMap[marker],
+               let attachment = makeSymbolAttachment(named: symbolName) {
+                attributedString.append(NSAttributedString(attachment: attachment))
+            } else {
+                attributedString.append(NSAttributedString(string: marker))
+            }
+
+            let nextIndex = remaining.index(after: closeBrace)
+            if nextIndex < remaining.endIndex {
+                remaining = String(remaining[nextIndex...])
+            } else {
+                remaining = ""
+            }
+        }
+
+        if !remaining.isEmpty {
+            attributedString.append(NSAttributedString(string: remaining))
+        }
+
+        let converted = AttributedString(attributedString)
+        return Text(converted)
+    }
+
+    private func makeSymbolAttachment(named symbolName: String) -> NSTextAttachment? {
+        #if canImport(UIKit)
+        guard let image = UIImage(systemName: symbolName) else { return nil }
+        let attachment = NSTextAttachment()
+        attachment.image = image
+        return attachment
+        #elseif canImport(AppKit)
+        guard let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) else { return nil }
+        let attachment = NSTextAttachment()
+        attachment.image = image
+        return attachment
+        #else
+        return nil
         #endif
     }
 }

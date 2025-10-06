@@ -27,7 +27,7 @@ extension AppState {
     func move(_ id: String, to tier: String) {
         if lockedTiers.contains(tier) {
             let displayTier = displayLabel(for: tier)
-            showErrorToast("Tier Locked", message: "Cannot move into \(displayTier)")
+            showErrorToast("Tier Locked", message: "Cannot move into \(displayTier) {lock}")
             announce("Tier \(displayTier) is locked. Move canceled.")
             return
         }
@@ -54,7 +54,7 @@ extension AppState {
         guard !ids.isEmpty else { return }
         let displayTier = displayLabel(for: tier)
         guard !lockedTiers.contains(tier) else {
-            showErrorToast("Tier Locked", message: "Cannot move into \(displayTier)")
+            showErrorToast("Tier Locked", message: "Cannot move into \(displayTier) {lock}")
             announce("Tier \(displayTier) is locked. Move canceled.")
             return
         }
@@ -95,7 +95,8 @@ extension AppState {
         let displayTier = displayLabel(for: tier)
         let toastMessage = "Moved all items from \(displayTier) tier to Unranked"
         showInfoToast("Tier Cleared", message: toastMessage)
-        let announcement = "Cleared \(displayTier) tier. Moved \(moving.count) item\(moving.count == 1 ? "" : "s") to Unranked"
+    let pluralSuffix = moving.count == 1 ? "" : "s"
+    let announcement = "Cleared \(displayTier) tier. Moved \(moving.count) item\(pluralSuffix) to Unranked"
         announce(announcement)
     }
 

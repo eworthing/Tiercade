@@ -66,10 +66,20 @@ extension AppState {
 
         let pair = h2hPairsQueue.removeFirst()
         h2hPair = (pair.0, pair.1)
-        let message = "[AppState] nextH2HPair: pair=\(pair.0.id)-\(pair.1.id) remainingQueue=\(h2hPairsQueue.count)"
+        let pairDescriptor = "\(pair.0.id)-\(pair.1.id)"
+        let remainingQueue = h2hPairsQueue.count
+        let message = [
+            "[AppState] nextH2HPair:",
+            "pair=\(pairDescriptor)",
+            "remainingQueue=\(remainingQueue)"
+        ].joined(separator: " ")
         print(message)
         NSLog("%@", message)
-        Task { await appendDebugFile("nextH2HPair: pair=\(pair.0.id)-\(pair.1.id) remainingQueue=\(h2hPairsQueue.count)") }
+        Task {
+            await appendDebugFile(
+                "nextH2HPair: pair=\(pairDescriptor) remainingQueue=\(remainingQueue)"
+            )
+        }
     }
 
     func voteH2H(winner: Item) {
@@ -92,7 +102,11 @@ extension AppState {
         ].joined(separator: " ")
         print(message)
         NSLog("%@", message)
-        Task { await appendDebugFile("voteH2H: winner=\(winner.id) completed=\(h2hCompletedComparisons)/\(h2hTotalComparisons)") }
+        Task {
+            await appendDebugFile(
+                "voteH2H: winner=\(winner.id) completed=\(h2hCompletedComparisons)/\(h2hTotalComparisons)"
+            )
+        }
     }
 
     func skipCurrentH2HPair() {
@@ -100,10 +114,19 @@ extension AppState {
         h2hDeferredPairs.append(pair)
         h2hSkippedPairKeys.insert(h2hPairKey(pair))
         h2hPair = nil
-        let message = "[AppState] skipH2H: pair=\(pair.0.id)-\(pair.1.id) deferredCount=\(h2hDeferredPairs.count)"
+        let messageComponents = [
+            "[AppState] skipH2H:",
+            "pair=\(pair.0.id)-\(pair.1.id)",
+            "deferredCount=\(h2hDeferredPairs.count)"
+        ]
+        let message = messageComponents.joined(separator: " ")
         print(message)
         NSLog("%@", message)
-        Task { await appendDebugFile("skipH2H: pair=\(pair.0.id)-\(pair.1.id) deferredCount=\(h2hDeferredPairs.count)") }
+        Task {
+            await appendDebugFile(
+                "skipH2H: pair=\(pair.0.id)-\(pair.1.id) deferredCount=\(h2hDeferredPairs.count)"
+            )
+        }
         nextH2HPair()
     }
 
@@ -119,7 +142,7 @@ extension AppState {
             .map { "\($0):\(tiers[$0]?.count ?? 0)" }
             .joined(separator: ", ")
         resetH2HSession()
-        let message = "[AppState] finishH2H: finished and distributed; counts: \(summary)"
+    let message = "[AppState] finishH2H: finished and distributed; counts: \(summary)"
         print(message)
         NSLog("%@", message)
         Task { await appendDebugFile("finishH2H: counts=\(summary)") }

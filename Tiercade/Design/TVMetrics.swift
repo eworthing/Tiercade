@@ -10,6 +10,7 @@ enum TVMetrics {
     static let barHorizontalPadding: CGFloat = minSafeAreaHorizontal
     static let barVerticalPadding: CGFloat = 8
     static let toolbarContentGap: CGFloat = 12
+    static let toolbarClusterSpacing: CGFloat = 12
     static let contentTopInset: CGFloat = max(topBarHeight, minSafeAreaVertical) + toolbarContentGap
     static let contentBottomInset: CGFloat = max(bottomBarHeight, minSafeAreaVertical)
     static let contentHorizontalPadding: CGFloat = minSafeAreaHorizontal

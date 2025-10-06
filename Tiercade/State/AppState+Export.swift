@@ -28,7 +28,9 @@ extension AppState {
                 switch exportBinaryFormat(format, group: group, themeName: themeName) {
                 case .success(let data, let fileName):
                     updateProgress(1.0)
-                    let message = fileName.hasSuffix(".pdf") ? "Exported PDF" : "Exported PNG image"
+                    let message = fileName.hasSuffix(".pdf")
+                        ? "Exported PDF {export}"
+                        : "Exported PNG image {export}"
                     showSuccessToast("Export Complete", message: message)
                     return (data, fileName)
                 case .failure:
@@ -53,7 +55,7 @@ extension AppState {
                 }
 
                 updateProgress(1.0)
-                showSuccessToast("Export Complete", message: "Exported as \(format.displayName)")
+                showSuccessToast("Export Complete", message: "Exported as \(format.displayName) {export}")
                 return (data, fileName)
             }
         } catch let error as ExportError {
@@ -186,17 +188,17 @@ extension AppState {
         switch format {
         case .png:
             guard let data = ExportRenderer.renderPNG(context: context) else {
-                showErrorToast("Export Failed", message: "Could not render PNG")
+                showErrorToast("Export Failed", message: "Could not render PNG {warning}")
                 return .failure
             }
             return .success(data, "tier_list.png")
         case .pdf:
             #if os(tvOS)
-            showErrorToast("Unsupported", message: "PDF export is not available on tvOS")
+            showErrorToast("Unsupported", message: "PDF export is not available on tvOS {warning}")
             return .failure
             #else
             guard let data = ExportRenderer.renderPDF(context: context) else {
-                showErrorToast("Export Failed", message: "Could not render PDF")
+                showErrorToast("Export Failed", message: "Could not render PDF {warning}")
                 return .failure
             }
             return .success(data, "tier_list.pdf")
@@ -232,7 +234,7 @@ extension AppState {
         case .csv:
             return (exportToCSV(group: group, themeName: themeName), "tier_list.csv")
         default:
-            showErrorToast("Export Failed", message: "Unsupported export format")
+            showErrorToast("Export Failed", message: "Unsupported export format {warning}")
             return nil
         }
     }

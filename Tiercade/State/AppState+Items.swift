@@ -25,7 +25,7 @@ extension AppState {
         markAsChanged()
 
         if showToast {
-            showSuccessToast("Tier list reset")
+            showSuccessToast("Reset Complete", message: "Tier list reset. History cleared.")
             announce("Tier list reset")
         }
     }
@@ -60,48 +60,72 @@ extension AppState {
     }
 
     func performRandomize() {
-        // Collect all items from all tiers (including unranked)
-        var allItems: [Item] = []
-        for tierName in Array(tiers.keys) {
-            allItems.append(contentsOf: tiers[tierName] ?? [])
-        }
+        var (lockedTierItems, unlockedItems) = partitionItemsByLockState()
+        guard !unlockedItems.isEmpty else { return }
 
-        guard !allItems.isEmpty else { return }
+        var newTiers = baseTierDictionary(using: lockedTierItems)
+        let unlockedRankedTiers = tierOrder.filter { !lockedTiers.contains($0) }
+        guard !unlockedRankedTiers.isEmpty else { return }
 
-        // Build fresh tiers dictionary - ONLY include tiers from tierOrder plus unranked
-        var newTiers: Items = [:]
-        for tierName in tierOrder {
-            newTiers[tierName] = []
-        }
-        newTiers["unranked"] = []
-
-        // Shuffle all items
-        allItems.shuffle()
-
-        // Distribute to ranked tiers only (NOT unranked)
-        var remainingItems = allItems
-
-        // If we have enough items, guarantee at least 1 item per tier
-        if allItems.count >= tierOrder.count {
-            for tierName in tierOrder {
-                if let item = remainingItems.popLast() {
-                    newTiers[tierName, default: []].append(item)
-                }
-            }
-        }
-
-        // Randomly distribute remaining items across ranked tiers only
-        for item in remainingItems {
-            let randomTierName = tierOrder.randomElement() ?? tierOrder[0]
-            newTiers[randomTierName, default: []].append(item)
-        }
+        unlockedItems.shuffle()
+        distribute(unlockedItems: unlockedItems, into: unlockedRankedTiers, tiers: &newTiers)
 
         tiers = newTiers
         history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
         markAsChanged()
 
-        showSuccessToast("Tiers Randomized", message: "All \(allItems.count) items distributed randomly")
+        let lockedCount = lockedTiers.count
+        let lockedSuffix = lockedCount == 1 ? "" : "s"
+        let lockedSummary = "\(lockedCount) tier\(lockedSuffix) locked {lock}"
+        let baseMessage = lockedCount > 0
+            ? "\(unlockedItems.count) items distributed randomly (\(lockedSummary))"
+            : "All \(unlockedItems.count) items distributed randomly"
+        let message = baseMessage + ". Use {undo} to reverse."
+        showSuccessToast("Tiers Randomized", message: message)
         announce("Tiers randomized")
+    }
+
+    private func partitionItemsByLockState() -> (locked: Items, unlocked: [Item]) {
+        var lockedTierItems: Items = [:]
+        var unlockedItems: [Item] = []
+
+        for tierName in tiers.keys {
+            let tierItems = tiers[tierName] ?? []
+            if lockedTiers.contains(tierName) {
+                lockedTierItems[tierName] = tierItems
+            } else {
+                unlockedItems.append(contentsOf: tierItems)
+            }
+        }
+
+        return (lockedTierItems, unlockedItems)
+    }
+
+    private func baseTierDictionary(using lockedItems: Items) -> Items {
+        var newTiers: Items = [:]
+        for tierName in tierOrder {
+            newTiers[tierName] = lockedItems[tierName] ?? []
+        }
+        newTiers["unranked"] = lockedItems["unranked"] ?? []
+        return newTiers
+    }
+
+    private func distribute(unlockedItems: [Item], into unlockedRankedTiers: [String], tiers: inout Items) {
+        guard !unlockedRankedTiers.isEmpty else { return }
+
+        var remainingItems = unlockedItems
+
+        if unlockedItems.count >= unlockedRankedTiers.count {
+            for tierName in unlockedRankedTiers {
+                guard let item = remainingItems.popLast() else { break }
+                tiers[tierName, default: []].append(item)
+            }
+        }
+
+        for item in remainingItems {
+            guard let randomTierName = unlockedRankedTiers.randomElement() else { continue }
+            tiers[randomTierName, default: []].append(item)
+        }
     }
 
     private func makeEmptyTiers() -> Items {

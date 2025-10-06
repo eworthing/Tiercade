@@ -4,6 +4,13 @@ struct TierListQuickMenu: View {
     private typealias TierListHandle = AppState.TierListHandle
     @Bindable var app: AppState
 
+    #if os(tvOS)
+    private var tierTitleFont: Font {
+        let nameLength = app.activeTierDisplayName.count
+        return nameLength <= 16 ? TypeScale.h2 : TypeScale.h3
+    }
+    #endif
+
     var body: some View {
         #if os(tvOS)
         // tvOS doesn't support Menu dropdowns; use direct button to browser
@@ -50,19 +57,23 @@ struct TierListQuickMenu: View {
 
     private var menuLabel: some View {
         #if os(tvOS)
-        HStack(spacing: 14) {
+    HStack(spacing: 12) {
             Image(systemName: "square.grid.2x2")
                 .font(.system(size: Metrics.toolbarIconSize))
                 .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
 
             Text(app.activeTierDisplayName)
-                .font(.body)
+                .font(tierTitleFont)
                 .fontWeight(.semibold)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.45)
+                .truncationMode(.tail)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier("Toolbar_TierListMenu_Title")
         }
         .foregroundStyle(Palette.text)
+        .frame(maxWidth: .infinity, alignment: .leading)
         #else
         HStack(spacing: 12) {
             Image(systemName: "list.bullet.rectangle")
