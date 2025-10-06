@@ -32,55 +32,74 @@ private extension AppState {
     }
 
     func resolvedTierState(for bundled: BundledProject) -> BundledTierState {
-        var items: Items = [:]
-        var order: [String] = []
-        var labels: [String: String] = [:]
-        var colors: [String: String] = [:]
-        var locked: Set<String> = []
+        var state = BundledTierState(
+            order: [],
+            items: [:],
+            labels: [:],
+            colors: [:],
+            locked: []
+        )
 
         let metadata = Dictionary(uniqueKeysWithValues: bundled.project.tiers.map { ($0.id, $0) })
         let resolvedTiers = ModelResolver.resolveTiers(from: bundled.project)
 
+        populateState(with: resolvedTiers, metadata: metadata, state: &state)
+        appendMissingTiers(from: bundled.project.tiers, state: &state)
+
+        return state
+    }
+
+    func populateState(
+        with resolvedTiers: [ResolvedTier],
+        metadata: [String: Project.Tier],
+        state: inout BundledTierState
+    ) {
         for resolved in resolvedTiers {
-            // Normalize tier name: "Unranked" -> "unranked"
             let normalizedLabel = normalizeTierName(resolved.label)
-
-            // Skip unranked - it's handled separately, not part of tierOrder
-            if normalizedLabel != "unranked" {
-                order.append(normalizedLabel)
-            }
-
-            if let tier = metadata[resolved.id] {
-                labels[normalizedLabel] = tier.label
-                if let color = tier.color { colors[normalizedLabel] = color }
-                if let isLocked = tier.locked, isLocked { locked.insert(normalizedLabel) }
-            }
-            items[normalizedLabel] = resolved.items.map { item in
-                Item(
-                    id: item.id,
-                    name: item.title,
-                    status: nil,
-                    description: item.description,
-                    imageUrl: item.thumbUri
-                )
-            }
+            appendTierToOrderIfNeeded(normalizedLabel, order: &state.order)
+            applyTierMetadata(metadata[resolved.id], normalizedLabel: normalizedLabel, state: &state)
+            state.items[normalizedLabel] = resolved.items.map(makeItem)
         }
+    }
 
-        for tier in bundled.project.tiers where items[normalizeTierName(tier.label)] == nil {
+    func appendMissingTiers(from tiers: [Project.Tier], state: inout BundledTierState) {
+        for tier in tiers {
             let normalizedLabel = normalizeTierName(tier.label)
-
-            // Skip unranked - it's handled separately, not part of tierOrder
-            if normalizedLabel != "unranked" {
-                order.append(normalizedLabel)
-            }
-
-            items[normalizedLabel] = []
-            labels[normalizedLabel] = tier.label
-            if let color = tier.color { colors[normalizedLabel] = color }
-            if let isLocked = tier.locked, isLocked { locked.insert(normalizedLabel) }
+            guard state.items[normalizedLabel] == nil else { continue }
+            appendTierToOrderIfNeeded(normalizedLabel, order: &state.order)
+            state.items[normalizedLabel] = []
+            state.labels[normalizedLabel] = tier.label
+            if let color = tier.color { state.colors[normalizedLabel] = color }
+            if tier.locked == true { state.locked.insert(normalizedLabel) }
         }
+    }
 
-        return BundledTierState(order: order, items: items, labels: labels, colors: colors, locked: locked)
+    func appendTierToOrderIfNeeded(_ normalizedLabel: String, order: inout [String]) {
+        guard normalizedLabel != "unranked" else { return }
+        if !order.contains(normalizedLabel) {
+            order.append(normalizedLabel)
+        }
+    }
+
+    func applyTierMetadata(
+        _ tier: Project.Tier?,
+        normalizedLabel: String,
+        state: inout BundledTierState
+    ) {
+        guard let tier else { return }
+        state.labels[normalizedLabel] = tier.label
+        if let color = tier.color { state.colors[normalizedLabel] = color }
+        if tier.locked == true { state.locked.insert(normalizedLabel) }
+    }
+
+    func makeItem(from entry: ResolvedItem) -> Item {
+        Item(
+            id: entry.id,
+            name: entry.title,
+            status: nil,
+            description: entry.description,
+            imageUrl: entry.thumbUri
+        )
     }
 
     /// Normalize tier names to lowercase for consistency

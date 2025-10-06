@@ -23,7 +23,6 @@ struct MainAppView: View {
     let detailPresented = app.detailItem != nil
     let headToHeadPresented = app.h2hActive
     let themeCreatorPresented = app.showThemeCreator
-    let itemMenuPresented = app.itemMenuTarget != nil
     let quickMovePresented = app.quickMoveTarget != nil
     // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
     // which provides automatic focus containment via separate presentation context
@@ -31,7 +30,6 @@ struct MainAppView: View {
     let modalBlockingFocus = headToHeadPresented
         || detailPresented
         || themeCreatorPresented
-        || itemMenuPresented
         || quickMovePresented
     #else
     let modalBlockingFocus = detailPresented || headToHeadPresented || themeCreatorPresented
@@ -65,7 +63,7 @@ struct MainAppView: View {
             #if os(tvOS)
             // Top toolbar (overlay so it doesn't reduce content area)
             .overlay(alignment: .top) {
-                TVToolbarView(app: app, modalActive: modalBlockingFocus)
+                TVToolbarView(app: app, modalActive: modalBlockingFocus, editMode: $editMode)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .frame(height: TVMetrics.topBarHeight)
                     .background(.thinMaterial)
@@ -84,6 +82,18 @@ struct MainAppView: View {
                 // Note: Don't use .disabled() as it removes elements from accessibility tree
                 // Only block hit testing when modals are active
             }
+            #if DEBUG
+            .overlay(alignment: .bottomTrailing) {
+                Text(BuildStamp.text)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .opacity(0.6)
+                    .padding(.trailing, TVMetrics.barHorizontalPadding)
+                    .padding(.bottom, TVMetrics.barVerticalPadding + 4)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+            #endif
             #else
             // ToolbarView is ToolbarContent (not a View) on some platforms; avoid embedding it directly on tvOS
             .overlay(alignment: .top) {
@@ -99,9 +109,7 @@ struct MainAppView: View {
             if newPhase == .active { FocusUtils.seedFocus() }
         }
         .onExitCommand {
-            if app.itemMenuTarget != nil {
-                app.dismissItemMenu()
-            } else if app.quickMoveTarget != nil {
+            if app.quickMoveTarget != nil {
                 app.cancelQuickMove()
             } else if app.showThemeCreator {
                 app.cancelThemeCreation(returnToThemePicker: false)
@@ -138,12 +146,9 @@ struct MainAppView: View {
                     .zIndex(40)
 
                 #if os(tvOS)
-                // Quick Move overlay for tvOS Play/Pause accelerator
+                // Quick Move overlay (unified item actions overlay)
                 QuickMoveOverlay(app: app)
                     .zIndex(45)
-                // Item Menu overlay (primary action)
-                ItemMenuOverlay(app: app)
-                    .zIndex(46)
                 #endif
 
                 // Head-to-Head overlay
@@ -260,7 +265,7 @@ struct MainAppView: View {
                 app.performRandomize()
             }
         } message: {
-            Text("This will randomly redistribute all items across tiers. This action cannot be undone.")
+            Text("This will randomly redistribute all items across tiers.")
         }
         .alert("Reset Tier List?", isPresented: Binding(
             get: { app.showResetConfirmation },
@@ -294,30 +299,26 @@ private struct AccessibilityBridgeView: View {
     }
 }
 
+#if DEBUG && os(tvOS)
+private enum BuildStamp {
+    static let text: String = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return "Build: \(formatter.string(from: Date()))"
+    }()
+}
+#endif
+
 // Simple tvOS-friendly toolbar exposing essential actions as buttons.
 struct TVToolbarView: View {
     @Bindable var app: AppState
     var modalActive: Bool = false
+    @Binding var editMode: EditMode
     // Seed and manage initial focus for tvOS toolbar controls
     @FocusState private var focusedControl: Control?
 
     private enum Control: Hashable {
-        case undo, redo, randomize, reset, library, h2h, analytics, density, theme
-    }
-
-    private var buildTimestamp: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss"
-        return "Build: \(formatter.string(from: buildDate))"
-    }
-
-    private var buildDate: Date {
-        // Use compile time - this gets updated on every build
-        #if DEBUG
-        return Date()
-        #else
-        return Bundle.main.object(forInfoDictionaryKey: "BuildDate") as? Date ?? Date()
-        #endif
+        case undo, redo, randomize, reset, library, h2h, analytics, density, theme, multiSelect
     }
 
     var body: some View {
@@ -341,8 +342,12 @@ struct TVToolbarView: View {
             }
             return "Add items before opening analytics"
         }()
-    let analyticsTooltip = analyticsActive ? "Hide Analytics" : "Show Analytics"
-    let cardDensityValue = app.cardDensityPreference
+        let analyticsTooltip = analyticsActive ? "Hide Analytics" : "Show Analytics"
+        let cardDensityValue = app.cardDensityPreference
+        let undoEnabled = app.canUndo
+        let redoEnabled = app.canRedo
+        let undoHint = undoEnabled ? "Undo last change" : "Nothing to undo"
+        let redoHint = redoEnabled ? "Redo last change" : "Nothing to redo"
         HStack(spacing: 16) {
             Button(action: { app.undo() }, label: {
                 Image(systemName: "arrow.uturn.backward")
@@ -350,9 +355,12 @@ struct TVToolbarView: View {
                     .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
             .buttonStyle(.tvRemote(.primary))
-            .disabled(!app.canUndo)
+            .disabled(!undoEnabled)
+            .focusEffectDisabled(!undoEnabled)
+            .opacity(undoEnabled ? 1 : 0.35)
             .focused($focusedControl, equals: .undo)
             .accessibilityLabel("Undo")
+            .accessibilityHint(undoHint)
             .focusTooltip("Undo")
 
             Button(action: { app.redo() }, label: {
@@ -361,9 +369,12 @@ struct TVToolbarView: View {
                     .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
             .buttonStyle(.tvRemote(.primary))
-            .disabled(!app.canRedo)
+            .disabled(!redoEnabled)
+            .focusEffectDisabled(!redoEnabled)
+            .opacity(redoEnabled ? 1 : 0.35)
             .focused($focusedControl, equals: .redo)
             .accessibilityLabel("Redo")
+            .accessibilityHint(redoHint)
             .focusTooltip("Redo")
 
             Button(action: { app.randomize() }, label: {
@@ -373,6 +384,8 @@ struct TVToolbarView: View {
             })
             .buttonStyle(.tvRemote(.primary))
             .disabled(!randomizeEnabled)
+            .focusEffectDisabled(!randomizeEnabled)
+            .opacity(randomizeEnabled ? 1 : 0.35)
             .accessibilityIdentifier("Toolbar_Randomize")
             .focused($focusedControl, equals: .randomize)
             .accessibilityLabel("Randomize")
@@ -393,16 +406,39 @@ struct TVToolbarView: View {
             Divider()
                 .frame(height: 28)
 
-            Spacer(minLength: 28)
+            Spacer(minLength: TVMetrics.toolbarClusterSpacing)
 
             TierListQuickMenu(app: app)
                 .focused($focusedControl, equals: .library)
                 .focusTooltip("Tier Library")
+                .frame(minWidth: 320, idealWidth: 380, maxWidth: 520, alignment: .leading)
+                .layoutPriority(1)
 
-            Spacer(minLength: 28)
+            Spacer(minLength: TVMetrics.toolbarClusterSpacing)
 
             Divider()
                 .frame(height: 28)
+
+            Button(action: {
+                withAnimation(.snappy(duration: 0.18, extraBounce: 0.04)) {
+                    editMode = editMode == .active ? .inactive : .active
+                    if editMode == .inactive { app.clearSelection() }
+                }
+            }, label: {
+                Image(
+                    systemName: editMode == .active
+                        ? "rectangle.stack.fill.badge.plus"
+                        : "rectangle.stack.badge.plus"
+                )
+                .font(.system(size: Metrics.toolbarIconSize))
+                .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
+            })
+            .buttonStyle(.tvRemote(.primary))
+            .accessibilityIdentifier("Toolbar_MultiSelect")
+            .focused($focusedControl, equals: .multiSelect)
+            .accessibilityLabel(editMode == .active ? "Exit Selection Mode" : "Multi-Select")
+            .accessibilityValue(editMode == .active ? "\(app.selection.count) items selected" : "")
+            .focusTooltip(editMode == .active ? "Exit Selection" : "Multi-Select")
 
             Button(action: { app.startH2H() }, label: {
                 Image(systemName: "person.line.dotted.person.fill")
@@ -412,6 +448,8 @@ struct TVToolbarView: View {
             .buttonStyle(.tvRemote(.primary))
             .accessibilityIdentifier("Toolbar_H2H")
             .disabled(!headToHeadEnabled)
+            .focusEffectDisabled(!headToHeadEnabled)
+            .opacity(headToHeadEnabled ? 1 : 0.35)
             .focused($focusedControl, equals: .h2h)
             .accessibilityLabel("Head to Head")
             .accessibilityHint(headToHeadHint)
@@ -425,6 +463,8 @@ struct TVToolbarView: View {
             .buttonStyle(.tvRemote(.primary))
             .accessibilityIdentifier("Toolbar_Analytics")
             .disabled(!analyticsEnabled)
+            .focusEffectDisabled(!analyticsEnabled)
+            .opacity(analyticsEnabled ? 1 : 0.35)
             .focused($focusedControl, equals: .analytics)
             .accessibilityLabel("Analytics")
             .accessibilityValue(analyticsActive ? "Visible" : "Hidden")
@@ -455,15 +495,6 @@ struct TVToolbarView: View {
             .accessibilityLabel("Tier Themes")
             .accessibilityHint("Choose a color theme for your tiers")
             .focusTooltip("Tier Themes")
-
-            Spacer(minLength: 32)
-
-            // Build timestamp for development
-            Text(buildTimestamp)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .opacity(0.6)
-                .fixedSize()
         }
         .padding(.horizontal, TVMetrics.barHorizontalPadding)
         .padding(.vertical, TVMetrics.barVerticalPadding)

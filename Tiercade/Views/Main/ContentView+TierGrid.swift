@@ -161,7 +161,7 @@ struct CardView: View {
                 if isMultiSelectActive {
                     app.toggleSelection(item.id)
                 } else {
-                    app.presentItemMenu(item)
+                    app.beginQuickMove(item)
                 }
                 #else
                 app.beginQuickRank(item)

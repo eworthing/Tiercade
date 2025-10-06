@@ -200,7 +200,7 @@ extension AppState {
             hasUnsavedChanges = false
             lastSavedTime = Date()
 
-            showSuccessToast("File Saved", message: "Saved as \(fileName).json")
+            showSuccessToast("File Saved", message: "Saved as \(fileName).json {file}")
         } catch let error as EncodingError {
             throw PersistenceError.encodingFailed("Failed to encode: \(error.localizedDescription)")
         } catch let error as CocoaError where error.code == .fileWriteNoPermission {
@@ -267,7 +267,7 @@ extension AppState {
             return true
         } catch {
             print("Legacy load failed: \(error)")
-            showErrorToast("Load Failed", message: "Could not load tier list")
+            showErrorToast("Load Failed", message: "Could not load tier list {warning}")
             return false
         }
     }
@@ -299,7 +299,9 @@ extension AppState {
         history = HistoryLogic.initHistory(tiers, limit: history.limit)
         hasUnsavedChanges = false
         lastSavedTime = UserDefaults.standard.object(forKey: "\(storageKey).timestamp") as? Date
-        let message = isLegacy ? "Tier list loaded (legacy) successfully" : "Tier list loaded successfully"
+        let message = isLegacy
+            ? "Tier list loaded (legacy) successfully {file}"
+            : "Tier list loaded successfully {file}"
         showSuccessToast("Loaded", message: message)
     }
 
@@ -355,7 +357,7 @@ extension AppState {
                 restoreCustomThemes(saveData.customThemes ?? [])
                 restoreTheme(themeIDString: saveData.selectedThemeID)
                 restoreCardDensityPreference(rawValue: saveData.cardDensityPreference)
-                showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
+                showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
                 return true
             }
 
@@ -367,14 +369,17 @@ extension AppState {
                     savedDate: Date()
                 )
                 restoreCardDensityPreference(rawValue: nil)
-                showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
+                showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
                 return true
             }
-            showErrorToast("Load Failed", message: "Unrecognized format for \(fileName).json")
+            showErrorToast(
+                "Load Failed",
+                message: "Unrecognized format for \(fileName).json {warning}"
+            )
             return false
         } catch {
             print("File load failed: \(error)")
-            showErrorToast("Load Failed", message: "Could not load \(fileName).json")
+            showErrorToast("Load Failed", message: "Could not load \(fileName).json {warning}")
             return false
         }
     }
@@ -446,11 +451,11 @@ extension AppState {
                 lastSavedTime = Date()
             }
 
-            showSuccessToast("File Saved", message: "Saved \(fileName).json")
+            showSuccessToast("File Saved", message: "Saved \(fileName).json {file}")
             return true
         } catch {
             print("File save failed: \(error)")
-            showErrorToast("Save Failed", message: "Could not save \(fileName).json")
+            showErrorToast("Save Failed", message: "Could not save \(fileName).json {warning}")
             return false
         }
     }
@@ -477,7 +482,7 @@ extension AppState {
             )
         } catch {
             print("File load failed: \(error)")
-            showErrorToast("Load Failed", message: "Could not load \(fileName).json")
+            showErrorToast("Load Failed", message: "Could not load \(fileName).json {warning}")
             return false
         }
     }
@@ -516,7 +521,7 @@ extension AppState {
         }
         restoreCardDensityPreference(rawValue: saveData.cardDensityPreference)
 
-        showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
+        showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
         return true
     }
 
@@ -535,7 +540,7 @@ extension AppState {
         )
         restoreCardDensityPreference(rawValue: nil)
         updateProgress(1.0)
-        showSuccessToast("File Loaded", message: "Loaded \(fileName).json")
+        showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
         return true
     }
 

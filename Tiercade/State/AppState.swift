@@ -75,12 +75,11 @@ final class AppState {
     var quickRankTarget: Item?
     // tvOS quick move (Play/Pause accelerator)
     var quickMoveTarget: Item?
+    var batchQuickMoveActive: Bool = false
     // Multi-select state for batch operations (driven by editMode environment)
     var selection: Set<String> = []
     // Detail overlay routing
     var detailItem: Item?
-    // Item menu overlay routing (tvOS primary action)
-    var itemMenuTarget: Item?
     // Locked tiers set (until full Tier model exists)
     var lockedTiers: Set<String> = []
     // Tier display overrides (rename/recolor without core model changes)
@@ -302,7 +301,7 @@ final class AppState {
         history = HistoryLogic.undo(history)
         tiers = HistoryLogic.current(history)
         markAsChanged()
-        showInfoToast("Undone", message: "Last action has been undone")
+    showInfoToast("Undone", message: "Last action undone {undo}")
         let counts = tierOrder
             .map { "\($0):\(tiers[$0]?.count ?? 0)" }
             .joined(separator: ", ")
@@ -314,7 +313,7 @@ final class AppState {
         history = HistoryLogic.redo(history)
         tiers = HistoryLogic.current(history)
         markAsChanged()
-        showInfoToast("Redone", message: "Action has been redone")
+    showInfoToast("Redone", message: "Action redone {redo}")
         let counts = tierOrder
             .map { "\($0):\(tiers[$0]?.count ?? 0)" }
             .joined(separator: ", ")

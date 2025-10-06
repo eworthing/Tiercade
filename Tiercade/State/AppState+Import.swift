@@ -21,7 +21,7 @@ extension AppState {
                 markAsChanged()
                 updateProgress(1.0)
 
-                showSuccessToast("Import Complete", message: "Successfully imported tier list")
+                showSuccessToast("Import Complete", message: "Successfully imported tier list {import}")
             }
         } catch let error as ImportError {
             throw error
@@ -82,7 +82,7 @@ extension AppState {
                 markAsChanged()
                 updateProgress(1.0)
 
-                showSuccessToast("Import Complete", message: "Successfully imported CSV data")
+                showSuccessToast("Import Complete", message: "Successfully imported CSV data {import}")
             }
         } catch let error as ImportError {
             throw error
@@ -154,7 +154,7 @@ extension AppState {
             history = HistoryLogic.initHistory(tiers, limit: history.limit)
             markAsChanged()
 
-            showSuccessToast("Import Complete", message: "Project loaded successfully")
+            showSuccessToast("Import Complete", message: "Project loaded successfully {import}")
         } catch let error as NSError where error.domain == "Tiercade" {
             throw ImportError.invalidData(error.localizedDescription)
         } catch let error as ImportError {
