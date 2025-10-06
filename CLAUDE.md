@@ -96,10 +96,26 @@ TiercadeCore Logic → State Update → UI Auto-Refresh
 
 ## Swift 6 / OS 26 Requirements
 
-**Strict concurrency enabled** - all targets use:
+**Strict concurrency enabled** - configuration differs by target type:
+
+**TiercadeCore Package** (library - nonisolated by default):
 ```swift
-.enableUpcomingFeature("StrictConcurrency")
-.unsafeFlags(["-strict-concurrency=complete"])
+// Package.swift
+targets: [
+    .target(
+        name: "TiercadeCore",
+        swiftSettings: [
+            .enableUpcomingFeature("StrictConcurrency")
+            // No default MainActor isolation for maximum library flexibility
+        ]
+    )
+]
+```
+
+**Tiercade App** (UI-focused - MainActor by default):
+```
+// Xcode project.pbxproj
+OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature StrictConcurrency -default-isolation MainActor"
 ```
 
 **Modernization mandates**:

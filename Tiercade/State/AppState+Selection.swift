@@ -10,11 +10,8 @@ extension AppState {
     }
 
     // MARK: - Selection / Multi-Select
-    func toggleMultiSelect() {
-        isMultiSelect.toggle()
-        if !isMultiSelect { selection.removeAll() }
-    }
-
+    // Note: editMode is managed by view layer via environment
+    // AppState only manages the selection Set
     func isSelected(_ id: String) -> Bool { selection.contains(id) }
 
     func toggleSelection(_ id: String) {

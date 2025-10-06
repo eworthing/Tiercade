@@ -10,7 +10,7 @@ import SwiftUI
 import CoreGraphics
 
 /// Centralized color utilities for hex parsing, luminance calculations, and contrast ratios
-enum ColorUtilities {
+nonisolated enum ColorUtilities {
     /// RGBA color components
     struct RGBAComponents: Sendable {
         let red: CGFloat
