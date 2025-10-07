@@ -2,6 +2,51 @@
 When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (SwiftUI, UIKit, Focus, HIG), consult authoritative Apple documentation via apple-docs MCP tools before other sources.
 ```
 
+# Tiercade AI Agent Playbook
+
+- Target tvOS-first SwiftUI app (iOS/iPadOS/macOS 26+) using Swift 6 strict concurrency. Keep `.enableUpcomingFeature("StrictConcurrency")` and Xcode `-default-isolation MainActor` flags intact.
+
+## Architecture snapshot
+- `Tiercade/State/AppState.swift` is the only source of truth (`@MainActor @Observable`). Every mutation lives in `AppState+*.swift` extensions and calls TiercadeCore helpers—never mutate `tiers` or `selection` directly inside views.
+- Shared logic comes from `TiercadeCore/` (`TierLogic`, `HistoryLogic`, `HeadToHeadLogic`, `RandomUtils`, etc.). Import the module instead of reimplementing `Items`/`TierConfig` types.
+- Views are grouped by intent: `Views/Main` (tier grid / `MainAppView`), `Views/Toolbar`, `Views/Overlays`, `Views/Components`. Match existing composition when adding surfaces.
+- Design tokens live in `Tiercade/Design/` (`Palette`, `TypeScale`, `Metrics`, `TVMetrics`). Reference these rather than hardcoding colors or spacing, especially for tvOS focus chrome.
+- `SharedCore.swift` wires TiercadeCore + design singletons; keep dependency injection consistent with its patterns.
+
+## State & async patterns
+- Follow the pipeline `View → AppState method → TiercadeCore → state update → SwiftUI refresh`. Example: `AppState+Items.moveItem` wraps `TierLogic.moveItem` and auto-captures history.
+- Long work must use `withLoadingIndicator` / `updateProgress` from `AppState+Progress`; success and failure feedback flows through `AppState+Toast`.
+- Persistence & import/export: `AppState+Persistence` auto-saves to UserDefaults; `AppState+Export` and `+Import` wrap async file IO with typed errors (`ExportError`, `ImportError`). tvOS excludes PDF export via `#if os(tvOS)`.
+
+## tvOS-first UX rules
+- Overlays (QuickMove, HeadToHead, ThemePicker, etc.) are separate focus sections using `.focusSection()` and `.focusable(interactions: .activate)`. Keep background content interactive by toggling `.allowsHitTesting(!overlayActive)`—never `.disabled()`.
+- Accessibility IDs must follow `{Component}_{Action}` on leaf elements (e.g. `Toolbar_H2H`, `QuickMove_Overlay`). Avoid placing IDs on containers using `.accessibilityElement(children: .contain)`.
+- Head-to-head overlay contract: render skip card with `clock.arrow.circlepath`, maintain `H2H_SkippedCount`, call `cancelH2H(fromExitCommand:)` from `.onExitCommand`.
+- Apply glass effects via `glassEffect`, `GlassEffectContainer`, or `.buttonStyle(.glass)` when touching toolbars/overlays; validate focus halos in the Apple TV 4K (3rd gen) tvOS 26 simulator.
+
+## Build, test, verify
+- Fast build: use the VS Code task “Build tvOS Tiercade (Debug)” or
+  ```bash
+  xcodebuild -project Tiercade.xcodeproj -scheme Tiercade \
+    -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' \
+    -configuration Debug build
+  ```
+- Core logic tests: `cd TiercadeCore && swift test`.
+- Full tvOS pipeline (build + UI tests + artifacts in `/tmp`): `./tools/tvOS_build_and_test.sh`.
+- UI automation relies on accessibility IDs and short paths—use existence checks, avoid long XCUIRemote navigation (>12 s causes timeouts).
+- Manual sign-off keeps the tvOS 26 simulator open, cycling focus via Siri Remote or keyboard arrows after each build.
+
+## Tooling & diagnostics
+- Asset refresh: `TMDB_API_KEY=… ./tools/fetch_bundled_images.sh` (see `tools/README_IMAGES.md`).
+- Debug logging: `AppState.appendDebugFile` writes to `/tmp/tiercade_debug.log`; pipeline script also emits `tiercade_build_and_test.log` and before/after screenshots.
+- SourceKit often flags “No such module 'TiercadeCore'”; defer to `xcodebuild` results before debugging module wiring.
+
+## Collaboration norms
+- Use Conventional Commits with scopes (e.g. `feat(tvOS):`, `fix(core):`).
+- Prefer Swift Testing (`@Test`, `#expect`) for new coverage; legacy XCTest lives beside new tests until migrated.
+
+---
+
 # Tiercade AI Agent Instructions
 
 A SwiftUI tier list management app targeting tvOS 26+/iOS 26+ with Swift 6 strict concurrency. Primary platform is tvOS with remote-first UX patterns.

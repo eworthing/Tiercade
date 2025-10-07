@@ -91,28 +91,45 @@ struct TVRemoteButtonStyle: ButtonStyle {
 
     var role: Role = .primary
     @Environment(\.isFocused) private var isFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion: Bool
 
     func makeBody(configuration: Configuration) -> some View {
-        let colors = palette(for: role, isPressed: configuration.isPressed, isFocused: isFocused)
-        let cornerRadius: CGFloat = role == .list ? 22 : 18
+        let palette = palette(for: role, isPressed: configuration.isPressed, isFocused: isFocused)
+        let scale = scale(for: configuration.isPressed, isFocused: isFocused)
+        let borderWidth = isFocused ? palette.focusedBorderWidth : palette.baseBorderWidth
+        let animationFocus = reduceMotion ? nil : Animation.easeOut(duration: 0.15)
+        let animationPress = reduceMotion ? nil : Animation.easeOut(duration: 0.12)
 
-        return configuration.label
+        let baseView = configuration.label
             .font(font(for: role))
             .frame(maxWidth: role == .list ? .infinity : nil, alignment: .leading)
             .padding(.horizontal, horizontalPadding(for: role))
             .padding(.vertical, verticalPadding(for: role))
-            .background(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(colors.background)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .stroke(colors.border, lineWidth: isFocused ? 3 : 1.5)
-                    )
-            )
-            .foregroundColor(colors.foreground)
-            .scaleEffect(configuration.isPressed ? 0.97 : (isFocused ? 1.06 : 1.0))
-            .animation(.easeOut(duration: 0.15), value: isFocused)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .foregroundStyle(palette.foreground)
+            .contentShape(Capsule())
+
+        return Group {
+            if #available(tvOS 26.0, iOS 26.0, macOS 26.0, *) {
+                baseView
+                    .glassEffect(Glass.regular.tint(palette.tint).interactive(), in: Capsule())
+            } else {
+                baseView
+                    .background(.ultraThinMaterial, in: Capsule())
+            }
+        }
+        .overlay(
+            Capsule()
+                .stroke(palette.border, lineWidth: borderWidth)
+        )
+        .shadow(
+            color: palette.shadow,
+            radius: palette.shadowRadius(isFocused: isFocused),
+            x: 0,
+            y: palette.shadowYOffset(isFocused: isFocused)
+        )
+        .scaleEffect(scale)
+        .animation(animationFocus, value: isFocused)
+        .animation(animationPress, value: configuration.isPressed)
     }
 
     private func font(for role: Role) -> Font {
@@ -139,28 +156,52 @@ struct TVRemoteButtonStyle: ButtonStyle {
         }
     }
 
-    private func palette(for role: Role, isPressed: Bool, isFocused: Bool) -> TVRemoteButtonColors {
-        let baseOpacity: Double = isFocused ? 0.35 : 0.25
+    private func palette(for role: Role, isPressed: Bool, isFocused: Bool) -> TVGlassButtonPalette {
         switch role {
         case .primary:
-            return TVRemoteButtonColors(
-                background: Color.white.opacity(isPressed ? 0.45 : baseOpacity),
-                border: Color.white.opacity(isFocused ? 0.9 : 0.55),
-                foreground: .white
+            return TVGlassButtonPalette(
+                tint: Color.white.opacity(min(0.26 + boost(isPressed, isFocused), 0.48)),
+                border: Color.white.opacity(isFocused ? 0.92 : 0.5),
+                foreground: .white,
+                shadow: Color.white.opacity(isFocused ? 0.32 : 0.0),
+                baseBorderWidth: 1.6,
+                focusedBorderWidth: 3.0,
+                shadowRadiusFocused: 18,
+                shadowYOffsetFocused: 4
             )
         case .secondary:
-            return TVRemoteButtonColors(
-                background: Color.white.opacity(isPressed ? 0.25 : 0.18),
-                border: Color.white.opacity(isFocused ? 0.65 : 0.4),
-                foreground: .white
+            return TVGlassButtonPalette(
+                tint: Color.white.opacity(min(0.18 + boost(isPressed, isFocused) * 0.85, 0.34)),
+                border: Color.white.opacity(isFocused ? 0.7 : 0.38),
+                foreground: .white,
+                shadow: Color.white.opacity(isFocused ? 0.24 : 0.0),
+                baseBorderWidth: 1.4,
+                focusedBorderWidth: 2.6,
+                shadowRadiusFocused: 14,
+                shadowYOffsetFocused: 3
             )
         case .list:
-            return TVRemoteButtonColors(
-                background: Color.white.opacity(isPressed ? 0.22 : 0.15),
-                border: Color.white.opacity(isFocused ? 0.5 : 0.25),
-                foreground: .white
+            return TVGlassButtonPalette(
+                tint: Color.white.opacity(min(0.16 + boost(isPressed, isFocused) * 0.75, 0.28)),
+                border: Color.white.opacity(isFocused ? 0.52 : 0.28),
+                foreground: .white,
+                shadow: Color.white.opacity(isFocused ? 0.18 : 0.0),
+                baseBorderWidth: 1.2,
+                focusedBorderWidth: 2.4,
+                shadowRadiusFocused: 10,
+                shadowYOffsetFocused: 2
             )
         }
+    }
+
+    private func scale(for isPressed: Bool, isFocused: Bool) -> CGFloat {
+        if isPressed { return 0.97 }
+        if isFocused { return 1.06 }
+        return 1.0
+    }
+
+    private func boost(_ isPressed: Bool, _ isFocused: Bool) -> Double {
+        (isFocused ? 0.12 : 0.0) + (isPressed ? 0.08 : 0.0)
     }
 }
 
@@ -170,8 +211,21 @@ extension ButtonStyle where Self == TVRemoteButtonStyle {
     }
 }
 
-private struct TVRemoteButtonColors {
-    let background: Color
+private struct TVGlassButtonPalette {
+    let tint: Color
     let border: Color
     let foreground: Color
+    let shadow: Color
+    let baseBorderWidth: CGFloat
+    let focusedBorderWidth: CGFloat
+    let shadowRadiusFocused: CGFloat
+    let shadowYOffsetFocused: CGFloat
+
+    func shadowRadius(isFocused: Bool) -> CGFloat {
+        isFocused ? shadowRadiusFocused : 0
+    }
+
+    func shadowYOffset(isFocused: Bool) -> CGFloat {
+        isFocused ? shadowYOffsetFocused : 0
+    }
 }

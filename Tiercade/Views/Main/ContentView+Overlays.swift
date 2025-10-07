@@ -57,11 +57,9 @@ struct ToastView: View {
         }
         .padding(.horizontal, Metrics.grid * 2)
         .padding(.vertical, Metrics.grid * 1.5)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.regularMaterial)
-                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-        )
+        .tvGlassRounded(18)
+        .tint(toast.type.color.opacity(0.24))
+        .shadow(color: Color.black.opacity(0.24), radius: 20, y: 10)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(toast.type.color.opacity(0.3), lineWidth: 1)
@@ -169,11 +167,8 @@ struct ProgressIndicatorView: View {
                 }
                 .padding(.horizontal, Metrics.grid * 2)
                 .padding(.vertical, Metrics.grid * 2)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(.regularMaterial)
-                        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-                )
+                .tvGlassRounded(20)
+                .shadow(color: Color.black.opacity(0.2), radius: 18, y: 8)
             }
             .transition(.opacity.combined(with: .scale(scale: 0.9)))
         }
@@ -236,8 +231,12 @@ struct QuickRankOverlay: View {
                 }
                 .accessibilityIdentifier("QuickRank_Overlay")
                 .padding(Metrics.grid * 1.5)
-                .background(.thinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .tvGlassRounded(18)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.white.opacity(0.18), lineWidth: 1.25)
+                )
+                .shadow(color: Color.black.opacity(0.22), radius: 22, y: 8)
                 .padding(Metrics.grid)
                 .accessibilityElement(children: .contain)
                 .accessibilityAddTraits(.isModal)
@@ -262,6 +261,7 @@ struct QuickRankOverlay: View {
 
 struct HeadToHeadOverlay: View {
     @Bindable var app: AppState
+    @Namespace private var glassNamespace
     @FocusState private var focused: FocusField?
     private enum FocusField: Hashable { case left, right, skip, finish, cancel }
     @State private var lastFocus: FocusField = .left
@@ -309,25 +309,27 @@ struct HeadToHeadOverlay: View {
                     }
 
                     if let pair = app.h2hPair {
-                        HStack(alignment: .center, spacing: 32) {
-                            H2HButton(item: pair.0) { app.voteH2H(winner: pair.0) }
-                                .accessibilityIdentifier("H2H_Left")
-                                .focused($focused, equals: .left)
+                        GlassEffectContainer(spacing: 32) {
+                            HStack(alignment: .center, spacing: 32) {
+                                H2HButton(item: pair.0) { app.voteH2H(winner: pair.0) }
+                                    .accessibilityIdentifier("H2H_Left")
+                                    .focused($focused, equals: .left)
 
-                            VStack(spacing: 16) {
-                                Text("vs")
-                                    .font(.title.weight(.bold))
-                                    .foregroundStyle(.secondary)
+                                VStack(spacing: 16) {
+                                    Text("vs")
+                                        .font(.title.weight(.bold))
+                                        .foregroundStyle(.secondary)
 
-                                H2HSkipButton {
-                                    app.skipCurrentH2HPair()
+                                    H2HSkipButton {
+                                        app.skipCurrentH2HPair()
+                                    }
+                                    .focused($focused, equals: .skip)
                                 }
-                                .focused($focused, equals: .skip)
-                            }
 
-                            H2HButton(item: pair.1) { app.voteH2H(winner: pair.1) }
-                                .accessibilityIdentifier("H2H_Right")
-                                .focused($focused, equals: .right)
+                                H2HButton(item: pair.1) { app.voteH2H(winner: pair.1) }
+                                    .accessibilityIdentifier("H2H_Right")
+                                    .focused($focused, equals: .right)
+                            }
                         }
                     } else {
                         VStack(spacing: 12) {
@@ -359,14 +361,16 @@ struct HeadToHeadOverlay: View {
                 }
                 .padding(Metrics.grid * 2)
                 .frame(maxWidth: 1000)
-                .background(
+                .tvGlassRounded(32)
+#if swift(>=6.0)
+                .glassEffectID("h2hButton", in: glassNamespace)
+                .glassEffectTransition(.matchedGeometry)
+#endif
+                .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(.thinMaterial)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .stroke(Color.white.opacity(0.18), lineWidth: 1.5)
-                        )
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1.5)
                 )
+                .shadow(color: Color.black.opacity(0.25), radius: 28, y: 14)
                 .padding(Metrics.grid * 2)
                 .accessibilityIdentifier("H2H_Overlay")
                 .accessibilityElement(children: .contain)
@@ -517,15 +521,12 @@ struct H2HButton: View {
             }
             .padding(Metrics.grid * 2)
             .frame(minWidth: 280, maxWidth: 380, minHeight: 240, alignment: .topLeading)
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white.opacity(0.12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(Color.white.opacity(0.25), lineWidth: 1.5)
-                    )
-            )
             .contentShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .tvGlassRounded(24)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.white.opacity(0.26), lineWidth: 1.6)
+            )
         }
         .buttonStyle(CardButtonStyle())
         .accessibilityLabel(item.name ?? item.id)
@@ -547,13 +548,10 @@ struct H2HSkipButton: View {
                     .font(.headline.weight(.semibold))
             }
             .frame(width: 180, height: 180)
-            .background(
+            .tvGlassRounded(24)
+            .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color.white.opacity(0.12))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(Color.white.opacity(0.25), lineWidth: 1.5)
-                    )
+                    .stroke(Color.white.opacity(0.24), lineWidth: 1.5)
             )
         }
         .buttonStyle(CardButtonStyle())

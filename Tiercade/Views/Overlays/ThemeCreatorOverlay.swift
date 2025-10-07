@@ -41,9 +41,12 @@ struct ThemeCreatorOverlay: View {
                 footer
             }
             .frame(maxWidth: 1160, maxHeight: 880)
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius))
-            .shadow(color: .black.opacity(0.45), radius: 38, x: 0, y: 24)
+            .tvGlassRounded(TVMetrics.overlayCornerRadius)
+            .overlay(
+                RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.16), lineWidth: 1.4)
+            )
+            .shadow(color: Color.black.opacity(0.42), radius: 32, y: 18)
             .accessibilityIdentifier("ThemeCreator_Overlay")
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
@@ -97,7 +100,7 @@ private extension ThemeCreatorOverlay {
             Spacer()
         }
         .padding(TVMetrics.overlayPadding)
-        .background(.thinMaterial)
+    .tvGlassRounded(0)
     }
 
     var content: some View {
@@ -124,13 +127,10 @@ private extension ThemeCreatorOverlay {
             TextField("Theme Name", text: nameBinding)
                 .padding(.vertical, 14)
                 .padding(.horizontal, 18)
-                .background(
+                .tvGlassRounded(18)
+                .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.08))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                        )
+                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
                 )
                 .focused($focusedElement, equals: .name)
                 .submitLabel(.done)
@@ -139,13 +139,10 @@ private extension ThemeCreatorOverlay {
             TextField("Short description", text: descriptionBinding)
                 .padding(.vertical, 14)
                 .padding(.horizontal, 18)
-                .background(
+                .tvGlassRounded(18)
+                .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(Color.white.opacity(0.08))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                        )
+                        .stroke(Color.white.opacity(0.14), lineWidth: 1)
                 )
                 .focused($focusedElement, equals: .description)
                 .submitLabel(.done)
@@ -159,16 +156,18 @@ private extension ThemeCreatorOverlay {
             Text("Tiers")
                 .font(.headline)
 
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(draft.tiers) { tier in
-                    Button {
-                        setActiveTier(tier.id)
-                    } label: {
-                        tierRow(for: tier)
+            GlassEffectContainer(spacing: 12) {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(draft.tiers) { tier in
+                        Button {
+                            setActiveTier(tier.id)
+                        } label: {
+                            tierRow(for: tier)
+                        }
+                        .buttonStyle(.plain)
+                        .focused($focusedElement, equals: .tier(tier.id))
+                        .accessibilityIdentifier("ThemeCreator_Tier_\(tier.name)")
                     }
-                    .buttonStyle(.plain)
-                    .focused($focusedElement, equals: .tier(tier.id))
-                    .accessibilityIdentifier("ThemeCreator_Tier_\(tier.name)")
                 }
             }
         }
@@ -206,13 +205,14 @@ private extension ThemeCreatorOverlay {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(
-            background
-                .fill(isActive ? Color.white.opacity(0.12) : Color.white.opacity(0.04))
-        )
+        .tvGlassRounded(14)
+        .tint(ColorUtilities.color(hex: tier.colorHex).opacity(isActive ? 0.26 : 0.14))
         .overlay(
             background
-                .stroke(isActive ? Color.accentColor : Color.clear, lineWidth: 2.5)
+                .stroke(
+                    isActive ? Color.accentColor : Color.white.opacity(0.08),
+                    lineWidth: isActive ? 2.5 : 1
+                )
         )
         .scaleEffect(isActive ? 1.04 : 1.0)
         .animation(.easeOut(duration: 0.2), value: isActive)
@@ -227,13 +227,15 @@ private extension ThemeCreatorOverlay {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 18), count: paletteColumns),
-                spacing: 18
-            ) {
-                ForEach(Self.paletteHexes.indices, id: \.self) { index in
-                    let hex = Self.paletteHexes[index]
-                    paletteButton(for: hex, index: index)
+            GlassEffectContainer(spacing: 18) {
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.flexible(), spacing: 18), count: paletteColumns),
+                    spacing: 18
+                ) {
+                    ForEach(Self.paletteHexes.indices, id: \.self) { index in
+                        let hex = Self.paletteHexes[index]
+                        paletteButton(for: hex, index: index)
+                    }
                 }
             }
             .padding(.top, 8)
@@ -309,7 +311,10 @@ private extension ThemeCreatorOverlay {
             .accessibilityIdentifier("ThemeCreator_Save")
         }
         .padding(TVMetrics.overlayPadding)
-        .background(.thinMaterial)
+        .tvGlassRounded(0)
+        .overlay(alignment: .top) {
+            Divider().opacity(0.12)
+        }
     }
 
     func dismiss(returnToPicker: Bool) {

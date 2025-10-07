@@ -12,6 +12,7 @@ struct QRSheet: View {
                 .foregroundStyle(.secondary)
         }
         .padding(24)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    .tvGlassRounded(16)
+    .shadow(color: Color.black.opacity(0.2), radius: 18, y: 8)
     }
 }
