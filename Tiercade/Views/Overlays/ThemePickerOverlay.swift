@@ -6,6 +6,7 @@ import TiercadeCore
 struct ThemePickerOverlay: View {
     @Bindable var appState: AppState
     @Namespace private var focusNamespace
+    @Namespace private var glassNamespace
     @FocusState private var focusedElement: FocusElement?
     @State private var lastFocusBeforeCreator: FocusElement?
 
@@ -26,28 +27,30 @@ struct ThemePickerOverlay: View {
                 headerSection
 
                 ScrollView {
-                    LazyVGrid(
-                        columns: [
-                            GridItem(.flexible(), spacing: TVMetrics.cardSpacing),
-                            GridItem(.flexible(), spacing: TVMetrics.cardSpacing)
-                        ],
-                        spacing: TVMetrics.cardSpacing
-                    ) {
-                        ForEach(focusableThemes) { theme in
-                            ThemeCard(
-                                theme: theme,
-                                isSelected: appState.selectedTheme == theme,
-                                isFocused: focusedTheme == theme,
-                                isCustom: appState.isCustomTheme(theme),
-                                action: {
-                                    withAnimation(.spring(response: 0.3)) {
-                                        appState.applyTheme(theme)
+                    GlassEffectContainer(spacing: TVMetrics.cardSpacing) {
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible(), spacing: TVMetrics.cardSpacing),
+                                GridItem(.flexible(), spacing: TVMetrics.cardSpacing)
+                            ],
+                            spacing: TVMetrics.cardSpacing
+                        ) {
+                            ForEach(focusableThemes) { theme in
+                                ThemeCard(
+                                    theme: theme,
+                                    isSelected: appState.selectedTheme == theme,
+                                    isFocused: focusedTheme == theme,
+                                    isCustom: appState.isCustomTheme(theme),
+                                    action: {
+                                        withAnimation(.spring(response: 0.3)) {
+                                            appState.applyTheme(theme)
+                                        }
                                     }
-                                }
-                            )
-                            .focused($focusedElement, equals: .theme(theme))
-                            .accessibilityIdentifier("ThemeCard_\(theme.slug)")
-                            .suppressFocus(appState.showThemeCreator)
+                                )
+                                .focused($focusedElement, equals: .theme(theme))
+                                .accessibilityIdentifier("ThemeCard_\(theme.slug)")
+                                .suppressFocus(appState.showThemeCreator)
+                            }
                         }
                     }
                     .padding(TVMetrics.overlayPadding)
@@ -56,9 +59,16 @@ struct ThemePickerOverlay: View {
                 footerSection
             }
             .frame(maxWidth: 1200, maxHeight: 900)
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius))
-            .shadow(color: .black.opacity(0.5), radius: 40, x: 0, y: 20)
+            .tvGlassRounded(TVMetrics.overlayCornerRadius)
+#if swift(>=6.0)
+            .glassEffectID("themePickerButton", in: glassNamespace)
+            .glassEffectTransition(.matchedGeometry)
+#endif
+            .overlay(
+                RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.16), lineWidth: 1.4)
+            )
+            .shadow(color: Color.black.opacity(0.45), radius: 38, y: 18)
             .accessibilityIdentifier("ThemePicker_Overlay")
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
@@ -130,7 +140,10 @@ struct ThemePickerOverlay: View {
             .accessibilityIdentifier("ThemePicker_Close")
         }
         .padding(TVMetrics.overlayPadding)
-        .background(.thinMaterial)
+        .tvGlassRounded(0)
+        .overlay(alignment: .bottom) {
+            Divider().opacity(0.15)
+        }
     }
 
     private var footerSection: some View {
@@ -154,7 +167,10 @@ struct ThemePickerOverlay: View {
                 .foregroundColor(.secondary)
         }
         .padding(TVMetrics.overlayPadding)
-        .background(.thinMaterial)
+        .tvGlassRounded(0)
+        .overlay(alignment: .top) {
+            Divider().opacity(0.15)
+        }
     }
 
     private var focusableThemes: [TierTheme] {
@@ -362,15 +378,12 @@ private struct ThemeCard: View {
                 }
             }
             .padding(24)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(
-                                isSelected ? Color.accentColor : Color.clear,
-                                lineWidth: 4
-                            )
+            .tvGlassRounded(18)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(
+                        isSelected ? Color.accentColor : Color.white.opacity(0.12),
+                        lineWidth: isSelected ? 4 : 1
                     )
             )
             .scaleEffect(isFocused ? 1.05 : 1.0)

@@ -251,27 +251,15 @@ private struct TierControlButtons: View {
     let onShowMenu: () -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
-            Button(action: onToggleLock, label: {
-                Image(systemName: isLocked ? "lock.fill" : "lock.open.fill")
-                    .font(.system(size: 24))
-                    .foregroundColor(textColor)
-            })
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("TierRow_\(tier)_Lock")
-            .accessibilityLabel(isLocked ? "Unlock Tier" : "Lock Tier")
-            .focusTooltip(isLocked ? "Unlock" : "Lock")
-
-            Button(action: onShowMenu, label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 24))
-                    .foregroundColor(textColor)
-            })
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("TierRow_\(tier)_Menu")
-            .accessibilityLabel("Tier Menu")
-            .focusTooltip("Menu")
-        }
+        Button(action: onShowMenu, label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 24))
+                .foregroundColor(textColor)
+        })
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("TierRow_\(tier)_Menu")
+        .accessibilityLabel("Tier Menu")
+        .focusTooltip("Menu")
     }
 }
 

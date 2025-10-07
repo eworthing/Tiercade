@@ -16,6 +16,7 @@ struct MainAppView: View {
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var detailFocus: DetailFocus?
     enum DetailFocus: Hashable { case close }
+    @Namespace private var glassNamespace
     #endif
 
     var body: some View {
@@ -63,11 +64,14 @@ struct MainAppView: View {
             #if os(tvOS)
             // Top toolbar (overlay so it doesn't reduce content area)
             .overlay(alignment: .top) {
-                TVToolbarView(app: app, modalActive: modalBlockingFocus, editMode: $editMode)
+                TVToolbarView(
+                    app: app,
+                    modalActive: modalBlockingFocus,
+                    editMode: $editMode,
+                    glassNamespace: glassNamespace
+                )
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .frame(height: TVMetrics.topBarHeight)
-                    .background(.thinMaterial)
-                    .overlay(Divider().opacity(0.15), alignment: .bottom)
                     .allowsHitTesting(!modalBlockingFocus)
                     .accessibilityElement(children: .contain)
                 // Note: Don't use .disabled() as it removes elements from accessibility tree
@@ -75,7 +79,7 @@ struct MainAppView: View {
             }
             // Bottom action bar (safe area inset to avoid covering focused rows)
             .overlay(alignment: .bottom) {
-                TVActionBar(app: app)
+                TVActionBar(app: app, glassNamespace: glassNamespace)
                     .environment(\.editMode, $editMode)
                     .allowsHitTesting(!modalBlockingFocus)
                     .accessibilityElement(children: .contain)
@@ -314,6 +318,7 @@ struct TVToolbarView: View {
     @Bindable var app: AppState
     var modalActive: Bool = false
     @Binding var editMode: EditMode
+    var glassNamespace: Namespace.ID
     // Seed and manage initial focus for tvOS toolbar controls
     @FocusState private var focusedControl: Control?
 
@@ -454,6 +459,9 @@ struct TVToolbarView: View {
             .accessibilityLabel("Head to Head")
             .accessibilityHint(headToHeadHint)
             .focusTooltip(headToHeadTooltip)
+#if swift(>=6.0)
+            .glassEffectID("h2hButton", in: glassNamespace)
+#endif
 
             Button(action: { app.toggleAnalyticsSidebar() }, label: {
                 Image(systemName: "chart.bar.fill")
@@ -495,9 +503,20 @@ struct TVToolbarView: View {
             .accessibilityLabel("Tier Themes")
             .accessibilityHint("Choose a color theme for your tiers")
             .focusTooltip("Tier Themes")
+#if swift(>=6.0)
+            .glassEffectID("themePickerButton", in: glassNamespace)
+#endif
         }
         .padding(.horizontal, TVMetrics.barHorizontalPadding)
         .padding(.vertical, TVMetrics.barVerticalPadding)
+    .tvGlassRounded(36)
+#if swift(>=6.0)
+    .glassEffectID("toolbar", in: glassNamespace)
+    .glassEffectUnion(id: "tiercade.controls", namespace: glassNamespace)
+#endif
+    .overlay(alignment: .bottom) {
+        Divider().opacity(0.12)
+    }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: TVMetrics.topBarHeight)
         .fixedSize(horizontal: false, vertical: true)

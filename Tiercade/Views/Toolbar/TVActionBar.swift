@@ -5,6 +5,7 @@ import TiercadeCore
 struct TVActionBar: View {
     @Bindable var app: AppState
     @Environment(\.editMode) private var editMode
+    var glassNamespace: Namespace.ID
 
     private var isMultiSelectActive: Bool {
         editMode?.wrappedValue == .active
@@ -30,13 +31,11 @@ struct TVActionBar: View {
                     }
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Palette.brand.opacity(0.22))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .stroke(Palette.brand, lineWidth: 2)
-                            )
+                    .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .tvGlassRounded(18)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(Palette.brand.opacity(0.9), lineWidth: 2)
                     )
                     .accessibilityIdentifier("ActionBar_SelectionCount")
                     .accessibilityLabel("\(app.selection.count) items selected")
@@ -65,12 +64,18 @@ struct TVActionBar: View {
                 .lineLimit(1)
                 .padding(.horizontal, TVMetrics.barHorizontalPadding)
                 .padding(.vertical, TVMetrics.barVerticalPadding)
+                .tvGlassRounded(28)
+#if swift(>=6.0)
+                .glassEffectID("actionBar", in: glassNamespace)
+                .glassEffectUnion(id: "tiercade.controls", namespace: glassNamespace)
+#endif
             }
             .frame(maxWidth: .infinity)
             .frame(height: TVMetrics.bottomBarHeight)
-            .background(.thinMaterial)
-            .overlay(Divider().opacity(0.15), alignment: .top)
             .accessibilityElement(children: .contain)
+            .overlay(alignment: .top) {
+                Divider().opacity(0.12)
+            }
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }

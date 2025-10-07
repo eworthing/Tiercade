@@ -31,17 +31,19 @@ struct QuickMoveOverlay: View {
 
                     // Tier selection - use ScrollView + VStack for reliable tvOS focus
                     ScrollView {
-                        VStack(spacing: 12) {
-                            ForEach(allTiers, id: \.self) { tierName in
-                                TierButton(
-                                    tierName: tierName,
-                                    displayLabel: app.displayLabel(for: tierName),
-                                    tierColor: Palette.tierColor(tierName),
-                                    itemCount: app.tiers[tierName]?.count ?? 0,
-                                    isCurrentTier: !isBatchMode && currentTier == tierName,
-                                    action: { app.commitQuickMove(to: tierName) }
-                                )
-                                .accessibilityIdentifier("QuickMove_\(tierName)")
+                        GlassEffectContainer(spacing: 12) {
+                            VStack(spacing: 12) {
+                                ForEach(allTiers, id: \.self) { tierName in
+                                    TierButton(
+                                        tierName: tierName,
+                                        displayLabel: app.displayLabel(for: tierName),
+                                        tierColor: Palette.tierColor(tierName),
+                                        itemCount: app.tiers[tierName]?.count ?? 0,
+                                        isCurrentTier: !isBatchMode && currentTier == tierName,
+                                        action: { app.commitQuickMove(to: tierName) }
+                                    )
+                                    .accessibilityIdentifier("QuickMove_\(tierName)")
+                                }
                             }
                         }
                         .padding(.horizontal, 24)
@@ -83,9 +85,8 @@ struct QuickMoveOverlay: View {
                     .padding(.horizontal, 24)
                 }
                 .padding(32)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 24))
-                .overlay(RoundedRectangle(cornerRadius: 24).stroke(.white.opacity(0.06)))
-                .shadow(radius: 24)
+                .tvGlassRounded(28)
+                .shadow(color: Color.black.opacity(0.22), radius: 24, y: 8)
                 .focusSection()
                 .accessibilityElement(children: .contain)
                 .accessibilityAddTraits(.isModal)
@@ -150,13 +151,12 @@ private struct TierButton: View {
             .padding(.vertical, 18)
             .frame(maxWidth: .infinity)
             .frame(height: 74)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(tierColor.opacity(isCurrentTier ? 0.3 : 0.2))
-            )
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .tvGlassRounded(16)
+            .tint(tierColor.opacity(isCurrentTier ? 0.36 : 0.24))
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(tierColor, lineWidth: isCurrentTier ? 3 : 2)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(tierColor.opacity(isCurrentTier ? 0.95 : 0.55), lineWidth: isCurrentTier ? 3 : 2)
             )
             }
         )
