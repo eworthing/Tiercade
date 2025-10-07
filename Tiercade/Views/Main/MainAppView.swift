@@ -32,6 +32,7 @@ struct MainAppView: View {
         || detailPresented
         || themeCreatorPresented
         || quickMovePresented
+        || app.showThemePicker
     #else
     let modalBlockingFocus = detailPresented || headToHeadPresented || themeCreatorPresented
     #endif
@@ -185,10 +186,10 @@ struct MainAppView: View {
                     // accessibility tree immediately. Transitions can delay when
                     // XCTest sees elements, causing flaky existence checks.
                     if ProcessInfo.processInfo.arguments.contains("-uiTest") {
-                        ThemePickerOverlay(appState: app)
+                        ThemeLibraryOverlay()
                             .zIndex(54)
                     } else {
-                        ThemePickerOverlay(appState: app)
+                        ThemeLibraryOverlay()
                             .transition(.opacity.combined(with: .scale(scale: 0.9)))
                             .zIndex(54)
                     }

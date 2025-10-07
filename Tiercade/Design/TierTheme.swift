@@ -32,10 +32,7 @@ struct TierTheme: Identifiable, Hashable, Sendable {
         self.slug = slug
         self.displayName = displayName
         self.shortDescription = shortDescription
-        self.tiers = tiers.sorted { lhs, rhs in
-            if lhs.isUnranked != rhs.isUnranked { return !lhs.isUnranked }
-            return lhs.index < rhs.index
-        }
+        self.tiers = TierTheme.normalizeTiers(tiers)
     }
 
     init(entity: TierThemeEntity) {
@@ -60,7 +57,7 @@ struct TierTheme: Identifiable, Hashable, Sendable {
     var description: String { shortDescription }
 
     var rankedTiers: [Tier] {
-        tiers.filter { !$0.isUnranked }.sorted { $0.index < $1.index }
+        tiers.filter { !$0.isUnranked }
     }
 
     var unrankedTier: Tier? {
@@ -71,8 +68,8 @@ struct TierTheme: Identifiable, Hashable, Sendable {
         unrankedTier?.colorHex ?? Self.fallbackColor
     }
 
-    var previewTiers: ArraySlice<Tier> {
-        ArraySlice(rankedTiers.prefix(4))
+    var previewTiers: [Tier] {
+        rankedTiers
     }
 
     func colorHex(forRankIndex index: Int) -> String? {
@@ -105,6 +102,39 @@ struct TierTheme: Identifiable, Hashable, Sendable {
 
     func swiftUIColor(forRankIndex index: Int) -> Color {
         ColorUtilities.color(hex: colorHex(forRankIndex: index) ?? Self.fallbackColor)
+    }
+}
+
+private extension TierTheme {
+    static func normalizeTiers(_ tiers: [Tier]) -> [Tier] {
+        var seen = Set<TierKey>()
+        var filtered: [Tier] = []
+
+        for tier in tiers {
+            let key: TierKey
+            if tier.isUnranked {
+                key = .unranked
+            } else {
+                key = .ranked(index: tier.index, name: normalizeName(tier.name))
+            }
+
+            if seen.insert(key).inserted {
+                filtered.append(tier)
+            }
+        }
+
+        let ranked = filtered.filter { !$0.isUnranked }.sorted { $0.index < $1.index }
+        let unranked = filtered.filter(\.isUnranked)
+        return ranked + unranked
+    }
+
+    enum TierKey: Hashable {
+        case ranked(index: Int, name: String)
+        case unranked
+    }
+
+    static func normalizeName(_ raw: String) -> String {
+        raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
 
