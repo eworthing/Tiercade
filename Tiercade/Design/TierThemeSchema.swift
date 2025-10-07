@@ -46,7 +46,8 @@ final class TierThemeEntity {
         self.slug = slug
         self.displayName = displayName
         self.shortDescription = shortDescription
-        let orderedTiers = tiers.sorted { left, right in
+        let normalizedTiers = TierThemeEntity.normalizeTiers(tiers)
+        let orderedTiers = normalizedTiers.sorted { left, right in
             if left.isUnranked != right.isUnranked {
                 return !left.isUnranked
             }
@@ -56,6 +57,34 @@ final class TierThemeEntity {
         for tier in self.tiers {
             tier.theme = self
         }
+    }
+}
+
+private extension TierThemeEntity {
+    static func normalizeTiers(_ tiers: [TierColorEntity]) -> [TierColorEntity] {
+        var rankedKeys = Set<String>()
+        var hasUnranked = false
+
+        return tiers.reduce(into: [TierColorEntity]()) { result, tier in
+            if tier.isUnranked {
+                guard !hasUnranked else { return }
+                hasUnranked = true
+                result.append(tier)
+                return
+            }
+
+            let key = normalizedKey(for: tier)
+            guard rankedKeys.insert(key).inserted else { return }
+            result.append(tier)
+        }
+    }
+
+    static func normalizedKey(for tier: TierColorEntity) -> String {
+        "\(tier.index)|\(normalizeName(tier.name))"
+    }
+
+    static func normalizeName(_ raw: String) -> String {
+        raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
 

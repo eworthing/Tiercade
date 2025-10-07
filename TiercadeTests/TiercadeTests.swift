@@ -144,4 +144,30 @@ struct TiercadeTests {
         #expect(appState.isCustomTheme(appState.selectedTheme))
     }
 
+    @Test("Bundled themes expose unique ranked tiers")
+    func bundledThemesExposeUniqueRankedTiers() async throws {
+        struct TierKey: Hashable {
+            let index: Int
+            let name: String
+        }
+
+        for theme in TierThemeCatalog.allThemes {
+            let rankedKeys = theme.rankedTiers.map { tier in
+                TierKey(
+                    index: tier.index,
+                    name: tier.name
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                        .lowercased()
+                )
+            }
+            #expect(
+                Set(rankedKeys).count == rankedKeys.count,
+                "Theme \(theme.slug) contains duplicate ranked tiers"
+            )
+
+            let unrankedCount = theme.tiers.filter(\.isUnranked).count
+            #expect(unrankedCount <= 1, "Theme \(theme.slug) defines multiple unranked tiers")
+        }
+    }
+
 }
