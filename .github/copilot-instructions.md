@@ -134,10 +134,10 @@ tvOS Exit button (Menu/⌘) should dismiss modals, not exit app:
 #endif
 ```
 
-### Head-to-Head Overlay Specifics
-- **Skip card:** Centered with `clock.arrow.circlepath` icon, live counter (`H2H_SkippedCount`)
-- **Focus default:** Left option when pair is active
-- **Queue exhaustion:** Auto-show Finish button when queue empties
+### Head-to-Head (Matchup Arena) Overlay Specifics
+- **Pass tile:** Centered with `arrow.uturn.left.circle` icon, live counter (`MatchupOverlay_SkippedBadge`)
+- **Focus default:** Primary contender when a pair is active
+- **Queue exhaustion:** Auto-show Commit button (`MatchupOverlay_Apply`) when queue empties
 - **Exit handling:** Route through `cancelH2H(fromExitCommand:)` for debounce
 
 ### Design Tokens

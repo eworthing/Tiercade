@@ -17,7 +17,14 @@ extension AppState {
         }
 
         let pool = (tiers["unranked"] ?? []) + tierOrder.flatMap { tiers[$0] ?? [] }
-        let pairs = HeadToHeadLogic.pairings(from: pool, rng: { Double.random(in: 0...1) })
+        let targetComparisons = quickPhaseTargetComparisons(for: pool.count)
+        let pairs = HeadToHeadLogic.initialComparisonQueueWarmStart(
+            from: pool,
+            records: [:],
+            tierOrder: tierOrder,
+            currentTiers: tiers,
+            targetComparisonsPerItem: targetComparisons
+        )
 
         guard !pairs.isEmpty else {
             showInfoToast("Not Enough Matchups", message: "Add more items before starting Head-to-Head")
@@ -34,8 +41,11 @@ extension AppState {
         h2hPair = nil
         h2hActive = true
         h2hActivatedAt = Date()
+        h2hPhase = .quick
+        h2hArtifacts = nil
+        h2hSuggestedPairs = []
 
-        let log = "[AppState] startH2H: poolCount=\(h2hPool.count) totalPairs=\(h2hTotalComparisons)"
+        let log = "[AppState] startH2H: poolCount=\(h2hPool.count) initialTarget=\(targetComparisons) scheduledPairs=\(h2hTotalComparisons)"
         print(log)
         NSLog("%@", log)
         Task { await appendDebugFile("startH2H: poolCount=\(h2hPool.count) totalPairs=\(h2hTotalComparisons)") }
@@ -86,6 +96,10 @@ extension AppState {
         guard h2hActive, let pair = h2hPair else { return }
         let a = pair.0
         let b = pair.1
+#if DEBUG
+        let poolIds = Set(h2hPool.map(\.id))
+        assert(poolIds.contains(a.id) && poolIds.contains(b.id), "Voting on items that are no longer in the head-to-head pool")
+#endif
         HeadToHeadLogic.vote(a, b, winner: winner, records: &h2hRecords)
         h2hCompletedComparisons = min(h2hCompletedComparisons + 1, h2hTotalComparisons)
         h2hSkippedPairKeys.remove(h2hPairKey(pair))
@@ -132,20 +146,93 @@ extension AppState {
 
     func finishH2H() {
         guard h2hActive else { return }
-        let ranking = HeadToHeadLogic.ranking(from: h2hPool, records: h2hRecords)
-        let distributed = HeadToHeadLogic.distributeRoundRobin(ranking, into: tierOrder, baseTiers: tiers)
-        tiers = distributed
-        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
-        markAsChanged()
-        showSuccessToast("Head-to-Head Complete", message: "Results applied to your tiers.")
-        let summary = tierOrder
-            .map { "\($0):\(tiers[$0]?.count ?? 0)" }
-            .joined(separator: ", ")
-        resetH2HSession()
-    let message = "[AppState] finishH2H: finished and distributed; counts: \(summary)"
-        print(message)
-        NSLog("%@", message)
-        Task { await appendDebugFile("finishH2H: counts=\(summary)") }
+        switch h2hPhase {
+        case .quick:
+            let quick = HeadToHeadLogic.quickTierPass(
+                from: h2hPool,
+                records: h2hRecords,
+                tierOrder: tierOrder,
+                baseTiers: tiers
+            )
+
+            var appliedTiers = quick.tiers
+            var artifacts = quick.artifacts
+
+            if let initialArtifacts = artifacts, quick.suggestedPairs.isEmpty {
+                let (finalTiers, updatedArtifacts) = HeadToHeadLogic.finalizeTiers(
+                    artifacts: initialArtifacts,
+                    records: h2hRecords,
+                    tierOrder: tierOrder,
+                    baseTiers: tiers
+                )
+                appliedTiers = finalTiers
+                artifacts = updatedArtifacts
+            }
+
+            tiers = appliedTiers
+            markAsChanged()
+
+            if let artifacts, !quick.suggestedPairs.isEmpty {
+                h2hArtifacts = artifacts
+                h2hSuggestedPairs = quick.suggestedPairs
+                h2hPairsQueue = quick.suggestedPairs
+                h2hDeferredPairs = []
+                h2hSkippedPairKeys = []
+                h2hTotalComparisons = quick.suggestedPairs.count
+                h2hCompletedComparisons = 0
+                h2hPhase = .refinement
+                let message = "[AppState] finishH2H: entering refinement phase with \(quick.suggestedPairs.count) pairs"
+                print(message)
+                NSLog("%@", message)
+                showInfoToast(
+                    "Preliminary Results Applied",
+                    message: "Complete \(quick.suggestedPairs.count) targeted matchups to refine your tiers."
+                )
+                Task {
+                    await appendDebugFile("finishH2H: entering refinement phase with \(quick.suggestedPairs.count) pairs")
+                }
+                nextH2HPair()
+                return
+            }
+
+            history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
+            showSuccessToast("Head-to-Head Complete", message: "Results applied to your tiers.")
+            let summary = tierOrder
+                .map { "\($0):\(tiers[$0]?.count ?? 0)" }
+                .joined(separator: ", ")
+            let message = "[AppState] finishH2H: quick phase complete; counts: \(summary)"
+            print(message)
+            NSLog("%@", message)
+            Task { await appendDebugFile("finishH2H: quick phase complete counts=\(summary)") }
+            resetH2HSession()
+
+        case .refinement:
+            guard let artifacts = h2hArtifacts else {
+                h2hPhase = .quick
+                finishH2H()
+                return
+            }
+
+            let (finalTiers, updatedArtifacts) = HeadToHeadLogic.finalizeTiers(
+                artifacts: artifacts,
+                records: h2hRecords,
+                tierOrder: tierOrder,
+                baseTiers: tiers
+            )
+            tiers = finalTiers
+            h2hArtifacts = updatedArtifacts
+            history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
+            markAsChanged()
+            showSuccessToast("Head-to-Head Complete", message: "Refined tiers applied.")
+            let summary = tierOrder
+                .map { "\($0):\(tiers[$0]?.count ?? 0)" }
+                .joined(separator: ", ")
+            let message = "[AppState] finishH2H: refinement phase complete; counts: \(summary)"
+            print(message)
+            NSLog("%@", message)
+            Task { await appendDebugFile("finishH2H: refinement phase complete counts=\(summary)") }
+            resetH2HSession()
+        }
     }
 
     func cancelH2H(fromExitCommand: Bool = false) {
@@ -170,6 +257,9 @@ extension AppState {
         h2hCompletedComparisons = 0
         h2hSkippedPairKeys = []
         h2hActivatedAt = nil
+        h2hPhase = .quick
+        h2hArtifacts = nil
+        h2hSuggestedPairs = []
         if clearRecords {
             h2hRecords = [:]
         }
@@ -178,4 +268,19 @@ extension AppState {
     private func h2hPairKey(_ pair: (Item, Item)) -> String {
         [pair.0.id, pair.1.id].sorted().joined(separator: "-")
     }
+
+    private func quickPhaseTargetComparisons(for poolCount: Int) -> Int {
+        guard poolCount > 1 else { return 0 }
+        let maxUnique = poolCount - 1
+        let desired: Int
+        if poolCount >= 10 {
+            desired = 3
+        } else if poolCount >= 6 {
+            desired = 3
+        } else {
+            desired = 2
+        }
+        return max(1, min(desired, maxUnique))
+    }
+
 }

@@ -45,7 +45,7 @@ final class SmokeTests: TiercadeTvOSUITestCase {
 
         // Assert that H2H overlay or QuickRank overlay appeared (one of them)
         let quickRankOverlayExists = app.otherElements["QuickRank_Overlay"].exists
-        let h2hFinishExists = app.buttons["H2H_Finish"].exists
+    let h2hFinishExists = app.buttons["MatchupOverlay_Apply"].exists
         XCTAssertTrue(
             quickRankOverlayExists || h2hFinishExists,
             "Expected one of the overlays to be visible after interaction"

@@ -157,7 +157,7 @@ struct MainAppView: View {
                 #endif
 
                 // Head-to-Head overlay
-                HeadToHeadOverlay(app: app)
+                MatchupArenaOverlay(app: app)
                     .zIndex(40)
 
                 #if os(tvOS)
