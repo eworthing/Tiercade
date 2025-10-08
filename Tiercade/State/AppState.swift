@@ -99,6 +99,11 @@ final class AppState {
     var themeDraft: ThemeDraft?
     // Head-to-Head
     var h2hActive: Bool = false
+    enum H2HSessionPhase: Sendable {
+        case quick
+        case refinement
+    }
+
     var h2hPool: [Item] = []
     var h2hPair: (Item, Item)?
     var h2hRecords: [String: H2HRecord] = [:]
@@ -108,6 +113,9 @@ final class AppState {
     var h2hCompletedComparisons: Int = 0
     var h2hSkippedPairKeys: Set<String> = []
     var h2hActivatedAt: Date?
+    var h2hPhase: H2HSessionPhase = .quick
+    var h2hArtifacts: H2HArtifacts?
+    var h2hSuggestedPairs: [(Item, Item)] = []
 
     // Enhanced Persistence
     var hasUnsavedChanges: Bool = false

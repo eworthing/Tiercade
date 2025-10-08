@@ -25,17 +25,17 @@ final class HeadToHeadSimplifiedTests: TiercadeTvOSUITestCase {
         // We'll manually navigate in simulator to activate H2H, then run this test
 
         // Check if H2H overlay exists (will be visible if H2H is active)
-        let h2hOverlay = app.otherElements["H2H_Overlay"]
+    let h2hOverlay = app.otherElements["MatchupOverlay_Root"]
 
         if h2hOverlay.exists {
             // If H2H is active, verify all components exist
             XCTAssertTrue(h2hOverlay.exists, "H2H overlay should exist when active")
 
             // Check for comparison buttons
-            let hasLeftButton = app.buttons["H2H_Left"].exists
-            let hasRightButton = app.buttons["H2H_Right"].exists
-            let hasFinishButton = app.buttons["H2H_Finish"].exists
-            let hasCancelButton = app.buttons["H2H_Cancel"].exists
+            let hasLeftButton = app.buttons["MatchupOverlay_Primary"].exists
+            let hasRightButton = app.buttons["MatchupOverlay_Secondary"].exists
+            let hasFinishButton = app.buttons["MatchupOverlay_Apply"].exists
+            let hasCancelButton = app.buttons["MatchupOverlay_Cancel"].exists
 
             XCTAssertTrue(
                 hasLeftButton || hasRightButton || hasFinishButton,
@@ -61,7 +61,7 @@ final class HeadToHeadSimplifiedTests: TiercadeTvOSUITestCase {
     @MainActor
     func test_H2H_overlay_has_focus_section() throws {
         // This test verifies focus containment attributes exist
-        let h2hOverlay = app.otherElements["H2H_Overlay"]
+    let h2hOverlay = app.otherElements["MatchupOverlay_Root"]
 
         if h2hOverlay.waitForExistence(timeout: 2) {
             // Overlay exists - try navigating away with multiple up presses

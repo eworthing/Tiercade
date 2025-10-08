@@ -74,18 +74,18 @@ final class DirectAccessibilityTests: TiercadeTvOSUITestCase {
     func test_h2h_overlay_full_component_check() throws {
         // All H2H overlay components from ContentView+Overlays.swift
         let components = [
-            ("H2H_Overlay", "H2H overlay container"),
-            ("H2H_Progress", "Progress bar"),
-            ("H2H_SkippedCount", "Skipped count (conditional)"),
-            ("H2H_Left", "Left comparison button"),
-            ("H2H_Right", "Right comparison button"),
-            ("H2H_Skip", "Skip button"),
-            ("H2H_Finish", "Finish button"),
-            ("H2H_Cancel", "Cancel button")
+            ("MatchupOverlay_Root", "Matchup overlay container"),
+            ("MatchupOverlay_Progress", "Progress gauge"),
+            ("MatchupOverlay_SkippedBadge", "Skipped count badge (conditional)"),
+            ("MatchupOverlay_Primary", "Primary contender button"),
+            ("MatchupOverlay_Secondary", "Secondary contender button"),
+            ("MatchupOverlay_Pass", "Pass button"),
+            ("MatchupOverlay_Apply", "Apply rankings button"),
+            ("MatchupOverlay_Cancel", "Cancel button")
         ]
 
         // H2H overlay only exists if H2H mode is active
-        let overlay = app.otherElements["H2H_Overlay"]
+        let overlay = app.otherElements["MatchupOverlay_Root"]
 
         if overlay.exists {
             // H2H is active - check components
@@ -111,7 +111,7 @@ final class DirectAccessibilityTests: TiercadeTvOSUITestCase {
         var buttonsWithIds = 0
         var toolbarButtons = 0
         var actionBarButtons = 0
-        var h2hButtons = 0
+    var matchupButtons = 0
 
         // Check up to 50 buttons
         for i in 0..<min(50, app.buttons.count) {
@@ -125,8 +125,8 @@ final class DirectAccessibilityTests: TiercadeTvOSUITestCase {
                         toolbarButtons += 1
                     } else if id.starts(with: "ActionBar_") {
                         actionBarButtons += 1
-                    } else if id.starts(with: "H2H_") {
-                        h2hButtons += 1
+                    } else if id.starts(with: "MatchupOverlay_") {
+                        matchupButtons += 1
                     }
                 }
             }
@@ -147,7 +147,7 @@ final class DirectAccessibilityTests: TiercadeTvOSUITestCase {
             Found \(buttonsWithIds) buttons with IDs:
             - Toolbar: \(toolbarButtons)
             - ActionBar: \(actionBarButtons)
-            - H2H: \(h2hButtons)
+            - Matchup: \(matchupButtons)
             """
         )
     }

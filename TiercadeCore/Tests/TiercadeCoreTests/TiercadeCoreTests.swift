@@ -3,15 +3,18 @@ import XCTest
 
 final class TiercadeCoreTests: XCTestCase {
     func testDecodeAndValidate() throws {
-    let itemsJSON = """
-    {"c1": {"id":"c1","name":"One","season": 1}, "c2": {"id":"c2","name":"Two","season":"2"}}
-    """.data(using: .utf8)!
+        let itemsJSON = Data(
+            """
+            {"c1": {"id":"c1","name":"One","season": 1}, "c2": {"id":"c2","name":"Two","season":"2"}}
+            """.utf8
+        )
         let groupsJSON = """
         {"All": ["c1", "c2"]}
-        """.data(using: .utf8)!
+        """
+        let groupsData = Data(groupsJSON.utf8)
         let loader = DataLoader()
         let items = try loader.decodeItems(from: itemsJSON)
-            let groups = try loader.decodeGroups(from: groupsJSON)
+        let groups = try loader.decodeGroups(from: groupsData)
         XCTAssertTrue(loader.validate(groups: groups, items: items))
             XCTAssertEqual(items["c1"]?.seasonNumber, 1)
             XCTAssertEqual(items["c2"]?.seasonString, "2")
@@ -34,17 +37,43 @@ final class TiercadeCoreTests: XCTestCase {
         XCTAssertEqual(updated["unranked"]?.isEmpty, true)
     }
 
-    func testH2HDistributeRoundRobin() {
-        let a = Item(id: "a", name: "A")
-        let b = Item(id: "b", name: "B")
-        let c = Item(id: "c", name: "C")
-    let ranking = [H2HRankingEntry(item: a, winRate: 0.9), H2HRankingEntry(item: b, winRate: 0.8), H2HRankingEntry(item: c, winRate: 0.7)]
-        let tiers: Items = ["S": [], "A": [], "B": [], "unranked": [a, b, c]]
-        let distributed = HeadToHeadLogic.distributeRoundRobin(ranking, into: ["S", "A", "B"], baseTiers: tiers)
-        XCTAssertEqual(distributed["S"]?.map { $0.id }, ["a"])
-        XCTAssertEqual(distributed["A"]?.map { $0.id }, ["b"])
-        XCTAssertEqual(distributed["B"]?.map { $0.id }, ["c"])
-        XCTAssertEqual(distributed["unranked"]?.isEmpty, true)
+    func testH2HTierRebuildPlacesBestIntoTopTier() {
+        let a = Item(id: "a", name: "Alpha")
+        let b = Item(id: "b", name: "Bravo")
+        let c = Item(id: "c", name: "Charlie")
+        let pool = [a, b, c]
+        var records: [String: H2HRecord] = [:]
+        var recordA = H2HRecord()
+        recordA.wins = 3
+        records[a.id] = recordA
+        var recordB = H2HRecord()
+        recordB.wins = 1
+        recordB.losses = 2
+        records[b.id] = recordB
+        var recordC = H2HRecord()
+        recordC.losses = 3
+        records[c.id] = recordC
+        let base: Items = ["S": [], "A": [], "B": [], "unranked": pool]
+
+        let quick = HeadToHeadLogic.quickTierPass(
+            from: pool,
+            records: records,
+            tierOrder: ["S", "A", "B"],
+            baseTiers: base
+        )
+
+        let artifacts = quick.artifacts!
+        let (rebuilt, _) = HeadToHeadLogic.finalizeTiers(
+            artifacts: artifacts,
+            records: records,
+            tierOrder: ["S", "A", "B"],
+            baseTiers: base
+        )
+
+        XCTAssertEqual(rebuilt["S"]?.map(\.id), ["a"])
+        XCTAssertEqual(rebuilt["A"]?.map(\.id), ["b"])
+        XCTAssertEqual(rebuilt["B"]?.map(\.id), ["c"])
+        XCTAssertTrue(rebuilt["unranked"]?.isEmpty ?? false)
     }
 
     func testMoveItem() {

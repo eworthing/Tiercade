@@ -20,7 +20,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
         pause(for: 2)
 
         // Verify H2H overlay appeared
-        let h2hOverlay = app.otherElements["H2H_Overlay"]
+    let h2hOverlay = app.otherElements["MatchupOverlay_Root"]
         XCTAssertTrue(
             h2hOverlay.waitForExistence(timeout: 3),
             "H2H overlay should appear after activating H2H button"
@@ -28,11 +28,11 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
 
         // Verify left and right options exist
         XCTAssertTrue(
-            app.buttons["H2H_Left"].exists,
+            app.buttons["MatchupOverlay_Primary"].exists,
             "Left option should be visible"
         )
         XCTAssertTrue(
-            app.buttons["H2H_Right"].exists,
+            app.buttons["MatchupOverlay_Secondary"].exists,
             "Right option should be visible"
         )
     }
@@ -41,7 +41,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
     func test_H2H_exit_command_dismisses_overlay() throws {
         enterH2HMode()
 
-        let h2hOverlay = app.otherElements["H2H_Overlay"]
+    let h2hOverlay = app.otherElements["MatchupOverlay_Root"]
         XCTAssertTrue(h2hOverlay.exists, "H2H overlay should be open")
 
         // Press Menu button to exit
@@ -67,7 +67,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
     func test_H2H_exit_command_debounce() throws {
         enterH2HMode()
 
-        let h2hOverlay = app.otherElements["H2H_Overlay"]
+    let h2hOverlay = app.otherElements["MatchupOverlay_Root"]
         let remote = self.remote
 
         // Make a selection first
@@ -82,7 +82,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
 
         // If new pair loaded, overlay should still exist
         // (This tests that Menu doesn't immediately exit after selection)
-        let stillInH2H = h2hOverlay.exists || app.buttons["H2H_Finish"].exists
+    let stillInH2H = h2hOverlay.exists || app.buttons["MatchupOverlay_Apply"].exists
         XCTAssertTrue(
             stillInH2H,
             "Should still be in H2H mode shortly after selection (debounce protection)"
@@ -95,7 +95,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
     func test_H2H_default_focus_on_left_option() throws {
         enterH2HMode()
 
-        let leftOption = app.buttons["H2H_Left"]
+    let leftOption = app.buttons["MatchupOverlay_Primary"]
         XCTAssertTrue(
             leftOption.waitForExistence(timeout: 3),
             "Left option should exist"
@@ -112,8 +112,8 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
     func test_H2H_can_navigate_between_options() throws {
         enterH2HMode()
 
-        let leftOption = app.buttons["H2H_Left"]
-        let rightOption = app.buttons["H2H_Right"]
+    let leftOption = app.buttons["MatchupOverlay_Primary"]
+    let rightOption = app.buttons["MatchupOverlay_Secondary"]
 
         XCTAssertTrue(leftOption.waitForExistence(timeout: 3))
         XCTAssertTrue(rightOption.exists)
@@ -143,7 +143,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
     func test_H2H_skip_button_is_reachable_and_centered() throws {
         enterH2HMode()
 
-        let skipButton = app.buttons["H2H_Skip"]
+    let skipButton = app.buttons["MatchupOverlay_Pass"]
         XCTAssertTrue(
             skipButton.waitForExistence(timeout: 3),
             "Skip button should exist in H2H mode"
@@ -153,7 +153,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
         // (accessibility label should contain "skip" or have clock.arrow.circlepath icon)
         let skipLabel = skipButton.label.lowercased()
         XCTAssertTrue(
-            skipLabel.contains("skip") || skipButton.identifier == "H2H_Skip",
+            skipLabel.contains("pass") || skipButton.identifier == "MatchupOverlay_Pass",
             "Skip button should be identifiable"
         )
 
@@ -173,8 +173,8 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
     func test_H2H_focus_stays_contained() throws {
         enterH2HMode()
 
-        let h2hOverlay = app.otherElements["H2H_Overlay"]
-        let leftOption = app.buttons["H2H_Left"]
+    let h2hOverlay = app.otherElements["MatchupOverlay_Root"]
+    let leftOption = app.buttons["MatchupOverlay_Primary"]
         let remote = self.remote
 
         // Try to escape focus by pressing up/down multiple times
@@ -201,7 +201,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
 
         // Verify we can still interact with H2H controls
         XCTAssertTrue(
-            leftOption.exists || app.buttons["H2H_Skip"].exists,
+            leftOption.exists || app.buttons["MatchupOverlay_Pass"].exists,
             "H2H controls should still be accessible"
         )
     }
@@ -212,8 +212,8 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
     func test_H2H_skip_button_increments_counter() throws {
         enterH2HMode()
 
-        let skipButton = app.buttons["H2H_Skip"]
-        let skipCounter = app.staticTexts["H2H_SkippedCount"]
+    let skipButton = app.buttons["MatchupOverlay_Pass"]
+    let skipCounter = app.staticTexts["MatchupOverlay_SkippedBadge"]
 
         XCTAssertTrue(skipButton.waitForExistence(timeout: 3))
 
@@ -241,7 +241,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
 
         // Verify new pair loaded (options should still exist)
         XCTAssertTrue(
-            app.buttons["H2H_Left"].exists || app.buttons["H2H_Finish"].exists,
+            app.buttons["MatchupOverlay_Primary"].exists || app.buttons["MatchupOverlay_Apply"].exists,
             "Should load new pair or show finish button after skip"
         )
     }
@@ -250,7 +250,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
     func test_H2H_skip_counter_is_visible_and_updates() throws {
         enterH2HMode()
 
-        let skipButton = app.buttons["H2H_Skip"]
+    let skipButton = app.buttons["MatchupOverlay_Pass"]
         let remote = self.remote
 
         // Skip multiple times to ensure counter appears
@@ -261,7 +261,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
         }
 
         // Counter should now be visible and show at least 3
-        let skipCounter = app.staticTexts["H2H_SkippedCount"]
+    let skipCounter = app.staticTexts["MatchupOverlay_SkippedBadge"]
         if skipCounter.waitForExistence(timeout: 2) {
             let countText = skipCounter.label
             print("Skip counter shows: \(countText)")
@@ -278,7 +278,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
     func test_H2H_selecting_option_loads_next_pair() throws {
         enterH2HMode()
 
-        let leftOption = app.buttons["H2H_Left"]
+    let leftOption = app.buttons["MatchupOverlay_Primary"]
         XCTAssertTrue(leftOption.waitForExistence(timeout: 3))
 
         // Get initial option labels to verify they change
@@ -291,8 +291,8 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
     pause(for: 2) // Wait for next pair to load
 
         // Either a new pair should load OR finish button should appear
-        let newLeftOption = app.buttons["H2H_Left"]
-        let finishButton = app.buttons["H2H_Finish"]
+    let newLeftOption = app.buttons["MatchupOverlay_Primary"]
+    let finishButton = app.buttons["MatchupOverlay_Apply"]
 
         let progressedToNext = newLeftOption.exists || finishButton.exists
         XCTAssertTrue(
@@ -320,9 +320,9 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
         let maxIterations = 50 // Safety limit
 
         while iterations < maxIterations {
-            let leftOption = app.buttons["H2H_Left"]
-            let rightOption = app.buttons["H2H_Right"]
-            let finishButton = app.buttons["H2H_Finish"]
+            let leftOption = app.buttons["MatchupOverlay_Primary"]
+            let rightOption = app.buttons["MatchupOverlay_Secondary"]
+            let finishButton = app.buttons["MatchupOverlay_Apply"]
 
             if finishButton.waitForExistence(timeout: 1) {
                 print("Finish button appeared after \(iterations) iterations")
@@ -367,9 +367,9 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
         let remote = self.remote
 
         // Skip through pairs quickly to reach finish
-        let skipButton = app.buttons["H2H_Skip"]
+    let skipButton = app.buttons["MatchupOverlay_Pass"]
         for _ in 0..<20 {
-            if app.buttons["H2H_Finish"].exists {
+            if app.buttons["MatchupOverlay_Apply"].exists {
                 break
             }
             navigateToButton(skipButton, using: remote)
@@ -377,7 +377,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
             pause(for: 1)
         }
 
-        let finishButton = app.buttons["H2H_Finish"]
+    let finishButton = app.buttons["MatchupOverlay_Apply"]
         if finishButton.waitForExistence(timeout: 2) {
             // Focus and select finish button
             navigateToButton(finishButton, using: remote)
@@ -385,7 +385,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
             pause(for: 2)
 
             // Verify H2H mode exited
-            let h2hOverlay = app.otherElements["H2H_Overlay"]
+            let h2hOverlay = app.otherElements["MatchupOverlay_Root"]
             XCTAssertFalse(
                 h2hOverlay.exists,
                 "H2H overlay should dismiss after pressing Finish"
@@ -452,7 +452,7 @@ final class HeadToHeadTests: TiercadeTvOSUITestCase {
         pause(for: 2)
 
         // Verify we're in H2H mode
-        let h2hOverlay = app.otherElements["H2H_Overlay"]
+    let h2hOverlay = app.otherElements["MatchupOverlay_Root"]
         XCTAssertTrue(
             h2hOverlay.waitForExistence(timeout: 3),
             "Failed to enter H2H mode"
