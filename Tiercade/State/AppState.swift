@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Observation
+import SwiftData
 import Accessibility
 import os
 
@@ -68,6 +69,15 @@ struct TierAnalysisData: Sendable {
 @MainActor
 @Observable
 final class AppState {
+    struct TierStateSnapshot: Sendable {
+        var tiers: Items
+        var tierOrder: [String]
+        var tierLabels: [String: String]
+        var tierColors: [String: String]
+        var lockedTiers: Set<String>
+    }
+
+    let modelContext: ModelContext
     var tiers: Items = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
     var tierOrder: [String] = ["S", "A", "B", "C", "D", "F"]
     var searchQuery: String = ""
@@ -117,6 +127,9 @@ final class AppState {
     var h2hPhase: H2HSessionPhase = .quick
     var h2hArtifacts: H2HArtifacts?
     var h2hSuggestedPairs: [(Item, Item)] = []
+    var h2hInitialSnapshot: TierStateSnapshot?
+    var h2hRefinementTotalComparisons: Int = 0
+    var h2hRefinementCompletedComparisons: Int = 0
 
     // Enhanced Persistence
     var hasUnsavedChanges: Bool = false
@@ -142,13 +155,13 @@ final class AppState {
     var showRandomizeConfirmation: Bool = false
     var showResetConfirmation: Bool = false
 
-    let storageKey = "Tiercade.tiers.v1"
     let tierListStateKey = "Tiercade.tierlist.active.v1"
     let tierListRecentsKey = "Tiercade.tierlist.recents.v1"
     var autosaveTask: Task<Void, Never>?
     let autosaveInterval: TimeInterval = 30.0 // Auto-save every 30 seconds
 
-    var history = History<Items>(stack: [], index: 0, limit: 80)
+    var undoManager: UndoManager?
+    private var isPerformingUndoRedo = false
 
     var h2hProgress: Double {
         guard h2hTotalComparisons > 0 else { return 0 }
@@ -159,21 +172,62 @@ final class AppState {
         max(h2hTotalComparisons - h2hCompletedComparisons, 0)
     }
 
+    var h2hRefinementProgress: Double {
+        guard h2hRefinementTotalComparisons > 0 else { return 0 }
+        return min(
+            Double(h2hRefinementCompletedComparisons) / Double(h2hRefinementTotalComparisons),
+            1.0
+        )
+    }
+
+    var h2hRefinementRemainingComparisons: Int {
+        max(h2hRefinementTotalComparisons - h2hRefinementCompletedComparisons, 0)
+    }
+
+    var h2hTotalDecidedComparisons: Int {
+        h2hCompletedComparisons + h2hRefinementCompletedComparisons
+    }
+
+    var h2hTotalRemainingComparisons: Int {
+        h2hRemainingComparisons + h2hRefinementRemainingComparisons
+    }
+
+    var h2hOverallProgress: Double {
+        let quickWeight = 0.75
+        var progress: Double = 0
+
+        if h2hTotalComparisons > 0 {
+            let quickFraction = Double(min(h2hCompletedComparisons, h2hTotalComparisons)) / Double(h2hTotalComparisons)
+            progress = min(max(quickFraction, 0), 1) * quickWeight
+        }
+
+        if h2hRefinementTotalComparisons > 0 {
+            let refinementFraction = Double(min(h2hRefinementCompletedComparisons, h2hRefinementTotalComparisons)) / Double(h2hRefinementTotalComparisons)
+            progress = min(progress, quickWeight)
+            progress += (1 - quickWeight) * min(max(refinementFraction, 0), 1)
+        } else if !h2hActive && h2hTotalComparisons > 0 && h2hCompletedComparisons >= h2hTotalComparisons {
+            progress = 1.0
+        }
+
+        return min(max(progress, 0), 1)
+    }
+
     var h2hSkippedCount: Int { h2hSkippedPairKeys.count }
 
-    init() {
+    var activeTierListEntity: TierListEntity?
+
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
         let didLoad = load()
         if !didLoad {
             seed()
         } else if isLegacyBundledListPlaceholder(tiers) {
             logEvent("init: detected legacy bundled list placeholder; reseeding default project")
             let defaults = UserDefaults.standard
-            defaults.removeObject(forKey: storageKey)
             defaults.removeObject(forKey: tierListStateKey)
             defaults.removeObject(forKey: tierListRecentsKey)
             seed()
         }
-        history = HistoryLogic.initHistory(tiers, limit: 80)
         setupAutosave()
 
         let tierSummary = tierOrder
@@ -183,7 +237,10 @@ final class AppState {
         let initMsg = "init: tiers counts=\(tierSummary) unranked=\(unrankedCount)"
         logEvent(initMsg)
         restoreTierListState()
-        loadActiveTierListIfNeeded()
+        if !didLoad {
+            loadActiveTierListIfNeeded()
+        }
+        prefillBundledProjectsIfNeeded()
     }
 
     // MARK: - Logging
@@ -215,6 +272,79 @@ final class AppState {
         }
     }
 
+    func updateUndoManager(_ manager: UndoManager?) {
+        undoManager = manager
+    }
+
+    func captureTierSnapshot() -> TierStateSnapshot {
+        TierStateSnapshot(
+            tiers: tiers,
+            tierOrder: tierOrder,
+            tierLabels: tierLabels,
+            tierColors: tierColors,
+            lockedTiers: lockedTiers
+        )
+    }
+
+    func restore(from snapshot: TierStateSnapshot) {
+        tiers = snapshot.tiers
+        tierOrder = snapshot.tierOrder
+        tierLabels = snapshot.tierLabels
+        tierColors = snapshot.tierColors
+        lockedTiers = snapshot.lockedTiers
+    }
+
+    func finalizeChange(action: String, undoSnapshot: TierStateSnapshot) {
+        if !isPerformingUndoRedo {
+            let redoSnapshot = captureTierSnapshot()
+            registerUndo(action: action, undoSnapshot: undoSnapshot, redoSnapshot: redoSnapshot, isRedo: false)
+        }
+        markAsChanged()
+    }
+
+    private func registerUndo(
+        action: String,
+        undoSnapshot: TierStateSnapshot,
+        redoSnapshot: TierStateSnapshot,
+        isRedo: Bool
+    ) {
+        guard let manager = undoManager else { return }
+        manager.registerUndo(withTarget: self) { target in
+            target.performUndo(
+                action: action,
+                undoSnapshot: undoSnapshot,
+                redoSnapshot: redoSnapshot,
+                isRedo: isRedo
+            )
+        }
+        manager.setActionName(action)
+    }
+
+    private func performUndo(
+        action: String,
+        undoSnapshot: TierStateSnapshot,
+        redoSnapshot: TierStateSnapshot,
+        isRedo: Bool
+    ) {
+        isPerformingUndoRedo = true
+        defer { isPerformingUndoRedo = false }
+        let inverseSnapshot = captureTierSnapshot()
+        restore(from: undoSnapshot)
+        markAsChanged()
+        let toastTitle = isRedo ? "Redone" : "Undone"
+        let toastMessage = isRedo ? "\(action) repeated {redo}" : "\(action) reverted {undo}"
+        showInfoToast(toastTitle, message: toastMessage)
+        undoManager?.registerUndo(withTarget: self) { target in
+            target.performUndo(
+                action: action,
+                undoSnapshot: redoSnapshot,
+                redoSnapshot: inverseSnapshot,
+                isRedo: !isRedo
+            )
+        }
+        undoManager?.setActionName(action)
+    }
+
     func markAsChanged() {
         hasUnsavedChanges = true
     }
@@ -236,11 +366,16 @@ final class AppState {
         selectedTheme = fallbackTheme
         selectedThemeID = fallbackTheme.id
         applyCurrentTheme()
-    cardDensityPreference = .compact
+        cardDensityPreference = .compact
         customThemes = []
         customThemeIDs = []
         themeDraft = nil
         logEvent("seed: loaded default bundled project \(defaultProject.id)")
+        do {
+            try save()
+        } catch {
+            Logger.persistence.error("Initial seed save failed: \(error.localizedDescription)")
+        }
     }
 
     private func isLegacyBundledListPlaceholder(_ tiers: Items) -> Bool {
@@ -254,31 +389,115 @@ final class AppState {
         return itemIDs == placeholderIDs
     }
 
+    private func prefillBundledProjectsIfNeeded() {
+        do {
+            let bundledSource = TierListSource.bundled.rawValue
+            let descriptor = FetchDescriptor<TierListEntity>(
+                predicate: #Predicate { $0.sourceRaw == bundledSource }
+            )
+            let existing = try modelContext.fetch(descriptor)
+            let existingIdentifiers = Set(existing.compactMap { $0.externalIdentifier })
+            var created = false
+            for project in bundledProjects where !existingIdentifiers.contains(project.id) {
+                let entity = makeBundledTierListEntity(from: project, source: bundledSource)
+                modelContext.insert(entity)
+                created = true
+            }
+            if created {
+                try modelContext.save()
+            }
+        } catch {
+            Logger.persistence.error("Prefill bundled projects failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func makeBundledTierListEntity(from project: BundledProject, source: String) -> TierListEntity {
+        let entity = TierListEntity(
+            title: project.title,
+            fileName: nil,
+            createdAt: Date(),
+            updatedAt: Date(),
+            isActive: false,
+            cardDensityRaw: cardDensityPreference.rawValue,
+            selectedThemeID: selectedThemeID,
+            customThemesData: nil,
+            sourceRaw: source,
+            externalIdentifier: project.id,
+            subtitle: project.subtitle,
+            iconSystemName: "square.grid.2x2",
+            lastOpenedAt: .distantPast,
+            tiers: []
+        )
+
+        let metadata = Dictionary(uniqueKeysWithValues: project.project.tiers.map { ($0.id, $0) })
+        let resolvedTiers = ModelResolver.resolveTiers(from: project.project)
+
+        for (index, resolvedTier) in resolvedTiers.enumerated() {
+            let normalizedKey = normalizedTierKey(resolvedTier.label)
+            let tierMetadata = metadata[resolvedTier.id]
+            let order = normalizedKey == "unranked" ? resolvedTiers.count : index
+            let tierEntity = TierEntity(
+                key: normalizedKey,
+                displayName: resolvedTier.label,
+                colorHex: tierMetadata?.color,
+                order: order,
+                isLocked: tierMetadata?.locked ?? false
+            )
+            tierEntity.list = entity
+
+            for (position, item) in resolvedTier.items.enumerated() {
+                let (seasonString, seasonNumber) = seasonInfo(from: item.attributes)
+                let newItem = TierItemEntity(
+                    itemID: item.id,
+                    name: item.title,
+                    seasonString: seasonString,
+                    seasonNumber: seasonNumber,
+                    status: item.attributes?["status"],
+                    details: item.description,
+                    imageUrl: item.thumbUri,
+                    videoUrl: nil,
+                    position: position,
+                    tier: tierEntity
+                )
+                tierEntity.items.append(newItem)
+            }
+
+            entity.tiers.append(tierEntity)
+        }
+
+        return entity
+    }
+
+    private func normalizedTierKey(_ label: String) -> String {
+        label.lowercased() == "unranked" ? "unranked" : label
+    }
+
+    private func seasonInfo(from attributes: [String: String]?) -> (String?, Int?) {
+        guard let attributes else { return (nil, nil) }
+        if let seasonNumberString = attributes["seasonNumber"], let value = Int(seasonNumberString) {
+            return (seasonNumberString, value)
+        }
+        if let seasonString = attributes["season"] {
+            return (seasonString, Int(seasonString))
+        }
+        return (nil, nil)
+    }
+
     func undo() {
-        guard HistoryLogic.canUndo(history) else { return }
-        history = HistoryLogic.undo(history)
-        tiers = HistoryLogic.current(history)
-        markAsChanged()
-    showInfoToast("Undone", message: "Last action undone {undo}")
-        let counts = tierOrder
-            .map { "\($0):\(tiers[$0]?.count ?? 0)" }
-            .joined(separator: ", ")
-        logEvent("undo: canUndo=\(HistoryLogic.canUndo(history)) counts=\(counts)")
+        if let manager = undoManager, manager.canUndo {
+            manager.undo()
+            return
+        }
     }
 
     func redo() {
-        guard HistoryLogic.canRedo(history) else { return }
-        history = HistoryLogic.redo(history)
-        tiers = HistoryLogic.current(history)
-        markAsChanged()
-    showInfoToast("Redone", message: "Action redone {redo}")
-        let counts = tierOrder
-            .map { "\($0):\(tiers[$0]?.count ?? 0)" }
-            .joined(separator: ", ")
-        logEvent("redo: canRedo=\(HistoryLogic.canRedo(history)) counts=\(counts)")
+        if let manager = undoManager, manager.canRedo {
+            manager.redo()
+            return
+        }
     }
-    var canUndo: Bool { HistoryLogic.canUndo(history) }
-    var canRedo: Bool { HistoryLogic.canRedo(history) }
+    var canUndo: Bool { undoManager?.canUndo ?? false }
+    var canRedo: Bool { undoManager?.canRedo ?? false }
     var totalItemCount: Int {
         tiers.values.reduce(into: 0) { partialResult, items in
             partialResult += items.count

@@ -1,5 +1,7 @@
 import Foundation
 import SwiftUI
+import SwiftData
+import os
 import TiercadeCore
 
 @MainActor
@@ -15,9 +17,13 @@ extension AppState {
         var displayName: String
         var subtitle: String?
         var iconSystemName: String?
+        var entityID: UUID?
 
         var id: String {
-            "\(source.rawValue)::\(identifier)"
+            if let entityID {
+                return "\(source.rawValue)::\(identifier)::\(entityID.uuidString)"
+            }
+            return "\(source.rawValue)::\(identifier)"
         }
     }
 
@@ -54,7 +60,11 @@ extension AppState {
         case .bundled:
             guard let project = bundledProjects.first(where: { $0.id == handle.identifier }) else { return }
             await withLoadingIndicator(message: "Loading \(project.title)...") {
-                applyBundledProject(project)
+                if let entity = (try? fetchEntity(for: handle)) ?? nil {
+                    applyPersistedTierList(entity)
+                } else {
+                    applyBundledProject(project)
+                }
                 registerTierListSelection(handle)
             }
         case .file:
@@ -68,10 +78,23 @@ extension AppState {
 
     func registerTierListSelection(_ handle: TierListHandle) {
         activeTierList = handle
-        var updated = recentTierLists.filter { $0 != handle }
-        updated.insert(handle, at: 0)
-        recentTierLists = Array(updated.prefix(maxRecentTierLists))
-        persistTierListState()
+        do {
+            try deactivateOtherLists(except: handle.entityID)
+            let entity = try ensureEntity(for: handle)
+            entity.isActive = true
+            entity.lastOpenedAt = Date()
+            entity.title = handle.displayName
+            entity.subtitle = handle.subtitle
+            entity.iconSystemName = handle.iconSystemName
+            entity.externalIdentifier = handle.identifier
+            entity.sourceRaw = handle.source.rawValue
+            activeTierList = TierListHandle(entity: entity)
+            activeTierListEntity = entity
+            try modelContext.save()
+        } catch {
+            Logger.persistence.error("registerTierListSelection failed: \(error.localizedDescription)")
+        }
+        refreshRecentTierListsFromStore()
     }
 
     func presentTierListBrowser() {
@@ -91,23 +114,20 @@ extension AppState {
             identifier: fileName,
             displayName: fileName,
             subtitle: "Saved Locally",
-            iconSystemName: "externaldrive"
+            iconSystemName: "externaldrive",
+            entityID: nil
         )
     }
 
     func restoreTierListState() {
-        let defaults = UserDefaults.standard
-
-        if let activeData = defaults.data(forKey: tierListStateKey) {
-            if let handle = try? JSONDecoder().decode(TierListHandle.self, from: activeData) {
-                activeTierList = handle
+        do {
+            if let entity = try fetchActiveTierListEntity() {
+                activeTierListEntity = entity
+                activeTierList = TierListHandle(entity: entity)
             }
-        }
-
-        if let recentsData = defaults.data(forKey: tierListRecentsKey) {
-            if let handles = try? JSONDecoder().decode([TierListHandle].self, from: recentsData) {
-                recentTierLists = handles
-            }
+            refreshRecentTierListsFromStore()
+        } catch {
+            Logger.persistence.error("restoreTierListState failed: \(error.localizedDescription)")
         }
     }
 
@@ -125,17 +145,68 @@ extension AppState {
         }
     }
 
-    private func persistTierListState() {
-        let defaults = UserDefaults.standard
-        if let activeTierList {
-            let data = try? JSONEncoder().encode(activeTierList)
-            defaults.set(data, forKey: tierListStateKey)
-        } else {
-            defaults.removeObject(forKey: tierListStateKey)
+    private func refreshRecentTierListsFromStore() {
+        do {
+            let descriptor = FetchDescriptor<TierListEntity>(
+                sortBy: [SortDescriptor(\TierListEntity.lastOpenedAt, order: .reverse)]
+            )
+            let entities = try modelContext.fetch(descriptor)
+            recentTierLists = entities
+                .filter { !$0.isDeleted }
+                .prefix(maxRecentTierLists)
+                .map(TierListHandle.init)
+        } catch {
+            Logger.persistence.error("refreshRecentTierListsFromStore failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func deactivateOtherLists(except activeID: UUID?) throws {
+        let descriptor = FetchDescriptor<TierListEntity>(
+            predicate: #Predicate { $0.isActive == true }
+        )
+        let activeLists = try modelContext.fetch(descriptor)
+        for entity in activeLists where entity.identifier != activeID {
+            entity.isActive = false
+        }
+    }
+
+    private func ensureEntity(for handle: TierListHandle) throws -> TierListEntity {
+        if let entity = try fetchEntity(for: handle) {
+            return entity
         }
 
-        let recentsData = try? JSONEncoder().encode(recentTierLists)
-        defaults.set(recentsData, forKey: tierListRecentsKey)
+        let newEntity = TierListEntity(
+            title: handle.displayName,
+            fileName: handle.source == .file ? handle.identifier : nil,
+            isActive: true,
+            cardDensityRaw: cardDensityPreference.rawValue,
+            selectedThemeID: selectedThemeID,
+            customThemesData: encodedCustomThemesData(),
+            sourceRaw: handle.source.rawValue,
+            externalIdentifier: handle.identifier,
+            subtitle: handle.subtitle,
+            iconSystemName: handle.iconSystemName,
+            lastOpenedAt: Date()
+        )
+        modelContext.insert(newEntity)
+        return newEntity
+    }
+
+    private func fetchEntity(for handle: TierListHandle) throws -> TierListEntity? {
+        if let entityID = handle.entityID {
+            let descriptor = FetchDescriptor<TierListEntity>(
+                predicate: #Predicate { $0.identifier == entityID }
+            )
+            if let entity = try modelContext.fetch(descriptor).first {
+                return entity
+            }
+        }
+        let sourceRaw = handle.source.rawValue
+        let descriptor = FetchDescriptor<TierListEntity>(
+            predicate: #Predicate { $0.sourceRaw == sourceRaw }
+        )
+        let candidates = try modelContext.fetch(descriptor)
+        return candidates.first { $0.externalIdentifier == handle.identifier }
     }
 }
 
@@ -146,7 +217,19 @@ extension AppState.TierListHandle {
             identifier: project.id,
             displayName: project.title,
             subtitle: project.subtitle,
-            iconSystemName: "square.grid.2x2"
+            iconSystemName: "square.grid.2x2",
+            entityID: nil
+        )
+    }
+
+    init(entity: TierListEntity) {
+        self.init(
+            source: AppState.TierListSource(rawValue: entity.sourceRaw) ?? .bundled,
+            identifier: entity.externalIdentifier ?? entity.identifier.uuidString,
+            displayName: entity.title,
+            subtitle: entity.subtitle,
+            iconSystemName: entity.iconSystemName,
+            entityID: entity.identifier
         )
     }
 }

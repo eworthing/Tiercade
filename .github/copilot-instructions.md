@@ -8,7 +8,7 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 
 ## Architecture snapshot
 - `Tiercade/State/AppState.swift` is the only source of truth (`@MainActor @Observable`). Every mutation lives in `AppState+*.swift` extensions and calls TiercadeCore helpers—never mutate `tiers` or `selection` directly inside views.
-- Shared logic comes from `TiercadeCore/` (`TierLogic`, `HistoryLogic`, `HeadToHeadLogic`, `RandomUtils`, etc.). Import the module instead of reimplementing `Items`/`TierConfig` types.
+- Shared logic comes from `TiercadeCore/` (`TierLogic`, `HeadToHeadLogic`, `RandomUtils`, etc.). Import the module instead of reimplementing `Items`/`TierConfig` types.
 - Views are grouped by intent: `Views/Main` (tier grid / `MainAppView`), `Views/Toolbar`, `Views/Overlays`, `Views/Components`. Match existing composition when adding surfaces.
 - Design tokens live in `Tiercade/Design/` (`Palette`, `TypeScale`, `Metrics`, `TVMetrics`). Reference these rather than hardcoding colors or spacing, especially for tvOS focus chrome.
 - `SharedCore.swift` wires TiercadeCore + design singletons; keep dependency injection consistent with its patterns.
@@ -70,8 +70,8 @@ A SwiftUI tier list management app targeting tvOS 26+/iOS 26+ with Swift 6 stric
 ### Structure
 - **App:** SwiftUI tvOS app with iOS support. Views in `Views/{Main,Overlays,Toolbar}` composed in `MainAppView.swift`
 - **Core logic:** `TiercadeCore` Swift package (iOS 17+/macOS 14+/tvOS 17+) — platform-agnostic models and logic
-  - Models: `Item`, `Items` (typealias for `[String: [Item]]`), `TierConfig`, `History`
-  - Logic: `TierLogic`, `HistoryLogic`, `HeadToHeadLogic`, `RandomUtils`
+  - Models: `Item`, `Items` (typealias for `[String: [Item]]`), `TierConfig`
+  - Logic: `TierLogic`, `HeadToHeadLogic`, `RandomUtils`
   - **Never recreate TL* aliases** — import from TiercadeCore directly
 
 ### State Management
@@ -95,8 +95,9 @@ var selectedTheme: TierTheme
 // Correct pattern - no direct mutation methods in AppState.swift
 // Mutations happen via TiercadeCore in extension methods:
 func moveItem(_ id: String, to tier: String) {
+    let snapshot = captureTierSnapshot()
     tiers = TierLogic.moveItem(tiers, itemId: id, targetTierName: tier)
-    // History auto-captured by HistoryLogic
+    finalizeChange(action: "Move Item", undoSnapshot: snapshot)
 }
 ```
 

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 //
 //  TiercadeApp.swift
@@ -17,7 +18,20 @@ import SwiftUI
 @main
 struct TiercadeApp: App {
     @AppStorage("ui.theme") private var themeRaw: String = ThemePreference.system.rawValue
-    @State private var appState = AppState()
+    private let modelContainer: ModelContainer
+    @State private var appState: AppState
+
+    init() {
+        let container = try! ModelContainer(
+            for: TierListEntity.self,
+                TierEntity.self,
+                TierItemEntity.self,
+                TierThemeEntity.self,
+                TierColorEntity.self
+        )
+        modelContainer = container
+        _appState = State(initialValue: AppState(modelContext: container.mainContext))
+    }
 
     private var preferredScheme: ColorScheme? {
         ThemePreference(rawValue: themeRaw)?.colorScheme
@@ -33,5 +47,6 @@ struct TiercadeApp: App {
             .font(TypeScale.body)
             .preferredColorScheme(preferredScheme)
         }
+        .modelContainer(modelContainer)
     }
 }

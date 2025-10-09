@@ -3,8 +3,8 @@
 Core domain models and logic for the Tiercade native apps. This Swift Package is platform-agnostic and intended to be used by iOS, iPadOS, macOS, and tvOS apps.
 
 ## Contents
-- **Models**: Item, Items (type alias for [String: [Item]]), TierConfig, History
-- **Logic**: TierLogic (move/reorder), HistoryLogic, HeadToHeadLogic, RandomUtils
+- **Models**: Item, Items (type alias for [String: [Item]]), TierConfig
+- **Logic**: TierLogic (move/reorder), HeadToHeadLogic, RandomUtils
 - **Formatters**: ExportFormatter, AnalysisFormatter
 - **Data**: ModelResolver for loading and resolving JSON resources (items, groups, projects)
 

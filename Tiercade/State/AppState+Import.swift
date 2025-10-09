@@ -16,9 +16,9 @@ extension AppState {
                 updateProgress(0.8)
 
                 // State updates on MainActor
+                let snapshot = captureTierSnapshot()
                 tiers = newTiers
-                history = HistoryLogic.initHistory(tiers, limit: history.limit)
-                markAsChanged()
+                finalizeChange(action: "Import JSON", undoSnapshot: snapshot)
                 updateProgress(1.0)
 
                 showSuccessToast("Import Complete", message: "Successfully imported tier list {import}")
@@ -77,9 +77,9 @@ extension AppState {
                 updateProgress(0.8)
 
                 // State updates on MainActor
+                let snapshot = captureTierSnapshot()
                 tiers = newTiers
-                history = HistoryLogic.initHistory(tiers, limit: history.limit)
-                markAsChanged()
+                finalizeChange(action: "Import CSV", undoSnapshot: snapshot)
                 updateProgress(1.0)
 
                 showSuccessToast("Import Complete", message: "Successfully imported CSV data {import}")
@@ -149,10 +149,10 @@ extension AppState {
             let (newTiers, newOrder) = try await loadProjectFromFile(url)
 
             // State updates on MainActor
+            let snapshot = captureTierSnapshot()
             tierOrder = newOrder
             tiers = newTiers
-            history = HistoryLogic.initHistory(tiers, limit: history.limit)
-            markAsChanged()
+            finalizeChange(action: "Import Project", undoSnapshot: snapshot)
 
             showSuccessToast("Import Complete", message: "Project loaded successfully {import}")
         } catch let error as NSError where error.domain == "Tiercade" {

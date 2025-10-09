@@ -136,7 +136,7 @@ Each major feature is implemented as a self-contained system:
 - **Export/Import System** - `ExportFormat` enum with async operations
 - **Analysis Engine** - `TierAnalysisData` with statistical calculations
 - **Progress System** - `withLoadingIndicator` wrapper plus `setLoading`/`updateProgress` with Sendable-safe operations
-- **History Management** - Operation tracking with state snapshots
+- **Undo Management** - System undo/redo backed by tier snapshots
 - **Search System** - Real-time filtering with highlighting
 
 ### **Data Flow**

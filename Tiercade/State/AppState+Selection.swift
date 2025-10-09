@@ -31,11 +31,11 @@ extension AppState {
             announce("Tier \(displayTier) is locked. Move canceled.")
             return
         }
+        let snapshot = captureTierSnapshot()
         let next = TierLogic.moveItem(tiers, itemId: id, targetTierName: tier)
         guard next != tiers else { return }
         tiers = next
-        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
-        markAsChanged()
+        finalizeChange(action: "Move Item", undoSnapshot: snapshot)
         let displayTier = displayLabel(for: tier)
         if let name = tiers[tier]?.first(where: { $0.id == id })?.name {
             showInfoToast("Moved", message: "Moved '\(name)' to \(displayTier)")
@@ -58,14 +58,14 @@ extension AppState {
             announce("Tier \(displayTier) is locked. Move canceled.")
             return
         }
+        let snapshot = captureTierSnapshot()
         var next = tiers
         for id in ids {
             next = TierLogic.moveItem(next, itemId: id, targetTierName: tier)
         }
         guard next != tiers else { return }
         tiers = next
-        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
-        markAsChanged()
+        finalizeChange(action: "Move Items", undoSnapshot: snapshot)
         clearSelection()
         showSuccessToast("Moved Items", message: "Moved \(ids.count) item(s) to \(displayTier)")
         let count = ids.count
@@ -89,14 +89,14 @@ extension AppState {
         guard let moving = next[tier], !moving.isEmpty else { return }
         next[tier] = []
         next["unranked", default: []].append(contentsOf: moving)
+        let snapshot = captureTierSnapshot()
         tiers = next
-        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
-        markAsChanged()
+        finalizeChange(action: "Clear Tier", undoSnapshot: snapshot)
         let displayTier = displayLabel(for: tier)
         let toastMessage = "Moved all items from \(displayTier) tier to Unranked"
         showInfoToast("Tier Cleared", message: toastMessage)
-    let pluralSuffix = moving.count == 1 ? "" : "s"
-    let announcement = "Cleared \(displayTier) tier. Moved \(moving.count) item\(pluralSuffix) to Unranked"
+        let pluralSuffix = moving.count == 1 ? "" : "s"
+        let announcement = "Cleared \(displayTier) tier. Moved \(moving.count) item\(pluralSuffix) to Unranked"
         announce(announcement)
     }
 
@@ -104,6 +104,7 @@ extension AppState {
     func isTierLocked(_ id: String) -> Bool { lockedTiers.contains(id) }
 
     func toggleTierLocked(_ id: String) {
+        let snapshot = captureTierSnapshot()
         if lockedTiers.contains(id) {
             lockedTiers.remove(id)
         } else {
@@ -111,6 +112,7 @@ extension AppState {
         }
         let label = displayLabel(for: id)
         announce(lockedTiers.contains(id) ? "Locked \(label) tier" : "Unlocked \(label) tier")
+        finalizeChange(action: lockedTiers.contains(id) ? "Lock Tier" : "Unlock Tier", undoSnapshot: snapshot)
     }
 
     // MARK: - Tier Presentation
@@ -122,13 +124,20 @@ extension AppState {
         if !existingTiersWithLabel.isEmpty {
             showInfoToast("Duplicate Name", message: "Another tier already has this name")
         }
+        let snapshot = captureTierSnapshot()
+        let previous = tierLabels[tierId]
+        guard previous != label else { return }
         tierLabels[tierId] = label
-        markAsChanged()
+        finalizeChange(action: "Rename Tier", undoSnapshot: snapshot)
     }
 
     func displayColorHex(for tierId: String) -> String? { tierColors[tierId] }
 
     func setDisplayColorHex(_ hex: String?, for tierId: String) {
+        let snapshot = captureTierSnapshot()
+        let previous = tierColors[tierId]
+        guard previous != hex else { return }
         tierColors[tierId] = hex
+        finalizeChange(action: "Recolor Tier", undoSnapshot: snapshot)
     }
 }

@@ -20,15 +20,6 @@ final class TiercadeCoreTests: XCTestCase {
             XCTAssertEqual(items["c2"]?.seasonString, "2")
     }
 
-    func testHistory() {
-        var h = HistoryLogic.initHistory([0])
-        h = HistoryLogic.saveSnapshot(h, snapshot: [0, 1])
-        XCTAssertTrue(HistoryLogic.canUndo(h))
-        XCTAssertFalse(HistoryLogic.canRedo(h))
-        let u = HistoryLogic.undo(h)
-        XCTAssertFalse(HistoryLogic.canUndo(u))
-    }
-
     func testQuickRankAssign() {
         let c = Item(id: "x", name: "X")
         let start: Items = ["S": [], "A": [], "unranked": [c]]
