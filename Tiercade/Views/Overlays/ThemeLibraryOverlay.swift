@@ -56,8 +56,9 @@ private extension ThemeLibraryOverlay {
         .onChange(of: appState.selectedTheme.id) { assignFocusToSelectedTheme() }
     }
 
+    @ViewBuilder
     var chrome: some View {
-        GlassEffectContainer {
+        let container = tvGlassContainer {
             VStack(spacing: 0) {
                 header
                 Divider().opacity(0.18)
@@ -68,19 +69,23 @@ private extension ThemeLibraryOverlay {
             .frame(maxWidth: 1180)
             .padding(.vertical, TVMetrics.overlayPadding / 2)
         }
-        #if swift(>=6.0)
-        .glassEffect(
-            Glass.regular.tint(Palette.surface.opacity(0.92)).interactive(),
-            in: RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
-        )
-        .glassEffectID("ThemeLibraryOverlay", in: glassNamespace)
-        #else
-        .background(
-            RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
-                .fill(.ultraThinMaterial)
-        )
-        #endif
-        .shadow(color: Color.black.opacity(0.35), radius: 32, y: 18)
+
+        if #available(tvOS 26.0, iOS 26.0, macOS 15.0, macCatalyst 26.0, *) {
+            container
+                .glassEffect(
+                    Glass.regular.tint(Palette.surface.opacity(0.92)).interactive(),
+                    in: RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
+                )
+                .glassEffectID("ThemeLibraryOverlay", in: glassNamespace)
+                .shadow(color: Color.black.opacity(0.35), radius: 32, y: 18)
+        } else {
+            container
+                .background(
+                    RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                )
+                .shadow(color: Color.black.opacity(0.35), radius: 32, y: 18)
+        }
     }
 
     var header: some View {

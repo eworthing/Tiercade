@@ -32,7 +32,7 @@ struct InspectorView: View {
 
             Spacer()
         }
-        .panel()
+        .modifier(PanelStyle())
         .frame(minWidth: Metrics.paneRight)
         .padding(.horizontal, Metrics.grid)
     }

@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import Observation
 import Accessibility
+import os
 
 import TiercadeCore
 
@@ -185,58 +186,10 @@ final class AppState {
         loadActiveTierListIfNeeded()
     }
 
-    // Write a small debug file to /tmp to make logs visible from the host
-    // Uses Task.detached to ensure file I/O runs on background thread pool
-    nonisolated func appendDebugFile(_ message: String) async {
-        let path = "/tmp/tiercade_debug.log"
-        let ts = ISO8601DateFormatter().string(from: Date())
-        let pid = ProcessInfo.processInfo.processIdentifier
-        let line = "\(ts) [pid:\(pid)] \(message)\n"
-        if !FileManager.default.fileExists(atPath: path) {
-            let attributes: [FileAttributeKey: Any] = [
-                .posixPermissions: 0o644
-            ]
-            FileManager.default.createFile(
-                atPath: path,
-                contents: Data(line.utf8),
-                attributes: attributes
-            )
-        } else {
-            if let fh = try? FileHandle(forWritingTo: URL(fileURLWithPath: path)) {
-                do {
-                    try fh.seekToEnd()
-                    try fh.write(contentsOf: Data(line.utf8))
-                    try fh.close()
-                } catch {
-                    // ignore
-                }
-            }
-        }
-        // Also write to Documents so host tools can easily retrieve the file
-        if let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-            let docPath = docs.appendingPathComponent("tiercade_debug.log")
-            if !FileManager.default.fileExists(atPath: docPath.path) {
-                let attributes: [FileAttributeKey: Any] = [
-                    .posixPermissions: 0o644
-                ]
-                FileManager.default.createFile(
-                    atPath: docPath.path,
-                    contents: Data(line.utf8),
-                    attributes: attributes
-                )
-            } else {
-                if let fh = try? FileHandle(forWritingTo: docPath) {
-                    do {
-                        try fh.seekToEnd()
-                        try fh.write(contentsOf: Data(line.utf8))
-                        try fh.close()
-                    } catch {
-                        // ignore
-                    }
-                }
-            }
-        }
-    }
+    // MARK: - Logging
+    // Logging now uses Swift's unified logging system (os.Logger)
+    // See Util/Logging.swift for logger definitions
+    // Logs are viewable in Console.app and automatically integrated with system logging
 
     private func setupAutosave() {
         autosaveTask?.cancel()
@@ -266,12 +219,9 @@ final class AppState {
         hasUnsavedChanges = true
     }
 
+    /// Log a general app state event using unified logging
     func logEvent(_ message: String) {
-        let formatted = "[AppState] \(message)"
-        print(formatted)
-        NSLog("%@", formatted)
-        // Fire-and-forget async logging to avoid blocking caller
-        Task { await appendDebugFile(formatted) }
+        Logger.appState.info("\(message)")
     }
 
     func seed() {
