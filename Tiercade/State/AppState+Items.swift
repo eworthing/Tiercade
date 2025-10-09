@@ -19,22 +19,30 @@ extension AppState {
     }
 
     func performReset(showToast: Bool = false) {
-        tiers = makeEmptyTiers()
-        seed()
-        history = HistoryLogic.initHistory(tiers, limit: history.limit)
-        markAsChanged()
+        let snapshot = captureTierSnapshot()
+        if let defaultProject = bundledProjects.first {
+            let state = resolvedTierState(for: defaultProject)
+            tierOrder = state.order
+            tiers = state.items
+            tierLabels = state.labels
+            tierColors = state.colors
+            lockedTiers = state.locked
+        } else {
+            tiers = makeEmptyTiers()
+        }
+        finalizeChange(action: "Reset Tier List", undoSnapshot: snapshot)
 
         if showToast {
-            showSuccessToast("Reset Complete", message: "Tier list reset. History cleared.")
+            showSuccessToast("Reset Complete", message: "Tier list reset. Undo available if needed.")
             announce("Tier list reset")
         }
     }
 
     func addItem(id: String, attributes: [String: String]? = nil) {
+        let snapshot = captureTierSnapshot()
         let item = Item(id: id, attributes: attributes)
         tiers["unranked", default: []].append(item)
-        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
-        markAsChanged()
+        finalizeChange(action: "Add Item", undoSnapshot: snapshot)
         let display = attributes?["name"] ?? id
         showSuccessToast("Added", message: "Added \(display) to Unranked")
         announce("Added \(display) to unranked")
@@ -60,6 +68,7 @@ extension AppState {
     }
 
     func performRandomize() {
+        let snapshot = captureTierSnapshot()
         var (lockedTierItems, unlockedItems) = partitionItemsByLockState()
         guard !unlockedItems.isEmpty else { return }
 
@@ -71,8 +80,7 @@ extension AppState {
         distribute(unlockedItems: unlockedItems, into: unlockedRankedTiers, tiers: &newTiers)
 
         tiers = newTiers
-        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
-        markAsChanged()
+        finalizeChange(action: "Randomize Tiers", undoSnapshot: snapshot)
 
         let lockedCount = lockedTiers.count
         let lockedSuffix = lockedCount == 1 ? "" : "s"

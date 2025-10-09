@@ -14,6 +14,7 @@ extension AppState {
 
     func commitQuickRank(to tier: String) {
         guard let target = quickRankTarget else { return }
+        let snapshot = captureTierSnapshot()
         let next = QuickRankLogic.assign(tiers, itemId: target.id, to: tier)
         guard next != tiers else {
             quickRankTarget = nil
@@ -21,8 +22,7 @@ extension AppState {
         }
 
         tiers = next
-        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
-        markAsChanged()
+        finalizeChange(action: "Quick Rank", undoSnapshot: snapshot)
         quickRankTarget = nil
 
         logEvent("commitQuickRank: item=\(target.id) -> tier=\(tier)")
@@ -47,7 +47,7 @@ extension AppState {
         }
 
         guard let item = quickMoveTarget else { return }
-        let previous = tiers
+        let snapshot = captureTierSnapshot()
         let next = QuickRankLogic.assign(tiers, itemId: item.id, to: tier)
         guard next != tiers else {
             quickMoveTarget = nil
@@ -55,8 +55,7 @@ extension AppState {
         }
 
         tiers = next
-        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
-        markAsChanged()
+        finalizeChange(action: "Quick Move", undoSnapshot: snapshot)
         quickMoveTarget = nil
 
         let movedName = item.name ?? item.id

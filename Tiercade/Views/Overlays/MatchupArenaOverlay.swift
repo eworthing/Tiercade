@@ -146,17 +146,14 @@ struct MatchupArenaOverlay: View {
 
     private var progressSection: some View {
         HStack(alignment: .center, spacing: Metrics.grid * 3) {
-            MatchupProgressDial(progress: app.h2hProgress, label: progressLabel)
+            MatchupProgressDial(progress: app.h2hOverallProgress, label: progressLabel)
                 .frame(width: 150, height: 150)
                 .accessibilityIdentifier("MatchupOverlay_Progress")
 
             VStack(alignment: .leading, spacing: 6) {
-                if isRefinementPhase {
-                    refinementBadge
-                }
                 Text(statusSummary)
                     .font(.title3.weight(.semibold))
-                Text(remainingSummary)
+                Text(secondaryStatus)
                     .font(.body)
                     .foregroundStyle(.secondary)
                 if app.h2hSkippedCount > 0 {
@@ -249,61 +246,32 @@ struct MatchupArenaOverlay: View {
     }
 
     private var progressLabel: String {
-        let percentage = Int(round(app.h2hProgress * 100))
+        let percentage = Int(round(app.h2hOverallProgress * 100))
         return "\(percentage)%"
     }
 
     private var statusSummary: String {
-        if isRefinementPhase {
-            return "\(app.h2hCompletedComparisons) of \(app.h2hTotalComparisons) targeted matchups answered"
-        }
-        return "\(app.h2hCompletedComparisons) matchups decided"
-    }
-
-    private var remainingSummary: String {
-        if isRefinementPhase {
-            let remaining = targetedRemaining
-            if remaining == 0 {
-                return "All targeted comparisons complete. Commit to lock in the refined tiers."
+        switch app.h2hPhase {
+        case .quick:
+            return "Building your ranking"
+        case .refinement:
+            if app.h2hTotalRemainingComparisons == 0 {
+                return "Ranking complete"
             }
-            return "\(remaining) targeted matchups remaining"
+            return "Polishing the results"
         }
-        if app.h2hRemainingComparisons == 0 {
-            return "You're ready to apply the new order."
-        }
-        return "\(app.h2hRemainingComparisons) more to go"
     }
 
-    private var refinementBadge: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "target")
-                .font(.title3.weight(.semibold))
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Refinement Phase")
-                    .font(.headline)
-                Text("Answer the highlighted matchups to sharpen tier boundaries.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+    private var secondaryStatus: String {
+        if app.h2hTotalRemainingComparisons == 0 {
+            return "Choose Commit Rankings to apply the outcome."
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 16)
-        .background(
-            Capsule()
-                .fill(Color.white.opacity(0.22))
-        )
-        .overlay(
-            Capsule().stroke(Color.white.opacity(0.28), lineWidth: 1)
-        )
-        .accessibilityIdentifier("MatchupOverlay_RefinementBadge")
-    }
-
-    private var isRefinementPhase: Bool {
-        app.h2hPhase == .refinement
-    }
-
-    private var targetedRemaining: Int {
-        max(app.h2hTotalComparisons - app.h2hCompletedComparisons, 0)
+        switch app.h2hPhase {
+        case .quick:
+            return "Keep comparing contenders to shape the tiers."
+        case .refinement:
+            return "Tightening boundaries with targeted matchups."
+        }
     }
 
     private func handleAppear() {

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import SwiftData
 import os
 import TiercadeCore
 
@@ -55,74 +56,25 @@ private struct CodableTheme: Codable {
     }
 }
 
-private struct PersistenceSnapshot: Sendable {
-    let tiers: Items
-    let tierLabels: [String: String]
-    let tierColors: [String: String]
-    let selectedThemeID: UUID
-    let customThemes: [CodableTheme]
-    let cardDensityPreference: CardDensityPreference
-}
-
 @MainActor
 extension AppState {
-    // MARK: - Enhanced Persistence
+    // MARK: - SwiftData-backed persistence
 
     func save() throws(PersistenceError) {
         do {
-            // Persist tiers and customizations
-            struct SaveData: Codable {
-                let tiers: Items
-                let tierLabels: [String: String]
-                let tierColors: [String: String]
-                let selectedThemeID: String?
-                let customThemes: [CodableTheme]
-                let cardDensityPreference: String
-            }
-            let saveData = SaveData(
-                tiers: tiers,
-                tierLabels: tierLabels,
-                tierColors: tierColors,
-                selectedThemeID: selectedThemeID.uuidString,
-                customThemes: customThemes.map(CodableTheme.init),
-                cardDensityPreference: cardDensityPreference.rawValue
-            )
-            let data = try JSONEncoder().encode(saveData)
-            UserDefaults.standard.set(data, forKey: storageKey)
+            try persistActiveTierList()
+            try modelContext.save()
             hasUnsavedChanges = false
             lastSavedTime = Date()
-            // No toast for autosave - silent like modern apps
+        } catch let error as PersistenceError {
+            throw error
         } catch {
-            throw PersistenceError.encodingFailed("JSONEncoder failed: \(error.localizedDescription)")
+            throw PersistenceError.fileSystemError("ModelContext save failed: \(error.localizedDescription)")
         }
     }
 
-    // Swift 6.2 pattern: async save with background encoding
     func saveAsync() async throws(PersistenceError) {
-        // Capture state and convert to Codable on MainActor
-        let tiersSnapshot = tiers
-        let labelsSnapshot = tierLabels
-        let colorsSnapshot = tierColors
-        let themeIDSnapshot = selectedThemeID
-        let codableThemes = customThemes.map { CodableTheme(theme: $0) }
-        let densitySnapshot = cardDensityPreference
-
-        let snapshot = PersistenceSnapshot(
-            tiers: tiersSnapshot,
-            tierLabels: labelsSnapshot,
-            tierColors: colorsSnapshot,
-            selectedThemeID: themeIDSnapshot,
-            customThemes: codableThemes,
-            cardDensityPreference: densitySnapshot
-        )
-
-        // Encode on background thread pool
-        let data = try await encodeAppState(snapshot: snapshot)
-
-        // Save and update state on MainActor
-        UserDefaults.standard.set(data, forKey: storageKey)
-        hasUnsavedChanges = false
-        lastSavedTime = Date()
+        try save()
     }
 
     func autoSave() throws(PersistenceError) {
@@ -132,37 +84,21 @@ extension AppState {
 
     func autoSaveAsync() async {
         guard hasUnsavedChanges else { return }
-        try? await saveAsync()
+        try? save()
     }
 
-    // Swift 6.2 pattern: heavy JSON encoding on background via Task.detached
-    nonisolated
-    private func encodeAppState(
-        snapshot: PersistenceSnapshot
-    ) async throws(PersistenceError) -> Data {
-        struct SaveData: Codable {
-            let tiers: Items
-            let tierLabels: [String: String]
-            let tierColors: [String: String]
-            let selectedThemeID: String?
-            let customThemes: [CodableTheme]
-            let cardDensityPreference: String
-        }
-
-        let saveData = SaveData(
-            tiers: snapshot.tiers,
-            tierLabels: snapshot.tierLabels,
-            tierColors: snapshot.tierColors,
-            selectedThemeID: snapshot.selectedThemeID.uuidString,
-            customThemes: snapshot.customThemes,
-            cardDensityPreference: snapshot.cardDensityPreference.rawValue
-        )
-
+    @discardableResult
+    func load() -> Bool {
         do {
-            return try JSONEncoder().encode(saveData)
+            if let entity = try fetchActiveTierListEntity() {
+                activeTierListEntity = entity
+                applyLoadedTierList(entity)
+                return true
+            }
         } catch {
-            throw PersistenceError.encodingFailed("JSONEncoder failed: \(error.localizedDescription)")
+            Logger.persistence.error("SwiftData load failed: \(error.localizedDescription)")
         }
+        return false
     }
 
     func saveToFile(named fileName: String) throws(PersistenceError) {
@@ -200,7 +136,6 @@ extension AppState {
             currentFileName = fileName
             hasUnsavedChanges = false
             lastSavedTime = Date()
-
             showSuccessToast("File Saved", message: "Saved as \(fileName).json {file}")
         } catch let error as EncodingError {
             throw PersistenceError.encodingFailed("Failed to encode: \(error.localizedDescription)")
@@ -212,65 +147,339 @@ extension AppState {
     }
 
     @discardableResult
-    func load() -> Bool {
-        guard let data = UserDefaults.standard.data(forKey: storageKey) else { return false }
-
-        restoreCustomThemes([])
-
-        if loadModernFormat(from: data) {
-            return true
-        }
-
-        return loadLegacyFormat(from: data)
-    }
-
-    private func loadModernFormat(from data: Data) -> Bool {
+    func loadFromFile(named fileName: String) -> Bool {
+        let snapshot = captureTierSnapshot()
         do {
-            // Try new format with customizations first
-            struct SaveData: Codable {
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
+
+            let data = try Data(contentsOf: fileURL)
+            struct AppSaveFile: Codable {
                 let tiers: Items
-                let tierLabels: [String: String]
-                let tierColors: [String: String]
+                let tierLabels: [String: String]?
+                let tierColors: [String: String]?
                 let selectedThemeID: String?
                 let customThemes: [CodableTheme]?
+                let createdDate: Date
+                let appVersion: String
                 let cardDensityPreference: String?
             }
-            if let saveData = try? JSONDecoder().decode(SaveData.self, from: data) {
-                applyLoadedTiers(saveData.tiers, isLegacy: false)
-                tierLabels = saveData.tierLabels
-                tierColors = saveData.tierColors
+
+            if let saveData = try? JSONDecoder().decode(AppSaveFile.self, from: data) {
+                applyLoadedFileSync(
+                    tiers: saveData.tiers,
+                    fileName: fileName,
+                    savedDate: saveData.createdDate
+                )
+                tierLabels = saveData.tierLabels ?? tierLabels
+                tierColors = saveData.tierColors ?? tierColors
                 restoreCustomThemes(saveData.customThemes ?? [])
-                restoreTheme(themeIDString: saveData.selectedThemeID)
+                restoreTheme(themeID: saveData.selectedThemeID.flatMap(UUID.init))
                 restoreCardDensityPreference(rawValue: saveData.cardDensityPreference)
+                showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
+                finalizeChange(action: "Load File", undoSnapshot: snapshot)
+                persistCurrentStateToStore()
                 return true
             }
 
-            // Fallback to old format without customizations
-            let decoded = try JSONDecoder().decode(Items.self, from: data)
-            applyLoadedTiers(decoded, isLegacy: false)
-            return true
+            if let legacyTiers = parseLegacyTiers(from: data) {
+                applyLoadedFileSync(
+                    tiers: legacyTiers,
+                    fileName: fileName,
+                    savedDate: Date()
+                )
+                restoreCardDensityPreference(rawValue: nil)
+                showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
+                finalizeChange(action: "Load File", undoSnapshot: snapshot)
+                persistCurrentStateToStore()
+                return true
+            }
+
+            showErrorToast(
+                "Load Failed",
+                message: "Unrecognized format for \(fileName).json {warning}"
+            )
+            return false
         } catch {
+            Logger.persistence.error("File load failed: \(error.localizedDescription)")
+            showErrorToast("Load Failed", message: "Could not load \(fileName).json {warning}")
             return false
         }
     }
 
-    private func loadLegacyFormat(from data: Data) -> Bool {
+    private func persistCurrentStateToStore() {
         do {
-            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let tierData = json["tiers"] as? [String: [[String: Any]]] else {
-                return false
+            try persistActiveTierList()
+            try modelContext.save()
+            hasUnsavedChanges = false
+            lastSavedTime = Date()
+        } catch let error as PersistenceError {
+            Logger.persistence.error("Persist after external load failed: \(error.localizedDescription)")
+        } catch {
+            Logger.persistence.error("Persist after external load failed: \(error.localizedDescription)")
+        }
+    }
+
+    func getAvailableSaveFiles() -> [String] {
+        do {
+            let documentsPath = FileManager.default.urls(
+                for: .documentDirectory,
+                in: .userDomainMask
+            )[0]
+            let fileURLs = try FileManager.default.contentsOfDirectory(
+                at: documentsPath,
+                includingPropertiesForKeys: nil
+            )
+            return fileURLs
+                .filter { $0.pathExtension == "json" }
+                .map { $0.deletingPathExtension().lastPathComponent }
+                .sorted()
+        } catch {
+            Logger.persistence.error("Could not list save files: \(error.localizedDescription)")
+            return []
+        }
+    }
+
+    // MARK: - SwiftData helpers
+
+    func fetchActiveTierListEntity() throws(PersistenceError) -> TierListEntity? {
+        if let cached = activeTierListEntity {
+            return cached
+        }
+
+        do {
+            let descriptor = FetchDescriptor<TierListEntity>(
+                predicate: #Predicate { $0.isActive == true },
+                sortBy: [SortDescriptor(\TierListEntity.updatedAt, order: .reverse)]
+            )
+
+            if let entity = try modelContext.fetch(descriptor).first {
+                activeTierListEntity = entity
+                return entity
             }
 
-            let newTiers = parseLegacyTiers(from: tierData)
-            applyLoadedTiers(newTiers, isLegacy: true)
-            restoreCustomThemes([])
-            restoreCardDensityPreference(rawValue: nil)
-            return true
+            let anyDescriptor = FetchDescriptor<TierListEntity>(
+                sortBy: [SortDescriptor(\TierListEntity.updatedAt, order: .reverse)]
+            )
+            let entity = try modelContext.fetch(anyDescriptor).first
+            if let entity {
+                activeTierListEntity = entity
+            }
+            return entity
         } catch {
-            Logger.persistence.error("Legacy load failed: \(error.localizedDescription)")
-            showErrorToast("Load Failed", message: "Could not load tier list {warning}")
-            return false
+            throw PersistenceError.fileSystemError("Model fetch failed: \(error.localizedDescription)")
         }
+    }
+
+    private func ensureActiveTierListEntity() throws(PersistenceError) -> TierListEntity {
+        if let entity = try fetchActiveTierListEntity() {
+            entity.isActive = true
+            return entity
+        }
+
+        let newEntity = TierListEntity(
+            title: activeTierDisplayName,
+            fileName: currentFileName,
+            cardDensityRaw: cardDensityPreference.rawValue,
+            selectedThemeID: selectedThemeID,
+            customThemesData: encodedCustomThemesData()
+        )
+        modelContext.insert(newEntity)
+        activeTierListEntity = newEntity
+        return newEntity
+    }
+
+    private func persistActiveTierList() throws(PersistenceError) {
+        let entity = try ensureActiveTierListEntity()
+        entity.title = activeTierDisplayName
+        entity.fileName = currentFileName
+        entity.cardDensityRaw = cardDensityPreference.rawValue
+        entity.selectedThemeID = selectedThemeID
+        entity.updatedAt = Date()
+        entity.customThemesData = encodedCustomThemesData()
+
+        let allTierKeys = tierOrder + ["unranked"]
+        var existing = Dictionary(uniqueKeysWithValues: entity.tiers.map { ($0.normalizedKey, $0) })
+
+        for (index, key) in allTierKeys.enumerated() {
+            let displayName = tierLabels[key] ?? key
+            let colorHex = tierColors[key]
+            let isLocked = lockedTiers.contains(key)
+            let tierEntity: TierEntity
+            if let existingEntity = existing[key] {
+                tierEntity = existingEntity
+                existingEntity.order = key == "unranked" ? allTierKeys.count : index
+                existingEntity.displayName = displayName
+                existingEntity.colorHex = colorHex
+                existingEntity.isLocked = isLocked
+                existingEntity.key = key
+            } else {
+                tierEntity = TierEntity(
+                    key: key,
+                    displayName: displayName,
+                    colorHex: colorHex,
+                    order: key == "unranked" ? allTierKeys.count : index,
+                    isLocked: isLocked
+                )
+                tierEntity.list = entity
+                entity.tiers.append(tierEntity)
+            }
+            existing.removeValue(forKey: key)
+            let items = tiers[key] ?? []
+            updateItems(for: tierEntity, items: items)
+        }
+
+        // Remove tiers that are no longer present
+        for obsolete in existing.values {
+            if let index = entity.tiers.firstIndex(where: { $0.identifier == obsolete.identifier }) {
+                entity.tiers.remove(at: index)
+                modelContext.delete(obsolete)
+            }
+        }
+    }
+
+    private func updateItems(for tierEntity: TierEntity, items: [Item]) {
+        var existing = Dictionary(uniqueKeysWithValues: tierEntity.items.map { ($0.itemID, $0) })
+
+        for (position, item) in items.enumerated() {
+            if let entity = existing[item.id] {
+                entity.name = item.name
+                entity.seasonString = item.seasonString
+                entity.seasonNumber = item.seasonNumber
+                entity.status = item.status
+                entity.details = item.description
+                entity.imageUrl = item.imageUrl
+                entity.videoUrl = item.videoUrl
+                entity.position = position
+                existing.removeValue(forKey: item.id)
+            } else {
+                let newEntity = TierItemEntity(
+                    itemID: item.id,
+                    name: item.name,
+                    seasonString: item.seasonString,
+                    seasonNumber: item.seasonNumber,
+                    status: item.status,
+                    details: item.description,
+                    imageUrl: item.imageUrl,
+                    videoUrl: item.videoUrl,
+                    position: position,
+                    tier: tierEntity
+                )
+                tierEntity.items.append(newEntity)
+            }
+        }
+
+        for obsolete in existing.values {
+            if let index = tierEntity.items.firstIndex(where: { $0.identifier == obsolete.identifier }) {
+                tierEntity.items.remove(at: index)
+            }
+            modelContext.delete(obsolete)
+        }
+    }
+
+    func applyPersistedTierList(_ entity: TierListEntity) {
+        applyLoadedTierList(entity)
+    }
+
+    private func applyLoadedTierList(_ entity: TierListEntity) {
+        var newTiers: Items = [:]
+        var newLabels: [String: String] = [:]
+        var newColors: [String: String] = [:]
+        var newLocked: Set<String> = []
+
+        let sortedTiers = entity.tiers.sorted { left, right in
+            left.order < right.order
+        }
+
+        for tierEntity in sortedTiers {
+            let key = tierEntity.normalizedKey
+            let items = tierEntity.items
+                .sorted { $0.position < $1.position }
+                .map(makeItem)
+            newTiers[key] = items
+            newLabels[key] = tierEntity.displayName
+            if let colorHex = tierEntity.colorHex {
+                newColors[key] = colorHex
+            }
+            if tierEntity.isLocked {
+                newLocked.insert(key)
+            }
+        }
+
+        tierOrder = sortedTiers
+            .map(\.normalizedKey)
+            .filter { $0 != "unranked" }
+
+        tiers = newTiers
+        tierLabels = newLabels
+        tierColors = newColors
+        lockedTiers = newLocked
+        restoreTheme(themeID: entity.selectedThemeID)
+        restoreCustomThemes(decodeCustomThemes(from: entity.customThemesData))
+        restoreCardDensityPreference(rawValue: entity.cardDensityRaw)
+        currentFileName = entity.fileName
+        hasUnsavedChanges = false
+        lastSavedTime = entity.updatedAt
+    }
+
+    private func decodeCustomThemes(from data: Data?) -> [CodableTheme] {
+        guard let data else { return [] }
+        return (try? JSONDecoder().decode([CodableTheme].self, from: data)) ?? []
+    }
+
+    private func makeItem(from entity: TierItemEntity) -> Item {
+        Item(
+            id: entity.itemID,
+            name: entity.name,
+            seasonString: entity.seasonString,
+            seasonNumber: entity.seasonNumber,
+            status: entity.status,
+            description: entity.details,
+            imageUrl: entity.imageUrl,
+            videoUrl: entity.videoUrl
+        )
+    }
+
+    // MARK: - Theme & preference restoration
+
+    private func restoreTheme(themeID: UUID?) {
+        if let themeID,
+           let theme = theme(with: themeID) {
+            selectedThemeID = themeID
+            selectedTheme = theme
+            return
+        }
+
+        let fallback = TierThemeCatalog.defaultTheme
+        selectedTheme = fallback
+        selectedThemeID = fallback.id
+    }
+
+    private func restoreCustomThemes(_ codableThemes: [CodableTheme]) {
+        let restored = codableThemes.map { $0.toTheme() }
+        customThemes = restored.sorted {
+            $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+        }
+        customThemeIDs = Set(restored.map(\TierTheme.id))
+    }
+
+    private func applyLoadedFileSync(
+        tiers: Items,
+        fileName: String,
+        savedDate: Date
+    ) {
+        self.tiers = tiers
+        hasUnsavedChanges = false
+        currentFileName = fileName
+        lastSavedTime = savedDate
+    }
+
+    private func parseLegacyTiers(from data: Data) -> Items? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tierData = json["tiers"] as? [String: [[String: Any]]] else {
+            return nil
+        }
+        return parseLegacyTiers(from: tierData)
     }
 
     private func parseLegacyTiers(from tierData: [String: [[String: Any]]]) -> Items {
@@ -295,295 +504,7 @@ extension AppState {
         return Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
     }
 
-    private func applyLoadedTiers(_ loadedTiers: Items, isLegacy: Bool) {
-        tiers = loadedTiers
-        history = HistoryLogic.initHistory(tiers, limit: history.limit)
-        hasUnsavedChanges = false
-        lastSavedTime = UserDefaults.standard.object(forKey: "\(storageKey).timestamp") as? Date
-        let message = isLegacy
-            ? "Tier list loaded (legacy) successfully {file}"
-            : "Tier list loaded successfully {file}"
-        showSuccessToast("Loaded", message: message)
-    }
-
-    private func restoreTheme(themeIDString: String?) {
-        if let themeIDString,
-           let uuid = UUID(uuidString: themeIDString),
-           let theme = theme(with: uuid) {
-            selectedThemeID = uuid
-            selectedTheme = theme
-            return
-        }
-
-        let fallback = TierThemeCatalog.defaultTheme
-        selectedTheme = fallback
-        selectedThemeID = fallback.id
-    }
-
-    private func restoreCustomThemes(_ codableThemes: [CodableTheme]) {
-        let restored = codableThemes.map { $0.toTheme() }
-        customThemes = restored.sorted {
-            $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
-        }
-        customThemeIDs = Set(restored.map(\TierTheme.id))
-    }
-
-    @discardableResult
-    func loadFromFile(named fileName: String) -> Bool {
-        do {
-            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
-
-            let data = try Data(contentsOf: fileURL)
-            // Try to decode the modern app save file with customizations, fall back to legacy structures
-            struct AppSaveFile: Codable {
-                let tiers: Items
-                let tierLabels: [String: String]?
-                let tierColors: [String: String]?
-                let selectedThemeID: String?
-                let customThemes: [CodableTheme]?
-                let createdDate: Date
-                let appVersion: String
-                let cardDensityPreference: String?
-            }
-
-            if let saveData = try? JSONDecoder().decode(AppSaveFile.self, from: data) {
-                applyLoadedFileSync(
-                    tiers: saveData.tiers,
-                    fileName: fileName,
-                    savedDate: saveData.createdDate
-                )
-                tierLabels = saveData.tierLabels ?? tierLabels
-                tierColors = saveData.tierColors ?? tierColors
-                restoreCustomThemes(saveData.customThemes ?? [])
-                restoreTheme(themeIDString: saveData.selectedThemeID)
-                restoreCardDensityPreference(rawValue: saveData.cardDensityPreference)
-                showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
-                return true
-            }
-
-            // Legacy fallback: parse JSON and build Items from attributes
-            if let legacyTiers = parseLegacyTiers(from: data) {
-                applyLoadedFileSync(
-                    tiers: legacyTiers,
-                    fileName: fileName,
-                    savedDate: Date()
-                )
-                restoreCardDensityPreference(rawValue: nil)
-                showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
-                return true
-            }
-            showErrorToast(
-                "Load Failed",
-                message: "Unrecognized format for \(fileName).json {warning}"
-            )
-            return false
-        } catch {
-            Logger.persistence.error("File load failed: \(error.localizedDescription)")
-            showErrorToast("Load Failed", message: "Could not load \(fileName).json {warning}")
-            return false
-        }
-    }
-
-    func getAvailableSaveFiles() -> [String] {
-        do {
-            let documentsPath = FileManager.default.urls(
-                for: .documentDirectory,
-                in: .userDomainMask
-            )[0]
-            let fileURLs = try FileManager.default.contentsOfDirectory(
-                at: documentsPath,
-                includingPropertiesForKeys: nil
-            )
-            return fileURLs
-                .filter { $0.pathExtension == "json" }
-                .map { $0.deletingPathExtension().lastPathComponent }
-                .sorted()
-        } catch {
-            Logger.persistence.error("Error listing save files: \(error.localizedDescription)")
-            return []
-        }
-    }
-
-    func deleteSaveFile(named fileName: String) -> Bool {
-        do {
-            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
-            try FileManager.default.removeItem(at: fileURL)
-            return true
-        } catch {
-            Logger.persistence.error("Error deleting save file: \(error.localizedDescription)")
-            return false
-        }
-    }
-
-    // MARK: - Async File Operations with Progress Tracking
-
-    func saveToFileAsync(named fileName: String) async -> Bool {
-        // No loading indicator - save is fast, just show result
-        do {
-            struct AppSaveFile: Codable {
-                let tiers: Items
-                let tierLabels: [String: String]
-                let tierColors: [String: String]
-                let createdDate: Date
-                let appVersion: String
-                let cardDensityPreference: String
-            }
-            let saveData = AppSaveFile(
-                tiers: tiers,
-                tierLabels: tierLabels,
-                tierColors: tierColors,
-                createdDate: Date(),
-                appVersion: "1.0",
-                cardDensityPreference: cardDensityPreference.rawValue
-            )
-
-            let data = try JSONEncoder().encode(saveData)
-
-            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
-
-            try data.write(to: fileURL)
-
-            await MainActor.run {
-                currentFileName = fileName
-                hasUnsavedChanges = false
-                lastSavedTime = Date()
-            }
-
-            showSuccessToast("File Saved", message: "Saved \(fileName).json {file}")
-            return true
-        } catch {
-            Logger.persistence.error("File save failed: \(error.localizedDescription)")
-            showErrorToast("Save Failed", message: "Could not save \(fileName).json {warning}")
-            return false
-        }
-    }
-
-    func loadFromFileAsync(named fileName: String) async -> Bool {
-        // No loading indicator - load is fast, just show result
-        do {
-            let fileURL = try getFileURL(for: fileName)
-
-            let data = try Data(contentsOf: fileURL)
-
-            if try await loadModernSaveFormat(from: data, fileName: fileName) {
-                return true
-            }
-
-            if try await loadLegacySaveFormat(from: data, fileName: fileName) {
-                return true
-            }
-
-            throw NSError(
-                domain: "AppState",
-                code: 1,
-                userInfo: [NSLocalizedDescriptionKey: "Unrecognized save file format"]
-            )
-        } catch {
-            Logger.persistence.error("File load failed: \(error.localizedDescription)")
-            showErrorToast("Load Failed", message: "Could not load \(fileName).json {warning}")
-            return false
-        }
-    }
-
-    private func getFileURL(for fileName: String) throws -> URL {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return documentsPath.appendingPathComponent("\(fileName).json")
-    }
-
-    private func loadModernSaveFormat(from data: Data, fileName: String) async throws -> Bool {
-        struct AppSaveFile: Codable {
-            let tiers: Items
-            let tierLabels: [String: String]?
-            let tierColors: [String: String]?
-            let createdDate: Date
-            let appVersion: String
-            let cardDensityPreference: String?
-        }
-
-        guard let saveData = try? JSONDecoder().decode(AppSaveFile.self, from: data) else {
-            return false
-        }
-
-        await applyLoadedFile(
-            tiers: saveData.tiers,
-            fileName: fileName,
-            savedDate: saveData.createdDate
-        )
-
-        // Restore tier customizations if present
-        if let labels = saveData.tierLabels {
-            tierLabels = labels
-        }
-        if let colors = saveData.tierColors {
-            tierColors = colors
-        }
-        restoreCardDensityPreference(rawValue: saveData.cardDensityPreference)
-
-        showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
-        return true
-    }
-
-    private func loadLegacySaveFormat(from data: Data, fileName: String) async throws -> Bool {
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let tierData = json["tiers"] as? [String: [[String: Any]]] else {
-            return false
-        }
-
-        let newTiers = parseLegacyTiers(from: tierData)
-        updateProgress(0.8)
-        await applyLoadedFile(
-            tiers: newTiers,
-            fileName: fileName,
-            savedDate: Date()
-        )
-        restoreCardDensityPreference(rawValue: nil)
-        updateProgress(1.0)
-        showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
-        return true
-    }
-
-    private func applyLoadedFile(tiers newTiers: Items, fileName: String, savedDate: Date) async {
-        await MainActor.run {
-            applyLoadedFileSync(
-                tiers: newTiers,
-                fileName: fileName,
-                savedDate: savedDate
-            )
-        }
-    }
-
-    private func applyLoadedFileSync(tiers newTiers: Items, fileName: String, savedDate: Date) {
-        tiers = newTiers
-        history = HistoryLogic.initHistory(tiers, limit: history.limit)
-        currentFileName = fileName
-        hasUnsavedChanges = false
-        lastSavedTime = savedDate
-        registerTierListSelection(tierListHandle(forFileNamed: fileName))
-    }
-
-    private func parseLegacyTiers(from data: Data) -> Items? {
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let tierData = json["tiers"] as? [String: [[String: Any]]] else {
-            return nil
-        }
-
-        var newTiers: Items = [:]
-        for (tierName, itemData) in tierData {
-            newTiers[tierName] = itemData.compactMap { dict in
-                guard let id = dict["id"] as? String else { return nil }
-                if let attrs = dict["attributes"] as? [String: String] {
-                    return Item(id: id, attributes: attrs)
-                }
-                var attrs: [String: String] = [:]
-                for (key, value) in dict where key != "id" {
-                    attrs[key] = String(describing: value)
-                }
-                return Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
-            }
-        }
-        return newTiers
+    func encodedCustomThemesData() -> Data? {
+        try? JSONEncoder().encode(customThemes.map(CodableTheme.init))
     }
 }

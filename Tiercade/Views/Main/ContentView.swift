@@ -20,6 +20,7 @@ struct AppTier: Identifiable, Hashable { let id: String; var name: String }
 
 struct ContentView: View {
     @Environment(AppState.self) private var app
+    @Environment(\.undoManager) private var undoManager
     @State private var showingAddItems = false
     #if os(tvOS)
     private var canStartH2HFromRemote: Bool {
@@ -29,6 +30,12 @@ struct ContentView: View {
 
     var body: some View {
         MainAppView()
+            .task {
+                app.updateUndoManager(undoManager)
+            }
+            .onChange(of: undoManager) { _, newValue in
+                app.updateUndoManager(newValue)
+            }
     }
 }
 

@@ -51,60 +51,10 @@ struct MainAppView: View {
             .toolbar { ToolbarView(app: app) }
             #else
             // For iOS/tvOS show content full-bleed and inject bars via safe area insets
-            ZStack {
-                TierGridView(tierOrder: app.tierOrder)
-                    .environment(app)
-                    .environment(\.editMode, $editMode)
-                    // Add content padding to avoid overlay bars overlap
-                    .padding(.top, TVMetrics.contentTopInset)
-                    .padding(.bottom, TVMetrics.contentBottomInset)
-                    .allowsHitTesting(!modalBlockingFocus)
-                // Note: Don't use .disabled() as it removes elements from accessibility tree
-                // Only block hit testing when modals are active
-            }
             #if os(tvOS)
-            // Top toolbar (overlay so it doesn't reduce content area)
-            .overlay(alignment: .top) {
-                TVToolbarView(
-                    app: app,
-                    modalActive: modalBlockingFocus,
-                    editMode: $editMode,
-                    glassNamespace: glassNamespace
-                )
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .frame(height: TVMetrics.topBarHeight)
-                    .allowsHitTesting(!modalBlockingFocus)
-                    .accessibilityElement(children: .contain)
-                // Note: Don't use .disabled() as it removes elements from accessibility tree
-                // Only block hit testing when modals are active
-            }
-            // Bottom action bar (safe area inset to avoid covering focused rows)
-            .overlay(alignment: .bottom) {
-                TVActionBar(app: app, glassNamespace: glassNamespace)
-                    .environment(\.editMode, $editMode)
-                    .allowsHitTesting(!modalBlockingFocus)
-                    .accessibilityElement(children: .contain)
-                // Note: Don't use .disabled() as it removes elements from accessibility tree
-                // Only block hit testing when modals are active
-            }
-            #if DEBUG
-            .overlay(alignment: .bottomTrailing) {
-                Text(BuildStamp.text)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .opacity(0.6)
-                    .padding(.trailing, TVMetrics.barHorizontalPadding)
-                    .padding(.bottom, TVMetrics.barVerticalPadding + 4)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
-            #endif
+            tvOSPrimaryContent(modalBlockingFocus: modalBlockingFocus)
             #else
-            // ToolbarView is ToolbarContent (not a View) on some platforms; avoid embedding it directly on tvOS
-            .overlay(alignment: .top) {
-            HStack { Text("") }
-            .environment(app)
-            }
+            platformPrimaryContent(modalBlockingFocus: modalBlockingFocus)
             #endif
             #endif
         }
@@ -292,8 +242,71 @@ struct MainAppView: View {
         }
         .transition(.opacity)
         .zIndex(55)
-        #endif
+#endif
     }
+
+    // MARK: - Platform Specific Content
+
+    @ViewBuilder
+    private func tierGridLayer(modalBlockingFocus: Bool) -> some View {
+        ZStack {
+            TierGridView(tierOrder: app.tierOrder)
+                .environment(app)
+                .environment(\.editMode, $editMode)
+                // Add content padding to avoid overlay bars overlap
+                .padding(.top, TVMetrics.contentTopInset)
+                .padding(.bottom, TVMetrics.contentBottomInset)
+                .allowsHitTesting(!modalBlockingFocus)
+            // Note: Don't use .disabled() as it removes elements from accessibility tree
+            // Only block hit testing when modals are active
+        }
+    }
+
+    #if os(tvOS)
+    @ViewBuilder
+    private func tvOSPrimaryContent(modalBlockingFocus: Bool) -> some View {
+        tierGridLayer(modalBlockingFocus: modalBlockingFocus)
+            .overlay(alignment: .top) {
+                TVToolbarView(
+                    app: app,
+                    modalActive: modalBlockingFocus,
+                    editMode: $editMode,
+                    glassNamespace: glassNamespace
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: TVMetrics.topBarHeight)
+                .allowsHitTesting(!modalBlockingFocus)
+                .accessibilityElement(children: .contain)
+            }
+            .overlay(alignment: .bottom) {
+                TVActionBar(app: app, glassNamespace: glassNamespace)
+                    .environment(\.editMode, $editMode)
+                    .allowsHitTesting(!modalBlockingFocus)
+                    .accessibilityElement(children: .contain)
+            }
+            #if DEBUG
+            .overlay(alignment: .bottomTrailing) {
+                Text(BuildStamp.text)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .opacity(0.6)
+                    .padding(.trailing, TVMetrics.barHorizontalPadding)
+                    .padding(.bottom, TVMetrics.barVerticalPadding + 4)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+            #endif
+    }
+    #else
+    @ViewBuilder
+    private func platformPrimaryContent(modalBlockingFocus: Bool) -> some View {
+        tierGridLayer(modalBlockingFocus: modalBlockingFocus)
+            .overlay(alignment: .top) {
+                HStack { EmptyView() }
+                    .environment(app)
+            }
+    }
+    #endif
 }
 
 // Small preview

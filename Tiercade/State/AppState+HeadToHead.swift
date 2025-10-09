@@ -32,12 +32,15 @@ extension AppState {
             return
         }
 
+        h2hInitialSnapshot = captureTierSnapshot()
         h2hPool = pool
         h2hRecords = [:]
         h2hPairsQueue = pairs
         h2hDeferredPairs = []
         h2hTotalComparisons = pairs.count
         h2hCompletedComparisons = 0
+        h2hRefinementTotalComparisons = 0
+        h2hRefinementCompletedComparisons = 0
         h2hSkippedPairKeys = []
         h2hPair = nil
         h2hActive = true
@@ -83,12 +86,29 @@ extension AppState {
         )
 #endif
         HeadToHeadLogic.vote(a, b, winner: winner, records: &h2hRecords)
-        h2hCompletedComparisons = min(h2hCompletedComparisons + 1, h2hTotalComparisons)
+        if h2hPhase == .refinement {
+            h2hRefinementCompletedComparisons = min(
+                h2hRefinementCompletedComparisons + 1,
+                h2hRefinementTotalComparisons
+            )
+        } else {
+            h2hCompletedComparisons = min(h2hCompletedComparisons + 1, h2hTotalComparisons)
+        }
         h2hSkippedPairKeys.remove(h2hPairKey(pair))
         h2hPair = nil
         nextH2HPair()
 
-        Logger.headToHead.info("Vote: winner=\(winner.id) pair=\(a.id)-\(b.id) progress=\(self.h2hCompletedComparisons)/\(self.h2hTotalComparisons)")
+        autoAdvanceIfNeeded()
+
+        if h2hPhase == .refinement {
+            Logger.headToHead.info(
+                "Vote: winner=\(winner.id) pair=\(a.id)-\(b.id) targetedProgress=\(self.h2hRefinementCompletedComparisons)/\(self.h2hRefinementTotalComparisons)"
+            )
+        } else {
+            Logger.headToHead.info(
+                "Vote: winner=\(winner.id) pair=\(a.id)-\(b.id) progress=\(self.h2hCompletedComparisons)/\(self.h2hTotalComparisons)"
+            )
+        }
     }
 
     func skipCurrentH2HPair() {
@@ -102,15 +122,21 @@ extension AppState {
 
     func finishH2H() {
         guard h2hActive else { return }
-        switch h2hPhase {
-        case .quick:
-            handleQuickPhaseCompletion()
-        case .refinement:
-            handleRefinementCompletion()
-        }
+        handleCombinedCompletion()
     }
 
-    private func handleQuickPhaseCompletion() {
+    private func autoAdvanceIfNeeded() {
+        guard h2hActive else { return }
+        guard h2hPairsQueue.isEmpty, h2hDeferredPairs.isEmpty, h2hPair == nil else { return }
+        handleCombinedCompletion()
+    }
+
+    private func handleCombinedCompletion() {
+        if let artifacts = h2hArtifacts, h2hPairsQueue.isEmpty {
+            finalizeRefinement(using: artifacts)
+            return
+        }
+
         let quick = HeadToHeadLogic.quickTierPass(
             from: h2hPool,
             records: h2hRecords,
@@ -118,36 +144,14 @@ extension AppState {
             baseTiers: tiers
         )
 
-        var appliedTiers = quick.tiers
-        var artifacts = quick.artifacts
+        tiers = quick.tiers
 
-        if let initialArtifacts = artifacts, quick.suggestedPairs.isEmpty {
-            let result = HeadToHeadLogic.finalizeTiers(
-                artifacts: initialArtifacts,
-                records: h2hRecords,
-                tierOrder: tierOrder,
-                baseTiers: tiers
-            )
-            appliedTiers = result.tiers
-            artifacts = result.updatedArtifacts
-        }
-
-        tiers = appliedTiers
-        markAsChanged()
-
-        if let artifacts, !quick.suggestedPairs.isEmpty {
+        if let artifacts = quick.artifacts, !quick.suggestedPairs.isEmpty {
             transitionToRefinement(artifacts: artifacts, suggestedPairs: quick.suggestedPairs)
             return
         }
 
-        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
-        showSuccessToast("Head-to-Head Complete", message: "Results applied to your tiers.")
-        logPhaseSummary(
-            prefix: "quick phase complete",
-            debugSuffix: "quick phase complete counts",
-            summary: tierSummary()
-        )
-        resetH2HSession()
+        finalizeHeadToHead(with: quick.artifacts)
     }
 
     private func transitionToRefinement(artifacts: H2HArtifacts, suggestedPairs: [(Item, Item)]) {
@@ -156,25 +160,38 @@ extension AppState {
         h2hPairsQueue = suggestedPairs
         h2hDeferredPairs = []
         h2hSkippedPairKeys = []
-        h2hTotalComparisons = suggestedPairs.count
-        h2hCompletedComparisons = 0
+        h2hRefinementTotalComparisons = suggestedPairs.count
+        h2hRefinementCompletedComparisons = 0
         h2hPhase = .refinement
 
         Logger.headToHead.info("Entering refinement phase: pairs=\(suggestedPairs.count)")
-        showInfoToast(
-            "Preliminary Results Applied",
-            message: "Complete \(suggestedPairs.count) targeted matchups to refine your tiers."
-        )
         nextH2HPair()
     }
 
-    private func handleRefinementCompletion() {
-        guard let artifacts = h2hArtifacts else {
-            h2hPhase = .quick
-            finishH2H()
-            return
+    private func finalizeHeadToHead(with artifacts: H2HArtifacts?) {
+        let snapshot = h2hInitialSnapshot ?? captureTierSnapshot()
+        if let artifacts {
+            let result = HeadToHeadLogic.finalizeTiers(
+                artifacts: artifacts,
+                records: h2hRecords,
+                tierOrder: tierOrder,
+                baseTiers: tiers
+            )
+            tiers = result.tiers
         }
 
+        finalizeChange(action: "Head-to-Head Results", undoSnapshot: snapshot)
+        showSuccessToast("Head-to-Head Complete", message: "Results applied to your tiers.")
+        logPhaseSummary(
+            prefix: "combined phase complete",
+            debugSuffix: "combined phase complete counts",
+            summary: tierSummary()
+        )
+        h2hInitialSnapshot = nil
+        resetH2HSession()
+    }
+
+    private func finalizeRefinement(using artifacts: H2HArtifacts) {
         let result = HeadToHeadLogic.finalizeTiers(
             artifacts: artifacts,
             records: h2hRecords,
@@ -183,16 +200,9 @@ extension AppState {
         )
 
         tiers = result.tiers
-        h2hArtifacts = result.updatedArtifacts
-        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
-        markAsChanged()
-        showSuccessToast("Head-to-Head Complete", message: "Refined tiers applied.")
-        logPhaseSummary(
-            prefix: "refinement phase complete",
-            debugSuffix: "refinement phase complete counts",
-            summary: tierSummary()
-        )
-        resetH2HSession()
+        h2hArtifacts = nil
+        h2hSuggestedPairs = []
+        finalizeHeadToHead(with: nil)
     }
 
     private func tierSummary() -> String {
@@ -224,6 +234,8 @@ extension AppState {
         h2hDeferredPairs = []
         h2hTotalComparisons = 0
         h2hCompletedComparisons = 0
+        h2hRefinementTotalComparisons = 0
+        h2hRefinementCompletedComparisons = 0
         h2hSkippedPairKeys = []
         h2hActivatedAt = nil
         h2hPhase = .quick
@@ -232,6 +244,7 @@ extension AppState {
         if clearRecords {
             h2hRecords = [:]
         }
+        h2hInitialSnapshot = nil
     }
 
     private func h2hPairKey(_ pair: (Item, Item)) -> String {

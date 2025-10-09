@@ -4,14 +4,14 @@ import TiercadeCore
 @MainActor
 extension AppState {
     func applyBundledProject(_ bundled: BundledProject) {
+        let snapshot = captureTierSnapshot()
         let state = resolvedTierState(for: bundled)
         tierOrder = state.order
         tiers = state.items
         tierLabels = state.labels
         tierColors = state.colors
         lockedTiers = state.locked
-        history = HistoryLogic.initHistory(tiers, limit: history.limit)
-        markAsChanged()
+        finalizeChange(action: "Load Bundled Project", undoSnapshot: snapshot)
         currentFileName = bundled.id
         showSuccessToast("Loaded \(bundled.title)", message: "Bundled tier list ready to rank")
         let counts = tierOrder
@@ -22,7 +22,7 @@ extension AppState {
     }
 }
 
-private extension AppState {
+extension AppState {
     struct BundledTierState {
         var order: [String]
         var items: Items

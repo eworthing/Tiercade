@@ -8,168 +8,54 @@
 
 The Tiercade codebase is well-structured with good separation of concerns and modern SwiftUI patterns. However, there are significant opportunities to reduce complexity and leverage Swift 6.2 and OS 26 features, particularly around logging, async patterns, and API modernization.
 
-**Priority Areas:**
-1. 🔴 **High Impact**: Replace manual logging system with Swift's Logger
-2. 🟡 **Medium Impact**: Simplify AppState.appendDebugFile complexity
-3. 🟢 **Low Impact**: Update to latest SwiftUI/Foundation APIs
-4. 🔵 **Documentation**: Fix cyclomatic_complexity discrepancy
+**Priority Highlights:**
+1. ✅ **Completed**: Migrated all logging to Swift's `Logger`
+2. ✅ **Completed**: Removed `appendDebugFile` and reaffirmed snapshot-based undo
+3. ✅ **Completed**: Persisted card density across sessions (stored with preferences)
+4. 🟢 **Low Impact**: Continue adopting latest SwiftUI/Foundation convenience APIs where practical
 
 ---
 
-## 1. Logging System Modernization 🔴 **HIGH PRIORITY**
+## 1. Logging System Modernization ✅ **COMPLETED**
 
-### Current State
-- **30+ manual print/NSLog statements** in State files alone
-- **16+ fire-and-forget Task spawns** for async logging (`Task { await appendDebugFile(...) }`)
-- Custom `appendDebugFile` method duplicates file writing logic across /tmp and Documents
-- Repetitive logging patterns throughout all AppState extensions
+### What Changed (October 2025)
+- All manual `print`/`NSLog` usage and ad-hoc logging Tasks were replaced with Swift's `Logger` API.
+- Shared logger namespaces live alongside `AppState` (`Logger.appState`, `Logger.headToHead`, `Logger.persistence`).
+- Every `AppState+*.swift` extension now emits structured logs with the appropriate level (`debug`, `info`, `error`).
+- The legacy `appendDebugFile` pipeline and `/tmp/tiercade_debug.log` writer were removed entirely.
 
-### Problems
-1. **Performance**: Every log creates a new unstructured Task
-2. **Complexity**: 50+ lines in `appendDebugFile` with duplicate code
-3. **Maintainability**: Changing log format requires updates in 30+ locations
-4. **Missing features**: No log levels, no subsystem filtering, no Console.app integration
+### Benefits Realised
+- **Performance:** Removed 16+ fire-and-forget Tasks per session and eliminated file I/O from the hot path.
+- **Observability:** Console.app and unified logging filters now work out of the box (subsystem `com.tiercade.app`).
+- **Maintainability:** Log formatting is centralized; adding new categories only requires extending the `Logger` helper.
 
-### Recommendation: Adopt Swift's Logger (os)
-
-**Benefits:**
-- Native Console.app integration for debugging
-- Type-safe, compile-time optimized logging
-- Automatic log level management (debug/info/error)
-- Privacy-aware by default (redacts sensitive data)
-- Zero performance impact when logging disabled
-- Subsystem/category filtering
-
-**Implementation:**
-
-```swift
-// In AppState.swift or new Logging.swift file
-import os
-
-extension Logger {
-    static let appState = Logger(subsystem: "com.tiercade.app", category: "AppState")
-    static let headToHead = Logger(subsystem: "com.tiercade.app", category: "HeadToHead")
-    static let persistence = Logger(subsystem: "com.tiercade.app", category: "Persistence")
-}
-```
-
-**Before:**
-```swift
-// AppState+HeadToHead.swift:48-60
-let log = [
-    "[AppState] startH2H:",
-    "poolCount=\(h2hPool.count)",
-    "initialTarget=\(targetComparisons)",
-    "scheduledPairs=\(h2hTotalComparisons)"
-].joined(separator: " ")
-print(log)
-NSLog("%@", log)
-Task {
-    await appendDebugFile(
-        "startH2H: poolCount=\(h2hPool.count) totalPairs=\(h2hTotalComparisons)"
-    )
-}
-```
-
-**After:**
-```swift
-// Simple, fast, integrated with Console.app
-Logger.headToHead.info("Starting H2H: pool=\(h2hPool.count) target=\(targetComparisons) pairs=\(h2hTotalComparisons)")
-```
-
-**Migration Strategy:**
-1. Create Logger extensions in `Util/Logging.swift`
-2. Replace all `print`/`NSLog`/`Task { await appendDebugFile(...) }` with Logger calls
-3. Use `.debug()` for verbose logs, `.info()` for state changes, `.error()` for failures
-4. Remove `appendDebugFile()` method entirely (50+ lines eliminated)
-5. For UI tests that need file logs, add conditional OSLog store reading
-
-**Impact:**
-- **Remove:** ~100+ lines of logging boilerplate
-- **Simplify:** All logging to single-line calls
-- **Performance:** Eliminate 16+ Task spawns per user session
-- **Developer Experience:** Better debugging with Console.app integration
+### Follow-ups
+- None at this time. If we ever need persisted logs for UI automation, consider the OSLogStore APIs instead of reviving file writers.
 
 ---
 
-## 2. Simplify AppState.appendDebugFile() 🟡 **MEDIUM PRIORITY**
+## 2. Remove `appendDebugFile` Boilerplate ✅ **COMPLETED**
 
-### Current State (AppState.swift:190-239)
+### What Changed
+- Deleted the `appendDebugFile` helper and migrated all call sites to the unified `Logger` flow.
+- Updated documentation (including this playbook and CLAUDE.md) to remove references to the legacy `/tmp/tiercade_debug.log` file.
 
-```swift
-nonisolated func appendDebugFile(_ message: String) async {
-    // 50 lines of duplicate code writing to both /tmp and Documents
-    // Manual FileHandle management
-    // Error handling silently ignored
-}
-```
+### Impact
+- **Complexity:** `AppState` shed ~50 lines of redundant file handling code.
+- **Concurrency:** No more `nonisolated` async entry points or fire-and-forget Tasks for logging.
+- **Reliability:** Logging failures now surface via `Logger` rather than being silently swallowed.
 
-### Problems
-1. **Code duplication**: Same file-writing logic repeated twice
-2. **Complexity**: 50 lines for what should be simple logging
-3. **Error handling**: All errors silently ignored (`catch { // ignore }`)
-4. **Nonisolated async**: Creates unnecessary concurrency complexity
-
-### Recommendation
-
-**Option A (If keeping custom file logging):**
-```swift
-private func writeToLogFile(at path: String, message: String) throws {
-    let timestamp = ISO8601DateFormatter().string(from: Date())
-    let pid = ProcessInfo.processInfo.processIdentifier
-    let line = "\(timestamp) [pid:\(pid)] \(message)\n"
-
-    let url = URL(fileURLWithPath: path)
-    if FileManager.default.fileExists(atPath: path) {
-        let handle = try FileHandle(forWritingTo: url)
-        try handle.seekToEnd()
-        try handle.write(contentsOf: Data(line.utf8))
-        try handle.close()
-    } else {
-        try Data(line.utf8).write(to: url, options: .atomic)
-    }
-}
-
-nonisolated func appendDebugFile(_ message: String) async {
-    let paths = [
-        "/tmp/tiercade_debug.log",
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
-            .first?.appendingPathComponent("tiercade_debug.log").path
-    ].compactMap { $0 }
-
-    for path in paths {
-        try? writeToLogFile(at: path, message: "[AppState] \(message)")
-    }
-}
-```
-
-**Option B (Recommended - Use Logger):**
-Remove entirely and use Logger with optional OSLog store reading for test artifacts.
-
-**Impact:**
-- **Reduce:** 50 lines → 20 lines (Option A) or 0 lines (Option B)
-- **Clarity:** Single responsibility, better error visibility
+### Follow-ups
+- None. Should persisted logs ever be required again, evaluate OSLogStore before reintroducing manual file writes.
 
 ---
 
 ## 3. Modernize Swift APIs 🟢 **LOW IMPACT**
 
-### A. Resolve Cyclomatic Complexity Discrepancy
+### A. Resolve Cyclomatic Complexity Discrepancy ✅
 
-**Current:**
-- `.swiftlint.yml` line 10: `warning: 7`
-- `CLAUDE.md` line 128: "warning at 8, error at 12"
-
-**Recommendation:**
-Update `.swiftlint.yml` to match documentation or vice versa. Recommended unified setting:
-
-```yaml
-cyclomatic_complexity:
-  warning: 8
-  error: 12
-```
-
-This aligns with documentation and industry standards (8-10 is typical warning threshold).
+- `.swiftlint.yml` now sets `warning: 8` / `error: 12`, matching the guidance in CLAUDE.md.
+- No further action required unless we decide to tighten thresholds in the future.
 
 ### B. Task.sleep Modernization (Already Done! ✅)
 
@@ -228,30 +114,10 @@ The codebase already leverages:
 
 ### B. Potential Micro-Optimizations
 
-**1. Reduce ZStack Complexity in MainAppView**
+**1. Reduce ZStack Complexity in MainAppView** ✅
 
-**Current (MainAppView.swift:138-259):** 12+ overlays in single ZStack with manual zIndex management
-
-**Recommendation:** Extract overlay composition into computed property or ViewBuilder:
-
-```swift
-@ViewBuilder
-private var overlayStack: some View {
-    Group {
-        if app.isLoading {
-            ProgressIndicatorView(...)
-                .zIndex(50)
-        }
-        QuickRankOverlay(app: app).zIndex(40)
-        // ... etc
-    }
-}
-
-var body: some View {
-    // ... main content
-    .overlay { overlayStack }
-}
-```
+- `MainAppView` now routes tvOS and iOS content through helper builders (`tvOSPrimaryContent`, `platformPrimaryContent`) and a shared `tierGridLayer`, keeping the core ZStack small and focused.
+- The dedicated `overlayStack` continues to manage modal overlays, so z-index handling stays isolated from the primary layout logic.
 
 **Impact:** Marginally better SwiftUI diffing, clearer structure.
 
@@ -283,7 +149,7 @@ The `TiercadeCore` package is **exemplary**:
 2. ✅ **View modularity**: ContentView+TierRow, ContentView+TierGrid, etc.
 3. ✅ **Design tokens**: Centralized Palette/Metrics/TypeScale
 4. ✅ **Proper MainActor isolation**: All UI state on @MainActor
-5. ✅ **History pattern**: Undo/redo via HistoryLogic
+5. ✅ **Undo pattern**: Undo/redo via UndoManager snapshots
 
 ### Minor Suggestions
 
@@ -311,32 +177,14 @@ let tiers: TierState
 
 ## Summary of Recommended Actions
 
-### Immediate (High ROI)
+### Recently Completed
+- ✅ Replaced all manual logging with Swift `Logger` (AppState + extensions)
+- ✅ Removed `appendDebugFile` and related file I/O helpers
+- ✅ Updated `.swiftlint.yml` cyclomatic thresholds to 8/12
 
-1. **Replace logging system with Logger** (2-4 hours)
-   - Files: All `AppState+*.swift` files
-   - Lines removed: ~100+
-   - Impact: Better debugging, performance, maintainability
-
-2. **Simplify or remove appendDebugFile** (30 minutes)
-   - File: `AppState.swift:190-239`
-   - Lines removed: ~50
-   - Impact: Reduced complexity
-
-### Quick Wins (Low effort, clear benefit)
-
-3. **Fix cyclomatic_complexity discrepancy** (2 minutes)
-   - File: `.swiftlint.yml:10`
-   - Change: `warning: 7` → `warning: 8`
-
-### Optional Enhancements
-
-4. **Extract overlay stack in MainAppView** (1 hour)
-   - File: `MainAppView.swift`
-   - Impact: Better code organization
-
-5. **Consider state slicing** (Future)
-   - Impact: Scalability for future growth
+### Opportunities Ahead
+1. **Investigate state slicing** (future exploration)
+   - Only if the single `AppState` starts to grow beyond current scope.
 
 ---
 
@@ -348,11 +196,11 @@ let tiers: TierState
 - **appendDebugFile complexity**: 50 lines
 - **Manual log formatting**: 15+ unique patterns
 
-### After Modernization (Estimated)
-- **Logger calls**: ~40 one-liners
+### Current (October 2025)
+- **Logger calls**: ~40 single-line statements across AppState extensions
 - **Fire-and-forget Tasks**: 0
-- **appendDebugFile**: Removed (or 20 lines if keeping)
-- **Log formatting**: 0 (handled by Logger)
+- **appendDebugFile**: Removed
+- **Log formatting helpers**: 0 (handled by Logger)
 
 ### Total Impact
 - **~150 lines removed**
@@ -364,47 +212,14 @@ let tiers: TierState
 
 ## Migration Priority
 
-```
-PRIORITY 1: Logging System (Logger)
-├─ Create Logger+Extensions.swift
-├─ Update AppState+HeadToHead.swift
-├─ Update AppState+Persistence.swift
-├─ Update AppState+Items.swift
-├─ Update AppState.swift (remove appendDebugFile)
-└─ Test with Console.app
-
-PRIORITY 2: Documentation Fixes
-└─ Update .swiftlint.yml
-
-PRIORITY 3: Code Organization
-└─ Extract MainAppView overlay composition
-```
+All previously flagged high/medium items (logging migration, appendDebugFile removal, SwiftLint alignment) were completed in October 2025. The remaining work is optional refinement (e.g. overlay composition cleanup) and can be scheduled as time permits.
 
 ---
 
 ## Files Requiring Changes
 
-### High Priority (Logging Migration)
-```
-Tiercade/State/AppState.swift
-Tiercade/State/AppState+HeadToHead.swift
-Tiercade/State/AppState+Persistence.swift
-Tiercade/State/AppState+Progress.swift
-Tiercade/State/AppState+Items.swift
-Tiercade/State/AppState+Export.swift
-Tiercade/State/AppState+Import.swift
-Tiercade/Util/Logging.swift (NEW)
-```
-
-### Documentation
-```
-.swiftlint.yml
-```
-
-### Optional
-```
-Tiercade/Views/Main/MainAppView.swift
-```
+- **High Priority:** None outstanding
+- **Optional:** None currently flagged
 
 ---
 
@@ -432,8 +247,8 @@ Tiercade/Views/Main/MainAppView.swift
 
 ### Conclusion
 
-This codebase is **already modern** and well-architected. The main opportunity for improvement is replacing the custom logging infrastructure with Swift's unified logging system. The rest of the code follows current best practices and doesn't require significant changes.
+This codebase is **already modern** and well-architected. The previously identified high-impact items (logging + undo improvements, overlay refactor) are complete, with only stretch ideas (like state slicing) remaining for future exploration.
 
-**Estimated modernization time:** 4-6 hours
-**Risk level:** Low (logging is mostly additive changes)
-**Testing impact:** Minimal (behavior unchanged, just logging mechanism)
+**Remaining modernization effort:** Optional / as time permits
+**Risk level:** Low (no structural changes pending)
+**Testing impact:** None beyond standard regression checks when optional refactors occur

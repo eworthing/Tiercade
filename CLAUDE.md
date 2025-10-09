@@ -66,15 +66,16 @@ app.tiers["S"]?.append(item)
 
 // ✅ Correct - via AppState extension method
 func moveItem(_ id: String, to tier: String) {
+    let snapshot = captureTierSnapshot()
     tiers = TierLogic.moveItem(tiers, itemId: id, targetTierName: tier)
-    // History auto-captured by HistoryLogic
+    finalizeChange(action: "Move Item", undoSnapshot: snapshot)
 }
 ```
 
 ### TiercadeCore Package (Platform-Agnostic)
 Swift package at `TiercadeCore/` (iOS 17+/macOS 14+/tvOS 17+) containing:
-- **Models**: `Item`, `Items` (typealias for `[String: [Item]]`), `TierConfig`, `History`
-- **Logic**: `TierLogic`, `HistoryLogic`, `HeadToHeadLogic`, `QuickRankLogic`, `RandomUtils`
+- **Models**: `Item`, `Items` (typealias for `[String: [Item]]`), `TierConfig`
+- **Logic**: `TierLogic`, `HeadToHeadLogic`, `QuickRankLogic`, `RandomUtils`
 - **Utilities**: `ModelResolver`, `Formatters`, `DataLoader`
 
 **Never recreate TL* aliases** — import from TiercadeCore directly.

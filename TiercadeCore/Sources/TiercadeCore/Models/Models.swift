@@ -121,14 +121,3 @@ public struct TierConfigEntry: Codable, Sendable, Equatable {
 
 public typealias Items = [String: [Item]]
 public typealias TierConfig = [String: TierConfigEntry]
-
-public struct History<T: Sendable>: Sendable {
-    public var stack: [T]
-    public var index: Int
-    public var limit: Int
-    public init(stack: [T], index: Int, limit: Int) {
-        self.stack = stack
-        self.index = index
-        self.limit = max(1, limit)
-    }
-}

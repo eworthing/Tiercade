@@ -5,9 +5,10 @@ import SwiftUI
 extension AppState {
     func setCardDensityPreference(_ preference: CardDensityPreference, quietly: Bool = false) {
         guard cardDensityPreference != preference else { return }
+        let snapshot = captureTierSnapshot()
         cardDensityPreference = preference
+        finalizeChange(action: "Card Density", undoSnapshot: snapshot)
         if quietly { return }
-        markAsChanged()
         logEvent("cardDensityPreference updated to \(preference.rawValue)")
         showInfoToast("Card Size Updated", message: preference.detailDescription)
         announce(preference.toastMessage)

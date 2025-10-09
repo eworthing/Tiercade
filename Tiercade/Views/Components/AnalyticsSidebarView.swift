@@ -1,6 +1,7 @@
 #if os(tvOS)
 import SwiftUI
 import Observation
+import Charts
 
 struct AnalyticsSidebarView: View {
     @Environment(AppState.self) private var app: AppState
@@ -133,50 +134,29 @@ struct AnalyticsSidebarView: View {
             Text("Tier Distribution")
                 .font(.system(size: 32, weight: .semibold))
 
-            VStack(alignment: .leading, spacing: 20) {
-                ForEach(distribution) { tier in
-                    tierRow(for: tier)
+            Chart(distribution) { tier in
+                BarMark(
+                    x: .value("Items", tier.count),
+                    y: .value("Tier", tier.tier)
+                )
+                .foregroundStyle(Palette.tierColor(tier.tier))
+                .annotation(position: .trailing) {
+                    Text(percentageText(for: tier.percentage))
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(Palette.text)
                 }
             }
-        }
-    }
-
-    private func tierRow(for tier: TierDistributionData) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Tier \(tier.tier)")
-                    .font(.system(size: 28, weight: .medium))
-                    .frame(width: 80, alignment: .leading)
-
-                Spacer(minLength: 16)
-
-                Text("\(tier.count) items")
-                    .font(.system(size: 24, weight: .regular))
-                    .foregroundStyle(.secondary)
-
-                Text(percentageText(for: tier.percentage))
-                    .font(.system(size: 28, weight: .semibold))
-                    .frame(width: 120, alignment: .trailing)
+            .chartXAxis {
+                AxisMarks(position: .bottom)
             }
-
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Palette.surfHi)
-                        .frame(height: 12)
-
-                    Capsule()
-                        .fill(Palette.tierColor(tier.tier))
-                        .frame(width: geometry.size.width * barFillFraction(for: tier.percentage), height: 12)
-                }
+            .chartYAxis {
+                AxisMarks(position: .leading)
             }
-            .frame(height: 12)
+            .chartLegend(.hidden)
+            .frame(height: max(220, CGFloat(distribution.count) * 56))
+            .padding(.trailing, 24)
+            .accessibilityIdentifier("Analytics_DistributionChart")
         }
-    }
-
-    private func barFillFraction(for percentage: Double) -> CGFloat {
-        let clamped = max(0, min(percentage, 100))
-        return CGFloat(clamped / 100.0)
     }
 
     private func insightsSection(insights: [String]) -> some View {
