@@ -31,7 +31,7 @@ struct QuickMoveOverlay: View {
 
                     // Tier selection - use ScrollView + VStack for reliable tvOS focus
                     ScrollView {
-                        GlassEffectContainer(spacing: 12) {
+                        tvGlassContainer(spacing: 12) {
                             VStack(spacing: 12) {
                                 ForEach(allTiers, id: \.self) { tierName in
                                     TierButton(

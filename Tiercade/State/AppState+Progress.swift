@@ -1,4 +1,5 @@
 import Foundation
+import os
 import TiercadeCore
 
 @MainActor
@@ -38,27 +39,14 @@ extension AppState {
     }
 
     private func logLoadingState(isLoading: Bool, message: String) {
-        let formatted = [
-            "[AppState] setLoading:",
-            "loading=\(isLoading)",
-            "message=\(message)",
-            "progress=\(operationProgress)"
-        ].joined(separator: " ")
-        print(formatted)
-        NSLog("%@", formatted)
+        Logger.appState.debug("Loading: \(isLoading) message=\(message) progress=\(self.operationProgress)")
     }
 
     private func logDragTarget(_ tierName: String?) {
-        let value = tierName ?? "nil"
-        let message = "[AppState] setDragTarget: \(value)"
-        print(message)
-        NSLog("%@", message)
+        Logger.appState.debug("Drag target: \(tierName ?? "nil")")
     }
 
     private func logDragging(_ id: String?) {
-        let value = id ?? "nil"
-        let message = "[AppState] setDragging: \(value)"
-        print(message)
-        NSLog("%@", message)
+        Logger.appState.debug("Dragging: \(id ?? "nil")")
     }
 }

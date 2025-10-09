@@ -135,128 +135,7 @@ struct MainAppView: View {
         #endif
         .overlay {
             // Compose overlays here so they appear on all platforms (including tvOS)
-            ZStack {
-                // Progress indicator (centered)
-                if app.isLoading {
-                    ProgressIndicatorView(
-                        isLoading: app.isLoading,
-                        message: app.loadingMessage,
-                        progress: app.operationProgress
-                    )
-                    .zIndex(50)
-                }
-
-                // Quick Rank overlay
-                QuickRankOverlay(app: app)
-                    .zIndex(40)
-
-                #if os(tvOS)
-                // Quick Move overlay (unified item actions overlay)
-                QuickMoveOverlay(app: app)
-                    .zIndex(45)
-                #endif
-
-                // Head-to-Head overlay
-                MatchupArenaOverlay(app: app)
-                    .zIndex(40)
-
-                #if os(tvOS)
-                if app.showAnalyticsSidebar {
-                    HStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        AnalyticsSidebarView()
-                            .frame(maxHeight: .infinity)
-                    }
-                    .allowsHitTesting(true)
-                    .zIndex(52)
-                }
-                #endif
-
-                if app.showingTierListBrowser {
-                    TierListBrowserScene(app: app)
-                        .transition(.opacity)
-                        .zIndex(53)
-                }
-
-                // Theme picker overlay
-                if app.showThemePicker {
-                    AccessibilityBridgeView()
-
-                    // In UI tests, avoid transitions so the overlay appears in the
-                    // accessibility tree immediately. Transitions can delay when
-                    // XCTest sees elements, causing flaky existence checks.
-                    if ProcessInfo.processInfo.arguments.contains("-uiTest") {
-                        ThemeLibraryOverlay()
-                            .zIndex(54)
-                    } else {
-                        ThemeLibraryOverlay()
-                            .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                            .zIndex(54)
-                    }
-                }
-
-                if app.showThemeCreator, let draft = app.themeDraft {
-                    AccessibilityBridgeView()
-
-                    ThemeCreatorOverlay(appState: app, draft: draft)
-                        .transition(.opacity.combined(with: .scale(scale: 0.94)))
-                        .zIndex(55)
-                }
-
-                // Toast messages (bottom)
-                if let toast = app.currentToast {
-                    VStack {
-                        Spacer()
-                        ToastView(toast: toast)
-                            .padding()
-                    }
-                    .zIndex(60)
-                }
-
-                // Bottom action bar is inset on tvOS via safeAreaInset above; no overlay here
-
-                // Detail overlay (all platforms)
-                if let detail = app.detailItem {
-                    #if os(tvOS)
-                    HStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        DetailSidebarView(item: detail, focus: $detailFocus)
-                            .frame(maxHeight: .infinity)
-                    }
-                    .focusSection()
-                    .defaultFocus($detailFocus, .close)
-                    .onAppear { detailFocus = .close }
-                    .onDisappear { detailFocus = nil }
-                    .transition(
-                        .move(edge: .trailing)
-                            .combined(with: .opacity)
-                    )
-                    .zIndex(55)
-                    #else
-                    ZStack {
-                        Color.black.opacity(0.55).ignoresSafeArea()
-                        VStack(spacing: 24) {
-                            DetailView(item: detail)
-                                .frame(maxWidth: 720)
-
-                            Button("Close") { app.detailItem = nil }
-                                .buttonStyle(.bordered)
-                        }
-                        .padding(.vertical, 32)
-                        .padding(.horizontal, 36)
-                        .frame(maxWidth: 820)
-                        .background(
-                            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                                .fill(.ultraThinMaterial)
-                                .shadow(color: .black.opacity(0.35), radius: 30, y: 12)
-                        )
-                        .accessibilityAddTraits(.isModal)
-                    }
-                    .transition(.opacity)
-                    .zIndex(55)
-                    #endif
-                }
-            }
+            ZStack { overlayStack }
         }
         .alert("Randomize Tiers?", isPresented: Binding(
             get: { app.showRandomizeConfirmation },
@@ -286,6 +165,134 @@ struct MainAppView: View {
         } message: {
             Text("This will delete all items and reset the tier list. This action cannot be undone.")
         }
+    }
+
+    // MARK: - Overlay Composition
+    @ViewBuilder
+    private var overlayStack: some View {
+        // Progress indicator (centered)
+        if app.isLoading {
+            ProgressIndicatorView(
+                isLoading: app.isLoading,
+                message: app.loadingMessage,
+                progress: app.operationProgress
+            )
+            .zIndex(50)
+        }
+
+        // Quick Rank overlay
+        QuickRankOverlay(app: app)
+            .zIndex(40)
+
+        #if os(tvOS)
+        // Quick Move overlay (unified item actions overlay)
+        QuickMoveOverlay(app: app)
+            .zIndex(45)
+        #endif
+
+        // Head-to-Head overlay
+        MatchupArenaOverlay(app: app)
+            .zIndex(40)
+
+        #if os(tvOS)
+        if app.showAnalyticsSidebar {
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                AnalyticsSidebarView()
+                    .frame(maxHeight: .infinity)
+            }
+            .allowsHitTesting(true)
+            .zIndex(52)
+        }
+        #endif
+
+        if app.showingTierListBrowser {
+            TierListBrowserScene(app: app)
+                .transition(.opacity)
+                .zIndex(53)
+        }
+
+        // Theme picker overlay
+        if app.showThemePicker {
+            AccessibilityBridgeView()
+
+            // In UI tests, avoid transitions so the overlay appears in the
+            // accessibility tree immediately. Transitions can delay when
+            // XCTest sees elements, causing flaky existence checks.
+            if ProcessInfo.processInfo.arguments.contains("-uiTest") {
+                ThemeLibraryOverlay()
+                    .zIndex(54)
+            } else {
+                ThemeLibraryOverlay()
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                    .zIndex(54)
+            }
+        }
+
+        if app.showThemeCreator, let draft = app.themeDraft {
+            AccessibilityBridgeView()
+
+            ThemeCreatorOverlay(appState: app, draft: draft)
+                .transition(.opacity.combined(with: .scale(scale: 0.94)))
+                .zIndex(55)
+        }
+
+        // Toast messages (bottom)
+        if let toast = app.currentToast {
+            VStack {
+                Spacer()
+                ToastView(toast: toast)
+                    .padding()
+            }
+            .zIndex(60)
+        }
+
+        // Detail overlay (all platforms)
+        if let detail = app.detailItem {
+            detailOverlay(for: detail)
+        }
+    }
+
+    @ViewBuilder
+    private func detailOverlay(for detail: Item) -> some View {
+        #if os(tvOS)
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
+            DetailSidebarView(item: detail, focus: $detailFocus)
+                .frame(maxHeight: .infinity)
+        }
+        .focusSection()
+        .defaultFocus($detailFocus, .close)
+        .onAppear { detailFocus = .close }
+        .onDisappear { detailFocus = nil }
+        .transition(
+            .move(edge: .trailing)
+                .combined(with: .opacity)
+        )
+        .zIndex(55)
+        #else
+        ZStack {
+            Color.black.opacity(0.55).ignoresSafeArea()
+            VStack(spacing: 24) {
+                DetailView(item: detail)
+                    .frame(maxWidth: 720)
+
+                Button("Close") { app.detailItem = nil }
+                    .buttonStyle(.bordered)
+            }
+            .padding(.vertical, 32)
+            .padding(.horizontal, 36)
+            .frame(maxWidth: 820)
+            .background(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .shadow(color: .black.opacity(0.35), radius: 30, y: 12)
+            )
+            .accessibilityAddTraits(.isModal)
+        }
+        .transition(.opacity)
+        .zIndex(55)
+        #endif
     }
 }
 

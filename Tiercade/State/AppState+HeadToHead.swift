@@ -1,4 +1,5 @@
 import Foundation
+import os
 import TiercadeCore
 
 @MainActor
@@ -45,10 +46,7 @@ extension AppState {
         h2hArtifacts = nil
         h2hSuggestedPairs = []
 
-        let log = "[AppState] startH2H: poolCount=\(h2hPool.count) initialTarget=\(targetComparisons) scheduledPairs=\(h2hTotalComparisons)"
-        print(log)
-        NSLog("%@", log)
-        Task { await appendDebugFile("startH2H: poolCount=\(h2hPool.count) totalPairs=\(h2hTotalComparisons)") }
+        Logger.headToHead.info("Started H2H: pool=\(self.h2hPool.count) target=\(targetComparisons) pairs=\(self.h2hTotalComparisons)")
 
         nextH2HPair()
     }
@@ -59,37 +57,18 @@ extension AppState {
         if h2hPairsQueue.isEmpty, !h2hDeferredPairs.isEmpty {
             h2hPairsQueue = h2hDeferredPairs
             h2hDeferredPairs = []
-            let recycle = "[AppState] nextH2HPair: recycling skipped pairs count=\(h2hPairsQueue.count)"
-            print(recycle)
-            NSLog("%@", recycle)
-            Task { await appendDebugFile("nextH2HPair: recycling skipped pairs count=\(h2hPairsQueue.count)") }
+            Logger.headToHead.info("Recycling skipped pairs: count=\(self.h2hPairsQueue.count)")
         }
 
         guard !h2hPairsQueue.isEmpty else {
             h2hPair = nil
-            let message = "[AppState] nextH2HPair: no remaining pairs"
-            print(message)
-            NSLog("%@", message)
-            Task { await appendDebugFile("nextH2HPair: queueEmpty") }
+            Logger.headToHead.debug("Next pair: queue empty")
             return
         }
 
         let pair = h2hPairsQueue.removeFirst()
         h2hPair = (pair.0, pair.1)
-        let pairDescriptor = "\(pair.0.id)-\(pair.1.id)"
-        let remainingQueue = h2hPairsQueue.count
-        let message = [
-            "[AppState] nextH2HPair:",
-            "pair=\(pairDescriptor)",
-            "remainingQueue=\(remainingQueue)"
-        ].joined(separator: " ")
-        print(message)
-        NSLog("%@", message)
-        Task {
-            await appendDebugFile(
-                "nextH2HPair: pair=\(pairDescriptor) remainingQueue=\(remainingQueue)"
-            )
-        }
+        Logger.headToHead.debug("Next pair: \(pair.0.id)-\(pair.1.id), queue=\(self.h2hPairsQueue.count)")
     }
 
     func voteH2H(winner: Item) {
@@ -98,7 +77,10 @@ extension AppState {
         let b = pair.1
 #if DEBUG
         let poolIds = Set(h2hPool.map(\.id))
-        assert(poolIds.contains(a.id) && poolIds.contains(b.id), "Voting on items that are no longer in the head-to-head pool")
+        assert(
+            poolIds.contains(a.id) && poolIds.contains(b.id),
+            "Voting on items that are no longer in the head-to-head pool"
+        )
 #endif
         HeadToHeadLogic.vote(a, b, winner: winner, records: &h2hRecords)
         h2hCompletedComparisons = min(h2hCompletedComparisons + 1, h2hTotalComparisons)
@@ -106,21 +88,7 @@ extension AppState {
         h2hPair = nil
         nextH2HPair()
 
-        let message = [
-            "[AppState] voteH2H:",
-            "winner=\(winner.id)",
-            "pair=\(a.id)-\(b.id)",
-            "completed=\(h2hCompletedComparisons)/\(h2hTotalComparisons)",
-            "remainingQueue=\(h2hPairsQueue.count)",
-            "records=\(h2hRecords.count)"
-        ].joined(separator: " ")
-        print(message)
-        NSLog("%@", message)
-        Task {
-            await appendDebugFile(
-                "voteH2H: winner=\(winner.id) completed=\(h2hCompletedComparisons)/\(h2hTotalComparisons)"
-            )
-        }
+        Logger.headToHead.info("Vote: winner=\(winner.id) pair=\(a.id)-\(b.id) progress=\(self.h2hCompletedComparisons)/\(self.h2hTotalComparisons)")
     }
 
     func skipCurrentH2HPair() {
@@ -128,19 +96,7 @@ extension AppState {
         h2hDeferredPairs.append(pair)
         h2hSkippedPairKeys.insert(h2hPairKey(pair))
         h2hPair = nil
-        let messageComponents = [
-            "[AppState] skipH2H:",
-            "pair=\(pair.0.id)-\(pair.1.id)",
-            "deferredCount=\(h2hDeferredPairs.count)"
-        ]
-        let message = messageComponents.joined(separator: " ")
-        print(message)
-        NSLog("%@", message)
-        Task {
-            await appendDebugFile(
-                "skipH2H: pair=\(pair.0.id)-\(pair.1.id) deferredCount=\(h2hDeferredPairs.count)"
-            )
-        }
+        Logger.headToHead.info("Skipped pair: \(pair.0.id)-\(pair.1.id), deferred=\(self.h2hDeferredPairs.count)")
         nextH2HPair()
     }
 
@@ -148,103 +104,116 @@ extension AppState {
         guard h2hActive else { return }
         switch h2hPhase {
         case .quick:
-            let quick = HeadToHeadLogic.quickTierPass(
-                from: h2hPool,
-                records: h2hRecords,
-                tierOrder: tierOrder,
-                baseTiers: tiers
-            )
-
-            var appliedTiers = quick.tiers
-            var artifacts = quick.artifacts
-
-            if let initialArtifacts = artifacts, quick.suggestedPairs.isEmpty {
-                let (finalTiers, updatedArtifacts) = HeadToHeadLogic.finalizeTiers(
-                    artifacts: initialArtifacts,
-                    records: h2hRecords,
-                    tierOrder: tierOrder,
-                    baseTiers: tiers
-                )
-                appliedTiers = finalTiers
-                artifacts = updatedArtifacts
-            }
-
-            tiers = appliedTiers
-            markAsChanged()
-
-            if let artifacts, !quick.suggestedPairs.isEmpty {
-                h2hArtifacts = artifacts
-                h2hSuggestedPairs = quick.suggestedPairs
-                h2hPairsQueue = quick.suggestedPairs
-                h2hDeferredPairs = []
-                h2hSkippedPairKeys = []
-                h2hTotalComparisons = quick.suggestedPairs.count
-                h2hCompletedComparisons = 0
-                h2hPhase = .refinement
-                let message = "[AppState] finishH2H: entering refinement phase with \(quick.suggestedPairs.count) pairs"
-                print(message)
-                NSLog("%@", message)
-                showInfoToast(
-                    "Preliminary Results Applied",
-                    message: "Complete \(quick.suggestedPairs.count) targeted matchups to refine your tiers."
-                )
-                Task {
-                    await appendDebugFile("finishH2H: entering refinement phase with \(quick.suggestedPairs.count) pairs")
-                }
-                nextH2HPair()
-                return
-            }
-
-            history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
-            showSuccessToast("Head-to-Head Complete", message: "Results applied to your tiers.")
-            let summary = tierOrder
-                .map { "\($0):\(tiers[$0]?.count ?? 0)" }
-                .joined(separator: ", ")
-            let message = "[AppState] finishH2H: quick phase complete; counts: \(summary)"
-            print(message)
-            NSLog("%@", message)
-            Task { await appendDebugFile("finishH2H: quick phase complete counts=\(summary)") }
-            resetH2HSession()
-
+            handleQuickPhaseCompletion()
         case .refinement:
-            guard let artifacts = h2hArtifacts else {
-                h2hPhase = .quick
-                finishH2H()
-                return
-            }
+            handleRefinementCompletion()
+        }
+    }
 
-            let (finalTiers, updatedArtifacts) = HeadToHeadLogic.finalizeTiers(
-                artifacts: artifacts,
+    private func handleQuickPhaseCompletion() {
+        let quick = HeadToHeadLogic.quickTierPass(
+            from: h2hPool,
+            records: h2hRecords,
+            tierOrder: tierOrder,
+            baseTiers: tiers
+        )
+
+        var appliedTiers = quick.tiers
+        var artifacts = quick.artifacts
+
+        if let initialArtifacts = artifacts, quick.suggestedPairs.isEmpty {
+            let result = HeadToHeadLogic.finalizeTiers(
+                artifacts: initialArtifacts,
                 records: h2hRecords,
                 tierOrder: tierOrder,
                 baseTiers: tiers
             )
-            tiers = finalTiers
-            h2hArtifacts = updatedArtifacts
-            history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
-            markAsChanged()
-            showSuccessToast("Head-to-Head Complete", message: "Refined tiers applied.")
-            let summary = tierOrder
-                .map { "\($0):\(tiers[$0]?.count ?? 0)" }
-                .joined(separator: ", ")
-            let message = "[AppState] finishH2H: refinement phase complete; counts: \(summary)"
-            print(message)
-            NSLog("%@", message)
-            Task { await appendDebugFile("finishH2H: refinement phase complete counts=\(summary)") }
-            resetH2HSession()
+            appliedTiers = result.tiers
+            artifacts = result.updatedArtifacts
         }
+
+        tiers = appliedTiers
+        markAsChanged()
+
+        if let artifacts, !quick.suggestedPairs.isEmpty {
+            transitionToRefinement(artifacts: artifacts, suggestedPairs: quick.suggestedPairs)
+            return
+        }
+
+        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
+        showSuccessToast("Head-to-Head Complete", message: "Results applied to your tiers.")
+        logPhaseSummary(
+            prefix: "quick phase complete",
+            debugSuffix: "quick phase complete counts",
+            summary: tierSummary()
+        )
+        resetH2HSession()
+    }
+
+    private func transitionToRefinement(artifacts: H2HArtifacts, suggestedPairs: [(Item, Item)]) {
+        h2hArtifacts = artifacts
+        h2hSuggestedPairs = suggestedPairs
+        h2hPairsQueue = suggestedPairs
+        h2hDeferredPairs = []
+        h2hSkippedPairKeys = []
+        h2hTotalComparisons = suggestedPairs.count
+        h2hCompletedComparisons = 0
+        h2hPhase = .refinement
+
+        Logger.headToHead.info("Entering refinement phase: pairs=\(suggestedPairs.count)")
+        showInfoToast(
+            "Preliminary Results Applied",
+            message: "Complete \(suggestedPairs.count) targeted matchups to refine your tiers."
+        )
+        nextH2HPair()
+    }
+
+    private func handleRefinementCompletion() {
+        guard let artifacts = h2hArtifacts else {
+            h2hPhase = .quick
+            finishH2H()
+            return
+        }
+
+        let result = HeadToHeadLogic.finalizeTiers(
+            artifacts: artifacts,
+            records: h2hRecords,
+            tierOrder: tierOrder,
+            baseTiers: tiers
+        )
+
+        tiers = result.tiers
+        h2hArtifacts = result.updatedArtifacts
+        history = HistoryLogic.saveSnapshot(history, snapshot: tiers)
+        markAsChanged()
+        showSuccessToast("Head-to-Head Complete", message: "Refined tiers applied.")
+        logPhaseSummary(
+            prefix: "refinement phase complete",
+            debugSuffix: "refinement phase complete counts",
+            summary: tierSummary()
+        )
+        resetH2HSession()
+    }
+
+    private func tierSummary() -> String {
+        tierOrder
+            .map { "\($0):\(tiers[$0]?.count ?? 0)" }
+            .joined(separator: ", ")
+    }
+
+    private func logPhaseSummary(prefix: String, debugSuffix: String, summary: String) {
+        Logger.headToHead.info("H2H \(prefix): \(summary)")
     }
 
     func cancelH2H(fromExitCommand: Bool = false) {
         guard h2hActive else { return }
         if fromExitCommand, let activatedAt = h2hActivatedAt, Date().timeIntervalSince(activatedAt) < 0.35 {
-            Task { await appendDebugFile("cancelH2H: ignored exitCommand within debounce window") }
+            Logger.headToHead.debug("Cancel ignored: exitCommand within debounce window")
             return
         }
         resetH2HSession()
         showInfoToast("Head-to-Head Cancelled", message: "No changes were made.")
-        let trigger = fromExitCommand ? "exitCommand" : "user"
-        Task { await appendDebugFile("cancelH2H: trigger=\(trigger)") }
+        Logger.headToHead.info("H2H cancelled: trigger=\(fromExitCommand ? "exitCommand" : "user")")
     }
 
     private func resetH2HSession(clearRecords: Bool = true) {

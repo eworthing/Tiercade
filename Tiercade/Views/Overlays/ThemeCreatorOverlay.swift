@@ -156,7 +156,7 @@ private extension ThemeCreatorOverlay {
             Text("Tiers")
                 .font(.headline)
 
-            GlassEffectContainer(spacing: 12) {
+            tvGlassContainer(spacing: 12) {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(draft.tiers) { tier in
                         Button {
@@ -227,7 +227,7 @@ private extension ThemeCreatorOverlay {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
 
-            GlassEffectContainer(spacing: 18) {
+            tvGlassContainer(spacing: 18) {
                 LazyVGrid(
                     columns: Array(repeating: GridItem(.flexible(), spacing: 18), count: paletteColumns),
                     spacing: 18

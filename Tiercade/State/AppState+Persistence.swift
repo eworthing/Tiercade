@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import os
 import TiercadeCore
 
 private struct CodableTheme: Codable {
@@ -266,7 +267,7 @@ extension AppState {
             restoreCardDensityPreference(rawValue: nil)
             return true
         } catch {
-            print("Legacy load failed: \(error)")
+            Logger.persistence.error("Legacy load failed: \(error.localizedDescription)")
             showErrorToast("Load Failed", message: "Could not load tier list {warning}")
             return false
         }
@@ -378,7 +379,7 @@ extension AppState {
             )
             return false
         } catch {
-            print("File load failed: \(error)")
+            Logger.persistence.error("File load failed: \(error.localizedDescription)")
             showErrorToast("Load Failed", message: "Could not load \(fileName).json {warning}")
             return false
         }
@@ -399,7 +400,7 @@ extension AppState {
                 .map { $0.deletingPathExtension().lastPathComponent }
                 .sorted()
         } catch {
-            print("Error listing save files: \(error)")
+            Logger.persistence.error("Error listing save files: \(error.localizedDescription)")
             return []
         }
     }
@@ -411,7 +412,7 @@ extension AppState {
             try FileManager.default.removeItem(at: fileURL)
             return true
         } catch {
-            print("Error deleting save file: \(error)")
+            Logger.persistence.error("Error deleting save file: \(error.localizedDescription)")
             return false
         }
     }
@@ -454,7 +455,7 @@ extension AppState {
             showSuccessToast("File Saved", message: "Saved \(fileName).json {file}")
             return true
         } catch {
-            print("File save failed: \(error)")
+            Logger.persistence.error("File save failed: \(error.localizedDescription)")
             showErrorToast("Save Failed", message: "Could not save \(fileName).json {warning}")
             return false
         }
@@ -481,7 +482,7 @@ extension AppState {
                 userInfo: [NSLocalizedDescriptionKey: "Unrecognized save file format"]
             )
         } catch {
-            print("File load failed: \(error)")
+            Logger.persistence.error("File load failed: \(error.localizedDescription)")
             showErrorToast("Load Failed", message: "Could not load \(fileName).json {warning}")
             return false
         }
