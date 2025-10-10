@@ -68,6 +68,8 @@ struct MainAppView: View {
                 app.cancelQuickMove()
             } else if app.showThemeCreator {
                 app.cancelThemeCreation(returnToThemePicker: false)
+            } else if app.showingTierCreator {
+                app.closeTierCreator()
             } else if app.showingTierListBrowser {
                 app.dismissTierListBrowser()
             } else if app.showAnalyticsSidebar {
@@ -185,6 +187,13 @@ struct MainAppView: View {
             ThemeCreatorOverlay(appState: app, draft: draft)
                 .transition(.opacity.combined(with: .scale(scale: 0.94)))
                 .zIndex(55)
+        }
+
+        if app.showingTierCreator {
+            AccessibilityBridgeView()
+            TierCreatorView(appState: app)
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                .zIndex(56)
         }
 
         // Toast messages (bottom)
@@ -344,7 +353,7 @@ struct TVToolbarView: View {
     @FocusState private var focusedControl: Control?
 
     private enum Control: Hashable {
-        case undo, redo, randomize, reset, library, h2h, analytics, density, theme, multiSelect
+        case undo, redo, randomize, reset, library, tierCreator, multiSelect, h2h, analytics, density, theme
     }
 
     var body: some View {
@@ -444,6 +453,18 @@ struct TVToolbarView: View {
 
             Divider()
                 .frame(height: 28)
+
+            Button(action: { _ = app.openTierCreator(with: app.tierCreatorActiveProject) }, label: {
+                Image(systemName: "hammer.fill")
+                    .font(.system(size: Metrics.toolbarIconSize))
+                    .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
+            })
+            .buttonStyle(.tvRemote(.primary))
+            .accessibilityIdentifier("Toolbar_TierCreator")
+            .focused($focusedControl, equals: .tierCreator)
+            .accessibilityLabel("Tier Creator")
+            .accessibilityHint("Open the tier creator overlay")
+            .focusTooltip("Tier Creator")
 
             Button(action: {
                 withAnimation(.snappy(duration: 0.18, extraBounce: 0.04)) {

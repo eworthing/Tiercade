@@ -135,6 +135,13 @@ final class AppState {
     var hasUnsavedChanges: Bool = false
     var lastSavedTime: Date?
     var currentFileName: String?
+    var tierCreatorValidationIssues: [TierCreatorValidationIssue] = []
+    var showingTierCreator: Bool = false
+    var tierCreatorActiveProject: TierCreatorProject?
+    var tierCreatorStage: TierCreatorStage = .setup
+    var tierCreatorSelectedTierId: String?
+    var tierCreatorSelectedItemId: String?
+    var tierCreatorSearchQuery: String = ""
 
     // Progress Tracking & Visual Feedback
     var isLoading: Bool = false
@@ -202,7 +209,9 @@ final class AppState {
         }
 
         if h2hRefinementTotalComparisons > 0 {
-            let refinementFraction = Double(min(h2hRefinementCompletedComparisons, h2hRefinementTotalComparisons)) / Double(h2hRefinementTotalComparisons)
+            let refinementFraction = Double(
+                min(h2hRefinementCompletedComparisons, h2hRefinementTotalComparisons)
+            ) / Double(h2hRefinementTotalComparisons)
             progress = min(progress, quickWeight)
             progress += (1 - quickWeight) * min(max(refinementFraction, 0), 1)
         } else if !h2hActive && h2hTotalComparisons > 0 && h2hCompletedComparisons >= h2hTotalComparisons {

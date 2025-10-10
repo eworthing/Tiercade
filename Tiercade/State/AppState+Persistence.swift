@@ -57,6 +57,17 @@ private struct CodableTheme: Codable {
 }
 
 @MainActor
+private struct AppSaveFilePayload: Codable {
+    let tiers: Items
+    let tierLabels: [String: String]?
+    let tierColors: [String: String]?
+    let selectedThemeID: String?
+    let customThemes: [CodableTheme]?
+    let createdDate: Date
+    let appVersion: String
+    let cardDensityPreference: String?
+}
+
 extension AppState {
     // MARK: - SwiftData-backed persistence
 
@@ -103,42 +114,12 @@ extension AppState {
 
     func saveToFile(named fileName: String) throws(PersistenceError) {
         do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            struct AppSaveFile: Codable {
-                let tiers: Items
-                let tierLabels: [String: String]
-                let tierColors: [String: String]
-                let selectedThemeID: String?
-                let customThemes: [CodableTheme]
-                let createdDate: Date
-                let appVersion: String
-                let cardDensityPreference: String
-            }
-
-            let saveData = AppSaveFile(
-                tiers: tiers,
-                tierLabels: tierLabels,
-                tierColors: tierColors,
-                selectedThemeID: selectedThemeID.uuidString,
-                customThemes: customThemes.map(CodableTheme.init),
-                createdDate: Date(),
-                appVersion: "1.0",
-                cardDensityPreference: cardDensityPreference.rawValue
-            )
-
-            let data = try encoder.encode(saveData)
-            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
-
+            let data = try encodeCurrentStateForFileExport()
+            let fileURL = fileURLForExport(named: fileName)
             try data.write(to: fileURL)
-
-            currentFileName = fileName
-            hasUnsavedChanges = false
-            lastSavedTime = Date()
-            showSuccessToast("File Saved", message: "Saved as \(fileName).json {file}")
-        } catch let error as EncodingError {
-            throw PersistenceError.encodingFailed("Failed to encode: \(error.localizedDescription)")
+            finalizeSuccessfulFileSave(named: fileName)
+        } catch let error as PersistenceError {
+            throw error
         } catch let error as CocoaError where error.code == .fileWriteNoPermission {
             throw PersistenceError.permissionDenied
         } catch {
@@ -150,55 +131,17 @@ extension AppState {
     func loadFromFile(named fileName: String) -> Bool {
         let snapshot = captureTierSnapshot()
         do {
-            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-            let fileURL = documentsPath.appendingPathComponent("\(fileName).json")
+            let data = try dataForFile(named: fileName)
 
-            let data = try Data(contentsOf: fileURL)
-            struct AppSaveFile: Codable {
-                let tiers: Items
-                let tierLabels: [String: String]?
-                let tierColors: [String: String]?
-                let selectedThemeID: String?
-                let customThemes: [CodableTheme]?
-                let createdDate: Date
-                let appVersion: String
-                let cardDensityPreference: String?
-            }
-
-            if let saveData = try? JSONDecoder().decode(AppSaveFile.self, from: data) {
-                applyLoadedFileSync(
-                    tiers: saveData.tiers,
-                    fileName: fileName,
-                    savedDate: saveData.createdDate
-                )
-                tierLabels = saveData.tierLabels ?? tierLabels
-                tierColors = saveData.tierColors ?? tierColors
-                restoreCustomThemes(saveData.customThemes ?? [])
-                restoreTheme(themeID: saveData.selectedThemeID.flatMap(UUID.init))
-                restoreCardDensityPreference(rawValue: saveData.cardDensityPreference)
-                showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
-                finalizeChange(action: "Load File", undoSnapshot: snapshot)
-                persistCurrentStateToStore()
+            if applyModernSave(from: data, fileName: fileName, snapshot: snapshot) {
                 return true
             }
 
-            if let legacyTiers = parseLegacyTiers(from: data) {
-                applyLoadedFileSync(
-                    tiers: legacyTiers,
-                    fileName: fileName,
-                    savedDate: Date()
-                )
-                restoreCardDensityPreference(rawValue: nil)
-                showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
-                finalizeChange(action: "Load File", undoSnapshot: snapshot)
-                persistCurrentStateToStore()
+            if applyLegacySave(from: data, fileName: fileName, snapshot: snapshot) {
                 return true
             }
 
-            showErrorToast(
-                "Load Failed",
-                message: "Unrecognized format for \(fileName).json {warning}"
-            )
+            showErrorToast("Load Failed", message: "Unrecognized format for \(fileName).json {warning}")
             return false
         } catch {
             Logger.persistence.error("File load failed: \(error.localizedDescription)")
@@ -218,6 +161,85 @@ extension AppState {
         } catch {
             Logger.persistence.error("Persist after external load failed: \(error.localizedDescription)")
         }
+    }
+
+    private func encodeCurrentStateForFileExport() throws(PersistenceError) -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+
+        let payload = AppSaveFilePayload(
+            tiers: tiers,
+            tierLabels: tierLabels,
+            tierColors: tierColors,
+            selectedThemeID: selectedThemeID.uuidString,
+            customThemes: customThemes.map(CodableTheme.init),
+            createdDate: Date(),
+            appVersion: "1.0",
+            cardDensityPreference: cardDensityPreference.rawValue
+        )
+
+        do {
+            return try encoder.encode(payload)
+        } catch let error as EncodingError {
+            throw PersistenceError.encodingFailed("Failed to encode: \(error.localizedDescription)")
+        } catch {
+            throw PersistenceError.fileSystemError("Could not encode save data: \(error.localizedDescription)")
+        }
+    }
+
+    private func fileURLForExport(named fileName: String) -> URL {
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return documentsPath.appendingPathComponent("\(fileName).json")
+    }
+
+    private func finalizeSuccessfulFileSave(named fileName: String) {
+        currentFileName = fileName
+        hasUnsavedChanges = false
+        lastSavedTime = Date()
+        showSuccessToast("File Saved", message: "Saved as \(fileName).json {file}")
+    }
+
+    private func dataForFile(named fileName: String) throws -> Data {
+        let fileURL = fileURLForExport(named: fileName)
+        return try Data(contentsOf: fileURL)
+    }
+
+    private func applyModernSave(from data: Data, fileName: String, snapshot: TierStateSnapshot) -> Bool {
+        guard let saveData = try? JSONDecoder().decode(AppSaveFilePayload.self, from: data) else {
+            return false
+        }
+
+        applyLoadedFileSync(
+            tiers: saveData.tiers,
+            fileName: fileName,
+            savedDate: saveData.createdDate
+        )
+        tierLabels = saveData.tierLabels ?? tierLabels
+        tierColors = saveData.tierColors ?? tierColors
+        restoreCustomThemes(saveData.customThemes ?? [])
+        restoreTheme(themeID: saveData.selectedThemeID.flatMap(UUID.init))
+        restoreCardDensityPreference(rawValue: saveData.cardDensityPreference)
+        showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
+        finalizeChange(action: "Load File", undoSnapshot: snapshot)
+        persistCurrentStateToStore()
+        return true
+    }
+
+    private func applyLegacySave(from data: Data, fileName: String, snapshot: TierStateSnapshot) -> Bool {
+        guard let legacyTiers = parseLegacyTiers(from: data) else {
+            return false
+        }
+
+        applyLoadedFileSync(
+            tiers: legacyTiers,
+            fileName: fileName,
+            savedDate: Date()
+        )
+        restoreCardDensityPreference(rawValue: nil)
+        showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
+        finalizeChange(action: "Load File", undoSnapshot: snapshot)
+        persistCurrentStateToStore()
+        return true
     }
 
     func getAvailableSaveFiles() -> [String] {

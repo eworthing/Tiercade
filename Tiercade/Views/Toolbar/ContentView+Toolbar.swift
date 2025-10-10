@@ -63,6 +63,10 @@ struct SecondaryToolbarActions: ToolbarContent {
                     #if !os(tvOS)
                     .keyboardShortcut("a", modifiers: [.command])
                 #endif
+                Button("Tier Creator...") { _ = app.openTierCreator(with: app.tierCreatorActiveProject) }
+                #if !os(tvOS)
+                .keyboardShortcut("n", modifiers: [.command, .option])
+                #endif
                 Divider()
                 Button("Tier Themes...") { app.toggleThemePicker() }
                     #if !os(tvOS)

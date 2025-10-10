@@ -22,13 +22,18 @@ struct TiercadeApp: App {
     @State private var appState: AppState
 
     init() {
-        let container = try! ModelContainer(
+        let container: ModelContainer
+        do {
+            container = try ModelContainer(
             for: TierListEntity.self,
                 TierEntity.self,
                 TierItemEntity.self,
                 TierThemeEntity.self,
                 TierColorEntity.self
-        )
+            )
+        } catch {
+            fatalError("Failed to initialize model container: \(error.localizedDescription)")
+        }
         modelContainer = container
         _appState = State(initialValue: AppState(modelContext: container.mainContext))
     }

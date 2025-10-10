@@ -49,7 +49,9 @@ extension AppState {
         h2hArtifacts = nil
         h2hSuggestedPairs = []
 
-        Logger.headToHead.info("Started H2H: pool=\(self.h2hPool.count) target=\(targetComparisons) pairs=\(self.h2hTotalComparisons)")
+        Logger.headToHead.info(
+            "Started H2H: pool=\(self.h2hPool.count) target=\(targetComparisons) pairs=\(self.h2hTotalComparisons)"
+        )
 
         nextH2HPair()
     }
@@ -101,13 +103,11 @@ extension AppState {
         autoAdvanceIfNeeded()
 
         if h2hPhase == .refinement {
-            Logger.headToHead.info(
-                "Vote: winner=\(winner.id) pair=\(a.id)-\(b.id) targetedProgress=\(self.h2hRefinementCompletedComparisons)/\(self.h2hRefinementTotalComparisons)"
-            )
+            // swiftlint:disable:next line_length
+            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(a.id)-\(b.id) target=\(self.h2hRefinementCompletedComparisons)/\(self.h2hRefinementTotalComparisons)")
         } else {
-            Logger.headToHead.info(
-                "Vote: winner=\(winner.id) pair=\(a.id)-\(b.id) progress=\(self.h2hCompletedComparisons)/\(self.h2hTotalComparisons)"
-            )
+            // swiftlint:disable:next line_length
+            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(a.id)-\(b.id) progress=\(self.h2hCompletedComparisons)/\(self.h2hTotalComparisons)")
         }
     }
 
