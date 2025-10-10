@@ -25,15 +25,15 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 - Apply glass effects via `glassEffect`, `GlassEffectContainer`, or `.buttonStyle(.glass)` when touching toolbars/overlays; validate focus halos in the Apple TV 4K (3rd gen) tvOS 26 simulator.
 
 ## Build, test, verify
-- Fast build: use the VS Code task “Build tvOS Tiercade (Debug)” or
-  ```bash
-  xcodebuild -project Tiercade.xcodeproj -scheme Tiercade \
-    -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' \
-    -configuration Debug build
-  ```
+- **Primary workflow**: Run VS Code task **"Build, Install & Launch tvOS"** (Cmd+Shift+B or from task menu). This executes `build_install_launch.sh` which:
+  - Always performs a clean build (forces fresh compilation)
+  - Shows clear progress with emojis (🧹 Cleaning → 🔨 Building → 📦 Installing → 🚀 Launching)
+  - Displays the actual build timestamp for verification
+  - Automatically boots simulator, uninstalls old version, installs fresh build, and launches
+- **CRITICAL**: Xcode builds to `~/Library/Developer/Xcode/DerivedData/`, NOT `./build/`. The script handles this correctly via `xcodebuild -showBuildSettings`.
+- **Build verification**: Check the build timestamp shown in the task output matches current time. The app also displays build time in `BuildInfoView` (DEBUG builds only).
 - Core logic tests: `cd TiercadeCore && swift test`.
-- Full tvOS pipeline (build + UI tests + artifacts in `/tmp`): `./tools/tvOS_build_and_test.sh`.
-- UI automation relies on accessibility IDs and short paths—use existence checks, avoid long XCUIRemote navigation (>12 s causes timeouts).
+- UI automation relies on accessibility IDs and short paths—use existence checks, avoid long XCUIRemote navigation (>12 s causes timeouts).
 - Manual sign-off keeps the tvOS 26 simulator open, cycling focus via Siri Remote or keyboard arrows after each build.
 
 ## Tooling & diagnostics
@@ -151,11 +151,14 @@ tvOS Exit button (Menu/⌘) should dismiss modals, not exit app:
 ## Build & Test
 
 ### Build Commands
-**VS Code task:** "Build tvOS Tiercade (Debug)"
+**Primary**: VS Code task "Build, Install & Launch tvOS" (Cmd+Shift+B) — runs `./build_install_launch.sh`
 **Manual:**
 ```bash
+./build_install_launch.sh
+# Or directly:
+xcodebuild clean -project Tiercade.xcodeproj -scheme Tiercade -configuration Debug
 xcodebuild -project Tiercade.xcodeproj -scheme Tiercade \
-  -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest'
+  -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' build
 ```
 
 ### Test Commands

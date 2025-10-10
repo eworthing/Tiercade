@@ -1,0 +1,44 @@
+# Cursor AI Rules for Tiercade
+
+## Build & Run Instructions
+
+**Primary Workflow: VS Code task "Build, Install & Launch tvOS" (Cmd+Shift+B)**
+
+This runs `./build_install_launch.sh` which:
+- Always performs a clean build (forces fresh compilation)
+- Shows progress: 🧹 Cleaning → 🔨 Building → 📦 Installing → 🚀 Launching
+- Displays actual build timestamp for verification
+- Boots simulator, uninstalls old version, installs fresh build, launches app
+
+## Critical Information
+
+⚠️ **Xcode builds to `~/Library/Developer/Xcode/DerivedData/`, NOT `./build/`**
+
+The build script:
+1. Cleans to force fresh compilation every time
+2. Builds with correct destination
+3. Queries xcodebuild for actual DerivedData path
+4. Installs from the correct location
+5. Shows build timestamp for verification
+
+## Project Context
+
+- **Target**: tvOS 26+ (primary), iOS 26+, macOS 26+
+- **Language**: Swift 6 with strict concurrency
+- **Architecture**: SwiftUI + @Observable state management
+- **State**: Central `AppState.swift` with feature extensions (`AppState+*.swift`)
+- **Core Logic**: `TiercadeCore/` Swift package (platform-agnostic)
+
+## Key Patterns
+
+1. **State mutations**: Always route through AppState methods that call TiercadeCore logic
+2. **Focus management**: Use `.focusSection()` for modals, `.allowsHitTesting()` for background
+3. **Design tokens**: Use `Palette`, `TypeScale`, `Metrics`, `TVMetrics` - never hardcode
+4. **Testing**: Swift Testing (`@Test`, `#expect`) for new tests
+
+## Testing
+
+- Core logic: `cd TiercadeCore && swift test`
+- UI tests: Use xcodebuild with accessibility identifiers
+
+For complete instructions, see `.github/copilot-instructions.md`
