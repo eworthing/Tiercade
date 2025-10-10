@@ -101,6 +101,7 @@ struct SecondaryToolbarActions: ToolbarContent {
                 .keyboardShortcut("O", modifiers: [.command, .shift])
             #endif
             Button("Browse Tier Lists") { app.presentTierListBrowser() }
+            Button("Create New Tier List...") { app.presentTierListCreator() }
         }
     }
 
