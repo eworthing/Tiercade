@@ -9,6 +9,7 @@ extension AppState {
     enum TierListSource: String, Codable, Sendable {
         case bundled
         case file
+        case authored
     }
 
     struct TierListHandle: Identifiable, Codable, Hashable, Sendable {
@@ -70,6 +71,13 @@ extension AppState {
         case .file:
             await withLoadingIndicator(message: "Loading \(handle.displayName)...") {
                 if loadFromFile(named: handle.identifier) {
+                    registerTierListSelection(handle)
+                }
+            }
+        case .authored:
+            await withLoadingIndicator(message: "Loading \(handle.displayName)...") {
+                if let entity = try? ensureEntity(for: handle) {
+                    applyPersistedTierList(entity)
                     registerTierListSelection(handle)
                 }
             }
@@ -142,6 +150,11 @@ extension AppState {
         case .file:
             _ = loadFromFile(named: handle.identifier)
             logEvent("loadActiveTierListIfNeeded: loaded file \(handle.identifier)")
+        case .authored:
+            if let entity = try? ensureEntity(for: handle) {
+                applyPersistedTierList(entity)
+                logEvent("loadActiveTierListIfNeeded: loaded authored project \(handle.identifier)")
+            }
         }
     }
 

@@ -234,6 +234,8 @@ private struct TierListCard: View {
             return handle.iconSystemName ?? "square.grid.2x2"
         case .file:
             return handle.iconSystemName ?? "externaldrive"
+        case .authored:
+            return handle.iconSystemName ?? "square.and.pencil"
         }
     }
 
@@ -243,6 +245,8 @@ private struct TierListCard: View {
             return "Bundled tier list • Offline ready"
         case .file:
             return "Local save file • Stored on this Apple TV"
+        case .authored:
+            return "Authored in Tiercade • SwiftData"
         }
     }
 

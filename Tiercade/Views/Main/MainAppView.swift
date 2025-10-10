@@ -24,6 +24,7 @@ struct MainAppView: View {
     let detailPresented = app.detailItem != nil
     let headToHeadPresented = app.h2hActive
     let themeCreatorPresented = app.showThemeCreator
+    let tierCreatorPresented = app.showTierListCreator
     let quickMovePresented = app.quickMoveTarget != nil
     // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
     // which provides automatic focus containment via separate presentation context
@@ -33,8 +34,9 @@ struct MainAppView: View {
         || themeCreatorPresented
         || quickMovePresented
         || app.showThemePicker
+        || tierCreatorPresented
     #else
-    let modalBlockingFocus = detailPresented || headToHeadPresented || themeCreatorPresented
+    let modalBlockingFocus = detailPresented || headToHeadPresented || themeCreatorPresented || tierCreatorPresented
     #endif
 
         return Group {
@@ -68,6 +70,8 @@ struct MainAppView: View {
                 app.cancelQuickMove()
             } else if app.showThemeCreator {
                 app.cancelThemeCreation(returnToThemePicker: false)
+            } else if app.showTierListCreator {
+                app.cancelTierListCreator()
             } else if app.showingTierListBrowser {
                 app.dismissTierListBrowser()
             } else if app.showAnalyticsSidebar {
@@ -185,6 +189,14 @@ struct MainAppView: View {
             ThemeCreatorOverlay(appState: app, draft: draft)
                 .transition(.opacity.combined(with: .scale(scale: 0.94)))
                 .zIndex(55)
+        }
+
+        if app.showTierListCreator, let draft = app.tierListCreatorDraft {
+            AccessibilityBridgeView()
+
+            TierListCreatorOverlay(appState: app, draft: draft)
+                .transition(.opacity.combined(with: .scale(scale: 0.94)))
+                .zIndex(56)
         }
 
         // Toast messages (bottom)

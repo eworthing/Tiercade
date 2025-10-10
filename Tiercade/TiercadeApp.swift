@@ -29,7 +29,14 @@ struct TiercadeApp: App {
                 TierEntity.self,
                 TierItemEntity.self,
                 TierThemeEntity.self,
-                TierColorEntity.self
+                TierColorEntity.self,
+                TierProjectDraft.self,
+                TierDraftTier.self,
+                TierDraftItem.self,
+                TierDraftOverride.self,
+                TierDraftMedia.self,
+                TierDraftAudit.self,
+                TierDraftCollabMember.self
             )
         } catch {
             fatalError("Failed to initialize model container: \(error.localizedDescription)")

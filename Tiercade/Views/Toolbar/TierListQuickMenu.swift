@@ -143,6 +143,8 @@ struct TierListQuickMenu: View {
             return "square.grid.2x2"
         case .file:
             return "externaldrive"
+        case .authored:
+            return "square.and.pencil"
         }
     }
 }

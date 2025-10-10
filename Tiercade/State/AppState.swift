@@ -77,6 +77,22 @@ final class AppState {
         var lockedTiers: Set<String>
     }
 
+    struct TierListDraftValidationIssue: Identifiable, Equatable, Sendable {
+        enum Category: String, Sendable {
+            case project
+            case tier
+            case item
+            case override
+            case media
+            case collaboration
+        }
+
+        let id = UUID()
+        var category: Category
+        var message: String
+        var contextIdentifier: String?
+    }
+
     let modelContext: ModelContext
     var tiers: Items = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
     var tierOrder: [String] = ["S", "A", "B", "C", "D", "F"]
@@ -108,6 +124,11 @@ final class AppState {
     var showThemeCreator: Bool = false
     var themeCreatorActive: Bool = false
     var themeDraft: ThemeDraft?
+    var showTierListCreator: Bool = false
+    var tierListCreatorActive: Bool = false
+    var tierListCreatorDraft: TierProjectDraft?
+    var tierListCreatorIssues: [TierListDraftValidationIssue] = []
+    var tierListCreatorExportPayload: String?
     // Head-to-Head
     var h2hActive: Bool = false
     enum H2HSessionPhase: Sendable {
