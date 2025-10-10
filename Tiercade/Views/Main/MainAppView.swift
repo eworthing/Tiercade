@@ -33,6 +33,7 @@ struct MainAppView: View {
         || themeCreatorPresented
         || quickMovePresented
         || app.showThemePicker
+        || app.showingTierCreator
     #else
     let modalBlockingFocus = detailPresented || headToHeadPresented || themeCreatorPresented
     #endif

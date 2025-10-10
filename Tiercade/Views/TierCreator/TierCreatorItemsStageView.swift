@@ -5,7 +5,6 @@ import SwiftUI
 struct TierCreatorItemsStageView: View {
     @Bindable var appState: AppState
     let project: TierCreatorProject
-    let focusNamespace: Namespace.ID
 
     private var columns: [GridItem] {
         [GridItem(.adaptive(minimum: 280, maximum: 320), spacing: Metrics.grid * 1.5)]
@@ -30,12 +29,16 @@ struct TierCreatorItemsStageView: View {
     var body: some View {
         HStack(alignment: .top, spacing: Metrics.grid * 2) {
             library
-                .focusSection()
                 .frame(maxWidth: .infinity, alignment: .leading)
+                #if os(tvOS)
+                .focusSection()
+                #endif
 
             inspector
                 .frame(maxWidth: Metrics.paneRight)
+                #if os(tvOS)
                 .focusSection()
+                #endif
         }
     }
 
@@ -43,7 +46,6 @@ struct TierCreatorItemsStageView: View {
         TierCreatorStageCard(title: "Author items", subtitle: "Create entries and manage drafts") {
             VStack(alignment: .leading, spacing: Metrics.grid * 1.5) {
                 TierCreatorSearchField(text: binding(for: \.tierCreatorSearchQuery))
-                    .prefersDefaultFocus(in: focusNamespace)
 
                 ScrollView {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: Metrics.grid * 1.5) {
@@ -174,16 +176,7 @@ struct TierCreatorItemCard: View {
             .padding(.vertical, Metrics.grid * 1.25)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .buttonStyle(.tvGlass)
-        .focusable(true)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(isSelected ? Palette.brand.opacity(0.22) : Palette.surface.opacity(0.4))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(isSelected ? Palette.brand : Color.clear, lineWidth: isSelected ? 2 : 0)
-        )
+        .buttonStyle(.borderless)
         .accessibilityIdentifier("TierCreator_ItemCard_\(item.itemId)")
     }
 }
