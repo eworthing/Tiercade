@@ -135,13 +135,6 @@ final class AppState {
     var hasUnsavedChanges: Bool = false
     var lastSavedTime: Date?
     var currentFileName: String?
-    var tierCreatorValidationIssues: [TierCreatorValidationIssue] = []
-    var showingTierCreator: Bool = false
-    var tierCreatorActiveProject: TierCreatorProject?
-    var tierCreatorStage: TierCreatorStage = .setup
-    var tierCreatorSelectedTierId: String?
-    var tierCreatorSelectedItemId: String?
-    var tierCreatorSearchQuery: String = ""
 
     // Progress Tracking & Visual Feedback
     var isLoading: Bool = false

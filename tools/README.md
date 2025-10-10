@@ -39,32 +39,26 @@ node fetch_media_and_thumb.js project.json \
 
 ## tvOS Building & Testing
 
-Automated testing and debugging setup for Tiercade on tvOS (OS 26.0+).
+Use **VS Code tasks** for the development workflow:
 
-### Quick Start
+### Daily Development
 
-Run the full build + test + artifact collection:
+In VS Code, run the task: **"Build, Install & Launch tvOS"**
+- Builds the app for tvOS simulator
+- Finds the app in DerivedData (correct location, not stale builds)
+- Shows actual build timestamp
+- Boots simulator, uninstalls old version, installs fresh build
+- Launches the app
 
-```bash
-./tools/tvOS_build_and_test.sh
-```
+Or use the keyboard shortcut (configure in VS Code keybindings).
 
-This will:
-- Build the app for the tvOS 26.0+ simulator
-- Run UI tests (SmokeTests) to exercise toolbar and overlays
-- Capture screenshots and debug logs
-- Run legacy smoke tests for additional coverage
+### Manual Build Only
 
-## Artifacts
+Run task: **"Build tvOS Tiercade (Debug)"** - just builds without installing.
 
-After running tests, check `/tmp` for the artifacts (the script writes artifacts to `/tmp` by default):
+### Clean Build
 
-- `tiercade_ui_before.png` / `tiercade_ui_after.png` - UI test screenshots
-- `tiercade_debug.log` - App debug log captured by the app
-- `tiercade_before.png` / `tiercade_after.png` - Legacy smoke test screenshots
-- `tiercade_build_and_test.log` - Full build and test log
-
-If you run the script on CI, collect these files as build artifacts for debugging failures.
+Run task: **"Clean Build tvOS"** - cleans derived data before rebuilding.
 
 ## UI Test Details
 

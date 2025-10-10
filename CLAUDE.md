@@ -8,16 +8,30 @@ Tiercade is a SwiftUI tier list management app targeting tvOS 26+/iOS 26+ with S
 
 ## Essential Commands
 
-### Build & Run
+### Build & Run (VS Code Task - PREFERRED)
+
+**Primary workflow: VS Code task "Build, Install & Launch tvOS" (Cmd+Shift+B)**
+
+This runs `./build_install_launch.sh` which:
+- Always performs a clean build (forces fresh compilation every time)
+- Shows clear progress: 🧹 Cleaning → 🔨 Building → 📦 Installing → 🚀 Launching
+- Displays actual build timestamp for verification
+- Automatically boots simulator, uninstalls old version, installs fresh build, and launches
+- Build location: `~/Library/Developer/Xcode/DerivedData/` (NOT `./build/`)
+
+**Manual Commands (if needed):**
 ```bash
-# tvOS build (primary platform)
+# Use the script directly
+./build_install_launch.sh
+
+# Or direct xcodebuild (builds to DerivedData, not ./build/)
+xcodebuild clean -project Tiercade.xcodeproj -scheme Tiercade -configuration Debug
 xcodebuild -project Tiercade.xcodeproj -scheme Tiercade \
   -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' \
   build
-
-# VS Code task (preferred)
-"Build tvOS Tiercade (Debug)"
 ```
+
+**IMPORTANT:** Xcode builds to `~/Library/Developer/Xcode/DerivedData/`, NOT `./build/`. Always use the VS Code task to ensure you're installing the correct, freshly-built version.
 
 ### Testing
 ```bash
