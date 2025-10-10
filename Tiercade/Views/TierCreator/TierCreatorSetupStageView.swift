@@ -1,22 +1,31 @@
+// ...removed import Design; design files are part of main app target
 import Observation
 import SwiftUI
+import TiercadeCore
 
 @MainActor
 struct TierCreatorSetupStageView: View {
     @Bindable var appState: AppState
     let project: TierCreatorProject
-    let focusNamespace: Namespace.ID
+    #if os(tvOS)
+    @FocusState private var setupFocus: SetupFocus?
+    #endif
 
     var body: some View {
         HStack(alignment: .top, spacing: Metrics.grid * 2) {
             detailCard
-                .focusSection()
                 .frame(maxWidth: .infinity, alignment: .leading)
-
             sidebar
                 .frame(maxWidth: Metrics.paneRight)
-                .focusSection()
         }
+        #if os(tvOS)
+        .onAppear { setupFocus = .title }
+        .onChange(of: appState.tierCreatorStage) { _, newStage in
+            if newStage == .setup {
+                setupFocus = .title
+            }
+        }
+        #endif
     }
 
     private var detailCard: some View {
@@ -25,7 +34,7 @@ struct TierCreatorSetupStageView: View {
             subtitle: "Define the basics before creating items"
         ) {
             VStack(alignment: .leading, spacing: Metrics.grid * 1.5) {
-                TierCreatorSetupField(label: "Title", focusNamespace: focusNamespace, prefersInitialFocus: true) {
+                TierCreatorSetupField(label: "Title") {
                     TextField(
                         "Project title",
                         text: binding(
@@ -35,9 +44,13 @@ struct TierCreatorSetupStageView: View {
                     )
                     .submitLabel(.done)
                     .textFieldStyle(.plain)
+                    #if os(tvOS)
+                    .focused($setupFocus, equals: .title)
+                    .focusable(interactions: .edit)
+                    #endif
                 }
 
-                TierCreatorSetupField(label: "Description", focusNamespace: focusNamespace) {
+                TierCreatorSetupField(label: "Description") {
                     TextField(
                         "Optional summary",
                         text: binding(
@@ -47,9 +60,13 @@ struct TierCreatorSetupStageView: View {
                     )
                     .submitLabel(.done)
                     .textFieldStyle(.plain)
+                    #if os(tvOS)
+                    .focused($setupFocus, equals: .description)
+                    .focusable(interactions: .edit)
+                    #endif
                 }
 
-                TierCreatorSetupField(label: "Content source", focusNamespace: focusNamespace) {
+                TierCreatorSetupField(label: "Content source") {
                     Picker(
                         "Content source",
                         selection: binding(
@@ -63,6 +80,10 @@ struct TierCreatorSetupStageView: View {
                     }
                     .pickerStyle(.menu)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    #if os(tvOS)
+                    .focused($setupFocus, equals: .contentSource)
+                    .focusable(interactions: .activate)
+                    #endif
                 }
 
                 Toggle(
@@ -75,6 +96,10 @@ struct TierCreatorSetupStageView: View {
                         .labelStyle(.titleAndIcon)
                 }
                 .toggleStyle(.switch)
+                #if os(tvOS)
+                .focused($setupFocus, equals: .preseedToggle)
+                .focusable(interactions: .activate)
+                #endif
                 .accessibilityIdentifier("TierCreator_SetupPreseedToggle")
 
                 HStack(spacing: Metrics.grid * 1.5) {
@@ -84,6 +109,10 @@ struct TierCreatorSetupStageView: View {
                         Label("Choose theme", systemImage: "paintpalette")
                     }
                     .buttonStyle(.tvGlass)
+                    #if os(tvOS)
+                    .focused($setupFocus, equals: .chooseTheme)
+                    .focusable(interactions: .activate)
+                    #endif
                     .accessibilityIdentifier("TierCreator_SetupTheme")
 
                     Button {
@@ -95,9 +124,16 @@ struct TierCreatorSetupStageView: View {
                         Label("Apply template", systemImage: "square.grid.2x2")
                     }
                     .buttonStyle(.tvGlass)
+                    #if os(tvOS)
+                    .focused($setupFocus, equals: .applyTemplate)
+                    .focusable(interactions: .activate)
+                    #endif
                     .accessibilityIdentifier("TierCreator_SetupTemplate")
                 }
             }
+            #if os(tvOS)
+            .focusSection()
+            #endif
             .onChange(of: project.updatedAt) { _, _ in
                 appState.tierCreatorValidationIssues = appState.stageValidationIssues(
                     for: .setup,
@@ -159,19 +195,13 @@ struct TierCreatorSetupStageView: View {
 @MainActor
 struct TierCreatorSetupField<Field: View>: View {
     let label: String
-    let focusNamespace: Namespace.ID?
-    let prefersInitialFocus: Bool
     @ViewBuilder let field: () -> Field
 
     init(
         label: String,
-        focusNamespace: Namespace.ID? = nil,
-        prefersInitialFocus: Bool = false,
         @ViewBuilder field: @escaping () -> Field
     ) {
         self.label = label
-        self.focusNamespace = focusNamespace
-        self.prefersInitialFocus = prefersInitialFocus
         self.field = field
     }
 
@@ -189,21 +219,27 @@ struct TierCreatorSetupField<Field: View>: View {
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(Palette.surface.opacity(0.72))
                 )
-                .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .focusable(true)
-                .tierCreatorDefaultFocus(prefersInitialFocus, in: focusNamespace)
         }
     }
 }
 
+#if os(tvOS)
+private extension TierCreatorSetupStageView {
+    enum SetupFocus: Hashable {
+        case title
+        case description
+        case contentSource
+        case preseedToggle
+        case chooseTheme
+        case applyTemplate
+    }
+}
+#endif
+
 private extension View {
     @ViewBuilder
-    func tierCreatorDefaultFocus(_ prefers: Bool, in namespace: Namespace.ID?) -> some View {
-        if prefers, let namespace {
-            prefersDefaultFocus(in: namespace)
-        } else {
-            self
-        }
+    func then<Content: View>(@ViewBuilder _ transform: (Self) -> Content) -> some View {
+        transform(self)
     }
 }
 

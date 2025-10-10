@@ -4,20 +4,47 @@ import SwiftUI
 @MainActor
 struct TierCreatorView: View {
     @Bindable var appState: AppState
-    @Namespace private var focusNamespace
-    @Environment(\.resetFocus) private var resetFocus
+    #if os(tvOS)
+    @FocusState private var contentFocus: ContentFocus?
+    @State private var lastFocus: ContentFocus?
+    @State private var suppressFocusReset = false
+
+    enum ContentFocus: Hashable {
+        case backgroundTrap
+        case closeButton
+    }
+    #endif
 
     private var project: TierCreatorProject? { appState.tierCreatorActiveProject }
     private var stage: TierCreatorStage { appState.tierCreatorStage }
 
     var body: some View {
         ZStack(alignment: .top) {
-            Palette.bg.ignoresSafeArea()
+            // Focus-trapping background: Catches stray focus and redirects back to content
+            Palette.bg
+                .ignoresSafeArea()
+                #if os(tvOS)
+                .focusable()
+                .focused($contentFocus, equals: .backgroundTrap)
+                #endif
+                .accessibilityHidden(true)
 
             if let project {
                 VStack(spacing: Metrics.grid * 2) {
-                    TierCreatorHeaderToolbar(appState: appState, project: project, stage: stage)
-                        .focusSection()
+                    #if os(tvOS)
+                    TierCreatorHeaderToolbar(
+                        appState: appState,
+                        project: project,
+                        stage: stage,
+                        contentFocus: $contentFocus
+                    )
+                    #else
+                    TierCreatorHeaderToolbar(
+                        appState: appState,
+                        project: project,
+                        stage: stage
+                    )
+                    #endif
 
                     if !appState.tierCreatorValidationIssues.isEmpty {
                         TierCreatorValidationBanner(
@@ -29,26 +56,61 @@ struct TierCreatorView: View {
                     }
 
                     stageContent(for: project)
-                        .focusScope(focusNamespace)
                         .padding(.horizontal, Metrics.grid * 3)
 
                     TierCreatorFooterActions(appState: appState, stage: stage)
-                        .focusSection()
                         .padding(.horizontal, Metrics.grid * 3)
+                        #if os(tvOS)
+
+                        #endif
                 }
                 .padding(.vertical, Metrics.grid * 3)
                 .transition(.opacity.combined(with: .scale))
+                #if os(tvOS)
+                .focusSection()
+                #endif
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isModal)
+                .accessibilityIdentifier("TierCreator_Overlay")
+                #if os(tvOS)
+                .onExitCommand {
+                    appState.closeTierCreator()
+                }
+                .defaultFocus($contentFocus, .closeButton)
+                #endif
                 .onAppear {
                     refreshStageIssues(for: project)
-                    resetFocus(in: focusNamespace)
+                    #if os(tvOS)
+                    contentFocus = .closeButton
+                    lastFocus = .closeButton
+                    suppressFocusReset = false
+                    #endif
                 }
                 .onChange(of: appState.tierCreatorStage) { _, _ in
                     refreshStageIssues(for: project)
-                    resetFocus(in: focusNamespace)
                 }
                 .onChange(of: project.updatedAt) { _, _ in
                     refreshStageIssues(for: project)
                 }
+                #if os(tvOS)
+                .onDisappear {
+                    suppressFocusReset = true
+                    contentFocus = nil
+                }
+                .onChange(of: contentFocus) { _, newValue in
+                    guard !suppressFocusReset else { return }
+                    if let newValue {
+                        // Redirect background trap to keep focus within content
+                        if case .backgroundTrap = newValue {
+                            contentFocus = lastFocus ?? .closeButton
+                        } else {
+                            lastFocus = newValue
+                        }
+                    } else if let lastFocus {
+                        contentFocus = lastFocus
+                    }
+                }
+                #endif
             } else {
                 ContentUnavailableView(
                     "No project selected",
@@ -71,11 +133,11 @@ struct TierCreatorView: View {
     private func stageContent(for project: TierCreatorProject) -> some View {
         switch stage {
         case .setup:
-            TierCreatorSetupStageView(appState: appState, project: project, focusNamespace: focusNamespace)
+            TierCreatorSetupStageView(appState: appState, project: project)
         case .items:
-            TierCreatorItemsStageView(appState: appState, project: project, focusNamespace: focusNamespace)
+            TierCreatorItemsStageView(appState: appState, project: project)
         case .structure:
-            TierCreatorStructureStageView(appState: appState, project: project, focusNamespace: focusNamespace)
+            TierCreatorStructureStageView(appState: appState, project: project)
         }
     }
 }
@@ -87,6 +149,9 @@ private struct TierCreatorHeaderToolbar: View {
     @Bindable var appState: AppState
     let project: TierCreatorProject
     let stage: TierCreatorStage
+    #if os(tvOS)
+    var contentFocus: FocusState<TierCreatorView.ContentFocus?>.Binding
+    #endif
 
     var body: some View {
         VStack(alignment: .leading, spacing: Metrics.grid * 1.5) {
@@ -127,6 +192,9 @@ private struct TierCreatorHeaderToolbar: View {
                     Label("Close", systemImage: "xmark")
                 }
                 .buttonStyle(.tvGlass)
+                #if os(tvOS)
+                .focused(contentFocus, equals: .closeButton)
+                #endif
                 .accessibilityIdentifier("TierCreator_Close")
             }
 
@@ -195,10 +263,15 @@ private struct TierCreatorStageStepper: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .focusable(true)
+                #if os(tvOS)
+                .focusable(interactions: .activate)
+                #endif
                 .disabled(!isUnlocked || stage == currentStage)
                 .accessibilityIdentifier("TierCreator_Stage_\(stage.rawValue)")
             }
         }
+        #if os(tvOS)
+        .focusSection()
+        #endif
     }
 }

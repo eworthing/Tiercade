@@ -35,7 +35,6 @@ struct TierCreatorItemLibrary: View {
                 item: selectedItem,
                 issues: itemIssues(for: selectedItem)
             )
-            .focusSection()
 
             Button(action: handleAddItem) {
                 Label("Add Item", systemImage: "plus.rectangle.on.rectangle")
@@ -83,13 +82,8 @@ struct TierCreatorItemLibrary: View {
             .padding(.horizontal, Metrics.grid * 1.5)
             .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
-        .buttonStyle(.tvGlass)
+        .buttonStyle(.borderless)
         .accessibilityIdentifier("TierCreator_Item_\(item.itemId)")
-        .focusable(true)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(isSelected ? Palette.brand.opacity(0.22) : .clear)
-        )
     }
 
     private func handleAddItem() {

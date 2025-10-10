@@ -5,7 +5,6 @@ import SwiftUI
 struct TierCreatorStructureStageView: View {
     @Bindable var appState: AppState
     let project: TierCreatorProject
-    let focusNamespace: Namespace.ID
 
     private var tiers: [TierCreatorTier] {
         project.tiers.sorted { $0.order < $1.order }
@@ -35,12 +34,13 @@ struct TierCreatorStructureStageView: View {
                     project: project,
                     tiers: tiers,
                     selectedTier: selectedTier,
-                    addTier: handleAddTier,
-                    focusNamespace: focusNamespace
+                    addTier: handleAddTier
                 )
             }
             .frame(maxWidth: Metrics.paneLeft)
+            #if os(tvOS)
             .focusSection()
+            #endif
 
             TierCreatorStageCard(title: "Live preview", subtitle: "Review items in their tiers") {
                 TierCreatorCanvasPreview(
@@ -51,7 +51,9 @@ struct TierCreatorStructureStageView: View {
                     unassignedItems: unassignedItems
                 )
             }
+            #if os(tvOS)
             .focusSection()
+            #endif
         }
     }
 
@@ -81,7 +83,6 @@ struct TierCreatorTierRail: View {
     let tiers: [TierCreatorTier]
     let selectedTier: TierCreatorTier?
     let addTier: () -> Void
-    let focusNamespace: Namespace.ID
 
     var body: some View {
         VStack(alignment: .leading, spacing: Metrics.grid * 2) {
@@ -99,7 +100,6 @@ struct TierCreatorTierRail: View {
                             tier: tier,
                             isSelected: tier.tierId == selectedTier?.tierId
                         )
-                        .prefersDefaultFocus(tier.tierId == tiers.first?.tierId, in: focusNamespace)
                     }
                 }
                 .padding(.horizontal, Metrics.grid)
@@ -113,7 +113,6 @@ struct TierCreatorTierRail: View {
                     .padding(.vertical, Metrics.grid * 1.5)
             }
             .buttonStyle(.tvGlass)
-            .prefersDefaultFocus(tiers.isEmpty, in: focusNamespace)
             .accessibilityIdentifier("TierCreator_AddTier")
 
             TierCreatorTierInspector(
@@ -121,7 +120,6 @@ struct TierCreatorTierRail: View {
                 tier: selectedTier,
                 issues: selectedTier.map { issues(for: $0) } ?? []
             )
-            .focusSection()
         }
     }
 
@@ -176,12 +174,7 @@ struct TierRailRow: View {
             .padding(.horizontal, Metrics.grid * 1.5)
             .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
-        .buttonStyle(.tvGlass)
-        .focusable(true)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(isSelected ? Palette.brand.opacity(0.22) : .clear)
-        )
+        .buttonStyle(.borderless)
         .accessibilityIdentifier("TierCreator_Tier_\(tier.tierId)")
     }
 }
