@@ -356,7 +356,7 @@ struct TVToolbarView: View {
     @FocusState private var focusedControl: Control?
 
     private enum Control: Hashable {
-        case undo, redo, randomize, reset, library, multiSelect, h2h, analytics, density, theme
+        case undo, redo, randomize, reset, library, newTierList, multiSelect, h2h, analytics, density, theme
     }
 
     var body: some View {
@@ -451,6 +451,18 @@ struct TVToolbarView: View {
                 .focusTooltip("Tier Library")
                 .frame(minWidth: 320, idealWidth: 380, maxWidth: 520, alignment: .leading)
                 .layoutPriority(1)
+
+            Button(action: { app.presentTierListCreator() }, label: {
+                Image(systemName: "doc.badge.plus")
+                    .font(.system(size: Metrics.toolbarIconSize))
+                    .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
+            })
+            .buttonStyle(.tvRemote(.primary))
+            .focused($focusedControl, equals: .newTierList)
+            .accessibilityIdentifier("Toolbar_NewTierList")
+            .accessibilityLabel("New Tier List")
+            .accessibilityHint("Create a custom tier list from scratch")
+            .focusTooltip("New Tier List")
 
             Spacer(minLength: TVMetrics.toolbarClusterSpacing)
 

@@ -5,24 +5,24 @@ import TiercadeCore
 // MARK: - Encoding Helpers
 
 enum TierListCreatorCodec {
-    static let encoder: JSONEncoder = {
+    nonisolated(unsafe) static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         return encoder
     }()
 
-    static let decoder: JSONDecoder = {
+    nonisolated(unsafe) static let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }()
 
-    static func encode<T: Encodable>(_ value: T?) -> Data? {
+    nonisolated static func encode<T: Encodable>(_ value: T?) -> Data? {
         guard let value else { return nil }
         return try? encoder.encode(value)
     }
 
-    static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {
+    nonisolated static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {
         guard let data else { return nil }
         return try? decoder.decode(type, from: data)
     }
@@ -137,8 +137,8 @@ extension TierProjectDraft {
         set { settingsData = TierListCreatorCodec.encode(newValue) }
     }
 
-    var additional: [String: Project.JSONValue]? {
-        get { TierListCreatorCodec.decode([String: Project.JSONValue].self, from: additionalData) }
+    var additional: [String: JSONValue]? {
+        get { TierListCreatorCodec.decode([String: JSONValue].self, from: additionalData) }
         set { additionalData = TierListCreatorCodec.encode(newValue) }
     }
 
@@ -186,13 +186,13 @@ final class TierDraftTier {
 }
 
 extension TierDraftTier {
-    var rules: [String: Project.JSONValue] {
-        get { TierListCreatorCodec.decode([String: Project.JSONValue].self, from: rulesData) ?? [:] }
+    var rules: [String: JSONValue] {
+        get { TierListCreatorCodec.decode([String: JSONValue].self, from: rulesData) ?? [:] }
         set { rulesData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
-    var additional: [String: Project.JSONValue] {
-        get { TierListCreatorCodec.decode([String: Project.JSONValue].self, from: additionalData) ?? [:] }
+    var additional: [String: JSONValue] {
+        get { TierListCreatorCodec.decode([String: JSONValue].self, from: additionalData) ?? [:] }
         set { additionalData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 }
@@ -232,7 +232,8 @@ final class TierDraftItem {
         hidden: Bool = false,
         ordinal: Int = 0,
         tags: [String] = [],
-        media: [TierDraftMedia] = []
+        media: [TierDraftMedia] = [],
+        overrides: [TierDraftOverride] = []
     ) {
         self.identifier = identifier
         self.itemId = itemId
@@ -245,12 +246,13 @@ final class TierDraftItem {
         self.ordinal = ordinal
         self.tags = tags
         self.media = media
+        self.overrides = overrides
     }
 }
 
 extension TierDraftItem {
-    var attributes: [String: Project.JSONValue] {
-        get { TierListCreatorCodec.decode([String: Project.JSONValue].self, from: attributesData) ?? [:] }
+    var attributes: [String: JSONValue] {
+        get { TierListCreatorCodec.decode([String: JSONValue].self, from: attributesData) ?? [:] }
         set { attributesData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
@@ -264,8 +266,8 @@ extension TierDraftItem {
         set { localeData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
-    var additional: [String: Project.JSONValue] {
-        get { TierListCreatorCodec.decode([String: Project.JSONValue].self, from: additionalData) ?? [:] }
+    var additional: [String: JSONValue] {
+        get { TierListCreatorCodec.decode([String: JSONValue].self, from: additionalData) ?? [:] }
         set { additionalData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
@@ -313,8 +315,8 @@ final class TierDraftOverride {
 }
 
 extension TierDraftOverride {
-    var additional: [String: Project.JSONValue] {
-        get { TierListCreatorCodec.decode([String: Project.JSONValue].self, from: additionalData) ?? [:] }
+    var additional: [String: JSONValue] {
+        get { TierListCreatorCodec.decode([String: JSONValue].self, from: additionalData) ?? [:] }
         set { additionalData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 }
@@ -373,8 +375,8 @@ extension TierDraftMedia {
         set { attributionData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
-    var additional: [String: Project.JSONValue] {
-        get { TierListCreatorCodec.decode([String: Project.JSONValue].self, from: additionalData) ?? [:] }
+    var additional: [String: JSONValue] {
+        get { TierListCreatorCodec.decode([String: JSONValue].self, from: additionalData) ?? [:] }
         set { additionalData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
@@ -456,8 +458,8 @@ final class TierDraftCollabMember {
 }
 
 extension TierDraftCollabMember {
-    var additional: [String: Project.JSONValue] {
-        get { TierListCreatorCodec.decode([String: Project.JSONValue].self, from: additionalData) ?? [:] }
+    var additional: [String: JSONValue] {
+        get { TierListCreatorCodec.decode([String: JSONValue].self, from: additionalData) ?? [:] }
         set { additionalData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 

@@ -323,19 +323,27 @@ struct TierListCreatorOverlay: View {
                 .font(.title3.weight(.semibold))
 
             TextField("Project Title", text: $draft.title, prompt: Text("Enter a descriptive title"))
+                #if !os(tvOS)
                 .textFieldStyle(.roundedBorder)
+                #endif
                 .onChange(of: draft.title) { _ in appState.markDraftEdited(draft) }
 
             TextField("Description", text: $draft.summary, prompt: Text("Short description"), axis: .vertical)
                 .lineLimit(2...4)
+                #if !os(tvOS)
                 .textFieldStyle(.roundedBorder)
+                #endif
                 .onChange(of: draft.summary) { _ in appState.markDraftEdited(draft) }
 
             HStack(spacing: 20) {
+                #if !os(tvOS)
                 Stepper(value: $draft.schemaVersion, in: 1...9) {
                     Text("Schema Version: \(draft.schemaVersion)")
                 }
                 .onChange(of: draft.schemaVersion) { _ in appState.markDraftEdited(draft) }
+                #else
+                Text("Schema Version: \(draft.schemaVersion)")
+                #endif
 
                 Toggle("Show Unranked", isOn: $draft.showUnranked)
                     .toggleStyle(.switch)
@@ -395,7 +403,9 @@ struct TierListCreatorOverlay: View {
                         appState.markDraftEdited(draft)
                     }
                 ))
+                #if !os(tvOS)
                 .textFieldStyle(.roundedBorder)
+                #endif
 
                 TextField("Tier Identifier", text: Binding(
                     get: { tier.tierId },
@@ -404,7 +414,9 @@ struct TierListCreatorOverlay: View {
                         appState.markDraftEdited(draft)
                     }
                 ))
+                #if !os(tvOS)
                 .textFieldStyle(.roundedBorder)
+                #endif
 
                 TextField("Color Hex", text: Binding(
                     get: { tier.colorHex },
@@ -413,7 +425,9 @@ struct TierListCreatorOverlay: View {
                         appState.markDraftEdited(draft)
                     }
                 ))
+                #if !os(tvOS)
                 .textFieldStyle(.roundedBorder)
+                #endif
 
                 Rectangle()
                     .fill(ColorUtilities.color(hex: tier.colorHex))
@@ -496,7 +510,9 @@ struct TierListCreatorOverlay: View {
             }
 
             TextField("Search items", text: $searchQuery)
+                #if !os(tvOS)
                 .textFieldStyle(.roundedBorder)
+                #endif
 
             Picker("Filter", selection: $itemFilter) {
                 ForEach(ItemFilter.allCases) { filter in
@@ -570,7 +586,9 @@ struct TierListCreatorOverlay: View {
                     appState.markDraftEdited(draft)
                 }
             ))
+            #if !os(tvOS)
             .textFieldStyle(.roundedBorder)
+            #endif
 
             TextField("Identifier", text: Binding(
                 get: { item.itemId },
@@ -579,7 +597,9 @@ struct TierListCreatorOverlay: View {
                     appState.markDraftEdited(draft)
                 }
             ))
+            #if !os(tvOS)
             .textFieldStyle(.roundedBorder)
+            #endif
 
             TextField("Slug", text: Binding(
                 get: { item.slug },
@@ -588,7 +608,9 @@ struct TierListCreatorOverlay: View {
                     appState.markDraftEdited(draft)
                 }
             ))
+            #if !os(tvOS)
             .textFieldStyle(.roundedBorder)
+            #endif
 
             TextField("Subtitle", text: Binding(
                 get: { item.subtitle },
@@ -597,7 +619,9 @@ struct TierListCreatorOverlay: View {
                     appState.markDraftEdited(draft)
                 }
             ))
+            #if !os(tvOS)
             .textFieldStyle(.roundedBorder)
+            #endif
 
             TextField("Summary", text: Binding(
                 get: { item.summary },
@@ -607,8 +631,11 @@ struct TierListCreatorOverlay: View {
                 }
             ), axis: .vertical)
             .lineLimit(2...3)
+            #if !os(tvOS)
             .textFieldStyle(.roundedBorder)
+            #endif
 
+            #if !os(tvOS)
             Slider(value: Binding(
                 get: { item.rating ?? 50 },
                 set: { newValue in
@@ -618,6 +645,7 @@ struct TierListCreatorOverlay: View {
             ), in: 0...100, step: 1) {
                 Text("Rating")
             }
+            #endif
             Text("Rating: \(Int(item.rating ?? 50))")
                 .font(.caption)
                 .foregroundStyle(.secondary)

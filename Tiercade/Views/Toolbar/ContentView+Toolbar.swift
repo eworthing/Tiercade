@@ -68,6 +68,10 @@ struct SecondaryToolbarActions: ToolbarContent {
                     #if !os(tvOS)
                     .keyboardShortcut("t", modifiers: [.command])
                 #endif
+                Button("New Tier List...") { app.presentTierListCreator() }
+                    #if !os(tvOS)
+                    .keyboardShortcut("n", modifiers: [.command, .shift])
+                #endif
                 Button("Settings") { onShowSettings() }
             }
         }

@@ -187,7 +187,7 @@ extension AppState {
             issues.append(.init(category: .tier, message: "Add at least one tier before saving."))
         }
 
-        let tierIds = draft.tiers.map(\.tierId.lowercased())
+        let tierIds = draft.tiers.map { $0.tierId.lowercased() }
         if Set(tierIds).count != tierIds.count {
             issues.append(.init(category: .tier, message: "Tier identifiers must be unique."))
         }
@@ -493,4 +493,3 @@ private enum TierListCreatorPalette {
         return colors[index % colors.count]
     }
 }
-*** End of File
