@@ -230,7 +230,7 @@ extension AppState {
 
     private func makeCurrentTierConfig() -> TierConfig {
         func makeEntry(for tierId: String) -> TierConfigEntry {
-            let displayName = tierLabels[tierId]?.isEmpty == false ? tierLabels[tierId]! : tierId
+            let displayName = tierLabels[tierId]?.nilIfEmpty ?? tierId
             return TierConfigEntry(name: displayName, colorHex: tierColors[tierId])
         }
 
