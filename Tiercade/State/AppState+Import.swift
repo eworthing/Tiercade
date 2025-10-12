@@ -57,6 +57,34 @@ extension AppState {
             throw ImportError.missingRequiredField("tiers")
         }
 
+        func stringValue(from value: Any) -> String? {
+            if let string = value as? String { return string }
+            if let number = value as? NSNumber { return number.stringValue }
+            return nil
+        }
+
+        func extractAttributes(from data: [String: Any]) -> [String: String] {
+            var attributes: [String: String] = [:]
+
+            // Legacy exports stored attributes at the top level alongside the id.
+            for (key, value) in data where key != "id" && key != "attributes" {
+                if let string = stringValue(from: value) {
+                    attributes[key] = string
+                }
+            }
+
+            // Modern exports wrap metadata in an attributes dictionary.
+            if let nested = data["attributes"] as? [String: Any] {
+                for (key, value) in nested {
+                    if let string = stringValue(from: value) {
+                        attributes[key] = string
+                    }
+                }
+            }
+
+            return attributes
+        }
+
         // Convert tier data (pure transformation)
         var newTiers: Items = [:]
         for (tierName, rawItems) in tierData {
@@ -76,7 +104,18 @@ extension AppState {
                 }
 
                 return Item(id: id, attributes: stringAttributes.isEmpty ? nil : stringAttributes)
+            guard let itemArray = rawItems as? [Any] else {
+                throw ImportError.parsingFailed("Invalid items array for tier \(tierName)")
             }
+
+            let items: [Item] = itemArray.compactMap { element in
+                guard let data = element as? [String: Any] else { return nil }
+                guard let id = data["id"] as? String, !id.isEmpty else { return nil }
+                let attributes = extractAttributes(from: data)
+                return Item(id: id, attributes: attributes.isEmpty ? nil : attributes)
+            }
+
+            newTiers[tierName] = items
         }
 
         let importedOrder = importData["tierOrder"] as? [String]
