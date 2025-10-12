@@ -152,7 +152,7 @@ extension AppState {
     nonisolated
     private func parseCSVInBackground(_ csvString: String) async throws(ImportError) -> Items {
         do {
-            return try await Task.detached(priority: .userInitiated) { () throws -> Items in
+            return try await Task.detached(priority: .userInitiated) {
                 let lines = csvString.components(separatedBy: .newlines)
                 guard lines.count > 1 else {
                     throw ImportError.invalidData("CSV file appears to be empty")
