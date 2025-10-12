@@ -39,89 +39,89 @@ extension AppState {
     }
 
     private func parseAndConvertJSON(_ jsonString: String) async throws(ImportError) -> JSONImportResult {
-        guard let jsonData = jsonString.data(using: .utf8) else {
-            throw ImportError.invalidFormat("String is not valid UTF-8")
+        struct RawJSONImport: Sendable {
+            var tiers: Items
+            var importedOrder: [String]?
         }
 
-        let importData: [String: Any]
+        let raw: RawJSONImport
         do {
-            guard let data = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
-                throw ImportError.parsingFailed("Invalid JSON structure")
-            }
-            importData = data
-        } catch {
-            throw ImportError.parsingFailed("JSON parsing failed: \(error.localizedDescription)")
-        }
-
-        guard let tierData = importData["tiers"] as? [String: Any] else {
-            throw ImportError.missingRequiredField("tiers")
-        }
-
-        func stringValue(from value: Any) -> String? {
-            if let string = value as? String { return string }
-            if let number = value as? NSNumber { return number.stringValue }
-            return nil
-        }
-
-        func extractAttributes(from data: [String: Any]) -> [String: String] {
-            var attributes: [String: String] = [:]
-
-            // Legacy exports stored attributes at the top level alongside the id.
-            for (key, value) in data where key != "id" && key != "attributes" {
-                if let string = stringValue(from: value) {
-                    attributes[key] = string
+            raw = try await Task.detached(priority: .userInitiated) { () throws -> RawJSONImport in
+                guard let jsonData = jsonString.data(using: .utf8) else {
+                    throw ImportError.invalidFormat("String is not valid UTF-8")
                 }
-            }
 
-            // Modern exports wrap metadata in an attributes dictionary.
-            if let nested = data["attributes"] as? [String: Any] {
-                for (key, value) in nested {
-                    if let string = stringValue(from: value) {
-                        attributes[key] = string
+                let importData: [String: Any]
+                do {
+                    guard let data = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
+                        throw ImportError.parsingFailed("Invalid JSON structure")
                     }
-                }
-            }
-
-            return attributes
-        }
-
-        // Convert tier data (pure transformation)
-        var newTiers: Items = [:]
-        for (tierName, rawItems) in tierData {
-            guard let itemArray = rawItems as? [[String: Any]] else { continue }
-            newTiers[tierName] = itemArray.compactMap { data in
-                guard let id = data["id"] as? String, id.isEmpty == false else { return nil }
-
-                var attributes: [String: Any] = data["attributes"] as? [String: Any] ?? [:]
-                for (key, value) in data where key != "id" && key != "attributes" {
-                    attributes[key] = value
+                    importData = data
+                } catch {
+                    throw ImportError.parsingFailed("JSON parsing failed: \(error.localizedDescription)")
                 }
 
-                let stringAttributes = attributes.compactMapValues { value -> String? in
+                guard let tierData = importData["tiers"] as? [String: Any] else {
+                    throw ImportError.missingRequiredField("tiers")
+                }
+
+                func stringValue(from value: Any) -> String? {
                     if let string = value as? String { return string }
                     if let number = value as? NSNumber { return number.stringValue }
                     return nil
                 }
 
-                return Item(id: id, attributes: stringAttributes.isEmpty ? nil : stringAttributes)
-            guard let itemArray = rawItems as? [Any] else {
-                throw ImportError.parsingFailed("Invalid items array for tier \(tierName)")
-            }
+                func extractAttributes(from data: [String: Any]) -> [String: String] {
+                    var attributes: [String: String] = [:]
 
-            let items: [Item] = itemArray.compactMap { element in
-                guard let data = element as? [String: Any] else { return nil }
-                guard let id = data["id"] as? String, !id.isEmpty else { return nil }
-                let attributes = extractAttributes(from: data)
-                return Item(id: id, attributes: attributes.isEmpty ? nil : attributes)
-            }
+                    // Legacy exports stored attributes at the top level alongside the id.
+                    for (key, value) in data where key != "id" && key != "attributes" {
+                        if let string = stringValue(from: value) {
+                            attributes[key] = string
+                        }
+                    }
 
-            newTiers[tierName] = items
+                    // Modern exports wrap metadata in an attributes dictionary.
+                    if let nested = data["attributes"] as? [String: Any] {
+                        for (key, value) in nested {
+                            if let string = stringValue(from: value) {
+                                attributes[key] = string
+                            }
+                        }
+                    }
+
+                    return attributes
+                }
+
+                // Convert tier data (pure transformation)
+                var newTiers: Items = [:]
+                for (tierName, rawItems) in tierData {
+                    guard let itemArray = rawItems as? [[String: Any]] else {
+                        throw ImportError.parsingFailed("Invalid items array for tier \(tierName)")
+                    }
+
+                    let items: [Item] = itemArray.compactMap { data in
+                        guard let id = data["id"] as? String, !id.isEmpty else { return nil }
+                        let attributes = extractAttributes(from: data)
+                        return Item(id: id, attributes: attributes.isEmpty ? nil : attributes)
+                    }
+
+                    newTiers[tierName] = items
+                }
+
+                return RawJSONImport(tiers: newTiers, importedOrder: importData["tierOrder"] as? [String])
+            }.value
+        } catch let error as ImportError {
+            throw error
+        } catch {
+            throw ImportError.parsingFailed("Unexpected error: \(error.localizedDescription)")
         }
 
-        let importedOrder = importData["tierOrder"] as? [String]
-        let sanitizedOrder = sanitizeTierOrder(importedOrder, tiers: newTiers)
-
-        return JSONImportResult(tiers: normalizeLoadedTiers(newTiers, order: sanitizedOrder), tierOrder: sanitizedOrder)
+        let sanitizedOrder = sanitizeTierOrder(raw.importedOrder, tiers: raw.tiers)
+        return JSONImportResult(
+            tiers: normalizeLoadedTiers(raw.tiers, order: sanitizedOrder),
+            tierOrder: sanitizedOrder
+        )
     }
 
     func importFromCSV(_ csvString: String) async throws(ImportError) {
@@ -151,27 +151,35 @@ extension AppState {
     // Swift 6.2 pattern: heavy CSV parsing runs on background thread pool via Task.detached
     nonisolated
     private func parseCSVInBackground(_ csvString: String) async throws(ImportError) -> Items {
-        let lines = csvString.components(separatedBy: .newlines)
-        guard lines.count > 1 else {
-            throw ImportError.invalidData("CSV file appears to be empty")
+        do {
+            return try await Task.detached(priority: .userInitiated) { () throws -> Items in
+                let lines = csvString.components(separatedBy: .newlines)
+                guard lines.count > 1 else {
+                    throw ImportError.invalidData("CSV file appears to be empty")
+                }
+
+                var newTiers: Items = [
+                    "S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []
+                ]
+
+                for line in lines.dropFirst() {
+                    guard !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+
+                    let components = Self.parseCSVLine(line)
+                    guard components.count >= 3 else { continue }
+
+                    if let item = Self.createItemFromCSVComponents(components) {
+                        Self.addItemToTier(item, tier: components[2], in: &newTiers)
+                    }
+                }
+
+                return newTiers
+            }.value
+        } catch let error as ImportError {
+            throw error
+        } catch {
+            throw ImportError.parsingFailed("Unexpected error: \(error.localizedDescription)")
         }
-
-        var newTiers: Items = [
-            "S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []
-        ]
-
-        for line in lines.dropFirst() {
-            guard !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
-
-            let components = Self.parseCSVLine(line)
-            guard components.count >= 3 else { continue }
-
-            if let item = Self.createItemFromCSVComponents(components) {
-                Self.addItemToTier(item, tier: components[2], in: &newTiers)
-            }
-        }
-
-        return newTiers
     }
 
     nonisolated private static func createItemFromCSVComponents(_ components: [String]) -> Item? {
