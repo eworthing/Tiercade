@@ -90,7 +90,7 @@ extension AppState {
 
         if let explicit = result.explicitTierOrder {
             var seen = Set<String>()
-            let availableLookup = Dictionary(uniqueKeysWithValues: result.tiers.keys.map { ($0.lowercased(), $0) })
+            let availableLookup = Dictionary(uniqueKeysWithValues: result.tiers.keys.lazy.map { ($0.lowercased(), $0) })
 
             var normalizedExplicit: [String] = []
             for raw in explicit {
