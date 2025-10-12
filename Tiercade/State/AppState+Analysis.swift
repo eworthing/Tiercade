@@ -129,7 +129,7 @@ extension AppState {
 
         let unrankedCount = tiers["unranked"]?.count ?? 0
         if unrankedCount > 0 {
-            let denominator = max(1, totalItems + unrankedCount)
+            let denominator = max(1, totalItems)
             let percentage = Double(unrankedCount) / Double(denominator) * 100
             let formatted = String(format: "%.1f", percentage)
             insights.append("\(formatted)% of items remain unranked")

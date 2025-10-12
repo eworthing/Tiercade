@@ -15,14 +15,7 @@ extension AppState {
             return try await withLoadingIndicator(message: "Exporting \(format.displayName)...") {
                 updateProgress(0.2)
 
-                let tierConfig: TierConfig = [
-                    "S": TierConfigEntry(name: "S", description: nil),
-                    "A": TierConfigEntry(name: "A", description: nil),
-                    "B": TierConfigEntry(name: "B", description: nil),
-                    "C": TierConfigEntry(name: "C", description: nil),
-                    "D": TierConfigEntry(name: "D", description: nil),
-                    "F": TierConfigEntry(name: "F", description: nil)
-                ]
+                let tierConfig = makeCurrentTierConfig()
                 updateProgress(0.4)
 
                 switch exportBinaryFormat(format, group: group, themeName: themeName) {
@@ -66,14 +59,7 @@ extension AppState {
     }
 
     func exportText(group: String = "All", themeName: String = "Default") -> String {
-        let config: TierConfig = [
-            "S": TierConfigEntry(name: "S", description: nil),
-            "A": TierConfigEntry(name: "A", description: nil),
-            "B": TierConfigEntry(name: "B", description: nil),
-            "C": TierConfigEntry(name: "C", description: nil),
-            "D": TierConfigEntry(name: "D", description: nil),
-            "F": TierConfigEntry(name: "F", description: nil)
-        ]
+        let config = makeCurrentTierConfig()
         return ExportFormatter.generate(
             group: group,
             date: .now,
@@ -121,10 +107,13 @@ extension AppState {
         for tierName in tierOrder {
             guard
                 let items = tiers[tierName],
-                !items.isEmpty,
-                let config = tierConfig[tierName]
+                !items.isEmpty
             else { continue }
 
+            let config = tierConfig[tierName] ?? TierConfigEntry(
+                name: tierLabels[tierName] ?? tierName,
+                colorHex: tierColors[tierName]
+            )
             markdown += "## \(config.name) Tier\n\n"
             for item in items {
                 markdown += "- **\(item.name ?? item.id)** (Season \(item.seasonString ?? "?"))\n"
@@ -237,5 +226,27 @@ extension AppState {
             showErrorToast("Export Failed", message: "Unsupported export format {warning}")
             return nil
         }
+    }
+
+    private func makeCurrentTierConfig() -> TierConfig {
+        func makeEntry(for tierId: String) -> TierConfigEntry {
+            let displayName = tierLabels[tierId]?.nilIfEmpty ?? tierId
+            return TierConfigEntry(name: displayName, colorHex: tierColors[tierId])
+        }
+
+        var config: TierConfig = [:]
+
+        for tierId in tierOrder {
+            guard tierId != "unranked" else { continue }
+            config[tierId] = makeEntry(for: tierId)
+        }
+
+        for (tierId, items) in tiers where tierId != "unranked" && (!items.isEmpty || config[tierId] == nil) {
+            if config[tierId] == nil {
+                config[tierId] = makeEntry(for: tierId)
+            }
+        }
+
+        return config
     }
 }
