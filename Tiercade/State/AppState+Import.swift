@@ -66,12 +66,6 @@ extension AppState {
         var explicitOrder: [String]? = nil
         if let order = importData["tierOrder"] as? [String] {
             explicitOrder = order
-        } else if let anyOrder = importData["tierOrder"] as? [Any] {
-            let stringOrder = anyOrder.compactMap { element -> String? in
-                if let value = element as? String { return value }
-                return (element as? CustomStringConvertible)?.description
-            }
-            explicitOrder = stringOrder.isEmpty ? nil : stringOrder
         }
 
         // Convert tier data (pure transformation)
