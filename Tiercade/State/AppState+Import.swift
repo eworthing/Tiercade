@@ -46,7 +46,7 @@ extension AppState {
 
         let raw: RawJSONImport
         do {
-            raw = try await Task.detached(priority: .userInitiated) { () throws -> RawJSONImport in
+            raw = try await Task.detached(priority: .userInitiated) {
                 guard let jsonData = jsonString.data(using: .utf8) else {
                     throw ImportError.invalidFormat("String is not valid UTF-8")
                 }
