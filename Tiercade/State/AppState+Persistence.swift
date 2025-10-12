@@ -59,6 +59,7 @@ private struct CodableTheme: Codable {
 @MainActor
 private struct AppSaveFilePayload: Codable {
     let tiers: Items
+    let tierOrder: [String]?
     let tierLabels: [String: String]?
     let tierColors: [String: String]?
     let selectedThemeID: String?
@@ -169,6 +170,7 @@ extension AppState {
 
         let payload = AppSaveFilePayload(
             tiers: tiers,
+            tierOrder: tierOrder,
             tierLabels: tierLabels,
             tierColors: tierColors,
             selectedThemeID: selectedThemeID.uuidString,
@@ -211,6 +213,7 @@ extension AppState {
 
         applyLoadedFileSync(
             tiers: saveData.tiers,
+            tierOrder: sanitizeTierOrder(saveData.tierOrder, tiers: saveData.tiers),
             fileName: fileName,
             savedDate: saveData.createdDate
         )
@@ -232,6 +235,7 @@ extension AppState {
 
         applyLoadedFileSync(
             tiers: legacyTiers,
+            tierOrder: sanitizeTierOrder(nil, tiers: legacyTiers),
             fileName: fileName,
             savedDate: Date()
         )
@@ -487,13 +491,70 @@ extension AppState {
 
     private func applyLoadedFileSync(
         tiers: Items,
+        tierOrder: [String],
         fileName: String,
         savedDate: Date
     ) {
-        self.tiers = tiers
+        self.tiers = normalizeLoadedTiers(tiers, order: tierOrder)
+        self.tierOrder = tierOrder
         hasUnsavedChanges = false
         currentFileName = fileName
         lastSavedTime = savedDate
+    }
+
+    nonisolated func sanitizeTierOrder(_ imported: [String]?, tiers: Items) -> [String] {
+        let defaultOrder = ["S", "A", "B", "C", "D", "F"]
+        var seen = Set<String>()
+        var order: [String] = []
+
+        func append(_ key: String) {
+            guard key != "unranked" else { return }
+            if seen.insert(key).inserted {
+                order.append(key)
+            }
+        }
+
+        if let imported {
+            for raw in imported {
+                let normalized = raw.lowercased() == "unranked" ? "unranked" : raw
+                append(normalized)
+            }
+        }
+
+        if order.isEmpty {
+            let presentDefaults = defaultOrder.filter { tiers[$0] != nil }
+            if presentDefaults.isEmpty {
+                if tiers.isEmpty {
+                    defaultOrder.forEach(append)
+                }
+            } else {
+                presentDefaults.forEach(append)
+            }
+        }
+
+        for key in tiers.keys.sorted(by: { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }) where key != "unranked" {
+            append(key)
+        }
+
+        if order.isEmpty {
+            order = defaultOrder
+        }
+
+        return order
+    }
+
+    nonisolated func normalizeLoadedTiers(_ tiers: Items, order: [String]) -> Items {
+        var normalized = tiers
+
+        for key in order where normalized[key] == nil {
+            normalized[key] = []
+        }
+
+        if normalized["unranked"] == nil {
+            normalized["unranked"] = []
+        }
+
+        return normalized
     }
 
     private func parseLegacyTiers(from data: Data) -> Items? {
