@@ -170,4 +170,58 @@ struct TiercadeTests {
         }
     }
 
+    @Test("Exported JSON imports without data loss")
+    func jsonExportRoundTrip() async throws {
+        let sourceState = AppState(inMemory: true)
+        var destinationState: AppState?
+        defer {
+            sourceState.autosaveTask?.cancel()
+            destinationState?.autosaveTask?.cancel()
+            clearPersistedState()
+        }
+
+        let originalItem = Item(
+            id: "player-1",
+            name: "Player One",
+            seasonString: "1",
+            seasonNumber: 1,
+            status: "Active",
+            description: "Top seeded player",
+            imageUrl: "https://example.com/player-1.png",
+            videoUrl: "https://example.com/player-1.mp4"
+        )
+
+        sourceState.tiers = [
+            "S": [originalItem],
+            "A": [],
+            "B": [],
+            "C": [],
+            "D": [],
+            "F": [],
+            "unranked": []
+        ]
+
+        let (data, _) = try await sourceState.exportToFormat(.json)
+        let jsonString = String(data: data, encoding: .utf8)
+        #expect(jsonString != nil, "Export should produce UTF-8 JSON")
+        guard let jsonString else { return }
+
+        let destination = AppState(inMemory: true)
+        destinationState = destination
+        try await destination.importFromJSON(jsonString)
+
+        let importedItem = destination.tiers["S"]?.first
+        #expect(importedItem != nil, "Tier S should contain the imported item")
+        #expect(importedItem?.id == originalItem.id)
+        #expect(importedItem?.name == originalItem.name)
+        #expect(importedItem?.imageUrl == originalItem.imageUrl)
+        #expect(importedItem?.seasonString == originalItem.seasonString)
+        #expect(importedItem?.seasonNumber == originalItem.seasonNumber)
+    }
+
+    private func clearPersistedState() {
+        UserDefaults.standard.removeObject(forKey: "Tiercade.tierlist.active.v1")
+        UserDefaults.standard.removeObject(forKey: "Tiercade.tierlist.recents.v1")
+    }
+
 }
