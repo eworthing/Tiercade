@@ -2,6 +2,17 @@ import Foundation
 import SwiftUI
 import TiercadeCore
 
+private struct JSONImportResult {
+    let tiers: Items
+    let explicitTierOrder: [String]?
+
+    var rankedTierNames: [String] {
+        tiers.keys
+            .filter { $0.caseInsensitiveCompare("unranked") != .orderedSame }
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+}
+
 @MainActor
 extension AppState {
     // MARK: - Import System (JSON/CSV)
@@ -12,12 +23,13 @@ extension AppState {
                 updateProgress(0.2)
 
                 // Heavy JSON parsing and conversion on background thread pool
-                let newTiers = try await parseAndConvertJSON(jsonString)
+                let importResult = try await parseAndConvertJSON(jsonString)
                 updateProgress(0.8)
 
                 // State updates on MainActor
                 let snapshot = captureTierSnapshot()
-                tiers = newTiers
+                tierOrder = resolveImportedTierOrder(from: importResult)
+                tiers = importResult.tiers
                 finalizeChange(action: "Import JSON", undoSnapshot: snapshot)
                 updateProgress(1.0)
 
@@ -32,7 +44,7 @@ extension AppState {
 
     // Swift 6.2 pattern: heavy JSON work runs on background thread pool via Task.detached
     nonisolated
-    private func parseAndConvertJSON(_ jsonString: String) async throws(ImportError) -> Items {
+    private func parseAndConvertJSON(_ jsonString: String) async throws(ImportError) -> JSONImportResult {
         guard let jsonData = jsonString.data(using: .utf8) else {
             throw ImportError.invalidFormat("String is not valid UTF-8")
         }
@@ -51,6 +63,17 @@ extension AppState {
             throw ImportError.missingRequiredField("tiers")
         }
 
+        var explicitOrder: [String]? = nil
+        if let order = importData["tierOrder"] as? [String] {
+            explicitOrder = order
+        } else if let anyOrder = importData["tierOrder"] as? [Any] {
+            let stringOrder = anyOrder.compactMap { element -> String? in
+                if let value = element as? String { return value }
+                return (element as? CustomStringConvertible)?.description
+            }
+            explicitOrder = stringOrder.isEmpty ? nil : stringOrder
+        }
+
         // Convert tier data (pure transformation)
         var newTiers: Items = [:]
         for (tierName, itemData) in tierData {
@@ -64,7 +87,47 @@ extension AppState {
             }
         }
 
-        return newTiers
+        return JSONImportResult(tiers: newTiers, explicitTierOrder: explicitOrder)
+    }
+
+    @MainActor
+    private func resolveImportedTierOrder(from result: JSONImportResult) -> [String] {
+        let deterministic = result.rankedTierNames
+
+        if let explicit = result.explicitTierOrder {
+            var seen = Set<String>()
+            let availableLookup = Dictionary(uniqueKeysWithValues: result.tiers.keys.map { ($0.lowercased(), $0) })
+
+            var normalizedExplicit: [String] = []
+            for raw in explicit {
+                let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty else { continue }
+                guard trimmed.caseInsensitiveCompare("unranked") != .orderedSame else { continue }
+
+                let lowercased = trimmed.lowercased()
+                guard seen.insert(lowercased).inserted else { continue }
+
+                let resolved = availableLookup[lowercased] ?? trimmed
+                normalizedExplicit.append(resolved)
+            }
+
+            if normalizedExplicit.isEmpty {
+                return fallbackOrder(with: deterministic)
+            }
+
+            let missing = deterministic.filter { !seen.contains($0.lowercased()) }
+            return normalizedExplicit + missing
+        }
+
+        return fallbackOrder(with: deterministic)
+    }
+
+    @MainActor
+    private func fallbackOrder(with deterministic: [String]) -> [String] {
+        let existingLowercased = Set(tierOrder.map { $0.lowercased() })
+        let missing = deterministic.filter { !existingLowercased.contains($0.lowercased()) }
+        guard !missing.isEmpty else { return tierOrder }
+        return tierOrder + missing
     }
 
     func importFromCSV(_ csvString: String) async throws(ImportError) {
@@ -146,12 +209,12 @@ extension AppState {
     func importFromJSON(url: URL) async throws(ImportError) {
         do {
             // File I/O and parsing on background thread pool
-            let (newTiers, newOrder) = try await loadProjectFromFile(url)
+            let importResult = try await loadProjectFromFile(url)
 
             // State updates on MainActor
             let snapshot = captureTierSnapshot()
-            tierOrder = newOrder
-            tiers = newTiers
+            tierOrder = resolveImportedTierOrder(from: importResult)
+            tiers = importResult.tiers
             finalizeChange(action: "Import Project", undoSnapshot: snapshot)
 
             showSuccessToast("Import Complete", message: "Project loaded successfully {import}")
@@ -166,7 +229,7 @@ extension AppState {
 
     // Swift 6.2 pattern: file I/O and ModelResolver on background via Task.detached
     nonisolated
-    private func loadProjectFromFile(_ url: URL) async throws(ImportError) -> (Items, [String]) {
+    private func loadProjectFromFile(_ url: URL) async throws(ImportError) -> JSONImportResult {
         do {
             let project = try await ModelResolver.loadProjectAsync(from: url)
             let resolvedTiers = ModelResolver.resolveTiers(from: project)
@@ -178,14 +241,13 @@ extension AppState {
                     Item(id: item.id, name: item.title, imageUrl: item.thumbUri)
                 }
             }
-            return (newTiers, newOrder)
+            return JSONImportResult(tiers: newTiers, explicitTierOrder: newOrder)
         } catch {
             // Fallback: try loading as plain JSON
             do {
                 let data = try Data(contentsOf: url)
                 let content = String(data: data, encoding: .utf8) ?? ""
-                let newTiers = try await parseAndConvertJSON(content)
-                return (newTiers, ["S", "A", "B", "C", "D", "F"])
+                return try await parseAndConvertJSON(content)
             } catch {
                 throw ImportError.invalidData("Could not load project or JSON: \(error.localizedDescription)")
             }
