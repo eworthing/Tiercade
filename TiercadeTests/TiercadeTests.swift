@@ -170,4 +170,67 @@ struct TiercadeTests {
         }
     }
 
+    @MainActor
+    @Test("JSON import appends new tiers when order is omitted")
+    func jsonImportAppendsNewTiers() async throws {
+        let appState = AppState()
+
+        let json = """
+        {
+          "tiers": {
+            "S": [{"id": "s-tier"}],
+            "Legends": [{"id": "legend-1", "name": "Legend"}]
+          }
+        }
+        """
+
+        try await appState.importFromJSON(json)
+
+        #expect(Array(appState.tierOrder.prefix(6)) == ["S", "A", "B", "C", "D", "F"], "Existing order should remain intact")
+        #expect(appState.tierOrder.contains("Legends"), "Imported tiers should be added to the order")
+        #expect(appState.tiers["Legends"]?.count == 1)
+    }
+
+    @MainActor
+    @Test("JSON import respects explicit tier order while ensuring visibility")
+    func jsonImportRespectsExplicitOrder() async throws {
+        let appState = AppState()
+
+        let json = """
+        {
+          "tierOrder": ["Legends", "S"],
+          "tiers": {
+            "S": [{"id": "s-tier"}],
+            "Legends": [{"id": "legend-1"}],
+            "Masters": [{"id": "master-1"}]
+          }
+        }
+        """
+
+        try await appState.importFromJSON(json)
+
+        #expect(Array(appState.tierOrder.prefix(2)) == ["Legends", "S"], "Explicit order should be honored")
+        #expect(appState.tierOrder.last == "Masters", "Tiers missing from the explicit order should still appear at the end")
+    }
+
+    @MainActor
+    @Test("Explicit tier order introduces empty tiers when missing from payload")
+    func jsonImportCreatesMissingExplicitTiers() async throws {
+        let appState = AppState()
+
+        let json = """
+        {
+          "tierOrder": ["Legends", "S"],
+          "tiers": {
+            "S": [{"id": "s-tier"}]
+          }
+        }
+        """
+
+        try await appState.importFromJSON(json)
+
+        #expect(appState.tierOrder.first == "Legends")
+        #expect(appState.tiers["Legends"]?.isEmpty == true, "Missing tiers from the payload should be created empty when referenced in the order")
+    }
+
 }
