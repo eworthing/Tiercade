@@ -171,7 +171,6 @@ struct VibrantCardView: View {
             .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         })
         .buttonStyle(.plain)
-        .focusable(true)
         .punchyFocus(tier: tier, cornerRadius: 12)
     }
 }

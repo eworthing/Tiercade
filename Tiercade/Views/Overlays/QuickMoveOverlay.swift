@@ -5,6 +5,14 @@ import TiercadeCore
 struct QuickMoveOverlay: View {
     @Bindable var app: AppState
     @Environment(\.editMode) private var editMode
+    @FocusState private var focusedElement: FocusElement?
+
+    private enum FocusElement: Hashable {
+        case tier(String)
+        case toggleSelection
+        case details
+        case cancel
+    }
 
     var body: some View {
         if let item = app.quickMoveTarget {
@@ -15,6 +23,16 @@ struct QuickMoveOverlay: View {
             let allTiers = app.tierOrder + ["unranked"]
             let currentTier = app.currentTier(of: item.id)
             let isMultiSelectActive = editMode?.wrappedValue == .active
+            let computeDefaultFocus: () -> FocusElement = {
+                guard let target = app.quickMoveTarget else { return .cancel }
+                return resolvedDefaultFocus(
+                    tiers: allTiers,
+                    currentTier: app.currentTier(of: target.id),
+                    isBatchMode: app.batchQuickMoveActive,
+                    hasSelectionControls: (editMode?.wrappedValue == .active) && !app.batchQuickMoveActive
+                )
+            }
+            let defaultFocus = computeDefaultFocus()
 
             ZStack {
                 // Background dimming (non-interactive)
@@ -43,6 +61,7 @@ struct QuickMoveOverlay: View {
                                         action: { app.commitQuickMove(to: tierName) }
                                     )
                                     .accessibilityIdentifier("QuickMove_\(tierName)")
+                                    .focused($focusedElement, equals: .tier(tierName))
                                 }
                             }
                         }
@@ -64,6 +83,7 @@ struct QuickMoveOverlay: View {
                                 }
                                 .buttonStyle(.bordered)
                                 .accessibilityIdentifier("QuickMove_ToggleSelection")
+                                .focused($focusedElement, equals: .toggleSelection)
                             }
 
                             Button("View Details") {
@@ -72,6 +92,7 @@ struct QuickMoveOverlay: View {
                             }
                             .buttonStyle(.bordered)
                             .accessibilityIdentifier("QuickMove_ViewDetails")
+                            .focused($focusedElement, equals: .details)
                         }
 
                         Spacer()
@@ -81,6 +102,7 @@ struct QuickMoveOverlay: View {
                         }
                         .buttonStyle(.bordered)
                         .accessibilityIdentifier("QuickMove_Cancel")
+                        .focused($focusedElement, equals: .cancel)
                     }
                     .padding(.horizontal, 24)
                 }
@@ -88,12 +110,58 @@ struct QuickMoveOverlay: View {
                 .tvGlassRounded(28)
                 .shadow(color: Color.black.opacity(0.22), radius: 24, y: 8)
                 .focusSection()
+                .defaultFocus($focusedElement, defaultFocus)
+                .onAppear { focusedElement = defaultFocus }
+                .onDisappear { focusedElement = nil }
+                .onChange(of: app.batchQuickMoveActive) { _, _ in
+                    focusedElement = computeDefaultFocus()
+                }
+                .onChange(of: app.quickMoveTarget?.id) { _, _ in
+                    focusedElement = computeDefaultFocus()
+                }
+                .onChange(of: editMode?.wrappedValue) { _, _ in
+                    focusedElement = computeDefaultFocus()
+                }
+                .onExitCommand { app.cancelQuickMove() }
                 .accessibilityElement(children: .contain)
                 .accessibilityAddTraits(.isModal)
                 .accessibilityIdentifier("QuickMove_Overlay")
             }
             .transition(.opacity.combined(with: .scale))
         }
+    }
+
+    private func resolvedDefaultFocus(
+        tiers: [String],
+        currentTier: String?,
+        isBatchMode: Bool,
+        hasSelectionControls: Bool
+    ) -> FocusElement {
+        if hasSelectionControls {
+            return .toggleSelection
+        }
+
+        if isBatchMode {
+            if let first = tiers.first {
+                return .tier(first)
+            }
+            return .cancel
+        }
+
+        if let currentTier,
+           let firstAlternative = tiers.first(where: { $0 != currentTier }) {
+            return .tier(firstAlternative)
+        }
+
+        if let currentTier, tiers.contains(currentTier) {
+            return .cancel
+        }
+
+        if let first = tiers.first {
+            return .tier(first)
+        }
+
+        return .cancel
     }
 }
 

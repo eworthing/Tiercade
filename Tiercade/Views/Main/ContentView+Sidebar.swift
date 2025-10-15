@@ -58,9 +58,7 @@ struct SidebarSearchView: View {
                         app.activeFilter = filter
                     }
                     .buttonStyle(GhostButtonStyle())
-                    #if os(tvOS)
-                    .focusable()
-                    #else
+                    #if !os(tvOS)
                     .controlSize(.small)
                     #endif
                     .background(

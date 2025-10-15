@@ -49,7 +49,6 @@ struct DetailSidebarView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Close Details")
         .accessibilityHint("Dismiss the details sidebar")
-        .focusable(true)
         .focused(focus, equals: .close)
     }
 }

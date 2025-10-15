@@ -270,6 +270,19 @@ private struct TierLabelEditor: View {
     @State private var label: String = ""
     @State private var colorHex: String = ""
     @State private var showAdvancedColor: Bool = false
+    @FocusState private var focusedField: FocusField?
+
+    private enum FocusField: Hashable {
+        case label
+        case apply
+        case colorOption(String)
+        case advancedToggle
+        case advancedHex
+        case advancedSet
+        case lock
+        case clear
+        case close
+    }
 
     // Color picker options for tvOS
     private let colorOptions: [(String, String)] = [
@@ -297,10 +310,12 @@ private struct TierLabelEditor: View {
                         .background(Color.gray.opacity(0.2))
                         .cornerRadius(8)
                         .frame(width: 360)
+                        .focused($focusedField, equals: .label)
                     Button("Apply") {
                         app.setDisplayLabel(label, for: tierId)
                         app.showInfoToast("Renamed", message: "Tier \(tierId) → \(label)")
                     }
+                    .focused($focusedField, equals: .apply)
                 }
             }
 
@@ -329,6 +344,7 @@ private struct TierLabelEditor: View {
                             }
                         })
                         .buttonStyle(.plain)
+                        .focused($focusedField, equals: .colorOption(hex))
                     }
                 }
 
@@ -340,6 +356,7 @@ private struct TierLabelEditor: View {
                     }
                     .font(.caption)
                 })
+                .focused($focusedField, equals: .advancedToggle)
 
                 if showAdvancedColor {
                     HStack(spacing: 12) {
@@ -349,10 +366,12 @@ private struct TierLabelEditor: View {
                             .background(Color.gray.opacity(0.2))
                             .cornerRadius(8)
                             .frame(width: 360)
+                            .focused($focusedField, equals: .advancedHex)
                         Button("Set") {
                             app.setDisplayColorHex(colorHex, for: tierId)
                             app.showInfoToast("Recolored", message: colorHex)
                         }
+                        .focused($focusedField, equals: .advancedSet)
                     }
                 }
             }
@@ -363,11 +382,14 @@ private struct TierLabelEditor: View {
                     app.toggleTierLocked(tierId)
                 }
                 .buttonStyle(.borderedProminent)
+                .focused($focusedField, equals: .lock)
                 Button("Clear Tier") {
                     app.clearTier(tierId)
                 }
                 .buttonStyle(.bordered)
+                .focused($focusedField, equals: .clear)
                 Button("Close", role: .cancel) { showMenu = false }
+                .focused($focusedField, equals: .close)
             }
         }
         .padding(24)
@@ -375,6 +397,17 @@ private struct TierLabelEditor: View {
             label = app.displayLabel(for: tierId)
             if let hex = app.displayColorHex(for: tierId) {
                 colorHex = hex
+            }
+            focusedField = .label
+        }
+        .onDisappear { focusedField = nil }
+        .focusSection()
+        .defaultFocus($focusedField, .label)
+        .onExitCommand { showMenu = false }
+        .onChange(of: showAdvancedColor) { _, isExpanded in
+            if !isExpanded,
+               focusedField == .advancedHex || focusedField == .advancedSet {
+                focusedField = .advancedToggle
             }
         }
     }

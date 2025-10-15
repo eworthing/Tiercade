@@ -67,7 +67,6 @@ struct MatchupArenaOverlay: View {
         .accessibilityIdentifier("MatchupOverlay_Root")
         .accessibilityElement(children: .contain)
 #if os(tvOS) || os(macOS)
-        .focusable(true)
         .focusSection()
 #endif
         .defaultFocus($focusAnchor, defaultFocus)

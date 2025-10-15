@@ -162,25 +162,13 @@ xcodebuild -project Tiercade.xcodeproj -scheme Tiercade \
 ```
 
 ### Test Commands
-```bash
-# Core logic tests (Swift Testing)
-cd TiercadeCore && swift test
-
-# Full pipeline (build + UI tests + artifacts)
-./tools/tvOS_build_and_test.sh
-
-# Artifacts land in /tmp:
-# - tiercade_ui_before.png, tiercade_ui_after.png
-# - tiercade_debug.log
-# - tiercade_build_and_test.log
-```
+There are currently no active test targets in this repo. When tests return, prefer Swift Testing for unit tests and minimal tvOS UI automation with accessibility IDs.
 
 ### UI Test Strategy
-- **Framework:** Swift Testing for new tests. UI tests use `XCUIRemote.shared` for tvOS remote simulation
-- **Launch arg:** `-uiTest` enables test-only hooks
-- **Focus:** Existence checks (`app.buttons["ID"].exists`), element counts, component verification
-- **Avoid:** Complex navigation (XCUIRemote too slow, causes timeouts ~12s)
-- **Current suite:** 11 tests, ~2min runtime, 100% passing
+- **Framework:** Use minimal UI tests only when necessary. Prefer existence checks and direct access via accessibility identifiers.
+- **Launch arg:** `-uiTest` can enable test-only hooks in the app when needed.
+- **Focus:** Existence checks (`app.buttons["ID"].exists`), element counts, simple component verification.
+- **Avoid:** Complex remote navigation; long paths cause timeouts.
 
 ### Manual Verification
 - Validate visuals in the latest tvOS 26 Apple TV 4K simulator; that environment mirrors the focus halos and Liquid Glass chrome we care about.

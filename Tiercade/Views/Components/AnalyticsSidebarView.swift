@@ -11,20 +11,17 @@ struct AnalyticsSidebarView: View {
     private enum FocusElement: Hashable {
         case close
         case insight(Int)
-        case backgroundTrap // Traps focus escaping to toolbar/grid
     }
 
     var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width * 0.65
             ZStack(alignment: .trailing) {
-                // Focus-trapping background: Focusable to catch stray focus and redirect back
+                // Background dimming (non-focusable; tap to dismiss)
                 Color.black.opacity(0.55)
                     .ignoresSafeArea()
                     .onTapGesture { app.closeAnalyticsSidebar() }
                     .accessibilityHidden(true)
-                    .focusable()
-                    .focused($focusedElement, equals: .backgroundTrap)
 
                 ZStack(alignment: .topTrailing) {
                     sidebarContent
@@ -45,12 +42,6 @@ struct AnalyticsSidebarView: View {
                 .defaultFocus($focusedElement, .close)
                 .onAppear { focusedElement = .close }
                 .onDisappear { focusedElement = nil }
-                .onChange(of: focusedElement) { _, newValue in
-                    // Redirect background trap to close button
-                    if case .backgroundTrap = newValue {
-                        focusedElement = .close
-                    }
-                }
                 .onExitCommand { app.closeAnalyticsSidebar() }
                 #endif
             }
@@ -195,7 +186,6 @@ struct AnalyticsSidebarView: View {
         .background(Palette.surfHi)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         #if os(tvOS)
-        .focusable(true)
         .focused($focusedElement, equals: .insight(index))
         #endif
     }

@@ -6,6 +6,12 @@ struct TVActionBar: View {
     @Bindable var app: AppState
     @Environment(\.editMode) private var editMode
     var glassNamespace: Namespace.ID
+    @FocusState private var focusedControl: FocusTarget?
+
+    private enum FocusTarget: Hashable {
+        case move
+        case clear
+    }
 
     private var isMultiSelectActive: Bool {
         editMode?.wrappedValue == .active
@@ -13,6 +19,8 @@ struct TVActionBar: View {
 
     var body: some View {
         if isMultiSelectActive {
+            let hasSelection = app.selection.count > 0
+            let defaultFocus = hasSelection ? FocusTarget.move : .clear
             ZStack {
                 // Explicit background for UI test visibility
                 Color.black.opacity(0.3)
@@ -52,6 +60,7 @@ struct TVActionBar: View {
                         .buttonStyle(.tvRemote(.primary))
                         .accessibilityIdentifier("ActionBar_MoveBatch")
                         .accessibilityHint(selectionHint)
+                        .focused($focusedControl, equals: .move)
                     }
 
                     // Clear selection button
@@ -60,6 +69,7 @@ struct TVActionBar: View {
                     }
                     .buttonStyle(.tvRemote(.secondary))
                     .accessibilityIdentifier("ActionBar_ClearSelection")
+                    .focused($focusedControl, equals: .clear)
                 }
                 .lineLimit(1)
                 .padding(.horizontal, TVMetrics.barHorizontalPadding)
@@ -69,6 +79,20 @@ struct TVActionBar: View {
                 .glassEffectID("actionBar", in: glassNamespace)
                 .glassEffectUnion(id: "tiercade.controls", namespace: glassNamespace)
 #endif
+                .focusSection()
+                .defaultFocus($focusedControl, defaultFocus)
+                .onAppear { focusedControl = defaultFocus }
+                .onDisappear { focusedControl = nil }
+                .onChange(of: app.selection.count) { _, _ in
+                    focusedControl = app.selection.count > 0 ? .move : .clear
+                }
+                .onExitCommand {
+                    guard editMode != nil else { return }
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        editMode?.wrappedValue = .inactive
+                        app.clearSelection()
+                    }
+                }
             }
             .frame(maxWidth: .infinity)
             .frame(height: TVMetrics.bottomBarHeight)

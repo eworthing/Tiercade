@@ -13,12 +13,11 @@ struct TierListBrowserScene: View {
 
     var body: some View {
         ZStack {
-            // Focus-trapping background: Focusable to catch stray focus and redirect back
+            // Background dimming (non-interactive)
             Color.black.opacity(0.65)
                 .ignoresSafeArea()
+                .allowsHitTesting(false)
                 .accessibilityHidden(true)
-                .focusable()
-                .focused($focus, equals: .backgroundTrap)
 
             VStack(alignment: .leading, spacing: 28) {
                 header
@@ -76,12 +75,7 @@ struct TierListBrowserScene: View {
             .onChange(of: focus) { _, newValue in
                 guard !suppressFocusReset else { return }
                 if let newValue {
-                    // Redirect background trap to close button
-                    if case .backgroundTrap = newValue {
-                        focus = .close
-                    } else {
-                        lastFocus = newValue
-                    }
+                    lastFocus = newValue
                 } else if let lastFocus {
                     focus = lastFocus
                 }
@@ -168,7 +162,6 @@ struct TierListBrowserScene: View {
     private enum FocusTarget: Hashable {
         case close
         case card(String)
-        case backgroundTrap // Traps focus escaping to toolbar/grid
     }
 }
 

@@ -110,7 +110,7 @@ final class AppState {
     // Core state (automatic observation via @Observable)
     var tiers: Items = ["S":[],"A":[],"B":[],"C":[],"D":[],"F":[],"unranked":[]]
     var tierOrder: [String] = ["S","A","B","C","D","F"]
-    
+
     // UI/feature state
     var searchQuery: String = ""
     var isLoading: Bool = false
@@ -141,63 +141,18 @@ Each major feature is implemented as a self-contained system:
 
 ### **Data Flow**
 ```
-User Interaction → SwiftUI View → AppState Method → 
+User Interaction → SwiftUI View → AppState Method →
 TiercadeCore Logic → State Update → UI Refresh
 ```
 
 ## 🧪 Testing
 
-### **Test Coverage**
-- **Unit Tests** - Core logic validation in TiercadeCore (run via `swift test` inside `TiercadeCore`)
-- **Integration Tests** - Feature interaction testing
-- **UI Tests** - End-to-end user journey validation (iOS/tvOS simulators supported)
-- **Swift Testing First** - All new suites are written with Swift Testing annotations, with XCTest cases migrated opportunistically.
-
-### **Running Tests**
-```bash
-# Unit tests for core logic
-cd TiercadeCore && swift test
-
-# iOS app tests (example, adjust device name as needed)
-xcodebuild test -project Tiercade.xcodeproj -scheme Tiercade -destination 'platform=iOS Simulator,name=iPhone 16'
-
-# tvOS UI tests (recommended for accessibility verification)
-xcodebuild test -project Tiercade.xcodeproj -scheme Tiercade \
-  -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' \
-  -only-testing:TiercadeUITests/QuickSmokeTests
-```
-
-### **Test Architecture**
-- **TiercadeCore Tests** - Platform-agnostic logic testing
-- **TiercadeTests** - iOS-specific functionality testing  
-- **TiercadeUITests** - User interface and interaction testing
-  - `QuickSmokeTests` (3 tests, ~23s) - Essential smoke tests for critical UI elements
-  - `DirectAccessibilityTests` (5 tests, ~65s) - Comprehensive accessibility verification
-  - `HeadToHeadSimplifiedTests` (3 tests, ~20s) - H2H overlay component verification
-  - **Total Production Suite: 11 tests, ~2min runtime, 100% passing**
-
-### **tvOS UI Testing Best Practices**
-tvOS UI testing excels at **accessibility verification** but has limitations with **complex navigation workflows**:
-
-**✅ What Works Well:**
-- Existence checks (`app.buttons["ID"].exists`)
-- Element counting and label verification
-- Component structure validation
-- Accessibility identifier verification
-
-**❌ Limitations:**
-- Complex focus-based navigation (slow, unreliable)
-- Multi-step workflows requiring extensive XCUIRemote navigation
-- Tests timing out when navigation exceeds ~12 seconds
-
-**Recommended Approach:**
-- Use UI tests for accessibility and component verification
-- Use manual testing for complex multi-step workflows
-- Keep tests simple, fast, and focused on existence checks
+The repository currently has no active test targets. All previous unit/UI tests were intentionally removed to enable a clean slate. When we reintroduce tests, we’ll use the Swift Testing framework (`@Test`, `#expect`) and keep tvOS UI automation lean and accessibility-driven.
 
 ## 🛠️ Development
 
 ### **Requirements**
+
 - **Xcode 26+** - Latest development environment
 - **iOS 26.0+ Simulator** - For testing and development
 - **tvOS 26.0+ Simulator** - For tvOS UI testing (primary focus)
@@ -207,6 +162,7 @@ tvOS UI testing excels at **accessibility verification** but has limitations wit
 - **SwiftLint** - Enforce cyclomatic complexity thresholds (warning 8, error 12) as part of pre-commit checks
 
 ### **Project Setup**
+
 ```bash
 # Clone the repository
 git clone <repository-url>
@@ -220,11 +176,13 @@ Cmd+R (or Product → Run)
 ```
 
 ### **Interactive tvOS Verification**
+
 - After every successful build, boot the tvOS simulator with the latest app build, keep it open for visual review, and exercise the relevant surfaces with a Siri Remote (or keyboard arrow) pass to confirm focus, animations, and gestures.
 - Preferred flow: run the "Build tvOS Tiercade (Debug)" task (or `Cmd+R` in Xcode), then leave the simulator running while iterating on focus tweaks, visual polish, and final sign-off.
 
 ### **Project Structure**
-```
+
+```text
 Tiercade/
 ├── Tiercade/                  # Main app target (SwiftUI + tvOS focus)
 │   ├── State/                 # AppState core and feature extensions
@@ -244,15 +202,14 @@ Tiercade/
 │   │   ├── Models/            # Data structures & model resolution
 │   │   ├── Logic/             # Tiering, history, head-to-head logic
 │   │   └── Utilities/         # Formatters, data loaders, randomness
-│   └── Tests/                 # Core unit tests
-├── TiercadeTests/             # App unit/integration tests
-├── TiercadeUITests/           # UI automation suites (tvOS tests under tvOS/)
+│   └── README.md              # Core package overview (tests will return later)
 └── Tiercade.xcodeproj/        # Xcode project configuration
 ```
 
 ## 📊 Implementation Details
 
 ### **Export System Architecture**
+
 Multi-format export with async operations and progress tracking:
 
 ```swift
@@ -275,6 +232,7 @@ func exportToFormat(_ format: ExportFormat, group: String = "All", themeName: St
 ```
 
 ### **Analysis Engine**
+
 Comprehensive statistical analysis with balance scoring algorithm:
 
 ```swift
@@ -290,6 +248,7 @@ struct TierAnalysisData {
 ```
 
 ### **Progress System**
+
 Unified progress tracking for all async operations:
 
 ```swift
@@ -307,26 +266,31 @@ func updateProgress(_ value: Double) { /* 0.0 ... 1.0 */ }
 ## 🎯 Design Decisions
 
 ### **State Management Choice: @Observable + @MainActor**
+
 - **Rationale**: Modern Swift 6 observation replacing @ObservableObject/@Published
 - **Benefits**: Automatic observation, no boilerplate, compile-time concurrency safety
 - **Trade-offs**: Requires Swift 6 and latest OS versions
 
 ### **Architecture: MVVM with SwiftUI**
+
 - **Rationale**: Natural fit for SwiftUI's declarative paradigm
 - **Benefits**: Clean separation, testable business logic, reactive UI
 - **Trade-offs**: Some boilerplate, complexity for simple features
 
 ### **Core Logic: Separate Swift Package (TiercadeCore)**
+
 - **Rationale**: Platform-agnostic logic for potential multi-platform expansion
 - **Benefits**: Reusability, focused testing, clear boundaries
 - **Trade-offs**: Additional complexity, package management overhead
 
 ### **File Operations: Native iOS APIs**
+
 - **Rationale**: Deep integration with iOS Files app and sharing
 - **Benefits**: Native UX, security model compliance, feature richness
 - **Trade-offs**: iOS-specific implementation, complexity
 
 ### **Analytics: Custom Algorithm Implementation**
+
 - **Rationale**: Tailored balance scoring for tier list optimization
 - **Benefits**: Domain-specific insights, no external dependencies
 - **Trade-offs**: Custom algorithm maintenance, limited to our metrics
@@ -334,16 +298,19 @@ func updateProgress(_ value: Double) { /* 0.0 ... 1.0 */ }
 ## 🚀 Performance Considerations
 
 ### **Async Operations**
+
 - All file I/O operations use async/await for non-blocking UI
 - Progress tracking provides user feedback during long operations
 - Proper error handling with user-friendly messages
 
 ### **Memory Management**
+
 - @MainActor ensures UI updates on main thread
 - Weak references where appropriate to prevent retain cycles
 - Efficient data structures for large item lists
 
 ### **UI Responsiveness**
+
 - SwiftUI's declarative updates for smooth animations
 - Debounced search to avoid excessive filtering
 - Lazy loading for large datasets
@@ -351,18 +318,21 @@ func updateProgress(_ value: Double) { /* 0.0 ... 1.0 */ }
 ## 📱 User Experience Design
 
 ### **Interaction Patterns**
+
 - **Drag & Drop** - Primary interaction for tier management
 - **Quick Actions** - Keyboard shortcuts for power users
 - **Progressive Disclosure** - Advanced features accessible but not overwhelming
 - **Contextual Feedback** - Toast messages and progress indicators
 
 ### **Visual Design**
+
 - **Native iOS Patterns** - Follows Apple's Human Interface Guidelines
 - **Consistent Spacing** - Systematic layout with proper margins
 - **Color Coding** - Semantic colors for different states and actions
 - **Typography** - iOS system fonts with appropriate hierarchy
 
 ### **Accessibility**
+
 - VoiceOver support for screen readers
 - Dynamic Type support for text scaling
 - High contrast mode compatibility
@@ -371,6 +341,7 @@ func updateProgress(_ value: Double) { /* 0.0 ... 1.0 */ }
 ## 🔮 Future Enhancements
 
 ### **Planned Features**
+
 - **Cloud Sync** - iCloud integration for cross-device synchronization
 - **Collaboration** - Share tier lists with real-time collaboration
 - **Templates** - Pre-built tier list templates for common categories
@@ -378,6 +349,7 @@ func updateProgress(_ value: Double) { /* 0.0 ... 1.0 */ }
 - **Widget Support** - iOS home screen widgets for quick access
 
 ### **Technical Improvements**
+
 - **Performance Optimization** - Core Data for large datasets
 - **Offline Capabilities** - Enhanced offline-first architecture
 - **Localization** - Multi-language support
