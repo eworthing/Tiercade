@@ -1,4 +1,4 @@
-// Models.swift - Swift 6 Codable models for TierList schema (offline v1, cloud-ready)
+// ProjectDataModels.swift - Swift 6 Codable models for Tiercade project schema (offline v1, cloud-ready)
 import Foundation
 
 public enum JSONValue: Codable, Equatable {
