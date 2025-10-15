@@ -37,7 +37,7 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 - Manual sign-off keeps the tvOS 26 simulator open, cycling focus via Siri Remote or keyboard arrows after each build.
 
 ## Tooling & diagnostics
-- Asset refresh: `TMDB_API_KEY=… ./tools/fetch_bundled_images.sh` (see `tools/README_IMAGES.md`).
+- Asset refresh: manage bundled artwork directly in `Tiercade/Assets.xcassets` and keep paths aligned with `AppState+BundledProjects`.
 - Debug logging: `AppState.appendDebugFile` writes to `/tmp/tiercade_debug.log`; pipeline script also emits `tiercade_build_and_test.log` and before/after screenshots.
 - SourceKit often flags “No such module 'TiercadeCore'”; defer to `xcodebuild` results before debugging module wiring.
 
@@ -206,7 +206,6 @@ Tiercade/
 TiercadeCore/      # Platform-agnostic Swift package
   Sources/         # Models, Logic, Formatters
   Tests/           # Swift Testing unit tests
-tools/             # Build/test automation, image fetching
 ```
 
 ## Debugging Notes
@@ -218,11 +217,7 @@ tools/             # Build/test automation, image fetching
 `AppState.appendDebugFile(message)` writes to `/tmp/tiercade_debug.log`
 
 ### Image Asset Management
-```bash
-export TMDB_API_KEY='your-key'
-./tools/fetch_bundled_images.sh  # Fetch images for bundled tierlists
-# See tools/README_IMAGES.md for details
-```
+Maintain bundled images manually within `Tiercade/Assets.xcassets`. Ensure any changes stay consistent with identifiers referenced in `AppState+BundledProjects`.
 
 ### Common Issues
 1. **Build fails:** Check TiercadeCore is added as local package dependency
