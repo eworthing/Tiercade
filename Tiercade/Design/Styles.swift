@@ -108,28 +108,21 @@ struct TVRemoteButtonStyle: ButtonStyle {
             .foregroundStyle(palette.foreground)
             .contentShape(Capsule())
 
-        return Group {
-            if #available(tvOS 26.0, iOS 26.0, macOS 26.0, *) {
-                baseView
-                    .glassEffect(Glass.regular.tint(palette.tint).interactive(), in: Capsule())
-            } else {
-                baseView
-                    .background(.ultraThinMaterial, in: Capsule())
-            }
-        }
-        .overlay(
-            Capsule()
-                .stroke(palette.border, lineWidth: borderWidth)
-        )
-        .shadow(
-            color: palette.shadow,
-            radius: palette.shadowRadius(isFocused: isFocused),
-            x: 0,
-            y: palette.shadowYOffset(isFocused: isFocused)
-        )
-        .scaleEffect(scale)
-        .animation(animationFocus, value: isFocused)
-        .animation(animationPress, value: configuration.isPressed)
+        return baseView
+            .glassEffect(Glass.regular.tint(palette.tint).interactive(), in: Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(palette.border, lineWidth: borderWidth)
+            )
+            .shadow(
+                color: palette.shadow,
+                radius: palette.shadowRadius(isFocused: isFocused),
+                x: 0,
+                y: palette.shadowYOffset(isFocused: isFocused)
+            )
+            .scaleEffect(scale)
+            .animation(animationFocus, value: isFocused)
+            .animation(animationPress, value: configuration.isPressed)
     }
 
     private func font(for role: Role) -> Font {

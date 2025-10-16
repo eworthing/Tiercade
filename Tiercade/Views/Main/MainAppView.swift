@@ -119,6 +119,14 @@ struct MainAppView: View {
         } message: {
             Text("This will delete all items and reset the tier list. This action cannot be undone.")
         }
+        .fullScreenCover(isPresented: Binding(
+            get: { app.showTierListCreator },
+            set: { app.showTierListCreator = $0 }
+        )) {
+            if let draft = app.tierListCreatorDraft {
+                TierListCreatorWizard(appState: app, draft: draft)
+            }
+        }
     }
 
     // MARK: - Overlay Composition
@@ -189,14 +197,6 @@ struct MainAppView: View {
             ThemeCreatorOverlay(appState: app, draft: draft)
                 .transition(.opacity.combined(with: .scale(scale: 0.94)))
                 .zIndex(55)
-        }
-
-        if app.showTierListCreator, let draft = app.tierListCreatorDraft {
-            AccessibilityBridgeView()
-
-            TierListCreatorOverlay(appState: app, draft: draft)
-                .transition(.opacity.combined(with: .scale(scale: 0.94)))
-                .zIndex(56)
         }
 
         // Toast messages (bottom)
@@ -298,10 +298,7 @@ struct MainAppView: View {
             }
             #if DEBUG
             .overlay(alignment: .bottomTrailing) {
-                Text(BuildStamp.text)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .opacity(0.6)
+                BuildInfoView()
                     .padding(.trailing, TVMetrics.barHorizontalPadding)
                     .padding(.bottom, TVMetrics.barVerticalPadding + 4)
                     .allowsHitTesting(false)
@@ -335,16 +332,6 @@ private struct AccessibilityBridgeView: View {
             .accessibilityElement(children: .ignore)
     }
 }
-
-#if DEBUG && os(tvOS)
-private enum BuildStamp {
-    static let text: String = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss"
-        return "Build: \(formatter.string(from: Date()))"
-    }()
-}
-#endif
 
 // Simple tvOS-friendly toolbar exposing essential actions as buttons.
 struct TVToolbarView: View {

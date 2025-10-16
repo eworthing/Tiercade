@@ -70,22 +70,13 @@ private extension ThemeLibraryOverlay {
             .padding(.vertical, TVMetrics.overlayPadding / 2)
         }
 
-        if #available(tvOS 26.0, iOS 26.0, macOS 15.0, macCatalyst 26.0, *) {
-            container
-                .glassEffect(
-                    Glass.regular.tint(Palette.surface.opacity(0.92)).interactive(),
-                    in: RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
-                )
-                .glassEffectID("ThemeLibraryOverlay", in: glassNamespace)
-                .shadow(color: Color.black.opacity(0.35), radius: 32, y: 18)
-        } else {
-            container
-                .background(
-                    RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                )
-                .shadow(color: Color.black.opacity(0.35), radius: 32, y: 18)
-        }
+        container
+            .glassEffect(
+                Glass.regular.tint(Palette.surface.opacity(0.92)).interactive(),
+                in: RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
+            )
+            .glassEffectID("ThemeLibraryOverlay", in: glassNamespace)
+            .shadow(color: Color.black.opacity(0.35), radius: 32, y: 18)
     }
 
     var header: some View {

@@ -62,9 +62,9 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **SwiftUI** - Modern declarative UI framework
 - **Swift 6.0** - Latest language features with strict concurrency checking
 - **OS 26.0+** - Target deployment: iOS 26.0, tvOS 26.0, macOS 26.0
-- **TiercadeCore** - Platform-agnostic Swift Package for shared logic (iOS 17+/macOS 14+/tvOS 17+)
+- **TiercadeCore** - Platform-agnostic Swift Package for shared logic (iOS 26+/macOS 26+/tvOS 26+)
 
-> Note: The app targets OS 26.0+ to leverage the latest platform features (Swift 6 strict concurrency, modern SwiftUI APIs, @Observable macro). The `TiercadeCore` Swift package maintains broader compatibility (iOS 17+/macOS 14+/tvOS 17+) for potential cross-platform reuse. See `TiercadeCore/README.md` for core package details.
+> Note: The app targets OS 26.0+ to leverage the latest platform features (Swift 6 strict concurrency, modern SwiftUI APIs, @Observable macro). The `TiercadeCore` Swift package shares the same OS 26.0+ baseline to align compiler features and simplify maintenance.
 
 ### **Design Patterns**
 - **MVVM Architecture** - Clean separation of concerns with SwiftUI

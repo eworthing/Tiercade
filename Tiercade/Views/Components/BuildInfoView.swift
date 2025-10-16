@@ -18,21 +18,21 @@ struct BuildInfoView: View {
 
     private func getActualBuildDate() -> Date? {
         #if DEBUG
-        // Try to get build date from executable modification time
+        // Prefer Info.plist so the timestamp matches the build script's output
+        if let infoPath = Bundle.main.path(forResource: "Info", ofType: "plist") {
+            if let attributes = try? FileManager.default.attributesOfItem(atPath: infoPath),
+               let infoDate = attributes[.modificationDate] as? Date {
+                return infoDate
+            }
+        }
+
+        // Fallback: use the executable modification time
         if let executablePath = Bundle.main.executablePath {
             do {
                 let attributes = try FileManager.default.attributesOfItem(atPath: executablePath)
                 return attributes[.modificationDate] as? Date
             } catch {
-                // Fallback: use Info.plist modification date
-                if let infoPath = Bundle.main.path(forResource: "Info", ofType: "plist") {
-                    do {
-                        let infoAttributes = try FileManager.default.attributesOfItem(atPath: infoPath)
-                        return infoAttributes[.modificationDate] as? Date
-                    } catch {
-                        return nil
-                    }
-                }
+                return nil
             }
         }
         #endif
@@ -47,10 +47,11 @@ struct BuildInfoView: View {
         #if DEBUG
         Text("Build: \(formattedBuildTime)")
             .font(.caption2)
-            .foregroundStyle(.tertiary)
-            .padding(8)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .tvGlassCapsule()
+            .opacity(0.8)
             .accessibilityIdentifier("BuildInfo_Timestamp")
         #else
         EmptyView()

@@ -1,0 +1,310 @@
+import SwiftUI
+import TiercadeCore
+
+// MARK: - Compact Tabbed Creator
+
+struct TierListCreatorWizard: View {
+    @Bindable var appState: AppState
+    @Bindable var draft: TierProjectDraft
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var selectedTab = 0
+
+    // Sheet presentations for item/tier editing
+    @State private var showingTierDetailsSheet = false
+    @State private var showingItemDetailsSheet = false
+    @State private var selectedTierID: UUID?
+    @State private var selectedItemID: UUID?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Compact toolbar with tabs and actions combined
+            compactToolbar
+
+            // Tab content (full height)
+            TabView(selection: $selectedTab) {
+                SettingsWizardPage(appState: appState, draft: draft)
+                    .tag(0)
+
+                SchemaWizardPage(appState: appState, draft: draft)
+                    .tag(1)
+
+                ItemsWizardPage(appState: appState, draft: draft)
+                    .tag(2)
+
+                TiersWizardPage(appState: appState, draft: draft)
+                    .tag(3)
+            }
+            #if os(tvOS)
+            .tabViewStyle(.page)
+            #else
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            #endif
+        }
+        .background(Palette.bg)
+        .sheet(isPresented: $showingTierDetailsSheet) {
+            if let tier = currentTier {
+                TierDetailsSheet(appState: appState, draft: draft, tier: tier)
+            }
+        }
+        .fullScreenCover(isPresented: $showingItemDetailsSheet) {
+            if let item = currentItem {
+                LargeItemEditorView(appState: appState, draft: draft, item: item)
+            }
+        }
+        #if os(tvOS)
+        .onExitCommand { dismiss() }
+        #endif
+    }
+
+    // MARK: - Compact Toolbar
+
+    private var compactToolbar: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 16) {
+                // Title
+                Text(displayedTitle)
+                    .font(.headline)
+                    .lineLimit(1)
+
+                Spacer()
+
+                // Actions
+                HStack(spacing: 12) {
+                    Button {
+                        Task { await appState.saveTierListDraft(action: .save) }
+                    } label: {
+                        Label("Save", systemImage: "checkmark.circle")
+                            .labelStyle(.iconOnly)
+                    }
+                    #if os(tvOS)
+                    .buttonStyle(.glass)
+                    #else
+                    .buttonStyle(.borderless)
+                    #endif
+                    .accessibilityIdentifier("Wizard_Save")
+
+                    Button {
+                        Task { await appState.saveTierListDraft(action: .publish) }
+                    } label: {
+                        Label("Publish", systemImage: "paperplane.fill")
+                            .labelStyle(.iconOnly)
+                    }
+                    #if os(tvOS)
+                    .buttonStyle(.glassProminent)
+                    #else
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.blue)
+                    #endif
+                    .accessibilityIdentifier("Wizard_Publish")
+
+                    Button {
+                        dismiss()
+                    } label: {
+                        Label("Close", systemImage: "xmark.circle.fill")
+                            .labelStyle(.iconOnly)
+                    }
+                    #if os(tvOS)
+                    .buttonStyle(.glass)
+                    #else
+                    .buttonStyle(.borderless)
+                    #endif
+                    .accessibilityIdentifier("Wizard_Close")
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+
+            Divider()
+
+            // Tabs
+            HStack(spacing: 0) {
+                tabButton("Settings", icon: "gearshape", index: 0)
+                tabButton("Schema", icon: "list.bullet.clipboard", index: 1)
+                tabButton("Items", icon: "square.grid.3x3", index: 2)
+                tabButton("Tiers", icon: "chart.bar", index: 3)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
+
+            Divider()
+        }
+        .background(.ultraThinMaterial)
+    }
+
+    private func tabButton(_ title: String, icon: String, index: Int) -> some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selectedTab = index
+            }
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.body)
+                Text(title)
+                    .font(.caption)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(selectedTab == index ? Color.accentColor.opacity(0.2) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("Tab_\(title)")
+    }
+
+    private var displayedTitle: String {
+        let title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if title.isEmpty {
+            return "New Tier List"
+        }
+        return title
+    }
+
+    // MARK: - Helpers
+
+    private var currentTier: TierDraftTier? {
+        guard let id = selectedTierID else { return nil }
+        return draft.tiers.first { $0.identifier == id }
+    }
+
+    private var currentItem: TierDraftItem? {
+        guard let id = selectedItemID else { return nil }
+        return draft.items.first { $0.identifier == id }
+    }
+}
+
+// MARK: - Large Item Editor
+
+struct LargeItemEditorView: View {
+    @Bindable var appState: AppState
+    @Bindable var draft: TierProjectDraft
+    @Bindable var item: TierDraftItem
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Basic Information") {
+                    TextField("Title", text: Binding(
+                        get: { item.title },
+                        set: { newValue in
+                            item.title = newValue
+                            appState.markDraftEdited(draft)
+                        }
+                    ))
+                    .font(.title3)
+                    #if !os(tvOS)
+                    .textFieldStyle(.roundedBorder)
+                    #endif
+
+                    TextField("Subtitle", text: Binding(
+                        get: { item.subtitle },
+                        set: { newValue in
+                            item.subtitle = newValue
+                            appState.markDraftEdited(draft)
+                        }
+                    ))
+                    #if !os(tvOS)
+                    .textFieldStyle(.roundedBorder)
+                    #endif
+
+                    TextField("Summary", text: Binding(
+                        get: { item.summary },
+                        set: { newValue in
+                            item.summary = newValue
+                            appState.markDraftEdited(draft)
+                        }
+                    ), axis: .vertical)
+                    .lineLimit(3...6)
+                    #if !os(tvOS)
+                    .textFieldStyle(.roundedBorder)
+                    #endif
+                }
+
+                Section("Tier Assignment") {
+                    Picker("Tier", selection: Binding(
+                        get: { item.tier?.identifier ?? UUID() },
+                        set: { newTierID in
+                            if let tier = draft.tiers.first(where: { $0.identifier == newTierID }) {
+                                appState.assign(item, to: tier, in: draft)
+                            }
+                        }
+                    )) {
+                        Text("Unassigned").tag(UUID())
+                        ForEach(appState.orderedTiers(for: draft)) { tier in
+                            HStack {
+                                Circle()
+                                    .fill(ColorUtilities.color(hex: tier.colorHex))
+                                    .frame(width: 16, height: 16)
+                                Text(tier.label)
+                            }
+                            .tag(tier.identifier)
+                        }
+                    }
+                }
+
+                Section("Additional Details") {
+                    TextField("Item ID", text: Binding(
+                        get: { item.itemId },
+                        set: { newValue in
+                            item.itemId = newValue
+                            appState.markDraftEdited(draft)
+                        }
+                    ))
+                    #if !os(tvOS)
+                    .textFieldStyle(.roundedBorder)
+                    #endif
+
+                    TextField("Slug", text: Binding(
+                        get: { item.slug },
+                        set: { newValue in
+                            item.slug = newValue
+                            appState.markDraftEdited(draft)
+                        }
+                    ))
+                    #if !os(tvOS)
+                    .textFieldStyle(.roundedBorder)
+                    #endif
+
+                    #if !os(tvOS)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Rating: \(Int(item.rating ?? 50))")
+                            .font(.caption)
+                        Slider(value: Binding(
+                            get: { item.rating ?? 50 },
+                            set: { newValue in
+                                item.rating = newValue
+                                appState.markDraftEdited(draft)
+                            }
+                        ), in: 0...100, step: 1)
+                    }
+                    #else
+                    Text("Rating: \(Int(item.rating ?? 50))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    #endif
+
+                    Toggle("Hide from library", isOn: Binding(
+                        get: { item.hidden },
+                        set: { newValue in
+                            item.hidden = newValue
+                            appState.markDraftEdited(draft)
+                        }
+                    ))
+                }
+            }
+            .navigationTitle("Edit Item")
+            #if !os(tvOS)
+            .navigationBarTitleDisplayMode(.large)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}

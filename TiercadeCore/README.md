@@ -10,10 +10,10 @@ Core domain models and logic for the Tiercade native apps. This Swift Package is
 
 ## Requirements
 - **Swift 6.0** toolchain with strict concurrency checking
-- **Platforms**: iOS 17+ / macOS 14+ / tvOS 17+
+- **Platforms**: iOS 26+ / macOS 26+ / tvOS 26+
 - **Language Mode**: Swift 6 with complete concurrency checking enabled
 
-> Note: The core package maintains broader platform compatibility (iOS 17+) while the main Tiercade app targets OS 26.0+ for latest platform features.
+> Note: The core package now shares the Tiercade app's OS 26.0+ baseline so we can rely on Swift 6 APIs, Liquid Glass effects, and strict concurrency across every module.
 
 ## Using in Xcode
 1. In your app project, go to File > Add Packages…
