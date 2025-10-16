@@ -12,14 +12,17 @@ struct TierListCreatorOverlay: View {
     @State private var itemFilter: ItemFilter = .all
     @State private var showingExportSheet = false
     @State private var exportPayload: String = ""
-    @State private var highlightPreview = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    // Sheet presentation states
+    @State private var showingTierDetailsSheet = false
+    @State private var showingItemDetailsSheet = false
+    @State private var showingProjectSettingsSheet = false
+    @State private var showingMoreMenu = false
 
     private enum FocusArea: Hashable {
-        case header
-        case tiers
-        case canvas
-        case library
-        case actionStrip
+        case sidebar    // Tiers + item library
+        case actions    // Bottom action strip
     }
 
     private enum ItemFilter: String, CaseIterable, Identifiable {
@@ -49,11 +52,16 @@ struct TierListCreatorOverlay: View {
                 contentColumns
                 actionStrip
             }
-            .padding(.horizontal, 80)
-            .padding(.vertical, 72)
+            #if os(tvOS)
+            .padding(.horizontal, TVMetrics.overlayPadding)
+            .padding(.vertical, 48)
+            #else
+            .padding(.horizontal, 40)
+            .padding(.vertical, 32)
+            #endif
         }
         .onAppear {
-            focusArea = .tiers
+            focusArea = .sidebar
             if selectedTierID == nil {
                 selectedTierID = orderedTiers.first?.identifier
             }
@@ -79,6 +87,41 @@ struct TierListCreatorOverlay: View {
         #if os(tvOS)
         .onExitCommand { appState.cancelTierListCreator() }
         #endif
+        .confirmationDialog("More Options", isPresented: $showingMoreMenu, titleVisibility: .hidden) {
+            Button("Project Settings") {
+                showingProjectSettingsSheet = true
+            }
+            Button("Export") {
+                if let payload = appState.exportTierListDraftPayload() {
+                    exportPayload = payload
+                    showingExportSheet = true
+                }
+            }
+            Button("Validate") {
+                let issues = appState.validateTierListDraft()
+                if issues.isEmpty {
+                    appState.showToast(
+                        type: .success,
+                        title: "Validation Passed",
+                        message: "Draft is ready to save."
+                    )
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .sheet(isPresented: $showingTierDetailsSheet) {
+            if let tier = currentTier {
+                TierDetailsSheet(appState: appState, draft: draft, tier: tier)
+            }
+        }
+        .sheet(isPresented: $showingItemDetailsSheet) {
+            if let item = currentItem {
+                ItemDetailsSheet(appState: appState, draft: draft, item: item, currentTier: currentTier)
+            }
+        }
+        .sheet(isPresented: $showingProjectSettingsSheet) {
+            ProjectSettingsSheet(appState: appState, draft: draft)
+        }
         .sheet(isPresented: $showingExportSheet) {
             NavigationView {
                 ScrollView {
@@ -110,66 +153,39 @@ struct TierListCreatorOverlay: View {
                 Text(displayedSubtitle)
                     .font(.callout)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
 
             Spacer()
 
-            schemaVersionBadge
-
             Button {
-                highlightPreview.toggle()
-                withAnimation(.smooth(duration: 0.3)) {
-                    focusArea = .canvas
-                }
+                showingMoreMenu = true
             } label: {
-                Label("Preview", systemImage: "display")
+                Label("More", systemImage: "ellipsis.circle")
             }
             .modifier(GlassButtonStyle(isProminent: false))
+            .accessibilityIdentifier("TierCreator_More")
 
             Button {
                 Task { await appState.saveTierListDraft(action: .save) }
             } label: {
-                Label("Save", systemImage: "tray.and.arrow.down")
+                Label("Save", systemImage: "checkmark.circle")
             }
             .modifier(GlassButtonStyle(isProminent: false))
-
-            Button {
-                if let payload = appState.exportTierListDraftPayload() {
-                    exportPayload = payload
-                    showingExportSheet = true
-                }
-            } label: {
-                Label("Export", systemImage: "square.and.arrow.up")
-            }
-            .modifier(GlassButtonStyle(isProminent: false))
+            .accessibilityIdentifier("TierCreator_Save")
 
             Button {
                 appState.cancelTierListCreator()
             } label: {
-                Label("Close", systemImage: "xmark")
+                Label("Close", systemImage: "xmark.circle")
             }
             .modifier(GlassButtonStyle(isProminent: false))
+            .accessibilityIdentifier("TierCreator_Close")
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 24)
         .creatorGlass()
-        .focusSection()
-        .focused($focusArea, equals: .header)
-    }
-
-    private var schemaVersionBadge: some View {
-        Text("Schema v\(draft.schemaVersion)")
-            .font(.callout.monospacedDigit())
-            .padding(.vertical, 8)
-            .padding(.horizontal, 18)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(Color.white.opacity(0.12))
-            )
-            .overlay(
-                Capsule(style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-            )
     }
 
     private var displayedSubtitle: String {
@@ -183,7 +199,6 @@ struct TierListCreatorOverlay: View {
     private var contentColumns: some View {
         HStack(alignment: .top, spacing: 28) {
             tierRail
-            compositionCanvas
             itemLibrary
         }
     }
@@ -208,13 +223,14 @@ struct TierListCreatorOverlay: View {
             Divider()
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 12) {
+                LazyVStack(spacing: 12) {
                     ForEach(orderedTiers) { tier in
                         tierRow(tier)
                     }
                 }
                 .padding(.vertical, 4)
             }
+            .frame(maxHeight: .infinity)
 
             if let tier = currentTier {
                 HStack(spacing: 12) {
@@ -222,11 +238,13 @@ struct TierListCreatorOverlay: View {
                         Image(systemName: "arrow.up")
                     }
                     .modifier(GlassButtonStyle(isProminent: false))
+                    .accessibilityIdentifier("TierCreator_MoveTierUp")
 
                     Button { appState.moveTier(tier, direction: 1, in: draft) } label: {
                         Image(systemName: "arrow.down")
                     }
                     .modifier(GlassButtonStyle(isProminent: false))
+                    .accessibilityIdentifier("TierCreator_MoveTierDown")
 
                     Button(role: .destructive) {
                         appState.delete(tier, from: draft)
@@ -234,21 +252,22 @@ struct TierListCreatorOverlay: View {
                         Image(systemName: "trash")
                     }
                     .modifier(GlassButtonStyle(isProminent: false))
+                    .accessibilityIdentifier("TierCreator_DeleteTier")
                 }
             }
         }
         .padding(28)
-        .frame(width: 320)
+        .frame(minWidth: 280, idealWidth: 320, maxWidth: 380)
         .creatorGlass()
         .focusSection()
-        .defaultFocus($focusArea, .tiers)
+        .focused($focusArea, equals: .sidebar)
     }
 
     private func tierRow(_ tier: TierDraftTier) -> some View {
         let isSelected = tier.identifier == selectedTierID
         return Button {
             selectedTierID = tier.identifier
-            focusArea = .canvas
+            showingTierDetailsSheet = true
         } label: {
             HStack(spacing: 12) {
                 Circle()
@@ -258,9 +277,13 @@ struct TierListCreatorOverlay: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(tier.label)
                         .font(.body.weight(isSelected ? .semibold : .regular))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Text("Items: \(appState.orderedItems(for: tier).count)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
                 Spacer()
                 if tier.locked {
@@ -279,220 +302,6 @@ struct TierListCreatorOverlay: View {
         .buttonStyle(.plain)
     }
 
-    private var compositionCanvas: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            if appState.tierListCreatorIssues.isEmpty == false {
-                validationBanner
-            }
-
-            projectMetadataSection
-            tierDetailEditor
-            previewSection
-        }
-        .padding(32)
-        .frame(maxWidth: .infinity)
-        .creatorGlass()
-        .focusSection()
-        .focused($focusArea, equals: .canvas)
-    }
-
-    private var validationBanner: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(Color.yellow)
-                Text("Validation Issues")
-                    .font(.headline)
-            }
-            ForEach(appState.tierListCreatorIssues) { issue in
-                Text("• \(issue.message)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.yellow.opacity(0.12))
-        )
-    }
-
-    private var projectMetadataSection: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Project Metadata")
-                .font(.title3.weight(.semibold))
-
-            TextField("Project Title", text: $draft.title, prompt: Text("Enter a descriptive title"))
-                #if !os(tvOS)
-                .textFieldStyle(.roundedBorder)
-                #endif
-                .onChange(of: draft.title) { _ in appState.markDraftEdited(draft) }
-
-            TextField("Description", text: $draft.summary, prompt: Text("Short description"), axis: .vertical)
-                .lineLimit(2...4)
-                #if !os(tvOS)
-                .textFieldStyle(.roundedBorder)
-                #endif
-                .onChange(of: draft.summary) { _ in appState.markDraftEdited(draft) }
-
-            HStack(spacing: 20) {
-                #if !os(tvOS)
-                Stepper(value: $draft.schemaVersion, in: 1...9) {
-                    Text("Schema Version: \(draft.schemaVersion)")
-                }
-                .onChange(of: draft.schemaVersion) { _ in appState.markDraftEdited(draft) }
-                #else
-                Text("Schema Version: \(draft.schemaVersion)")
-                #endif
-
-                Toggle("Show Unranked", isOn: $draft.showUnranked)
-                    .toggleStyle(.switch)
-                    .onChange(of: draft.showUnranked) { _ in appState.markDraftEdited(draft) }
-
-                Toggle("Grid Snap", isOn: $draft.gridSnap)
-                    .toggleStyle(.switch)
-                    .onChange(of: draft.gridSnap) { _ in appState.markDraftEdited(draft) }
-            }
-
-            HStack(spacing: 20) {
-                Toggle("VoiceOver Hints", isOn: $draft.accessibilityVoiceOver)
-                    .toggleStyle(.switch)
-                    .onChange(of: draft.accessibilityVoiceOver) { _ in appState.markDraftEdited(draft) }
-
-                Toggle("High Contrast", isOn: $draft.accessibilityHighContrast)
-                    .toggleStyle(.switch)
-                    .onChange(of: draft.accessibilityHighContrast) { _ in appState.markDraftEdited(draft) }
-
-                Picker("Visibility", selection: $draft.visibility) {
-                    Text("Private").tag("private")
-                    Text("Unlisted").tag("unlisted")
-                    Text("Public").tag("public")
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: draft.visibility) { _ in appState.markDraftEdited(draft) }
-            }
-        }
-    }
-
-    private var tierDetailEditor: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Tier Details")
-                    .font(.title3.weight(.semibold))
-                Spacer()
-                if let tier = currentTier {
-                    Toggle("Locked", isOn: Binding(
-                        get: { tier.locked },
-                        set: { _ in appState.toggleLock(tier, in: draft) }
-                    ))
-                    .toggleStyle(.switch)
-
-                    Toggle("Collapsed", isOn: Binding(
-                        get: { tier.collapsed },
-                        set: { _ in appState.toggleCollapse(tier, in: draft) }
-                    ))
-                    .toggleStyle(.switch)
-                }
-            }
-
-            if let tier = currentTier {
-                TextField("Display Label", text: Binding(
-                    get: { tier.label },
-                    set: { newValue in
-                        tier.label = newValue
-                        appState.markDraftEdited(draft)
-                    }
-                ))
-                #if !os(tvOS)
-                .textFieldStyle(.roundedBorder)
-                #endif
-
-                TextField("Tier Identifier", text: Binding(
-                    get: { tier.tierId },
-                    set: { newValue in
-                        tier.tierId = newValue
-                        appState.markDraftEdited(draft)
-                    }
-                ))
-                #if !os(tvOS)
-                .textFieldStyle(.roundedBorder)
-                #endif
-
-                TextField("Color Hex", text: Binding(
-                    get: { tier.colorHex },
-                    set: { newValue in
-                        tier.colorHex = newValue
-                        appState.markDraftEdited(draft)
-                    }
-                ))
-                #if !os(tvOS)
-                .textFieldStyle(.roundedBorder)
-                #endif
-
-                Rectangle()
-                    .fill(ColorUtilities.color(hex: tier.colorHex))
-                    .frame(height: 12)
-                    .clipShape(Capsule())
-            } else {
-                Text("Select a tier to edit its properties.")
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    private var previewSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Live Preview")
-                    .font(.title3.weight(.semibold))
-                if highlightPreview {
-                    Text("Focused")
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(Color.accentColor.opacity(0.25)))
-                }
-            }
-
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 16) {
-                    ForEach(orderedTiers) { tier in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(tier.label)
-                                    .font(.headline)
-                                Spacer()
-                                Text("\(appState.orderedItems(for: tier).count) items")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 12) {
-                                    ForEach(appState.orderedItems(for: tier)) { item in
-                                        Text(item.title)
-                                            .font(.callout)
-                                            .padding(.horizontal, 14)
-                                            .padding(.vertical, 10)
-                                            .background(
-                                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                                    .fill(Color.white.opacity(0.08))
-                                            )
-                                    }
-                                }
-                            }
-                        }
-                        .padding(16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .fill(Color.white.opacity(0.05))
-                        )
-                    }
-                }
-            }
-            .frame(maxHeight: 260)
-        }
-    }
-
     private var itemLibrary: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
@@ -502,11 +311,12 @@ struct TierListCreatorOverlay: View {
                 Button {
                     let newItem = appState.addItem(to: draft)
                     selectedItemID = newItem.identifier
-                    focusArea = .library
+                    focusArea = .sidebar
                 } label: {
                     Label("Add Item", systemImage: "plus")
                 }
                 .modifier(GlassButtonStyle(isProminent: false))
+                .accessibilityIdentifier("TierCreator_AddItem")
             }
 
             TextField("Search items", text: $searchQuery)
@@ -522,40 +332,43 @@ struct TierListCreatorOverlay: View {
             .pickerStyle(.segmented)
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 12) {
+                LazyVStack(spacing: 12) {
                     ForEach(filteredItems) { item in
                         itemRow(item)
                     }
                 }
                 .padding(.vertical, 6)
             }
+            .frame(maxHeight: .infinity)
 
-            if let item = currentItem {
-                itemEditor(for: item)
-            } else {
-                Text("Select an item to edit metadata.")
-                    .foregroundStyle(.secondary)
-            }
+            Text("Tap any item to edit details")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .padding(28)
-        .frame(width: 360)
+        .frame(minWidth: 320, idealWidth: 360, maxWidth: 420)
         .creatorGlass()
         .focusSection()
-        .focused($focusArea, equals: .library)
+        .focused($focusArea, equals: .sidebar)
     }
 
     private func itemRow(_ item: TierDraftItem) -> some View {
         let isSelected = item.identifier == selectedItemID
         return Button {
             selectedItemID = item.identifier
+            showingItemDetailsSheet = true
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.title)
                         .font(.body.weight(isSelected ? .semibold : .regular))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .truncationMode(.tail)
                     Text(item.tier?.label ?? "Unassigned")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
                 Spacer()
                 if item.hidden {
@@ -574,131 +387,8 @@ struct TierListCreatorOverlay: View {
         .buttonStyle(.plain)
     }
 
-    private func itemEditor(for item: TierDraftItem) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Item Details")
-                .font(.title3.weight(.semibold))
-
-            TextField("Display Title", text: Binding(
-                get: { item.title },
-                set: { newValue in
-                    item.title = newValue
-                    appState.markDraftEdited(draft)
-                }
-            ))
-            #if !os(tvOS)
-            .textFieldStyle(.roundedBorder)
-            #endif
-
-            TextField("Identifier", text: Binding(
-                get: { item.itemId },
-                set: { newValue in
-                    item.itemId = newValue
-                    appState.markDraftEdited(draft)
-                }
-            ))
-            #if !os(tvOS)
-            .textFieldStyle(.roundedBorder)
-            #endif
-
-            TextField("Slug", text: Binding(
-                get: { item.slug },
-                set: { newValue in
-                    item.slug = newValue
-                    appState.markDraftEdited(draft)
-                }
-            ))
-            #if !os(tvOS)
-            .textFieldStyle(.roundedBorder)
-            #endif
-
-            TextField("Subtitle", text: Binding(
-                get: { item.subtitle },
-                set: { newValue in
-                    item.subtitle = newValue
-                    appState.markDraftEdited(draft)
-                }
-            ))
-            #if !os(tvOS)
-            .textFieldStyle(.roundedBorder)
-            #endif
-
-            TextField("Summary", text: Binding(
-                get: { item.summary },
-                set: { newValue in
-                    item.summary = newValue
-                    appState.markDraftEdited(draft)
-                }
-            ), axis: .vertical)
-            .lineLimit(2...3)
-            #if !os(tvOS)
-            .textFieldStyle(.roundedBorder)
-            #endif
-
-            #if !os(tvOS)
-            Slider(value: Binding(
-                get: { item.rating ?? 50 },
-                set: { newValue in
-                    item.rating = newValue
-                    appState.markDraftEdited(draft)
-                }
-            ), in: 0...100, step: 1) {
-                Text("Rating")
-            }
-            #endif
-            Text("Rating: \(Int(item.rating ?? 50))")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            Toggle("Hide from library", isOn: Binding(
-                get: { item.hidden },
-                set: { newValue in
-                    item.hidden = newValue
-                    appState.markDraftEdited(draft)
-                }
-            ))
-            .toggleStyle(.switch)
-
-            if let tier = currentTier {
-                Button {
-                    appState.assign(item, to: tier, in: draft)
-                } label: {
-                    Label("Assign to \(tier.label)", systemImage: "arrow.turn.down.right")
-                }
-                .modifier(GlassButtonStyle(isProminent: false))
-            }
-        }
-        .padding(.top, 12)
-    }
-
     private var actionStrip: some View {
-        HStack(spacing: 24) {
-            Button { } label: {
-                Label("Undo", systemImage: "arrow.uturn.backward")
-            }
-            .disabled(true)
-            .modifier(GlassButtonStyle(isProminent: false))
-
-            Button { } label: {
-                Label("Redo", systemImage: "arrow.uturn.forward")
-            }
-            .disabled(true)
-            .modifier(GlassButtonStyle(isProminent: false))
-
-            Button {
-                let issues = appState.validateTierListDraft()
-                if issues.isEmpty {
-                    appState.showToast(
-                        type: .success,
-                        title: "Validation Passed",
-                        message: "Draft is ready to save."
-                    )
-                }
-            } label: {
-                Label("Validate", systemImage: "checkmark.seal")
-            }
-            .modifier(GlassButtonStyle(isProminent: false))
-
+        HStack {
             Spacer()
 
             Button {
@@ -707,12 +397,13 @@ struct TierListCreatorOverlay: View {
                 Label("Publish", systemImage: "paperplane.fill")
             }
             .modifier(GlassButtonStyle(isProminent: true))
+            .accessibilityIdentifier("TierCreator_Publish")
         }
         .padding(.horizontal, 32)
         .padding(.vertical, 24)
         .creatorGlass()
         .focusSection()
-        .focused($focusArea, equals: .actionStrip)
+        .focused($focusArea, equals: .actions)
     }
 
     // MARK: Helpers

@@ -5,7 +5,7 @@ _Last updated: 2025-02-14_
 ## 1. Purpose
 - Provide a tvOS-first creation workspace for authoring tier-list projects that adhere to `referencedocs/tierlist.schema.json`.
 - Empower creators to define project metadata, tier frames, canonical items, and per-project overrides before handing data to the ranking surfaces.
-- Maintain multiplatform parity (tvOS 26, iOS/iPadOS 26, macOS 15+) while prioritising remote-based focus navigation and Liquid Glass visual language.
+- Maintain multiplatform parity (tvOS 26, iOS/iPadOS 26, macOS 26+) while prioritising remote-based focus navigation and Liquid Glass visual language.
 
 ## 2. Scope
 - **In scope:** project metadata authoring, tier CRUD + ordering, item catalog management, override editing, validation, export/import, audit updates, inline preview.
@@ -114,4 +114,3 @@ _Last updated: 2025-02-14_
 8. CoreTransferable `Transferable` — https://developer.apple.com/documentation/coretransferable/transferable/  
 9. SwiftUI `searchable(text:placement:prompt:)` — https://developer.apple.com/documentation/swiftui/view/searchable(text:placement:prompt:)  
 10. SwiftUI `scrollEdgeEffectStyle(_:for:)` — https://developer.apple.com/documentation/swiftui/view/scrolledgeeffectstyle(_:for:)  
-
