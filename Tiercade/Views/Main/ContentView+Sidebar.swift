@@ -31,16 +31,17 @@ struct SidebarView: View {
 }
 
 struct SidebarSearchView: View {
-    @Environment(AppState.self) var app
+    @Environment(AppState.self) private var app
     var body: some View {
+        @Bindable var state = app
         VStack(alignment: .leading, spacing: 8) {
             Text("Search & Filter").font(.headline)
 
             #if !os(tvOS)
-            TextField("Search items...", text: $app.searchQuery)
+            TextField("Search items...", text: $state.searchQuery)
                 .textFieldStyle(.roundedBorder)
 
-            if app.isProcessingSearch {
+            if state.isProcessingSearch {
                 HStack(spacing: 8) {
                     ProgressView()
                         .scaleEffect(0.7)
@@ -55,19 +56,19 @@ struct SidebarSearchView: View {
             HStack(spacing: 8) {
                 ForEach(FilterType.allCases, id: \.self) { filter in
                     Button(filter.rawValue) {
-                        app.activeFilter = filter
+                        state.activeFilter = filter
                     }
                     .buttonStyle(GhostButtonStyle())
                     #if !os(tvOS)
                     .controlSize(.small)
                     #endif
                     .background(
-                        app.activeFilter == filter ? Color.accentColor.opacity(0.2) : Color.clear
+                        state.activeFilter == filter ? Color.accentColor.opacity(0.2) : Color.clear
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 6)
                             .stroke(
-                                app.activeFilter == filter ? Color.accentColor : Color.clear,
+                                state.activeFilter == filter ? Color.accentColor : Color.clear,
                                 lineWidth: 2
                             )
                     )

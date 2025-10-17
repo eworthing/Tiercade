@@ -196,7 +196,7 @@ struct CardView: View {
                 #endif
             }()
         )
-        #if os(macOS)
+        #if os(iOS) && !os(tvOS) || targetEnvironment(macCatalyst)
         .accessibilityAddTraits(.isButton)
         #endif
         #if !os(tvOS)

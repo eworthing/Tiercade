@@ -1,5 +1,5 @@
 import SwiftUI
-#if os(iOS)
+#if os(iOS) || targetEnvironment(macCatalyst)
 import UniformTypeIdentifiers
 #endif
 
@@ -7,7 +7,75 @@ import TiercadeCore
 
 // MARK: - Toolbar and supporting components
 
-#if os(iOS)
+struct ToolbarView: ToolbarContent {
+    @Bindable var app: AppState
+    @State private var exportText: String = ""
+    @State private var showingSettings = false
+    @State private var showingExportFormatSheet = false
+    @State private var selectedExportFormat: ExportFormat = .text
+    @State private var exportingJSON = false
+    @State private var importingJSON = false
+    #if os(iOS) || targetEnvironment(macCatalyst)
+    @State private var jsonDoc = TiersDocument()
+    #endif
+    @State private var showingImportSheet = false
+    @State private var showingSaveDialog = false
+    @State private var showingLoadDialog = false
+    @State private var saveFileName = ""
+
+    var body: some ToolbarContent {
+        SecondaryToolbarActions(
+            app: app,
+            onShowSave: { showingSaveDialog = true },
+            onShowLoad: { showingLoadDialog = true },
+            onShowExportFormat: handleExportFormatSelection,
+            onImportJSON: { importingJSON = true },
+            onImportCSV: { showingImportSheet = true },
+            onShowSettings: { showingSettings = true }
+        )
+
+        #if os(iOS) || targetEnvironment(macCatalyst)
+        BottomToolbarSheets(
+            app: app,
+            exportText: $exportText,
+            showingSettings: $showingSettings,
+            showingExportFormatSheet: $showingExportFormatSheet,
+            selectedExportFormat: $selectedExportFormat,
+            exportingJSON: $exportingJSON,
+            importingJSON: $importingJSON,
+            jsonDoc: $jsonDoc,
+            showingImportSheet: $showingImportSheet,
+            showingSaveDialog: $showingSaveDialog,
+            showingLoadDialog: $showingLoadDialog,
+            saveFileName: $saveFileName
+        )
+        #else
+        MacAndTVToolbarSheets(
+            app: app,
+            showingSaveDialog: $showingSaveDialog,
+            showingLoadDialog: $showingLoadDialog,
+            saveFileName: $saveFileName,
+            showingSettings: $showingSettings
+        )
+        #endif
+    }
+
+    private func handleExportFormatSelection(_ format: ExportFormat) {
+        selectedExportFormat = format
+        #if os(iOS) || targetEnvironment(macCatalyst)
+        if format == .json {
+            jsonDoc = TiersDocument(tiers: app.tiers)
+            exportingJSON = true
+        } else {
+            showingExportFormatSheet = true
+        }
+        #else
+        showingExportFormatSheet = true
+        #endif
+    }
+}
+
+#if os(iOS) || targetEnvironment(macCatalyst)
 struct TiersDocument: FileDocument {
     static var readableContentTypes: [UTType] { [.json] }
     var tiers: Items = [:]
@@ -117,7 +185,7 @@ struct SecondaryToolbarActions: ToolbarContent {
                 Button("Markdown Format") { onShowExportFormat(.markdown) }
                 Button("CSV Format") { onShowExportFormat(.csv) }
             }
-            #if os(iOS)
+            #if os(iOS) || targetEnvironment(macCatalyst)
             Menu("Import From...") {
                 Button("JSON File") { onImportJSON() }
                 Button("CSV File") { onImportCSV() }
@@ -127,7 +195,7 @@ struct SecondaryToolbarActions: ToolbarContent {
     }
 }
 
-#if os(iOS)
+#if os(iOS) || targetEnvironment(macCatalyst)
 struct BottomToolbarSheets: ToolbarContent {
     @Bindable var app: AppState
     @Binding var exportText: String
@@ -181,7 +249,17 @@ struct BottomToolbarSheets: ToolbarContent {
                     allowedContentTypes: [.json]
                 ) { result in
                     if case .success(let url) = result {
-                        Task { await app.importFromJSON(url: url) }
+                        Task {
+                            do {
+                                try await app.importFromJSON(url: url)
+                            } catch {
+                                app.showToast(
+                                    type: .error,
+                                    title: "Import Failed",
+                                    message: error.localizedDescription
+                                )
+                            }
+                        }
                     }
                 }
                 .fileImporter(
@@ -189,14 +267,37 @@ struct BottomToolbarSheets: ToolbarContent {
                     allowedContentTypes: [.commaSeparatedText, .text]
                 ) { result in
                     if case .success(let url) = result {
-                        Task { await app.importFromCSV(url: url) }
+                        Task {
+                            do {
+                                try await app.importFromCSV(url: url)
+                            } catch {
+                                app.showToast(
+                                    type: .error,
+                                    title: "Import Failed",
+                                    message: error.localizedDescription
+                                )
+                            }
+                        }
                     }
                 }
                 .alert("Save Tier List", isPresented: $showingSaveDialog) {
                     TextField("File Name", text: $saveFileName)
                     Button("Save") {
                         guard !saveFileName.isEmpty else { return }
-                        _ = app.saveToFile(named: saveFileName)
+                        do {
+                            try app.saveToFile(named: saveFileName)
+                            app.showToast(
+                                type: .success,
+                                title: "Save Complete",
+                                message: "Saved \(saveFileName).json"
+                            )
+                        } catch {
+                            app.showToast(
+                                type: .error,
+                                title: "Save Failed",
+                                message: error.localizedDescription
+                            )
+                        }
                     }
                     Button("Cancel", role: .cancel) {}
                 } message: {
@@ -229,8 +330,20 @@ struct MacAndTVToolbarSheets: ToolbarContent {
                 .alert("Save Tier List", isPresented: $showingSaveDialog) {
                     TextField("File Name", text: $saveFileName)
                     Button("Save") {
-                        if !saveFileName.isEmpty {
-                            try? app.saveToFile(named: saveFileName)
+                        guard !saveFileName.isEmpty else { return }
+                        do {
+                            try app.saveToFile(named: saveFileName)
+                            app.showToast(
+                                type: .success,
+                                title: "Save Complete",
+                                message: "Saved \(saveFileName).json"
+                            )
+                        } catch {
+                            app.showToast(
+                                type: .error,
+                                title: "Save Failed",
+                                message: error.localizedDescription
+                            )
                         }
                     }
                     Button("Cancel", role: .cancel) {}
@@ -255,7 +368,7 @@ struct MacAndTVToolbarSheets: ToolbarContent {
 }
 #endif
 
-#if os(iOS)
+#if os(iOS) || targetEnvironment(macCatalyst)
 @MainActor
 extension AppState: ToolbarExportCoordinating {}
 #endif

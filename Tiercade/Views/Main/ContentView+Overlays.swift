@@ -1,10 +1,8 @@
 import SwiftUI
 #if canImport(UIKit)
 import UIKit
-#elseif canImport(AppKit)
-import AppKit
 #endif
-#if os(iOS)
+#if os(iOS) || targetEnvironment(macCatalyst)
 import UniformTypeIdentifiers
 #endif
 
@@ -82,7 +80,7 @@ struct ToastView: View {
         .onDisappear {
             isVisible = false
         }
-        #if os(macOS)
+        #if os(iOS) || targetEnvironment(macCatalyst)
         .focusable(true)
         .accessibilityAddTraits(.isModal)
         #endif
@@ -127,11 +125,6 @@ struct ToastView: View {
     private func makeSymbolAttachment(named symbolName: String) -> NSTextAttachment? {
         #if canImport(UIKit)
         guard let image = UIImage(systemName: symbolName) else { return nil }
-        let attachment = NSTextAttachment()
-        attachment.image = image
-        return attachment
-        #elseif canImport(AppKit)
-        guard let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) else { return nil }
         let attachment = NSTextAttachment()
         attachment.image = image
         return attachment
@@ -240,8 +233,10 @@ struct QuickRankOverlay: View {
                 .padding(Metrics.grid)
                 .accessibilityElement(children: .contain)
                 .accessibilityAddTraits(.isModal)
+                #if os(tvOS)
                 .focusSection()
                 .defaultFocus($focused, defaultFocusField)
+                #endif
                 .onAppear { focused = defaultFocusField }
                 .onDisappear { focused = nil }
             }

@@ -7,16 +7,19 @@ struct ThemeLibraryOverlay: View {
     @Namespace private var glassNamespace
     @FocusState private var focusedThemeID: TierTheme.ID?
 
-    private let columns: [GridItem] = [
-        GridItem(
-            .flexible(minimum: 300, maximum: 420),
-            spacing: TVMetrics.cardSpacing
-        ),
-        GridItem(
-            .flexible(minimum: 300, maximum: 420),
-            spacing: TVMetrics.cardSpacing
-        )
-    ]
+    private var columns: [GridItem] {
+        let spacing = platformCardSpacing
+        return [
+            GridItem(
+                .flexible(minimum: 300, maximum: 420),
+                spacing: spacing
+            ),
+            GridItem(
+                .flexible(minimum: 300, maximum: 420),
+                spacing: spacing
+            )
+        ]
+    }
 
     var body: some View {
         ZStack {
@@ -45,13 +48,15 @@ private extension ThemeLibraryOverlay {
             chrome
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, TVMetrics.overlayPadding / 3)
+        .padding(.horizontal, platformOverlayPadding / 3)
         .accessibilityIdentifier("ThemePicker_Overlay")
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
+        #if os(tvOS)
         .focusSection()
         .defaultFocus($focusedThemeID, defaultFocusID)
         .onExitCommand { appState.dismissThemePicker() }
+        #endif
         .onChange(of: appState.availableThemes) { ensureValidFocus() }
         .onChange(of: appState.selectedTheme.id) { assignFocusToSelectedTheme() }
     }
@@ -67,20 +72,20 @@ private extension ThemeLibraryOverlay {
                 footer
             }
             .frame(maxWidth: 1180)
-            .padding(.vertical, TVMetrics.overlayPadding / 2)
+            .padding(.vertical, platformOverlayPadding / 2)
         }
 
         container
             .glassEffect(
                 Glass.regular.tint(Palette.surface.opacity(0.92)).interactive(),
-                in: RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
+                in: RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
             )
             .glassEffectID("ThemeLibraryOverlay", in: glassNamespace)
             .shadow(color: Color.black.opacity(0.35), radius: 32, y: 18)
     }
 
     var header: some View {
-        HStack(alignment: .center, spacing: TVMetrics.buttonSpacing) {
+        HStack(alignment: .center, spacing: platformButtonSpacing) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Theme Library")
                     .font(TypeScale.h2)
@@ -117,13 +122,13 @@ private extension ThemeLibraryOverlay {
             #endif
             .controlSize(.large)
         }
-        .padding(.horizontal, TVMetrics.overlayPadding)
-        .padding(.vertical, 36)
+        .padding(.horizontal, platformOverlayPadding)
+        .padding(.vertical, platformOverlayPadding / 1.5)
     }
 
     var grid: some View {
         ScrollView(.vertical, showsIndicators: false) {
-            LazyVGrid(columns: columns, spacing: TVMetrics.cardSpacing) {
+            LazyVGrid(columns: columns, spacing: platformCardSpacing) {
                 ForEach(appState.availableThemes) { theme in
                     ThemeLibraryTile(
                         theme: theme,
@@ -138,14 +143,14 @@ private extension ThemeLibraryOverlay {
                     .accessibilityIdentifier("ThemeCard_\(theme.slug)")
                 }
             }
-            .padding(.horizontal, TVMetrics.overlayPadding)
-            .padding(.vertical, TVMetrics.overlayPadding / 2)
+            .padding(.horizontal, platformOverlayPadding)
+            .padding(.vertical, platformOverlayPadding / 2)
         }
         .frame(maxHeight: 640)
     }
 
     var footer: some View {
-        HStack(spacing: TVMetrics.buttonSpacing) {
+        HStack(spacing: platformButtonSpacing) {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     appState.resetToThemeColors()
@@ -174,8 +179,8 @@ private extension ThemeLibraryOverlay {
             }
             .accessibilityElement(children: .combine)
         }
-        .padding(.horizontal, TVMetrics.overlayPadding)
-        .padding(.vertical, 36)
+        .padding(.horizontal, platformOverlayPadding)
+        .padding(.vertical, platformOverlayPadding / 1.5)
     }
 }
 
@@ -228,6 +233,42 @@ private extension ThemeLibraryOverlay {
             return ColorUtilities.color(hex: unranked.colorHex)
         }
         return Palette.brand
+    }
+}
+
+// MARK: - Platform metrics
+
+private extension ThemeLibraryOverlay {
+    var platformOverlayPadding: CGFloat {
+        #if os(tvOS)
+        TVMetrics.overlayPadding
+        #else
+        Metrics.grid * 4
+        #endif
+    }
+
+    var platformOverlayCornerRadius: CGFloat {
+        #if os(tvOS)
+        TVMetrics.overlayCornerRadius
+        #else
+        32
+        #endif
+    }
+
+    var platformCardSpacing: CGFloat {
+        #if os(tvOS)
+        TVMetrics.cardSpacing
+        #else
+        Metrics.grid * 3
+        #endif
+    }
+
+    var platformButtonSpacing: CGFloat {
+        #if os(tvOS)
+        TVMetrics.buttonSpacing
+        #else
+        Metrics.grid * 2.5
+        #endif
     }
 }
 

@@ -73,6 +73,55 @@ A SwiftUI tier list management app targeting tvOS 26+/iOS 26+ with Swift 6 stric
 
 **Migration priorities:** `ObservableObject`→`@Observable` | Combine→`AsyncSequence` | `NavigationView`→`NavigationStack` | Core Data→SwiftData | XCTest→Swift Testing | callbacks→`async/await` | queues→actors
 
+## Platform Strategy: Mac Catalyst
+
+**Platforms:** tvOS 26+ (primary) | iOS/iPadOS/macOS 26+ via Mac Catalyst
+- Mac runs as **Mac Catalyst** app (UIKit-based iOS app on macOS), NOT native AppKit
+- Benefits: Single iOS/iPadOS/Mac codebase, reduced platform conditionals, unified design system
+- tvOS remains separate (fundamentally different UX paradigm)
+
+### Catalyst-Aware Patterns
+
+**Platform checks:**
+```swift
+// Correct: Check for UIKit availability
+#if canImport(UIKit)
+import UIKit
+#endif
+
+// Correct: iOS family (includes Catalyst)
+#if os(iOS) || targetEnvironment(macCatalyst)
+  // iOS, iPadOS, and Mac Catalyst code
+#endif
+
+// Correct: tvOS-specific
+#if os(tvOS)
+  // tvOS-only code
+#endif
+
+// Avoid: Checking for macOS (Catalyst is iOS, not macOS)
+#if os(macOS)  // ❌ This excludes Catalyst!
+```
+
+**Liquid Glass fallbacks:**
+- Liquid Glass (`glassEffect`) is tvOS 26+ only
+- iOS/Catalyst use standard materials (`.ultraThinMaterial`, `.thinMaterial`)
+- `GlassEffects.swift` handles fallbacks automatically via platform checks
+
+**API availability:**
+- TabView `.page` style unavailable on Catalyst → use `.automatic`
+- UIKit APIs available on Catalyst (UIApplication, UIImage, etc.)
+- NavigationSplitView works identically across iOS/iPadOS/Catalyst
+
+**Build script:**
+```bash
+# tvOS (default)
+./build_install_launch.sh
+
+# Mac Catalyst
+./build_install_launch.sh catalyst
+```
+
 ## Architecture & Data Flow
 
 ### Structure

@@ -1,5 +1,8 @@
 import Foundation
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 enum ExternalOpenResult { case success, handoff, unsupported }
 

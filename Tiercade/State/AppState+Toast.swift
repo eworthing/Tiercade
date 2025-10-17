@@ -40,4 +40,8 @@ extension AppState {
     func showWarningToast(_ title: String, message: String? = nil) {
         showToast(type: .warning, title: title, message: message)
     }
+
+    func showToast(type: ToastType, title: String, message: String?) {
+        showToast(type: type, title: title, message: message, duration: 3.0)
+    }
 }
