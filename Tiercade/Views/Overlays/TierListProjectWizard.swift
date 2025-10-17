@@ -3,9 +3,10 @@ import TiercadeCore
 
 // MARK: - Compact Tabbed Creator
 
-struct TierListCreatorWizard: View {
+struct TierListProjectWizard: View {
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
+    let context: AppState.TierListWizardContext
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedTab = 0
@@ -74,8 +75,12 @@ struct TierListCreatorWizard: View {
                     Button {
                         Task { await appState.saveTierListDraft(action: .save) }
                     } label: {
-                        Label("Save", systemImage: "checkmark.circle")
+                        Label(primaryActionTitle, systemImage: primaryActionSymbol)
+                        #if os(tvOS)
                             .labelStyle(.iconOnly)
+                        #else
+                            .labelStyle(.titleAndIcon)
+                        #endif
                     }
                     #if os(tvOS)
                     .buttonStyle(.glass)
@@ -87,8 +92,12 @@ struct TierListCreatorWizard: View {
                     Button {
                         Task { await appState.saveTierListDraft(action: .publish) }
                     } label: {
-                        Label("Publish", systemImage: "paperplane.fill")
+                        Label(secondaryActionTitle, systemImage: secondaryActionSymbol)
+                        #if os(tvOS)
                             .labelStyle(.iconOnly)
+                        #else
+                            .labelStyle(.titleAndIcon)
+                        #endif
                     }
                     #if os(tvOS)
                     .buttonStyle(.glassProminent)
@@ -102,7 +111,11 @@ struct TierListCreatorWizard: View {
                         dismiss()
                     } label: {
                         Label("Close", systemImage: "xmark.circle.fill")
+                        #if os(tvOS)
                             .labelStyle(.iconOnly)
+                        #else
+                            .labelStyle(.titleAndIcon)
+                        #endif
                     }
                     #if os(tvOS)
                     .buttonStyle(.glass)
@@ -154,11 +167,40 @@ struct TierListCreatorWizard: View {
     }
 
     private var displayedTitle: String {
-        let title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        if title.isEmpty {
-            return "New Tier List"
+        let trimmed = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch context {
+        case .create:
+            return trimmed.isEmpty ? "New Tier List" : trimmed
+        case .edit(let handle):
+            let base = trimmed.isEmpty ? handle.displayName : trimmed
+            guard base.isEmpty == false else { return "Edit Tier List" }
+            return "Edit \(base)"
         }
-        return title
+    }
+
+    private var primaryActionTitle: String {
+        switch context {
+        case .create: return "Save"
+        case .edit: return "Update"
+        }
+    }
+
+    private var primaryActionSymbol: String {
+        switch context {
+        case .create: return "checkmark.circle"
+        case .edit: return "arrow.triangle.2.circlepath"
+        }
+    }
+
+    private var secondaryActionTitle: String {
+        switch context {
+        case .create: return "Publish"
+        case .edit: return "Republish"
+        }
+    }
+
+    private var secondaryActionSymbol: String {
+        return "paperplane.fill"
     }
 
     // MARK: - Helpers

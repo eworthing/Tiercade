@@ -124,7 +124,7 @@ struct MainAppView: View {
             set: { app.showTierListCreator = $0 }
         )) {
             if let draft = app.tierListCreatorDraft {
-                TierListCreatorWizard(appState: app, draft: draft)
+                TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
             }
         }
     }

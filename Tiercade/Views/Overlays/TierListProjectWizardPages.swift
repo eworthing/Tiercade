@@ -1,5 +1,6 @@
 import SwiftUI
 import TiercadeCore
+import os
 
 // MARK: - Wizard Page Protocol
 
@@ -175,6 +176,7 @@ struct SchemaWizardPage: View, WizardPage {
     @Bindable var draft: TierProjectDraft
     @State private var schemaFields: [SchemaFieldDefinition] = []
     @State private var showingAddField = false
+    private let schemaAdditionalKey = "itemSchema"
 
     let pageTitle = "Item Schema"
     let pageDescription = "Define custom fields for your items"
@@ -268,8 +270,7 @@ struct SchemaWizardPage: View, WizardPage {
         .sheet(isPresented: $showingAddField) {
             AddSchemaFieldSheet(onAdd: { field in
                 schemaFields.append(field)
-                saveSchema()
-                appState.markDraftEdited(draft)
+                persistSchemaChange()
             })
         }
         .onAppear {
@@ -347,8 +348,7 @@ struct SchemaWizardPage: View, WizardPage {
             Button(role: .destructive) {
                 withAnimation {
                     schemaFields.removeAll { $0.id == field.id }
-                    saveSchema()
-                    appState.markDraftEdited(draft)
+                    persistSchemaChange()
                 }
             } label: {
                 Image(systemName: "trash")
@@ -365,61 +365,40 @@ struct SchemaWizardPage: View, WizardPage {
     }
 
     private func loadSchema() {
-        // Load from draft.additional["itemSchema"]
-        // For now, just use default empty
-        if schemaFields.isEmpty {
-            // Could load saved schema here
+        guard let stored = draft.additional?[schemaAdditionalKey] else {
+            schemaFields = []
+            return
+        }
+
+        do {
+            let data = try TierListCreatorCodec.encoder.encode(stored)
+            schemaFields = try TierListCreatorCodec.decoder.decode([SchemaFieldDefinition].self, from: data)
+        } catch {
+            Logger.appState.error("Schema decode failed: \(error.localizedDescription, privacy: .public)")
+            schemaFields = []
         }
     }
 
     private func saveSchema() {
-        // Save to draft.additional["itemSchema"]
-        // For now, just mark as edited
+        do {
+            var additional = draft.additional ?? [:]
+            if schemaFields.isEmpty {
+                additional.removeValue(forKey: schemaAdditionalKey)
+                draft.additional = additional.isEmpty ? nil : additional
+            } else {
+                let data = try TierListCreatorCodec.encoder.encode(schemaFields)
+                let json = try TierListCreatorCodec.decoder.decode(JSONValue.self, from: data)
+                additional[schemaAdditionalKey] = json
+                draft.additional = additional
+            }
+        } catch {
+            Logger.appState.error("Schema encode failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
-}
 
-// MARK: - Schema Field Definition
-
-struct SchemaFieldDefinition: Identifiable, Codable, Hashable {
-    var id = UUID()
-    var name: String
-    var fieldType: FieldType
-    var required: Bool
-    var allowMultiple: Bool
-    var options: [String]
-
-    enum FieldType: String, Codable, CaseIterable {
-        case text
-        case textarea
-        case number
-        case date
-        case singleSelect
-        case multiSelect
-        case boolean
-
-        var displayName: String {
-            switch self {
-            case .text: return "Text"
-            case .textarea: return "Text Area"
-            case .number: return "Number"
-            case .date: return "Date"
-            case .singleSelect: return "Single Select"
-            case .multiSelect: return "Multi-Select"
-            case .boolean: return "Yes/No"
-            }
-        }
-
-        var icon: String {
-            switch self {
-            case .text: return "textformat"
-            case .textarea: return "text.alignleft"
-            case .number: return "number"
-            case .date: return "calendar"
-            case .singleSelect: return "list.bullet"
-            case .multiSelect: return "checklist"
-            case .boolean: return "checkmark.square"
-            }
-        }
+    private func persistSchemaChange() {
+        saveSchema()
+        appState.markDraftEdited(draft)
     }
 }
 

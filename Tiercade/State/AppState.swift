@@ -126,6 +126,7 @@ final class AppState {
     var themeDraft: ThemeDraft?
     var showTierListCreator: Bool = false
     var tierListCreatorActive: Bool = false
+    var tierListWizardContext: TierListWizardContext = .create
     var tierListCreatorDraft: TierProjectDraft?
     var tierListCreatorIssues: [TierListDraftValidationIssue] = []
     var tierListCreatorExportPayload: String?
@@ -435,6 +436,7 @@ final class AppState {
     }
 
     private func makeBundledTierListEntity(from project: BundledProject, source: String) -> TierListEntity {
+        let encodedProject = try? TierListCreatorCodec.encoder.encode(project.project)
         let entity = TierListEntity(
             title: project.title,
             fileName: nil,
@@ -449,6 +451,7 @@ final class AppState {
             subtitle: project.subtitle,
             iconSystemName: "square.grid.2x2",
             lastOpenedAt: .distantPast,
+            projectData: encodedProject,
             tiers: []
         )
 
