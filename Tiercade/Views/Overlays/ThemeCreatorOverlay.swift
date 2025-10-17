@@ -41,18 +41,20 @@ struct ThemeCreatorOverlay: View {
                 footer
             }
             .frame(maxWidth: 1160, maxHeight: 880)
-            .tvGlassRounded(TVMetrics.overlayCornerRadius)
+            .tvGlassRounded(platformOverlayCornerRadius)
             .overlay(
-                RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
+                RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
                     .stroke(Color.white.opacity(0.16), lineWidth: 1.4)
             )
             .shadow(color: Color.black.opacity(0.42), radius: 32, y: 18)
             .accessibilityIdentifier("ThemeCreator_Overlay")
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
+            #if os(tvOS)
             .focusSection()
             .focusScope(focusNamespace)
             .defaultFocus($focusedElement, .tier(draft.activeTierID))
+            #endif
             .onAppear {
                 suppressFocusReset = false
                 appState.themeCreatorActive = true
@@ -66,8 +68,10 @@ struct ThemeCreatorOverlay: View {
                 focusedElement = nil
                 lastFocus = nil
             }
+            #if os(tvOS)
             .onExitCommand { dismiss(returnToPicker: true) }
             .onMoveCommand(perform: handleMoveCommand)
+            #endif
             .onChange(of: focusedElement) { _, newValue in
                 guard !suppressFocusReset else { return }
                 if let newValue {
@@ -99,8 +103,8 @@ private extension ThemeCreatorOverlay {
 
             Spacer()
         }
-        .padding(TVMetrics.overlayPadding)
-    .tvGlassRounded(0)
+        .padding(platformOverlayPadding)
+        .tvGlassRounded(0)
     }
 
     var content: some View {
@@ -115,7 +119,7 @@ private extension ThemeCreatorOverlay {
 
             paletteSection
         }
-        .padding(.horizontal, TVMetrics.overlayPadding)
+        .padding(.horizontal, platformOverlayPadding)
         .padding(.vertical, 32)
     }
 
@@ -290,7 +294,7 @@ private extension ThemeCreatorOverlay {
     }
 
     var footer: some View {
-        HStack(spacing: TVMetrics.buttonSpacing) {
+        HStack(spacing: platformButtonSpacing) {
             Button(role: .cancel) { dismiss(returnToPicker: true) } label: {
                 Label("Cancel", systemImage: "arrow.backward")
             }
@@ -310,7 +314,7 @@ private extension ThemeCreatorOverlay {
             .disabled(nameBinding.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .accessibilityIdentifier("ThemeCreator_Save")
         }
-        .padding(TVMetrics.overlayPadding)
+        .padding(platformOverlayPadding)
         .tvGlassRounded(0)
         .overlay(alignment: .top) {
             Divider().opacity(0.12)
@@ -327,6 +331,7 @@ private extension ThemeCreatorOverlay {
         setFocus(.tier(tierID))
     }
 
+    #if os(tvOS)
     func handleMoveCommand(_ direction: MoveCommandDirection) {
         guard let focus = focusedElement else { return }
         switch focus {
@@ -351,7 +356,7 @@ private extension ThemeCreatorOverlay {
             setFocus(.description)
         case .right:
             setFocus(.tier(draft.activeTierID))
-        default:
+        @unknown default:
             setFocus(.name)
         }
     }
@@ -364,7 +369,7 @@ private extension ThemeCreatorOverlay {
             setFocus(.tier(draft.activeTierID))
         case .right:
             setFocus(.tier(draft.activeTierID))
-        default:
+        @unknown default:
             setFocus(.description)
         }
     }
@@ -387,7 +392,7 @@ private extension ThemeCreatorOverlay {
         case .right:
             paletteFocusIndex = paletteIndex(for: draft.tiers[currentIndex].colorHex)
             setFocus(.palette(paletteFocusIndex))
-        default:
+        @unknown default:
             setFocus(.tier(tierID))
         }
     }
@@ -412,7 +417,7 @@ private extension ThemeCreatorOverlay {
             let target = min(index + 1, Self.paletteHexes.count - 1)
             paletteFocusIndex = target
             setFocus(.palette(target))
-        default:
+        @unknown default:
             setFocus(.palette(index))
         }
     }
@@ -423,7 +428,7 @@ private extension ThemeCreatorOverlay {
             setFocus(.palette(paletteFocusIndex))
         case .left:
             setFocus(.cancel)
-        default:
+        @unknown default:
             setFocus(.save)
         }
     }
@@ -436,10 +441,11 @@ private extension ThemeCreatorOverlay {
             setFocus(.save)
         case .down:
             setFocus(.save)
-        default:
+        @unknown default:
             setFocus(.cancel)
         }
     }
+    #endif
 
     func focusTier(at index: Int) {
         let tier = draft.tiers[index]
@@ -474,5 +480,33 @@ private extension ThemeCreatorOverlay {
     func setFocus(_ target: FocusField) {
         focusedElement = target
         lastFocus = target
+    }
+}
+
+// MARK: - Platform metrics
+
+private extension ThemeCreatorOverlay {
+    var platformOverlayCornerRadius: CGFloat {
+        #if os(tvOS)
+        TVMetrics.overlayCornerRadius
+        #else
+        28
+        #endif
+    }
+
+    var platformOverlayPadding: CGFloat {
+        #if os(tvOS)
+        TVMetrics.overlayPadding
+        #else
+        Metrics.grid * 4
+        #endif
+    }
+
+    var platformButtonSpacing: CGFloat {
+        #if os(tvOS)
+        TVMetrics.buttonSpacing
+        #else
+        Metrics.grid * 2
+        #endif
     }
 }

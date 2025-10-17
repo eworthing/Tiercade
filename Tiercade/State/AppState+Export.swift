@@ -83,6 +83,10 @@ extension AppState {
         )
     }
 
+    func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String) {
+        try await exportToFormat(format, group: "All", themeName: "Default")
+    }
+
     private func exportToJSON(group: String, themeName: String) -> String {
         let exportData = [
             "metadata": [

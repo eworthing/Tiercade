@@ -1,17 +1,18 @@
-#if os(iOS)
+#if os(iOS) || targetEnvironment(macCatalyst)
 import SwiftUI
 import UniformTypeIdentifiers
+import Observation
 import TiercadeCore
 
 @MainActor
-protocol ToolbarExportCoordinating: ObservableObject {
+protocol ToolbarExportCoordinating: AnyObject, Observable {
     var isLoading: Bool { get }
     func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String)
     func showToast(type: ToastType, title: String, message: String?)
 }
 
 struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
-    @ObservedObject var coordinator: Coordinator
+    @Bindable var coordinator: Coordinator
     let exportFormat: ExportFormat
     @Binding var isPresented: Bool
     @State private var isExporting = false
@@ -115,6 +116,10 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
             return "Markdown format with formatted tables and headers, great for documentation"
         case .csv:
             return "CSV format suitable for spreadsheets and data analysis"
+        case .png:
+            return "High-resolution PNG image export"
+        case .pdf:
+            return "PDF render with vector text and layout"
         }
     }
 
@@ -128,6 +133,10 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
             return .plainText
         case .csv:
             return .commaSeparatedText
+        case .png:
+            return .png
+        case .pdf:
+            return .pdf
         }
     }
 

@@ -66,7 +66,7 @@ struct MatchupArenaOverlay: View {
         .padding(.horizontal, Metrics.grid * 2)
         .accessibilityIdentifier("MatchupOverlay_Root")
         .accessibilityElement(children: .contain)
-#if os(tvOS) || os(macOS)
+#if os(tvOS)
         .focusSection()
 #endif
         .defaultFocus($focusAnchor, defaultFocus)
@@ -294,6 +294,7 @@ struct MatchupArenaOverlay: View {
         }
     }
 
+    #if os(tvOS)
     private func handleMoveCommand(_ direction: MoveCommandDirection) {
         guard !suppressFocusReset else { return }
         let current = focusAnchor ?? lastFocus
@@ -310,7 +311,7 @@ struct MatchupArenaOverlay: View {
         case .right: return moveRight(from: current)
         case .up: return moveUp(from: current)
         case .down: return moveDown(from: current)
-        default: return nil
+        @unknown default: return nil
         }
     }
 
@@ -351,6 +352,7 @@ struct MatchupArenaOverlay: View {
             return nil
         }
     }
+    #endif
 }
 
 private struct MatchupProgressDial: View {

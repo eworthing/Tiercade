@@ -266,8 +266,13 @@ struct MainAppView: View {
                 .environment(app)
                 .environment(\.editMode, $editMode)
                 // Add content padding to avoid overlay bars overlap
+                #if os(tvOS)
                 .padding(.top, TVMetrics.contentTopInset)
                 .padding(.bottom, TVMetrics.contentBottomInset)
+                #else
+                .padding(.top, Metrics.grid * 6)
+                .padding(.bottom, Metrics.grid * 3)
+                #endif
                 .allowsHitTesting(!modalBlockingFocus)
             // Note: Don't use .disabled() as it removes elements from accessibility tree
             // Only block hit testing when modals are active
@@ -333,6 +338,7 @@ private struct AccessibilityBridgeView: View {
     }
 }
 
+#if os(tvOS)
 // Simple tvOS-friendly toolbar exposing essential actions as buttons.
 struct TVToolbarView: View {
     @Bindable var app: AppState
@@ -568,3 +574,4 @@ struct TVToolbarView: View {
         }
     }
 }
+#endif

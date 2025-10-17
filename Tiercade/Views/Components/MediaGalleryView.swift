@@ -21,18 +21,19 @@ struct MediaGalleryView: View {
                     .tag(page.index)
             }
         }
-        #if os(macOS)
-        .tabViewStyle(.automatic)
-        #else
-        .tabViewStyle(.page(indexDisplayMode: pages.count > 1 ? .automatic : .never))
         #if os(tvOS)
+        .tabViewStyle(.page(indexDisplayMode: pages.count > 1 ? .automatic : .never))
         .focusSection()
         .onChange(of: selection) { _, newValue in
-        guard pages.indices.contains(newValue) else { return }
-        let announcement = "Image \(newValue + 1) of \(pages.count)"
-        AccessibilityNotification.Announcement(announcement).post()
+            guard pages.indices.contains(newValue) else { return }
+            let announcement = "Image \(newValue + 1) of \(pages.count)"
+            AccessibilityNotification.Announcement(announcement).post()
         }
-        #endif
+        #elseif os(iOS) && !targetEnvironment(macCatalyst)
+        .tabViewStyle(.page(indexDisplayMode: pages.count > 1 ? .automatic : .never))
+        #else
+        // Mac Catalyst: .page style isn't available, use automatic
+        .tabViewStyle(.automatic)
         #endif
     }
 }

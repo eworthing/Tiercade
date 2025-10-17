@@ -11,7 +11,11 @@ private struct TVGlassRoundedModifier: ViewModifier {
         if reduceTransparency {
             content.background(.thickMaterial, in: shape)
         } else {
+            #if os(tvOS)
             content.glassEffect(.regular.interactive(), in: shape)
+            #else
+            content.background(.ultraThinMaterial, in: shape)
+            #endif
         }
     }
 
@@ -28,7 +32,11 @@ private struct TVGlassCapsuleModifier: ViewModifier {
         if reduceTransparency {
             content.background(.thickMaterial, in: Capsule())
         } else {
+            #if os(tvOS)
             content.glassEffect(.regular.interactive(), in: Capsule())
+            #else
+            content.background(.ultraThinMaterial, in: Capsule())
+            #endif
         }
     }
 }
@@ -45,9 +53,19 @@ extension View {
 
 @ViewBuilder
 func tvGlassContainer<Content: View>(spacing: CGFloat? = nil, @ViewBuilder content: () -> Content) -> some View {
+    #if os(tvOS)
     if let spacing {
         GlassEffectContainer(spacing: spacing, content: content)
     } else {
         GlassEffectContainer(content: content)
     }
+    #else
+    // For iOS/iPadOS/Catalyst, just return the content without GlassEffectContainer
+    // since Liquid Glass container is tvOS-specific
+    if let spacing {
+        VStack(spacing: spacing, content: content)
+    } else {
+        VStack(content: content)
+    }
+    #endif
 }
