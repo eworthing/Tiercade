@@ -217,7 +217,11 @@ struct MatchupArenaOverlay: View {
                     .labelStyle(.titleAndIcon)
                     .frame(minWidth: 220)
             }
-            .buttonStyle(.tvGlass)
+            #if os(tvOS)
+            .buttonStyle(.glass)
+            #else
+            .buttonStyle(.borderedProminent)
+            #endif
             .focused($focusAnchor, equals: .abort)
             .accessibilityIdentifier("MatchupOverlay_Cancel")
 
@@ -230,7 +234,11 @@ struct MatchupArenaOverlay: View {
                     .labelStyle(.titleAndIcon)
                     .frame(minWidth: 260)
             }
-            .buttonStyle(.tvGlass)
+            #if os(tvOS)
+            .buttonStyle(.glassProminent)
+            #else
+            .buttonStyle(.borderedProminent)
+            #endif
             .focused($focusAnchor, equals: .apply)
             .accessibilityIdentifier("MatchupOverlay_Apply")
         }
@@ -418,7 +426,11 @@ private struct MatchupCandidateCard: View {
             )
             .background(backgroundShape)
         }
-        .buttonStyle(.tvGlass)
+        #if os(tvOS)
+        .buttonStyle(.glass)
+        #else
+        .buttonStyle(.plain)
+        #endif
         .accessibilityLabel(item.name ?? item.id)
         .accessibilityHint(item.description ?? "Choose this contender")
     }
@@ -503,7 +515,11 @@ private struct MatchupPassTile: View {
             .frame(width: 240, height: 240)
             .background(tileShape)
         }
-        .buttonStyle(.tvGlass)
+        #if os(tvOS)
+        .buttonStyle(.glass)
+        #else
+        .buttonStyle(.plain)
+        #endif
         .accessibilityLabel("Pass on this matchup")
         .accessibilityHint("Skip and revisit later")
     }

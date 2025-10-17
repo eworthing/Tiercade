@@ -17,6 +17,7 @@ final class TierListEntity {
     var subtitle: String?
     var iconSystemName: String?
     var lastOpenedAt: Date
+    var projectData: Data?
     @Relationship(deleteRule: .cascade, inverse: \TierEntity.list)
     var tiers: [TierEntity]
 
@@ -35,6 +36,7 @@ final class TierListEntity {
         subtitle: String? = nil,
         iconSystemName: String? = nil,
         lastOpenedAt: Date = Date(),
+        projectData: Data? = nil,
         tiers: [TierEntity] = []
     ) {
         self.identifier = identifier
@@ -51,6 +53,7 @@ final class TierListEntity {
         self.subtitle = subtitle
         self.iconSystemName = iconSystemName
         self.lastOpenedAt = lastOpenedAt
+        self.projectData = projectData
         self.tiers = tiers
     }
 }

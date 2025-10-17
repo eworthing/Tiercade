@@ -24,11 +24,14 @@ _Last updated: 2025-02-14_
 | **Left Rail — Tiers** | Focus section listing tiers with order, lock, collapse, count. Select opens tier editor. | Sidebar column with drag handles for reorder. | First list tab. |
 | **Center — Composition Canvas** | Fixed focus section previewing tier lanes, rules button, quick actions. | Detail pane showing tier card preview. | Presented as stacked cards below tier list. |
 | **Right — Item Library** | Searchable list with filters; `searchable(placement: .toolbar)` lets system choose placement.[9] | List with search field in navigation UI. | Dedicated tab; search presented automatically. |
-| **Overlays / Drawers** | Glass overlay slides over content; `.onExitCommand` to dismiss without leaving screen.[4] | Sheet or inspector depending on platform idiom. | Bottom sheet or push view. |
+| **Wizard Surface** | Full-screen tabbed wizard presented via `fullScreenCover`; glass toolbar hosts Save/Publish/Close and respects `.onExitCommand`.[4] | Tab-styled detail flow inside NavigationSplitView. | Dedicated wizard stack pushed modally. |
 | **Action Strip** | Floating glass bar (Undo/Redo/Validate/Publish) pinned at safe-area bottom; focus section ensures remote access. | Toolbar / command group. | Toolbar in tab or bottom sheet. |
 
+- Tier List Browser overlay adopts Liquid Glass (`tvGlassContainer` + `.buttonStyle(.glass)`) with primary “Open” and secondary “Edit” actions, matching tvOS 26 focus chrome.
+
 ## 5. Focus & Input Model (tvOS priority)
-- Divide layout into focus sections for rail, canvas, library, action strip, and active overlays using `.focusSection()` to guide remote traversal.[3]
+- Divide layout into focus sections for rail, canvas, library, action strip, and active wizard panels using `.focusSection()` to guide remote traversal.[3]
+- Tab navigation inside the wizard uses `TabView` pages; default focus lands on the active tab's primary control when the creator surfaces.
 - Bind focus ownership with an enum-based `@FocusState` per major area. Default focus lands on the tier rail; push focus into overlays when presented.
 - Handle system commands:
   - `.onExitCommand` closes modals or backs out of editing flows gracefully (Menu key).[4]
@@ -49,6 +52,7 @@ _Last updated: 2025-02-14_
 - Relationships align with schema (project owns tiers/items/overrides; overrides link to canonical item via ID). Delete rules cascade from project -> tiers/items and nullify cross-links where appropriate.
 
 ## 8. Core Workflows
+The creator experience is implemented as a tabbed wizard (`TierListProjectWizard`) that surfaces Settings, Schema, Items, and Tiers pages. The same wizard powers both new projects and edits launched from the Tier List Browser, adapting button labels to “Update/Republish” when editing. The glass toolbar stays persistent for Save/Publish/Close and manages focus hand-off between the tab selector and page content.
 1. **Project Metadata**
    - Fields: title, description, schemaVersion picker, theme settings, tier sort order, accessibility toggles, visibility stub, audit info.
    - Auto-generate UUID project ID; update `audit.updatedAt/By` on save.
@@ -68,6 +72,9 @@ _Last updated: 2025-02-14_
    - Inline validation banners jump focus to offending fields. Global “Validate” uses schema-level checks before enabling save.
    - Save pipeline: run validation -> serialize SwiftData snapshot -> update audit -> persist -> emit toast/progress.
    - Export share sheet offers JSON, CSV, Markdown, text using existing export subsystem.
+6. **Editing Existing Projects**
+   - Tier lists selected through the browser seed the wizard via `TierProjectDraft.make(from:)`, preserving audit data and tier ordering.
+   - “Edit” glass buttons in the browser trigger `presentTierListEditor`, which converts the active `TierListEntity` (or in-memory tiers) back into a draft before presenting the wizard.
 
 ## 9. Data Transfer & Drag/Drop
 - Use `Transferable` protocol for pointer-platform drag/drop, providing both `CodableRepresentation` with custom `UTType(exportedAs: "com.tiercade.tieritem")` and `ProxyRepresentation` for text fallbacks.[8]
