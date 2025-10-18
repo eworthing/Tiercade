@@ -113,79 +113,61 @@ enum PlatformCardLayoutProvider {
 
     private static func spec(for density: CardDensityPreference) -> LayoutSpec {
         switch density {
-        case .ultraMicro:
-            return LayoutSpec(
-                cardWidth: 120,
-                contentPadding: 8,
-                interItemSpacing: 12,
-                rowSpacing: 14,
-                verticalContentSpacing: 4,
-                cornerRadius: 10,
-                thumbnailHeight: 135,
-                titleFont: .caption.weight(.semibold),
-                metadataFont: .caption2.weight(.regular)
-            )
-        case .micro:
-            return LayoutSpec(
-                cardWidth: 148,
-                contentPadding: 10,
-                interItemSpacing: 14,
-                rowSpacing: 16,
-                verticalContentSpacing: 5,
-                cornerRadius: 11,
-                thumbnailHeight: 160,
-                titleFont: .footnote.weight(.semibold),
-                metadataFont: .caption.weight(.regular)
-            )
-        case .tight:
-            return LayoutSpec(
-                cardWidth: 176,
-                contentPadding: 12,
-                interItemSpacing: 16,
-                rowSpacing: 18,
-                verticalContentSpacing: 6,
-                cornerRadius: 12,
-                thumbnailHeight: 188,
-                titleFont: .subheadline.weight(.semibold),
-                metadataFont: .footnote.weight(.regular)
-            )
-        case .compact:
-            return LayoutSpec(
-                cardWidth: 204,
-                contentPadding: 14,
-                interItemSpacing: 18,
-                rowSpacing: 20,
-                verticalContentSpacing: 7,
-                cornerRadius: 14,
-                thumbnailHeight: 212,
-                titleFont: .callout.weight(.semibold),
-                metadataFont: .footnote.weight(.regular)
-            )
-        case .standard:
-            return LayoutSpec(
-                cardWidth: 232,
-                contentPadding: 16,
-                interItemSpacing: 20,
-                rowSpacing: 22,
-                verticalContentSpacing: 8,
-                cornerRadius: 16,
-                thumbnailHeight: 236,
-                titleFont: .title3.weight(.semibold),
-                metadataFont: .callout.weight(.regular)
-            )
-        case .expanded:
-            return LayoutSpec(
-                cardWidth: 260,
-                contentPadding: 18,
-                interItemSpacing: 22,
-                rowSpacing: 24,
-                verticalContentSpacing: 9,
-                cornerRadius: 18,
-                thumbnailHeight: 260,
-                titleFont: .title2.weight(.semibold),
-                metadataFont: .headline.weight(.regular)
-            )
+        case .ultraMicro: return ultraMicroSpec()
+        case .micro: return microSpec()
+        case .tight: return tightSpec()
+        case .compact: return compactSpec()
+        case .standard: return standardSpec()
+        case .expanded: return expandedSpec()
         }
+    }
+
+    private static func ultraMicroSpec() -> LayoutSpec {
+        LayoutSpec(
+            cardWidth: 120, contentPadding: 8, interItemSpacing: 12, rowSpacing: 14,
+            verticalContentSpacing: 4, cornerRadius: 10, thumbnailHeight: 135,
+            titleFont: .caption.weight(.semibold), metadataFont: .caption2.weight(.regular)
+        )
+    }
+
+    private static func microSpec() -> LayoutSpec {
+        LayoutSpec(
+            cardWidth: 148, contentPadding: 10, interItemSpacing: 14, rowSpacing: 16,
+            verticalContentSpacing: 5, cornerRadius: 11, thumbnailHeight: 160,
+            titleFont: .footnote.weight(.semibold), metadataFont: .caption.weight(.regular)
+        )
+    }
+
+    private static func tightSpec() -> LayoutSpec {
+        LayoutSpec(
+            cardWidth: 176, contentPadding: 12, interItemSpacing: 16, rowSpacing: 18,
+            verticalContentSpacing: 6, cornerRadius: 12, thumbnailHeight: 188,
+            titleFont: .subheadline.weight(.semibold), metadataFont: .footnote.weight(.regular)
+        )
+    }
+
+    private static func compactSpec() -> LayoutSpec {
+        LayoutSpec(
+            cardWidth: 204, contentPadding: 14, interItemSpacing: 18, rowSpacing: 20,
+            verticalContentSpacing: 7, cornerRadius: 14, thumbnailHeight: 212,
+            titleFont: .callout.weight(.semibold), metadataFont: .footnote.weight(.regular)
+        )
+    }
+
+    private static func standardSpec() -> LayoutSpec {
+        LayoutSpec(
+            cardWidth: 232, contentPadding: 16, interItemSpacing: 20, rowSpacing: 22,
+            verticalContentSpacing: 8, cornerRadius: 16, thumbnailHeight: 236,
+            titleFont: .title3.weight(.semibold), metadataFont: .callout.weight(.regular)
+        )
+    }
+
+    private static func expandedSpec() -> LayoutSpec {
+        LayoutSpec(
+            cardWidth: 260, contentPadding: 18, interItemSpacing: 22, rowSpacing: 24,
+            verticalContentSpacing: 9, cornerRadius: 18, thumbnailHeight: 260,
+            titleFont: .title2.weight(.semibold), metadataFont: .headline.weight(.regular)
+        )
     }
 }
 #endif

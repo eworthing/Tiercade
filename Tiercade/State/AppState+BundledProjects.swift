@@ -1,4 +1,6 @@
 import Foundation
+import SwiftData
+import os
 import TiercadeCore
 
 @MainActor
@@ -111,5 +113,114 @@ extension AppState {
         }
         // Keep other tier names as-is (S, A, B, C, D, F, etc.)
         return name
+    }
+
+    func prefillBundledProjectsIfNeeded() {
+        do {
+            let bundledSource = TierListSource.bundled.rawValue
+            let descriptor = FetchDescriptor<TierListEntity>(
+                predicate: #Predicate { $0.sourceRaw == bundledSource }
+            )
+            let existing = try modelContext.fetch(descriptor)
+            let existingIdentifiers = Set(existing.compactMap { $0.externalIdentifier })
+            var created = false
+            for project in bundledProjects where !existingIdentifiers.contains(project.id) {
+                let entity = makeBundledTierListEntity(from: project, source: bundledSource)
+                modelContext.insert(entity)
+                created = true
+            }
+            if created {
+                try modelContext.save()
+            }
+        } catch {
+            Logger.persistence.error("Prefill bundled projects failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func makeBundledTierListEntity(from project: BundledProject, source: String) -> TierListEntity {
+        let encodedProject = try? TierListCreatorCodec.makeEncoder().encode(project.project)
+        let entity = TierListEntity(
+            title: project.title,
+            fileName: nil,
+            createdAt: Date(),
+            updatedAt: Date(),
+            isActive: false,
+            cardDensityRaw: cardDensityPreference.rawValue,
+            selectedThemeID: selectedThemeID,
+            customThemesData: nil,
+            sourceRaw: source,
+            externalIdentifier: project.id,
+            subtitle: project.subtitle,
+            iconSystemName: "square.grid.2x2",
+            lastOpenedAt: .distantPast,
+            projectData: encodedProject,
+            tiers: []
+        )
+
+        let metadata = Dictionary(uniqueKeysWithValues: project.project.tiers.map { ($0.id, $0) })
+        let resolvedTiers = ModelResolver.resolveTiers(from: project.project)
+
+        for (index, resolvedTier) in resolvedTiers.enumerated() {
+            let tierEntity = createTierEntity(
+                from: resolvedTier,
+                index: index,
+                totalTiers: resolvedTiers.count,
+                metadata: metadata,
+                listEntity: entity
+            )
+            entity.tiers.append(tierEntity)
+        }
+
+        return entity
+    }
+
+    private func createTierEntity(
+        from resolvedTier: ResolvedTier,
+        index: Int,
+        totalTiers: Int,
+        metadata: [String: Project.Tier],
+        listEntity: TierListEntity
+    ) -> TierEntity {
+        let normalizedKey = normalizeTierName(resolvedTier.label)
+        let tierMetadata = metadata[resolvedTier.id]
+        let order = normalizedKey == "unranked" ? totalTiers : index
+        let tierEntity = TierEntity(
+            key: normalizedKey,
+            displayName: resolvedTier.label,
+            colorHex: tierMetadata?.color,
+            order: order,
+            isLocked: tierMetadata?.locked ?? false
+        )
+        tierEntity.list = listEntity
+
+        for (position, item) in resolvedTier.items.enumerated() {
+            let (seasonString, seasonNumber) = seasonInfo(from: item.attributes)
+            let newItem = TierItemEntity(
+                itemID: item.id,
+                name: item.title,
+                seasonString: seasonString,
+                seasonNumber: seasonNumber,
+                status: item.attributes?["status"],
+                details: item.description,
+                imageUrl: item.thumbUri,
+                videoUrl: nil,
+                position: position,
+                tier: tierEntity
+            )
+            tierEntity.items.append(newItem)
+        }
+
+        return tierEntity
+    }
+
+    private func seasonInfo(from attributes: [String: String]?) -> (String?, Int?) {
+        guard let attributes else { return (nil, nil) }
+        if let seasonNumberString = attributes["seasonNumber"], let value = Int(seasonNumberString) {
+            return (seasonNumberString, value)
+        }
+        if let seasonString = attributes["season"] {
+            return (seasonString, Int(seasonString))
+        }
+        return (nil, nil)
     }
 }

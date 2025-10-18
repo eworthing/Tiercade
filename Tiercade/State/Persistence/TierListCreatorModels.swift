@@ -5,26 +5,26 @@ import TiercadeCore
 // MARK: - Encoding Helpers
 
 enum TierListCreatorCodec {
-    nonisolated(unsafe) static let encoder: JSONEncoder = {
+    nonisolated static func makeEncoder() -> JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         return encoder
-    }()
+    }
 
-    nonisolated(unsafe) static let decoder: JSONDecoder = {
+    nonisolated static func makeDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
-    }()
+    }
 
     nonisolated static func encode<T: Encodable>(_ value: T?) -> Data? {
         guard let value else { return nil }
-        return try? encoder.encode(value)
+        return try? makeEncoder().encode(value)
     }
 
     nonisolated static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {
         guard let data else { return nil }
-        return try? decoder.decode(type, from: data)
+        return try? makeDecoder().decode(type, from: data)
     }
 }
 
@@ -57,7 +57,10 @@ final class TierProjectDraft {
     @Relationship(deleteRule: .cascade, inverse: \TierDraftItem.project) var items: [TierDraftItem]
     @Relationship(deleteRule: .cascade, inverse: \TierDraftOverride.project) var overrides: [TierDraftOverride]
     @Relationship(deleteRule: .cascade, inverse: \TierDraftMedia.project) var mediaLibrary: [TierDraftMedia]
-    @Relationship(deleteRule: .cascade, inverse: \TierDraftCollabMember.project) var collaborators: [TierDraftCollabMember]
+    @Relationship(
+        deleteRule: .cascade,
+        inverse: \TierDraftCollabMember.project
+    ) var collaborators: [TierDraftCollabMember]
     @Relationship(deleteRule: .cascade, inverse: \TierDraftAudit.project) var audit: TierDraftAudit?
 
     init(
@@ -469,213 +472,3 @@ extension TierDraftCollabMember {
 }
 
 // MARK: - Draft Seeding
-
-extension TierProjectDraft {
-    static func makeDefault(now: Date = Date()) -> TierProjectDraft {
-        let audit = TierDraftAudit(createdAt: now, updatedAt: now)
-        let draft = TierProjectDraft(
-            projectId: UUID(),
-            schemaVersion: 1,
-            title: "Untitled Project",
-            summary: "",
-            themeToken: "system-default",
-            tiers: [],
-            items: [],
-            overrides: [],
-            mediaLibrary: [],
-            collaborators: [],
-            audit: audit
-        )
-        audit.project = draft
-
-        let palette = [
-            ("tier.s", "S", "#FF3B30"),
-            ("tier.a", "A", "#FF9500"),
-            ("tier.b", "B", "#FFCC00"),
-            ("tier.c", "C", "#34C759"),
-            ("tier.d", "D", "#007AFF"),
-            ("tier.f", "F", "#5856D6")
-        ]
-
-        for (index, entry) in palette.enumerated() {
-            let tier = TierDraftTier(
-                tierId: entry.0,
-                label: entry.1,
-                colorHex: entry.2,
-                order: index
-            )
-            tier.project = draft
-            draft.tiers.append(tier)
-        }
-
-        return draft
-    }
-
-    static func make(from project: Project) -> TierProjectDraft {
-        let projectUUID = UUID(uuidString: project.projectId) ?? UUID()
-        let auditSource = project.audit
-        let settings = project.settings
-
-        let draft = TierProjectDraft(
-            projectId: projectUUID,
-            schemaVersion: project.schemaVersion,
-            title: project.title ?? "Untitled Project",
-            summary: project.description ?? "",
-            themeToken: settings?.theme ?? "system-default",
-            tierSortOrder: settings?.tierSortOrder ?? "descending",
-            gridSnap: settings?.gridSnap ?? true,
-            showUnranked: settings?.showUnranked ?? true,
-            accessibilityVoiceOver: settings?.accessibility?["voiceOver"] ?? true,
-            accessibilityHighContrast: settings?.accessibility?["highContrast"] ?? false,
-            visibility: project.links?.visibility ?? "private",
-            createdAt: auditSource.createdAt,
-            updatedAt: auditSource.updatedAt,
-            createdBy: auditSource.createdBy,
-            updatedBy: auditSource.updatedBy
-        )
-
-        let audit = TierDraftAudit(
-            createdAt: auditSource.createdAt,
-            updatedAt: auditSource.updatedAt,
-            createdBy: auditSource.createdBy,
-            updatedBy: auditSource.updatedBy
-        )
-        audit.project = draft
-        draft.audit = audit
-        draft.links = project.links
-        draft.storage = project.storage
-        draft.settings = settings
-            ?? Project.Settings(
-                theme: draft.themeToken,
-                tierSortOrder: draft.tierSortOrder,
-                gridSnap: draft.gridSnap,
-                showUnranked: draft.showUnranked,
-                accessibility: [
-                    "voiceOver": draft.accessibilityVoiceOver,
-                    "highContrast": draft.accessibilityHighContrast
-                ]
-            )
-        draft.collaboration = project.collab
-        draft.additional = project.additional
-
-        func makeMediaDraft(from media: Project.Media) -> TierDraftMedia {
-            let mediaDraft = TierDraftMedia(
-                mediaId: media.id,
-                kindRaw: media.kind.rawValue,
-                uri: media.uri,
-                mime: media.mime,
-                width: media.w,
-                height: media.h,
-                durationMs: media.durationMs,
-                posterUri: media.posterUri,
-                thumbUri: media.thumbUri,
-                altText: media.alt
-            )
-            mediaDraft.project = draft
-            mediaDraft.attribution = media.attribution ?? [:]
-            mediaDraft.additional = media.additional ?? [:]
-            return mediaDraft
-        }
-
-        var itemDrafts: [String: TierDraftItem] = [:]
-        for (identifier, item) in project.items {
-            let itemDraft = TierDraftItem(
-                itemId: identifier,
-                title: item.title,
-                subtitle: item.subtitle ?? "",
-                summary: item.summary ?? "",
-                slug: item.slug ?? "",
-                rating: item.rating,
-                hidden: false
-            )
-            itemDraft.project = draft
-            itemDraft.tags = item.tags ?? []
-            itemDraft.attributes = item.attributes ?? [:]
-            itemDraft.sources = item.sources ?? []
-            itemDraft.locale = item.locale ?? [:]
-            itemDraft.additional = item.additional ?? [:]
-            itemDraft.meta = item.meta
-
-            if let media = item.media {
-                itemDraft.media = media.map { mediaElement in
-                    let draftMedia = makeMediaDraft(from: mediaElement)
-                    draftMedia.item = itemDraft
-                    return draftMedia
-                }
-            }
-
-            draft.items.append(itemDraft)
-            itemDrafts[identifier] = itemDraft
-        }
-
-        if let overrides = project.overrides {
-            for (identifier, override) in overrides {
-                let overrideDraft = TierDraftOverride(
-                    itemId: identifier,
-                    displayTitle: override.displayTitle ?? "",
-                    notes: override.notes ?? "",
-                    tags: override.tags ?? [],
-                    rating: override.rating,
-                    hidden: override.hidden ?? false
-                )
-                overrideDraft.project = draft
-                overrideDraft.additional = override.additional ?? [:]
-
-                if let media = override.media {
-                    overrideDraft.media = media.map { mediaElement in
-                        let draftMedia = makeMediaDraft(from: mediaElement)
-                        draftMedia.override = overrideDraft
-                        return draftMedia
-                    }
-                }
-
-                if let itemDraft = itemDrafts[identifier] {
-                    overrideDraft.item = itemDraft
-                    itemDraft.overrides.append(overrideDraft)
-                }
-
-                draft.overrides.append(overrideDraft)
-            }
-        }
-
-        let orderedTiers = project.tiers.sorted { $0.order < $1.order }
-        for tier in orderedTiers {
-            let tierDraft = TierDraftTier(
-                tierId: tier.id,
-                label: tier.label,
-                colorHex: tier.color ?? Self.defaultColor(for: tier.order),
-                order: tier.order,
-                locked: tier.locked ?? false,
-                collapsed: tier.collapsed ?? false
-            )
-            tierDraft.project = draft
-            tierDraft.rules = tier.rules ?? [:]
-            tierDraft.additional = tier.additional ?? [:]
-
-            var ordinal = 0
-            for itemId in tier.itemIds {
-                guard let itemDraft = itemDrafts[itemId] else { continue }
-                itemDraft.tier = tierDraft
-                itemDraft.ordinal = ordinal
-                ordinal += 1
-                tierDraft.items.append(itemDraft)
-            }
-
-            draft.tiers.append(tierDraft)
-        }
-
-        draft.updatedAt = auditSource.updatedAt
-
-        return draft
-    }
-
-    private static func defaultColor(for index: Int) -> String {
-        guard index >= 0 else { return fallbackTierColors.first ?? "#FF3B30" }
-        return fallbackTierColors[index % fallbackTierColors.count]
-    }
-
-    private static let fallbackTierColors: [String] = [
-        "#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#007AFF", "#AF52DE",
-        "#FF2D55", "#5AC8FA", "#FF9F0A", "#FFD60A"
-    ]
-}
