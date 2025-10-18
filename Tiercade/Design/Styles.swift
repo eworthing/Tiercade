@@ -31,6 +31,8 @@ struct PanelStyle: ViewModifier {
 extension View { func panel() -> some View { modifier(PanelStyle()) } }
 
 struct PrimaryButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(TypeScale.label)
@@ -39,38 +41,44 @@ struct PrimaryButtonStyle: ButtonStyle {
             .foregroundColor(get(configuration.isPressed))
             .cornerRadius(Metrics.rSm)
             .shadow(color: Palette.brand.opacity(0.6), radius: 10, x: 0, y: 6)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(reduceMotion ? nil : Motion.fast, value: configuration.isPressed)
     }
 }
 
 struct GhostButtonStyle: ButtonStyle {
     @Environment(\.isFocused) var isFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(TypeScale.label)
             .padding(.horizontal, Metrics.grid * 2).padding(.vertical, Metrics.grid * 1.25)
-            .background(isFocused ? Color.blue.opacity(0.3) : Color.black.opacity(0.5))
+            .background(
+                isFocused
+                ? Palette.brand.opacity(0.32)
+                : Palette.surfHi.opacity(0.85)
+            )
             .foregroundColor(.white)
             .cornerRadius(Metrics.rSm)
             .scaleEffect(isFocused ? 1.05 : 1.0)
-            .animation(.easeOut(duration: 0.2), value: isFocused)
+            .animation(reduceMotion ? nil : Motion.emphasis, value: isFocused)
     }
 }
 
 struct CardButtonStyle: ButtonStyle {
     @Environment(\.isFocused) var isFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect((configuration.isPressed || isFocused) ? 1.15 : 1.0)
             .shadow(
-                color: (configuration.isPressed || isFocused) ? .blue.opacity(0.6) : .black.opacity(0.1),
+                color: (configuration.isPressed || isFocused) ? Palette.brand.opacity(0.55) : Color.black.opacity(0.1),
                 radius: (configuration.isPressed || isFocused) ? 20 : 6,
                 x: 0,
                 y: (configuration.isPressed || isFocused) ? 12 : 4
             )
-            .animation(.easeOut(duration: 0.2), value: configuration.isPressed || isFocused)
+            .animation(reduceMotion ? nil : Motion.emphasis, value: configuration.isPressed || isFocused)
     }
 }
 
@@ -97,8 +105,8 @@ struct TVRemoteButtonStyle: ButtonStyle {
         let palette = palette(for: role, isPressed: configuration.isPressed, isFocused: isFocused)
         let scale = scale(for: configuration.isPressed, isFocused: isFocused)
         let borderWidth = isFocused ? palette.focusedBorderWidth : palette.baseBorderWidth
-        let animationFocus = reduceMotion ? nil : Animation.easeOut(duration: 0.15)
-        let animationPress = reduceMotion ? nil : Animation.easeOut(duration: 0.12)
+        let animationFocus = reduceMotion ? nil : Motion.focus
+        let animationPress = reduceMotion ? nil : Motion.fast
 
         let baseView = configuration.label
             .font(font(for: role))

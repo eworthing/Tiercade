@@ -283,6 +283,7 @@ private struct ThemeLibraryTile: View {
     let action: () -> Void
 
     @Environment(\.isFocused) private var isFocused
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: action) {
@@ -318,7 +319,7 @@ private struct ThemeLibraryTile: View {
         )
         .shadow(color: shadowColor, radius: shadowRadius, y: shadowOffset)
         .scaleEffect(scale)
-        .animation(animation, value: isFocused)
+        .animation(reduceMotion ? nil : Motion.focus, value: isFocused)
         .accessibilityLabel(theme.displayName)
         .accessibilityHint(accessibilityHint)
     }
@@ -345,10 +346,6 @@ private struct ThemeLibraryTile: View {
 
     private var scale: CGFloat {
         isFocused ? 1.05 : 1.0
-    }
-
-    private var animation: Animation {
-        .easeOut(duration: 0.22)
     }
 
     private var accessibilityHint: String {

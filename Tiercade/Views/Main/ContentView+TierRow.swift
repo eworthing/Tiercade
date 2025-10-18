@@ -7,6 +7,9 @@ struct TierRowWrapper: View {
     #if os(tvOS)
     @FocusState private var focusedItemId: String?
     @State private var showMenu = false
+    #else
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     #endif
 
     private var filteredCards: [Item] {
@@ -35,10 +38,10 @@ struct TierRowWrapper: View {
             // NOTE: Don't set accessibilityIdentifier on parent - it overrides children!
             // Individual cards and buttons have their own IDs
             .background(
-                RoundedRectangle(cornerRadius: 12).fill(Color.cardBackground)
+                RoundedRectangle(cornerRadius: 12).fill(Palette.cardBackground)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 12).stroke(Color.stroke, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 12).stroke(Palette.stroke, lineWidth: 1)
             )
             .overlay {
                 DragTargetHighlight(
@@ -67,14 +70,10 @@ struct TierRowWrapper: View {
         if let hex = app.displayColorHex(for: tier), let color = Color(hex: hex) {
             return color
         }
-        switch tier.uppercased() {
-        case "S": return .tierS
-        case "A": return .tierA
-        case "B": return .tierB
-        case "C": return .tierC
-        case "D": return .tierD
-        default: return .tierF
+        if let resolved = Tier(rawValue: tier.lowercased()) {
+            return resolved.color
         }
+        return Tier.f.color
     }
 
     private func tierBadge(accent: Color) -> some View {
@@ -135,7 +134,7 @@ struct TierRowWrapper: View {
             if !app.searchQuery.isEmpty || app.activeFilter != .all {
                 Text("\(filteredCards.count)/\(app.tierCount(tier))")
                     .font(TypeScale.label)
-                    .foregroundColor(Color.textSecondary)
+                    .foregroundColor(Palette.cardTextDim)
             }
         }
     }
@@ -161,15 +160,24 @@ struct TierRowWrapper: View {
         .focusSection()
         .defaultFocus($focusedItemId, filteredCards.first?.id)
         #else
-        ScrollView(.horizontal) {
-            LazyHStack(spacing: 10) {
-                ForEach(filteredCards, id: \.id) { item in
-                    CardView(item: item)
-                        .draggable(item.id)
-                }
+        let layout = PlatformCardLayoutProvider.layout(
+            for: filteredCards.count,
+            preference: app.cardDensityPreference,
+            horizontalSizeClass: horizontalSizeClass
+        )
+
+        LazyVGrid(
+            columns: layout.gridColumns,
+            alignment: .leading,
+            spacing: layout.rowSpacing
+        ) {
+            ForEach(filteredCards, id: \.id) { item in
+                CardView(item: item, layout: layout)
+                    .draggable(item.id)
             }
-            .padding(.bottom, Metrics.grid * 0.5)
         }
+        .padding(.bottom, layout.rowSpacing * 0.5)
+        .animation(reduceMotion ? nil : Motion.emphasis, value: filteredCards.count)
         #endif
     }
 

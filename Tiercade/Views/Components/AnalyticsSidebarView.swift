@@ -5,6 +5,7 @@ import Charts
 
 struct AnalyticsSidebarView: View {
     @Environment(AppState.self) private var app: AppState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @FocusState private var focusedElement: FocusElement?
 
@@ -49,7 +50,7 @@ struct AnalyticsSidebarView: View {
                 .move(edge: .trailing)
                     .combined(with: .opacity)
             )
-            .animation(.easeInOut(duration: 0.35), value: app.showAnalyticsSidebar)
+            .animation(reduceMotion ? nil : Animation.easeInOut(duration: 0.35), value: app.showAnalyticsSidebar)
         }
     }
 

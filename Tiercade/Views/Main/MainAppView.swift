@@ -18,6 +18,9 @@ struct MainAppView: View {
     enum DetailFocus: Hashable { case close }
     @Namespace private var glassNamespace
     #endif
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
 
     var body: some View {
     @Bindable var app = app
@@ -40,24 +43,18 @@ struct MainAppView: View {
     #endif
 
         return Group {
-            #if os(macOS) || targetEnvironment(macCatalyst)
-            NavigationSplitView {
-                SidebarView(tierOrder: app.tierOrder)
-                    .environment(app)
-            } content: {
-                TierGridView(tierOrder: app.tierOrder)
-                    .environment(app)
-            } detail: {
-                EmptyView()
-            }
-            .toolbar { ToolbarView(app: app) }
-            #else
-            // For iOS/tvOS show content full-bleed and inject bars via safe area insets
             #if os(tvOS)
             tvOSPrimaryContent(modalBlockingFocus: modalBlockingFocus)
+            #elseif os(macOS) || targetEnvironment(macCatalyst)
+            macSplitView(modalBlockingFocus: modalBlockingFocus)
+            #elseif os(iOS)
+            if horizontalSizeClass == .regular {
+                regularWidthSplitView(modalBlockingFocus: modalBlockingFocus)
+            } else {
+                compactStack(modalBlockingFocus: modalBlockingFocus)
+            }
             #else
             platformPrimaryContent(modalBlockingFocus: modalBlockingFocus)
-            #endif
             #endif
         }
         #if os(tvOS)
@@ -91,6 +88,23 @@ struct MainAppView: View {
             // Compose overlays here so they appear on all platforms (including tvOS)
             ZStack { overlayStack }
         }
+        #if !os(tvOS)
+        .sheet(item: Binding(
+            get: { app.detailItem },
+            set: { app.detailItem = $0 }
+        )) { detail in
+            NavigationStack {
+                DetailView(item: detail)
+                    .navigationTitle(detail.name ?? detail.id)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") { app.detailItem = nil }
+                        }
+                    }
+            }
+            .presentationDetents([.medium, .large])
+        }
+        #endif
         .alert("Randomize Tiers?", isPresented: Binding(
             get: { app.showRandomizeConfirmation },
             set: { app.showRandomizeConfirmation = $0 }
@@ -127,6 +141,14 @@ struct MainAppView: View {
                 TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
             }
         }
+        #if !os(tvOS)
+        .sheet(isPresented: Binding(
+            get: { app.showingAnalysis },
+            set: { app.showingAnalysis = $0 }
+        )) {
+            AnalysisView(app: app)
+        }
+        #endif
     }
 
     // MARK: - Overlay Composition
@@ -232,30 +254,76 @@ struct MainAppView: View {
                 .combined(with: .opacity)
         )
         .zIndex(55)
-        #else
-        ZStack {
-            Color.black.opacity(0.55).ignoresSafeArea()
-            VStack(spacing: 24) {
-                DetailView(item: detail)
-                    .frame(maxWidth: 720)
-
-                Button("Close") { app.detailItem = nil }
-                    .buttonStyle(.bordered)
-            }
-            .padding(.vertical, 32)
-            .padding(.horizontal, 36)
-            .frame(maxWidth: 820)
-            .background(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.35), radius: 30, y: 12)
-            )
-            .accessibilityAddTraits(.isModal)
-        }
-        .transition(.opacity)
-        .zIndex(55)
-#endif
+        #endif
     }
+
+    // MARK: - Platform Navigation Structures
+
+    #if os(macOS) || targetEnvironment(macCatalyst)
+    @ViewBuilder
+    private func macSplitView(modalBlockingFocus: Bool) -> some View {
+        NavigationSplitView {
+            List(app.tierOrder, id: \.self) { tier in
+                Text("Sidebar • " + tier)
+            }
+            .navigationSplitViewColumnWidth(min: 300, ideal: 340, max: 420)
+        } detail: {
+            Text("Debug Detail")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.yellow.opacity(0.2))
+        }
+        .navigationSplitViewStyle(.balanced)
+        .navigationTitle("Tiercade Debug")
+        .toolbarRole(.editor)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Split Toolbar Test") {
+                    print("Split toolbar tapped")
+                }
+            }
+        }
+    }
+    #endif
+
+    #if os(iOS)
+    @ViewBuilder
+    private func regularWidthSplitView(modalBlockingFocus: Bool) -> some View {
+        NavigationSplitView {
+            List(app.tierOrder, id: \.self) { tier in
+                Text("Sidebar • " + tier)
+            }
+        } detail: {
+            Text("Debug Detail")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.yellow.opacity(0.2))
+        }
+        .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 360)
+        .navigationSplitViewStyle(.balanced)
+        .navigationTitle("Tiercade Debug")
+        .toolbarRole(.editor)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Split Toolbar Test") {
+                    print("iPad toolbar tapped")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func compactStack(modalBlockingFocus: Bool) -> some View {
+        Text("Debug Detail")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.yellow.opacity(0.2))
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Stack Toolbar Test") {
+                        print("Stack toolbar tapped")
+                    }
+                }
+            }
+    }
+    #endif
 
     // MARK: - Platform Specific Content
 
@@ -277,6 +345,7 @@ struct MainAppView: View {
             // Note: Don't use .disabled() as it removes elements from accessibility tree
             // Only block hit testing when modals are active
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     #if os(tvOS)
@@ -314,11 +383,10 @@ struct MainAppView: View {
     #else
     @ViewBuilder
     private func platformPrimaryContent(modalBlockingFocus: Bool) -> some View {
-        tierGridLayer(modalBlockingFocus: modalBlockingFocus)
-            .overlay(alignment: .top) {
-                HStack { EmptyView() }
-                    .environment(app)
-            }
+        Text("Platform Debug Content")
+            .font(.title)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.green.opacity(0.2))
     }
     #endif
 }

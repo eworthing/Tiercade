@@ -14,6 +14,7 @@ struct ThemeCreatorOverlay: View {
     let draft: ThemeDraft
 
     @FocusState private var focusedElement: FocusField?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var focusNamespace
     @State private var paletteFocusIndex: Int = 0
     @State private var lastFocus: FocusField?
@@ -219,7 +220,7 @@ private extension ThemeCreatorOverlay {
                 )
         )
         .scaleEffect(isActive ? 1.04 : 1.0)
-        .animation(.easeOut(duration: 0.2), value: isActive)
+        .animation(reduceMotion ? nil : Motion.emphasis, value: isActive)
     }
 
     var paletteSection: some View {
@@ -289,7 +290,7 @@ private extension ThemeCreatorOverlay {
             x: 0,
             y: isFocusedColor ? 12 : 6
         )
-        .animation(.easeOut(duration: 0.18), value: isFocusedColor)
+        .animation(reduceMotion ? nil : Motion.focus, value: isFocusedColor)
         .accessibilityIdentifier("ThemeCreator_Palette_\(index)")
     }
 

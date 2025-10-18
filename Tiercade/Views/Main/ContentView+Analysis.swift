@@ -175,6 +175,7 @@ struct TierDistributionChartView: View {
 
 struct TierBarView: View {
     let tierData: TierDistributionData
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 4) {
@@ -207,7 +208,7 @@ struct TierBarView: View {
             Rectangle()
                 .fill(barColor)
                 .frame(width: barWidth(in: geometry.size.width))
-                .animation(.easeInOut(duration: 0.6), value: tierData.percentage)
+                .animation(reduceMotion ? nil : Animation.easeInOut(duration: 0.6), value: tierData.percentage)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(height: 8)
@@ -233,6 +234,7 @@ struct TierBarView: View {
 
 struct BalanceScoreView: View {
     let score: Double
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 16) {
@@ -261,7 +263,7 @@ struct BalanceScoreView: View {
                         .stroke(scoreColor, lineWidth: 8)
                         .frame(width: 120, height: 120)
                         .rotationEffect(.degrees(-90))
-                        .animation(.easeInOut(duration: 1), value: score)
+                        .animation(reduceMotion ? nil : Animation.easeInOut(duration: 1), value: score)
 
                     VStack {
                         Text("\(score, specifier: "%.0f")")

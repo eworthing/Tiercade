@@ -41,7 +41,7 @@ struct SettingsView: View {
                 }
             }
             .environment(\.defaultMinListRowHeight, 68)
-            .background(Color.appBackground.ignoresSafeArea())
+            .background(Palette.appBackground.ignoresSafeArea())
             .listStyle(.plain)
             .navigationTitle("Settings")
             #if os(tvOS)

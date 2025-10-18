@@ -74,14 +74,14 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **Protocol-Oriented Design** - Flexible, testable interfaces throughout
 
 ### **Modernization Guardrails**
-- **Strict Concurrency** – All targets enable "Complete" checking; core logic favors `Sendable` value types and actors for isolation.
+- **Strict Concurrency** – All targets enable "Complete" checking; core logic favors `Sendable` value types and actors for isolation (see `AGENTS.md` for build-setting guardrails).
 - **Observation-First State** – UI state uses Swift Observation macros (`@Observable`, `@Bindable`) instead of `ObservableObject`/`@Published`.
 - **SwiftUI Everywhere** – Screens, overlays, and navigation are pure SwiftUI with `NavigationStack`/`NavigationSplitView`; UIKit appears only through targeted representable adapters when absolutely necessary.
 - **SwiftData Persistence** – New persistence flows adopt `@Model` + `@Query`; remaining Core Data touchpoints are migrated module-by-module.
 - **Async Streams** – Legacy Combine pipelines are rewritten to `AsyncSequence`, `AsyncStream`, `async let`, or `TaskGroup` constructs.
 - **Liquid Glass Chrome** – Translucent, glassy effects stay confined to top-level chrome (toolbars, sheets) to keep fast-refreshing content performant.
 - **Swift Testing** – New tests rely on the Swift Testing framework (`@Test`, `#expect`) with incremental XCTest retirement.
-- **SwiftPM Only** – Dependencies live in SwiftPM; feature flags and environment variants use SPM traits.
+- **SwiftPM Only** – Dependencies live in SwiftPM; feature flags and environment variants opt into [SwiftPM traits](https://github.com/apple/swift-evolution/blob/main/proposals/0450-package-manager-traits.md). Trait identifiers are project-defined (e.g. `"feature.offlineMode"`), and can be toggled per configuration without extra targets.
 
 ### **Configuration Snippets**
 ```swift
@@ -91,11 +91,11 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 ```
 
 ```swift
-// Example SPM traits configuration
+// Example SPM traits configuration (Swift 6.1+)
 traits: [
-    .featureFlag("offline-mode"),
-    .featureFlag("ai-features"),
-    .featureFlag("debug-tools", enabledTraits: ["development"])
+    .trait("feature.offlineMode"),
+    .trait("feature.aiExperiments"),
+    .trait("debug.tools", enabledTraits: ["development"])
 ]
 ```
 
@@ -158,6 +158,11 @@ The repository currently has no active test targets. All previous unit/UI tests 
 - **tvOS 26.0+ Simulator** - For tvOS UI testing (primary focus)
 - **macOS 26.0+** - For macOS development and packaging
 - **Swift 6.0** - Language mode with strict concurrency checking enabled
+
+## 📚 More documentation
+- Design tokens, Liquid Glass, and focus patterns: [`Tiercade/Design/README.md`](Tiercade/Design/README.md)
+- Core domain models and deterministic helpers: [`TiercadeCore/README.md`](TiercadeCore/README.md)
+- Platform guardrails, tvOS focus, and build scripts: [`AGENTS.md`](AGENTS.md)
 - **macOS** - Development platform
 - **SwiftLint** - Enforce cyclomatic complexity thresholds (warning 8, error 12) as part of pre-commit checks
 
