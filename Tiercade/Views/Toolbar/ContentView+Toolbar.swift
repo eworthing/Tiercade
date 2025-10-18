@@ -9,6 +9,7 @@ import TiercadeCore
 
 struct ToolbarView: ToolbarContent {
     @Bindable var app: AppState
+    @Environment(\.editMode) private var editMode
     @State private var exportText: String = ""
     @State private var showingSettings = false
     @State private var showingExportFormatSheet = false
@@ -24,6 +25,86 @@ struct ToolbarView: ToolbarContent {
     @State private var saveFileName = ""
 
     var body: some ToolbarContent {
+        #if os(iOS) || targetEnvironment(macCatalyst)
+        ToolbarItemGroup(placement: .topBarLeading) {
+            TierListQuickMenu(app: app)
+                .frame(minWidth: 200)
+        }
+
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            Button {
+                app.presentTierListCreator()
+            } label: {
+                Label("New Tier List…", systemImage: "square.and.pencil")
+            }
+            .accessibilityIdentifier("Toolbar_NewTierList")
+
+            Button {
+                app.toggleAnalysis()
+            } label: {
+                Image(systemName: app.showingAnalysis ? "chart.bar.fill" : "chart.bar")
+                    .accessibilityLabel(app.showingAnalysis ? "Close Analysis" : "Open Analysis")
+            }
+            .disabled(!app.canShowAnalysis && !app.showingAnalysis)
+            .accessibilityIdentifier("Toolbar_Analysis")
+
+            Button {
+                app.toggleThemePicker()
+            } label: {
+                Image(systemName: "paintpalette")
+                    .accessibilityLabel("Themes")
+            }
+            .accessibilityIdentifier("Toolbar_Themes")
+
+            Button {
+                app.startH2H()
+            } label: {
+                Image(systemName: "rectangle.grid.2x2")
+                    .accessibilityLabel("Head-to-Head")
+            }
+            .disabled(!app.canStartHeadToHead)
+            .accessibilityIdentifier("Toolbar_H2H")
+
+            EditButton()
+                .accessibilityIdentifier("Toolbar_Edit")
+        }
+
+        ToolbarItemGroup(placement: .bottomBar) {
+            if editMode?.wrappedValue == .active {
+                let count = app.selection.count
+                Label("\(count) Selected", systemImage: "checkmark.circle.fill")
+                    .font(.headline)
+                    .accessibilityIdentifier("Toolbar_SelectionCount")
+
+                Menu {
+                    ForEach(app.tierOrder, id: \.self) { tier in
+                        let label = app.displayLabel(for: tier)
+                        Button(label) {
+                            app.batchMove(Array(app.selection), to: tier)
+                        }
+                        .disabled(app.isTierLocked(tier))
+                    }
+                    Divider()
+                    Button("Move to Unranked") {
+                        app.batchMove(Array(app.selection), to: "unranked")
+                    }
+                } label: {
+                    Label("Move…", systemImage: "arrow.up.right.square")
+                }
+                .disabled(app.selection.isEmpty)
+                .accessibilityIdentifier("Toolbar_MoveSelection")
+
+                Button {
+                    app.clearSelection()
+                } label: {
+                    Label("Clear", systemImage: "xmark.circle")
+                }
+                .disabled(app.selection.isEmpty)
+                .accessibilityIdentifier("Toolbar_ClearSelection")
+            }
+        }
+        #endif
+
         SecondaryToolbarActions(
             app: app,
             onShowSave: { showingSaveDialog = true },

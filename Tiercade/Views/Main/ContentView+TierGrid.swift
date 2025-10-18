@@ -20,9 +20,10 @@ struct TierGridView: View {
             .padding(.vertical, Metrics.grid)
             #else
             .padding(Metrics.grid * 2)
+            .frame(maxWidth: .infinity, alignment: .top)
             #endif
         }
-        .background(Color.appBackground.ignoresSafeArea())
+        .background(Palette.appBackground.ignoresSafeArea())
     }
 }
 
@@ -30,6 +31,9 @@ struct UnrankedView: View {
     @Environment(AppState.self) private var app: AppState
     #if os(tvOS)
     @FocusState private var focusedItemId: String?
+    #else
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     #endif
 
     private var filteredItems: [Item] {
@@ -67,23 +71,32 @@ struct UnrankedView: View {
                 .focusSection()
                 .defaultFocus($focusedItemId, filteredItems.first?.id)
                 #else
-                ScrollView(.horizontal) {
-                    LazyHStack(spacing: 10) {
-                        ForEach(filteredItems, id: \.id) { item in
-                            CardView(item: item)
-                                .draggable(item.id)
-                        }
+                let layout = PlatformCardLayoutProvider.layout(
+                    for: filteredItems.count,
+                    preference: app.cardDensityPreference,
+                    horizontalSizeClass: horizontalSizeClass
+                )
+
+                LazyVGrid(
+                    columns: layout.gridColumns,
+                    alignment: .leading,
+                    spacing: layout.rowSpacing
+                ) {
+                    ForEach(filteredItems, id: \.id) { item in
+                        CardView(item: item, layout: layout)
+                            .draggable(item.id)
                     }
-                    .padding(.bottom, Metrics.grid * 0.5)
                 }
+                .padding(.bottom, layout.rowSpacing * 0.5)
+                .animation(reduceMotion ? nil : Motion.emphasis, value: filteredItems.count)
                 #endif
             }
             .padding(Metrics.grid * 1.5)
             .background(
-                RoundedRectangle(cornerRadius: 12).fill(Color.cardBackground)
+                RoundedRectangle(cornerRadius: 12).fill(Palette.cardBackground)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 12).stroke(Color.stroke, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 12).stroke(Palette.stroke, lineWidth: 1)
             )
             .overlay {
                 DragTargetHighlight(
@@ -112,16 +125,16 @@ struct UnrankedView: View {
         HStack {
             Text("Unranked")
                 .font(TypeScale.h3)
-                .foregroundColor(Color.textPrimary)
+                .foregroundColor(Palette.cardText)
             Spacer()
             if !app.searchQuery.isEmpty || app.activeFilter != .all {
                 Text("\(filteredItems.count)/\(app.unrankedCount())")
                     .font(TypeScale.label)
-                    .foregroundColor(Color.textPrimary)
+                    .foregroundColor(Palette.cardText)
             } else {
                 Text("\(filteredItems.count)")
                     .font(TypeScale.label)
-                    .foregroundColor(Color.textPrimary)
+                    .foregroundColor(Palette.cardText)
             }
         }
     }
@@ -134,6 +147,8 @@ struct CardView: View {
     @Environment(\.editMode) private var editMode
     #if os(tvOS)
     let layout: TVCardLayout
+    #else
+    let layout: PlatformCardLayout
     #endif
 
     private var isMultiSelectActive: Bool {
@@ -154,23 +169,18 @@ struct CardView: View {
         return Self.tierLookup[tierId] ?? .unranked
     }
 
+    private var layoutCornerRadius: CGFloat {
+        #if os(tvOS)
+        layout.cornerRadius
+        #else
+        layout.cornerRadius
+        #endif
+    }
+
     var body: some View {
-        Button(
-            action: {
-                #if os(tvOS)
-                if isMultiSelectActive {
-                    app.toggleSelection(item.id)
-                } else {
-                    app.beginQuickMove(item)
-                }
-                #else
-                app.beginQuickRank(item)
-                #endif
-            },
-            label: {
-                cardBody
-            }
-        )
+        Button(action: handleTap) {
+            cardBody
+        }
         #if os(tvOS)
         .buttonStyle(.plain)
         #else
@@ -186,16 +196,7 @@ struct CardView: View {
         )
         .contentShape(Rectangle())
         .accessibilityLabel(displayLabel)
-        .punchyFocus(
-            tier: tierForItem(item),
-            cornerRadius: {
-                #if os(tvOS)
-                layout.cornerRadius
-                #else
-                12
-                #endif
-            }()
-        )
+        .punchyFocus(tier: tierForItem(item), cornerRadius: layoutCornerRadius)
         #if os(iOS) && !os(tvOS) || targetEnvironment(macCatalyst)
         .accessibilityAddTraits(.isButton)
         #endif
@@ -227,6 +228,22 @@ struct CardView: View {
         #endif
     }
 
+    private func handleTap() {
+        #if os(tvOS)
+        if isMultiSelectActive {
+            app.toggleSelection(item.id)
+        } else {
+            app.beginQuickMove(item)
+        }
+        #else
+        if isMultiSelectActive {
+            app.toggleSelection(item.id)
+        } else {
+            app.beginQuickRank(item)
+        }
+        #endif
+    }
+
     private var displayLabel: String {
         if let name = item.name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
             return name
@@ -239,36 +256,21 @@ struct CardView: View {
         #if os(tvOS)
         tvOSCardBody
         #else
-        defaultCardBody
+        pointerCardBody
         #endif
     }
 
     #if os(tvOS)
     private var tvOSCardBody: some View {
-        let showsOnCardText = layout.density.showsOnCardText
-
-        return VStack(alignment: .leading, spacing: layout.verticalContentSpacing) {
+        VStack(alignment: .leading, spacing: layout.verticalContentSpacing) {
             ThumbnailView(item: item, layout: layout)
-            if showsOnCardText {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(displayLabel)
-                        .font(layout.titleFont)
-                        .foregroundColor(Color.textPrimary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
-                        .minimumScaleFactor(0.82)
-                    if let metadata = metadataText {
-                        Text(metadata)
-                            .font(layout.metadataFont)
-                            .foregroundStyle(Color.textSecondary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if layout.density.showsOnCardText {
+                cardTextBlock(font: layout.titleFont, metadataFont: layout.metadataFont)
             }
         }
         .padding(layout.contentPadding)
         .frame(width: layout.cardWidth, alignment: .leading)
-        .background(Color.cardBackground)
+        .background(Palette.cardBackground)
         .cornerRadius(layout.cornerRadius)
         .overlay(
             RoundedRectangle(cornerRadius: layout.cornerRadius)
@@ -280,9 +282,61 @@ struct CardView: View {
             }
         }
     }
+    #else
+    private var pointerCardBody: some View {
+        ZStack(alignment: .topLeading) {
+            VStack(alignment: .leading, spacing: layout.verticalContentSpacing) {
+                ThumbnailView(item: item, layout: layout)
+                if layout.showsText {
+                    cardTextBlock(font: layout.titleFont, metadataFont: layout.metadataFont)
+                }
+            }
+            .padding(layout.contentPadding)
+            .frame(width: layout.cardWidth, alignment: .leading)
+            .background(Palette.cardBackground)
+            .cornerRadius(layout.cornerRadius)
+            .overlay(
+                RoundedRectangle(cornerRadius: layout.cornerRadius)
+                    .stroke(Palette.stroke.opacity(0.9), lineWidth: 1)
+            )
+            .overlay(alignment: .topTrailing) {
+                if isMultiSelectActive && app.isSelected(item.id) {
+                    selectionBadge
+                        .padding(6)
+                }
+            }
+
+            TierBadgeView(tier: tierForItem(item))
+                .padding(layout.contentPadding * 0.6)
+        }
+    }
+    #endif
+
+    private func cardTextBlock(font titleFont: Font, metadataFont: Font) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(displayLabel)
+                .font(titleFont)
+                .foregroundColor(Palette.cardText)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .minimumScaleFactor(0.82)
+            if let metadata = metadataText {
+                Text(metadata)
+                    .font(metadataFont)
+                    .foregroundStyle(Palette.cardTextDim)
+                    .lineLimit(2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
     private var metadataText: String? {
+        #if os(tvOS)
         guard layout.density.showsOnCardText else { return nil }
+        #else
+        guard layout.showsText else { return nil }
+        #endif
+
         if let status = item.status?.trimmingCharacters(in: .whitespacesAndNewlines), !status.isEmpty {
             return status
         }
@@ -300,32 +354,18 @@ struct CardView: View {
             .background(
                 Circle().fill(Color.black.opacity(0.4))
             )
+            #if os(tvOS)
             .offset(x: layout.contentPadding * 0.2, y: -layout.contentPadding * 0.2)
+            #endif
     }
-    #else
-    private var defaultCardBody: some View {
-        ZStack(alignment: .topLeading) {
-            VStack(spacing: 8) {
-                ThumbnailView(item: item)
-                Text("S \(item.seasonString ?? "?")")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(Metrics.grid)
-            .background(Color.cardBackground)
-            .cornerRadius(12)
-
-            TierBadgeView(tier: tierForItem(item))
-                .padding(10)
-        }
-    }
-    #endif
 }
 
 private struct ThumbnailView: View {
     let item: Item
     #if os(tvOS)
     let layout: TVCardLayout
+    #else
+    let layout: PlatformCardLayout
     #endif
 
     var body: some View {
@@ -340,15 +380,14 @@ private struct ThumbnailView: View {
                     )
             }
         #else
-        RoundedRectangle(cornerRadius: 8)
-            .frame(
-                minWidth: 120,
-                idealWidth: 140,
-                minHeight: 168,
-                idealHeight: 196
-            )
+        RoundedRectangle(cornerRadius: layout.thumbnailCornerRadius, style: .continuous)
+            .fill(Color.clear)
+            .frame(width: layout.thumbnailSize.width, height: layout.thumbnailSize.height)
             .overlay {
                 thumbnailContent
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: layout.thumbnailCornerRadius, style: .continuous)
+                    )
             }
         #endif
     }
@@ -371,16 +410,7 @@ private struct ThumbnailView: View {
                     placeholder
                 }
             }
-            #if os(tvOS)
             .frame(width: layout.thumbnailSize.width, height: layout.thumbnailSize.height)
-            #else
-            .frame(
-                minWidth: 120,
-                idealWidth: 140,
-                minHeight: 168,
-                idealHeight: 196
-            )
-            #endif
             .clipped()
         } else {
             placeholder
@@ -422,12 +452,21 @@ private struct ThumbnailView: View {
                 )
         }
         #else
-        RoundedRectangle(cornerRadius: 8)
-            .fill(Palette.brand)
+        RoundedRectangle(cornerRadius: layout.thumbnailCornerRadius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [Palette.brand, Palette.brand.opacity(0.75)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .overlay(
-                Text((item.name ?? item.id).prefix(12))
-                    .font(.headline)
-                    .foregroundStyle(.white)
+                Text(String((item.name ?? item.id).prefix(18)))
+                    .font(layout.titleFont)
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.75)
+                    .padding(.horizontal, 12)
             )
         #endif
     }

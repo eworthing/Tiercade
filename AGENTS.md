@@ -29,23 +29,40 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 - Head-to-head overlay contract: render skip card with `clock.arrow.circlepath`, maintain `H2H_SkippedCount`, call `cancelH2H(fromExitCommand:)` from `.onExitCommand`.
 - Apply glass effects via `glassEffect`, `GlassEffectContainer`, or `.buttonStyle(.glass)` when touching toolbars/overlays; validate focus halos in the Apple TV 4K (3rd gen) tvOS 26 simulator.
 
-## Build, test, verify
+## Build · Test · Verify
 
-- **Primary workflow**: Run VS Code task **"Build, Install & Launch tvOS"** (Cmd+Shift+B or from task menu). This executes `build_install_launch.sh` which:
-  - Always performs a clean build (forces fresh compilation)
-  - Shows clear progress with emojis (🧹 Cleaning → 🔨 Building → 📦 Installing → 🚀 Launching)
-  - Displays the actual build timestamp for verification
-  - Automatically boots simulator, uninstalls old version, installs fresh build, and launches
-- **CRITICAL**: Xcode builds to `~/Library/Developer/Xcode/DerivedData/`, NOT `./build/`. The script handles this correctly via `xcodebuild -showBuildSettings`.
-- **Build verification**: Check the build timestamp shown in the task output matches current time. The app also displays build time in `BuildInfoView` (DEBUG builds only).
-- Core logic tests: `cd TiercadeCore && swift test`.
-- UI automation relies on accessibility IDs and short paths—use existence checks, avoid long XCUIRemote navigation (>12 s causes timeouts).
-- Manual sign-off keeps the tvOS 26 simulator open, cycling focus via Siri Remote or keyboard arrows after each build.
+> **DerivedData location:** Xcode and the build script always emit products to `~/Library/Developer/Xcode/DerivedData/`. Nothing lands in `./build/`, so upload artifacts and inspect logs from DerivedData when debugging.
+
+1. **Build & launch tvOS** – `Cmd` + `Shift` + `B` in VS Code (task **Build, Install & Launch tvOS**). Script flow: 🧹 clean → 🔨 build → 📦 install → 🚀 launch. Confirm the timestamp printed at the end and the in-app `BuildInfoView` (DEBUG) match the current time.
+2. **Run Catalyst (when needed)** – `./build_install_launch.sh catalyst`. This cleanly builds, installs, and launches the Mac Catalyst app. Use it before validating cross-platform fixes.
+3. **Run package tests** – `cd TiercadeCore && swift test`. All suites use Swift Testing (`@Test`, `#expect`) and respect the same strict concurrency flags as the app.
+4. **Manual focus sweep** – With the tvOS 26 Apple TV 4K simulator open, cycle focus with the remote/arrow keys to confirm overlays and default focus behave. Capture issues with `/tmp/tiercade_debug.log` (see Operational Notes).
+
+UI automation relies on accessibility IDs and short paths—prefer existence checks over long XCUIRemote navigation (target < 12 s per path).
+
+### Strict concurrency guardrails
+- **SwiftPM:**
+  ```swift
+  // Package.swift
+  .target(
+    name: "TiercadeCore",
+    swiftSettings: [
+      .enableUpcomingFeature("StrictConcurrency"),
+      .unsafeFlags(["-strict-concurrency=complete"])
+    ]
+  )
+  ```
+- **Xcode Build Settings:**
+  - *Swift Compiler – Language* → **Strict Concurrency Checking** = `Complete` (`SWIFT_STRICT_CONCURRENCY=complete`)
+  - *Other Swift Flags* → add `-strict-concurrency=complete` for legacy configurations.
+  - *Swift Language Version* = `Swift 6`; keep **Enable Upcoming Features** consistent with the package manifest.
+  These mirror Apple’s Swift 6 migration notes and align with the README guardrails.
+
 
 ## Tooling & diagnostics
 
 - Asset refresh: manage bundled artwork directly in `Tiercade/Assets.xcassets` and keep paths aligned with `AppState+BundledProjects`.
-- Debug logging: `AppState.appendDebugFile` writes to `/tmp/tiercade_debug.log`; pipeline script also emits `tiercade_build_and_test.log` and before/after screenshots.
+- Debug logging: `AppState.appendDebugFile` writes to `/tmp/tiercade_debug.log`; the CI pipeline emits `tiercade_build_and_test.log` plus before/after screenshots under `pipeline-artifacts/`. Attach those files when filing issues.
 - SourceKit often flags “No such module 'TiercadeCore'”; defer to `xcodebuild` results before debugging module wiring.
 
 ## Collaboration norms
@@ -82,6 +99,8 @@ A SwiftUI tier list management app targeting tvOS 26+/iOS 26+ with Swift 6 stric
 
 ### Catalyst-Aware Patterns
 
+**Quick reference:** Reuse shared SwiftUI views whenever possible. Catalyst-only UX (menu bar commands, hover affordances) should live in the same files behind `targetEnvironment(macCatalyst)` checks, or move into helpers under `Views/Platform/Catalyst` if the code grows.
+
 **Platform checks:**
 ```swift
 // Correct: Check for UIKit availability
@@ -104,12 +123,12 @@ import UIKit
 ```
 
 **Liquid Glass fallbacks:**
-- Liquid Glass (`glassEffect`) is tvOS 26+ only
-- iOS/Catalyst use standard materials (`.ultraThinMaterial`, `.thinMaterial`)
-- `GlassEffects.swift` handles fallbacks automatically via platform checks
+- Liquid Glass (`glassEffect`) is available on iOS, iPadOS, macOS (including Catalyst), and tvOS 26+. We intentionally lead with tvOS styling, but the same modifiers work on other OSes.
+- When a platform doesn’t support the desired effect (older OS, watchOS, etc.) fall back to `.ultraThinMaterial` / `.thinMaterial`.
+- `GlassEffects.swift` handles these decisions automatically via platform checks.
 
 **API availability:**
-- TabView `.page` style unavailable on Catalyst → use `.automatic`
+- TabView `.page` style is available on Catalyst 14.0+; prefer `.automatic` unless you explicitly want page-style paging on desktop.
 - UIKit APIs available on Catalyst (UIApplication, UIImage, etc.)
 - NavigationSplitView works identically across iOS/iPadOS/Catalyst
 
@@ -173,13 +192,42 @@ await withLoadingIndicator(message: "Loading...") {
 - **Export:** `exportToFormat(.text/.json/.markdown/.csv/.png/.pdf)` — tvOS excludes PDF via `#if os(tvOS)`
 - **Import:** Use `ModelResolver.loadProject(from: data)` → `resolveTiers()` for JSON/CSV
 
+### Typed error taxonomy
+- `ExportError` (scoped to `AppState+Export`) — bubble to UI toast with destructive option on failure.
+- `ImportError` — map validation failures to info toast; unexpected decoding issues should be rethrown for crash logging.
+- `PersistenceError` — surfaced when manual save/load fails; retry after showing blocking alert.
+- `AnalysisError` (future) should remain internal; analytics UI already checks `canShowAnalysis`.
+
 ## tvOS UX & Focus Management
 
 ### Focus System
 - **Overlays:** `Views/Overlays/` use `.focusSection()` + `.focusable()`
-- **Modal blocking:** Set `.allowsHitTesting(!modalActive)` on background (never `.disabled()` — breaks accessibility)
+- **Modal blocking:** Set `.allowsHitTesting(!modalActive)` on background (never `.disabled()`) so scroll inertia and VoiceOver focus remain intact while overlays are up
 - **Accessibility IDs:** Required for UI tests. Convention: `{Component}_{Action}` (e.g., `Toolbar_H2H`, `QuickMove_Overlay`, `ActionBar_MultiSelect`)
+
+| Accessibility ID | Purpose |
+| --- | --- |
+| `Toolbar_NewTierList` | Primary entry point for the tier list wizard |
+| `Toolbar_H2H` | Head-to-head launch action (enabled when enough items) |
+| `Toolbar_Analysis` | Opens/closes analytics overlay |
+| `Toolbar_Themes` | Presents theme library |
+| `ActionBar_MoveBatch` | Batch move button in selection mode |
+| `QuickMove_Overlay` | tvOS quick-move overlay root – ensures UI tests can wait for presentation |
+| `MatchupOverlay_Apply` | Commit action for head-to-head queue |
 - **tvOS 26 interactions:** Use `.focusable(interactions: .activate)` for action-only surfaces and opt into additional interactions (text entry, directional input) only when needed so the new multi-mode focus model stays predictable on remote hardware.
+- **Default focus:** Use `.prefersDefaultFocus(true, in:)` and a scoped `@FocusState` to land on the primary control when overlays appear.
+
+```swift
+@Namespace private var defaultFocusNamespace
+@FocusState private var activeField: Field?
+enum Field { case primary }
+
+VStack { /* primary controls */ }
+  .prefersDefaultFocus(true, in: defaultFocusNamespace)
+  .focused($activeField, equals: .primary)
+  .onAppear { activeField = .primary }
+  .onExitCommand { appState.cancelOverlay(fromExitCommand: true) }
+```
 - **Focus effects:** When supplying custom focus visuals, gate the system halo with `.focusEffectDisabled(_:)` and validate both the default glass halo and any overrides using the Apple TV 4K (3rd gen) tvOS 26 simulator profile.
 
 **Critical bug pattern:** NEVER add `.accessibilityIdentifier()` to parent containers with `.accessibilityElement(children: .contain)` — this overrides all child IDs. Apply to leaf elements only (buttons, cards, specific views).
@@ -205,21 +253,51 @@ tvOS Exit button (Menu/⌘) should dismiss modals, not exit app:
 - Spacing: `Metrics.padding`, `Metrics.cardPadding`, `TVMetrics.topBarHeight`
 - Effects: Apply Liquid Glass with SwiftUI’s tvOS 26 APIs — `glassEffect(_:in:)`, `GlassEffectContainer`, and `buttonStyle(.glass)`/`GlassProminentButtonStyle` — for chrome surfaces in our tvOS 26 target; fallbacks are optional and only necessary if we later choose to support older devices.
 
+### Liquid Glass support matrix
+| Platform | Implementation | Helper |
+| --- | --- | --- |
+| tvOS 26+ | `glassEffect` / `glassBackgroundEffect` with focus-ready spacing | See `GlassContainer` helper below |
+| iOS · iPadOS · macOS (Catalyst) | `.ultraThinMaterial` fallback inside the same shape | See `GlassContainer` helper below |
+
+```swift
+@ViewBuilder func GlassContainer<S: Shape, V: View>(_ shape: S, @ViewBuilder _ content: () -> V) -> some View {
+  #if os(tvOS)
+  content().glassBackgroundEffect(in: shape, displayMode: .fill)
+  #else
+  content().background(.ultraThinMaterial, in: shape)
+  #endif
+}
+```
+
 ## Build & Test
 
 ### Build Commands
 **Primary**: VS Code task "Build, Install & Launch tvOS" (Cmd+Shift+B) — runs `./build_install_launch.sh`
 **Manual:**
 ```bash
+# tvOS
 ./build_install_launch.sh
-# Or directly:
+# Catalyst
+./build_install_launch.sh catalyst
+# Manual tvOS build only
 xcodebuild clean -project Tiercade.xcodeproj -scheme Tiercade -configuration Debug
 xcodebuild -project Tiercade.xcodeproj -scheme Tiercade \
   -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' build
 ```
 
 ### Test Commands
-There are currently no active test targets in this repo. When tests return, prefer Swift Testing for unit tests and minimal tvOS UI automation with accessibility IDs.
+TiercadeCore owns package tests. Run `swift test` inside `TiercadeCore/` (Swift Testing). UI automation stays lean—see UI test minimalism below.
+
+### UI test minimalism
+- Prefer existence checks and stable accessibility IDs over long remote navigation. Target < 12 s per focus path.
+
+| Screen | ID to assert | Expectation |
+| --- | --- | --- |
+| Toolbar | `Toolbar_NewTierList` | Exists, isEnabled before launching wizard |
+| Head-to-Head overlay | `MatchupOverlay_Apply` | Appears once queue empties |
+| Quick Move | `QuickMove_Overlay` | Presented before accepting commands |
+| Batch bar | `ActionBar_MoveBatch` | Visible only when selection count > 0 |
+| Analytics | `Toolbar_Analysis` | Toggles analytics sidebar |
 
 ### UI Test Strategy
 - **Framework:** Use minimal UI tests only when necessary. Prefer existence checks and direct access via accessibility identifiers.
@@ -235,6 +313,11 @@ There are currently no active test targets in this repo. When tests return, pref
 
 ### Tier Structure
 **Order:** `["S","A","B","C","D","F","unranked"]` (always respect `displayLabel`/`displayColorHex` overrides)
+- Attribute contract:
+  - **MUST** provide a unique `id` per project and a display `name` (stored in `attributes["name"]`).
+  - **SHOULD** supply `seasonNumber` when a numeric season exists; use `seasonString` when free-form text is required.
+  - **MAY** attach additional metadata (tags, status, URLs) via the `attributes` dictionary—ModelResolver preserves unknown keys.
+
 **Items:** TiercadeCore `Item` type:
 ```swift
 Item(id: String, attributes: [String: Any])
@@ -253,17 +336,15 @@ Conventional Commits: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`
 Add scope for clarity: `feat(tvOS): implement quick move overlay`
 
 ## Key Directories
-```
-Tiercade/
-  State/           # AppState + extensions
-  Views/           # Main, Overlays, Toolbar, Components
-  Design/          # Tokens (Palette, Metrics, TypeScale, TVMetrics)
-  Export/          # Format renderers
-  Util/            # Focus helpers, utilities
-TiercadeCore/      # Platform-agnostic Swift package
-  Sources/         # Models, Logic, Formatters
-  Tests/           # Swift Testing unit tests
-```
+| Path | Responsibility | Tests / Expectations |
+| --- | --- | --- |
+| `Tiercade/State` | `AppState` and feature extensions | Covered via integration, keep strict concurrency & typed errors |
+| `Tiercade/Views` | SwiftUI surfaces (Main, Overlays, Toolbar, Components) | Manual focus sweep + targeted UI assertions |
+| `Tiercade/Design` | Tokens (`Palette`, `TypeScale`, `Metrics`, `TVMetrics`) | Visual inspection; no direct tests |
+| `Tiercade/Export` | Export formatters (text/CSV/JSON/PNG/PDF) | Swift Testing snapshots cover output |
+| `Tiercade/Util` | Focus helpers, reusable utilities | Unit tests or inline assertions where behaviour is complex |
+| `TiercadeCore/Sources` | Pure Swift models, logic, formatters | `swift test` (Swift Testing) required for changes |
+| `TiercadeCore/Tests` | Swift Testing suites | Additive; keep deterministic RNG seeds |
 
 ## Debugging Notes
 
@@ -281,3 +362,9 @@ Maintain bundled images manually within `Tiercade/Assets.xcassets`. Ensure any c
 2. **UI test timeouts:** Reduce navigation complexity, use direct element access
 3. **Focus loss:** Verify `.focusSection()` boundaries, check accessibility ID placement
 4. tvOS 26 requires TLS 1.2+ by default for outbound network requests; ensure remote endpoints negotiate an acceptable cipher suite or customize `NWProtocolTLS.Options` if absolutely necessary.
+
+### Security & runtime checklist
+- **ATS:** Keep App Transport Security enabled (default). Only add per-host exceptions with documented justification.
+- **Pinned hosts:** If we pin certificates, update the list in `Networking/TrustedHosts.swift` and cover it with integration tests.
+- **Retry/backoff:** Networking helpers default to exponential backoff (see `Networking/RetryPolicy.swift`). Respect those defaults unless a backend owner approves changes.
+

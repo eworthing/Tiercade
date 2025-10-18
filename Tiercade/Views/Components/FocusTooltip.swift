@@ -5,6 +5,7 @@ import SwiftUI
 struct FocusTooltip: ViewModifier {
     let label: String
     @Environment(\.isFocused) private var isFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         content
@@ -22,7 +23,7 @@ struct FocusTooltip: ViewModifier {
                         )
                         .offset(y: -50)
                         .transition(.opacity.combined(with: .scale(scale: 0.9)).combined(with: .offset(y: -10)))
-                        .animation(.spring(response: 0.25, dampingFraction: 0.75), value: isFocused)
+                        .animation(reduceMotion ? nil : Motion.spring, value: isFocused)
                         .zIndex(100)
                 }
             }

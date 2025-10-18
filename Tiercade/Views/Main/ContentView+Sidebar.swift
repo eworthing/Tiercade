@@ -123,6 +123,7 @@ struct SidebarTierListView: View {
 // MARK: - Persistence Status
 struct PersistenceStatusView: View {
     @Bindable var app: AppState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 4) {
@@ -161,7 +162,7 @@ struct PersistenceStatusView: View {
         .padding(Metrics.grid)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
         .opacity(app.hasUnsavedChanges || app.currentFileName != nil ? 1.0 : 0.0)
-        .animation(.easeInOut(duration: 0.2), value: app.hasUnsavedChanges)
-        .animation(.easeInOut(duration: 0.2), value: app.currentFileName)
+        .animation(reduceMotion ? nil : Animation.easeInOut(duration: 0.2), value: app.hasUnsavedChanges)
+        .animation(reduceMotion ? nil : Animation.easeInOut(duration: 0.2), value: app.currentFileName)
     }
 }

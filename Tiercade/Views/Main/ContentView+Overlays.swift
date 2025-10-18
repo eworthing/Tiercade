@@ -14,6 +14,7 @@ struct ToastView: View {
     let toast: ToastMessage
     @State private var isVisible = false
     @Environment(AppState.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private static let symbolMap: [String: String] = [
         "{undo}": "arrow.uturn.backward.circle",
         "{redo}": "arrow.uturn.forward.circle",
@@ -65,8 +66,12 @@ struct ToastView: View {
         .scaleEffect(isVisible ? 1.0 : 0.8)
         .opacity(isVisible ? 1.0 : 0.0)
         .onAppear {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            if reduceMotion {
                 isVisible = true
+            } else {
+                withAnimation(Motion.spring) {
+                    isVisible = true
+                }
             }
 
             // Auto-dismiss after duration
@@ -78,7 +83,13 @@ struct ToastView: View {
             }
         }
         .onDisappear {
-            isVisible = false
+            if reduceMotion {
+                isVisible = false
+            } else {
+                withAnimation(Motion.spring) {
+                    isVisible = false
+                }
+            }
         }
         #if os(iOS) || targetEnvironment(macCatalyst)
         .focusable(true)
@@ -173,6 +184,7 @@ struct ProgressIndicatorView: View {
 struct DragTargetHighlight: View {
     let isTarget: Bool
     let color: Color
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         if isTarget {
@@ -184,7 +196,7 @@ struct DragTargetHighlight: View {
                 )
                 .shadow(color: color.opacity(0.45), radius: 20)
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isTarget)
+                .animation(reduceMotion ? nil : Motion.spring, value: isTarget)
         }
     }
 }

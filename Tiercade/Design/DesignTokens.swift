@@ -36,8 +36,15 @@ enum Palette {
     static let bg      = Color.dynamic(light: "#FFFFFF", dark: "#0B0F14")
     static let surface = Color.dynamic(light: "#F8FAFC", dark: "#0F141A")
     static let surfHi  = Color.dynamic(light: "#00000008", dark: "#FFFFFF14")
+    static let appBackground = Color.dynamic(light: "#F5F7FA", dark: "#0E1114")
+    static let cardBackground = Color.dynamic(light: "#FFFFFF", dark: "#192028")
+    static let stroke = Color.dynamic(light: "#00000010", dark: "#FFFFFF14")
     static let text    = Color.dynamic(light: "#111827", dark: "#E8EDF2")
     static let textDim = Color.dynamic(light: "#6B7280", dark: "#FFFFFFB8")
+    static let cardText = Color.dynamic(light: "#0E1114", dark: "#FFFFFFE6")
+    static let cardTextDim = Color.dynamic(light: "#4B5563", dark: "#FFFFFFA6")
+    static let textDisabled = Color.dynamic(light: "#9CA3AF", dark: "#FFFFFF66")
+    static let textOnAccent = Color.dynamic(light: "#FFFFFF", dark: "#FFFFFFD6")
     static let brand   = Color(designHex: "#3B82F6")
     private static let defaultTierColor = Color(designHex: "#6B7280")
     private static let unrankedTierColor = Color(designHex: "#94A3B8")
@@ -95,4 +102,11 @@ enum TypeScale {
     static let label = Font.caption
         static let metadata = Font.subheadline.weight(.semibold)
     #endif
+}
+
+enum Motion {
+    static let fast = Animation.easeOut(duration: 0.12)
+    static let focus = Animation.easeOut(duration: 0.15)
+    static let emphasis = Animation.easeOut(duration: 0.20)
+    static let spring = Animation.spring(response: 0.30, dampingFraction: 0.8)
 }

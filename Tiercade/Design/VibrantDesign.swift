@@ -3,6 +3,8 @@
 //  Tiercade
 //
 //  A vibrant, punchy HDR-friendly design system for tvOS and all targets.
+//  Core surface and text colors now live in `Palette` (DesignTokens.swift); this file
+//  focuses on focus effects and tier-specific helpers.
 //
 
 import SwiftUI
@@ -23,39 +25,6 @@ extension Color {
 private func chipTextColor(forHex hex: String) -> Color {
     // Use consolidated ColorUtilities instead of duplicated logic
     ColorUtilities.accessibleTextColor(onBackground: hex)
-}
-
-// MARK: - Vibrant Color Tokens
-
-extension Color {
-    // Surfaces
-    // Defaults baked in (OLED/HDR priority)
-    static let appBackground = Color.wideGamut("#0E1114")
-    static let bgElevated    = Color.wideGamut("#14181D")
-    static let cardBackground = Color.wideGamut("#192028")
-    static let stroke        = Color.wideGamut("#FFFFFF14")
-    static let overlay       = Color.wideGamut("#0A0C10CC")
-
-    // Content
-    static let textPrimary   = Color.wideGamut("#FFFFFFE6")
-    static let textSecondary = Color.wideGamut("#FFFFFFA6")
-    static let textDisabled  = Color.wideGamut("#FFFFFF66")
-    static let textIcon      = Color.wideGamut("#FFFFFFD6")
-    static let iconBrand     = Color.wideGamut("#FFFFFFFF")
-
-    // Tiers (Vibrant)
-    static let tierS = Color.wideGamut("#FF0037")
-    static let tierA = Color.wideGamut("#FFA000")
-    static let tierB = Color.wideGamut("#00EC57")
-    static let tierC = Color.wideGamut("#00D9FE")
-    static let tierD = Color.wideGamut("#1E3A8A")
-    static let tierF = Color.wideGamut("#808080")
-
-    // Vibrant accents
-    static let accentPrimary = Color.wideGamut("#2E8EFF")
-    static let accentSuccess = Color.wideGamut("#34D181")
-    static let accentWarning = Color.wideGamut("#FDC239")
-    static let accentError   = Color.wideGamut("#E82E4E")
 }
 
 // MARK: - Tier enum
@@ -109,6 +78,7 @@ struct PunchyFocusStyle: ViewModifier {
     let tier: Tier
     var cornerRadius: CGFloat = 12
     @Environment(\.isFocused) private var isFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
         #if os(tvOS)
@@ -126,7 +96,7 @@ struct PunchyFocusStyle: ViewModifier {
             .overlay(outerRing.blur(radius: isFocused ? 0.5 : 0))
             .overlay(innerRing)
             .zIndex(isFocused ? 10 : 0)
-            .animation(.spring(response: 0.24, dampingFraction: 0.85, blendDuration: 0.08), value: isFocused)
+            .animation(reduceMotion ? nil : Motion.spring, value: isFocused)
         #else
         return content
             .scaleEffect(isFocused ? 1.05 : 1.0)
@@ -136,7 +106,7 @@ struct PunchyFocusStyle: ViewModifier {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(Color.white.opacity(isFocused ? 0.16 : 0.0), lineWidth: 2)
             )
-            .animation(.spring(response: 0.26, dampingFraction: 0.82, blendDuration: 0.08), value: isFocused)
+            .animation(reduceMotion ? nil : Motion.spring, value: isFocused)
         #endif
     }
 }
@@ -156,7 +126,7 @@ struct VibrantCardView: View {
         Button(action: {}, label: {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.cardBackground)
+                    .fill(Palette.cardBackground)
                     .frame(width: 180, height: 260)
                     .overlay(
                         // Poster placeholder
@@ -176,11 +146,11 @@ struct VibrantCardView: View {
 }
 
 #Preview("VibrantCard iOS") {
-    ZStack { Color.appBackground.ignoresSafeArea(); VibrantCardView(tier: .s) }
+    ZStack { Palette.appBackground.ignoresSafeArea(); VibrantCardView(tier: .s) }
 }
 
 #if os(tvOS)
 #Preview("VibrantCard tvOS") {
-    ZStack { Color.appBackground.ignoresSafeArea(); VibrantCardView(tier: .a) }
+    ZStack { Palette.appBackground.ignoresSafeArea(); VibrantCardView(tier: .a) }
 }
 #endif
