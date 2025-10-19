@@ -40,5 +40,41 @@ struct SchemaFieldDefinition: Identifiable, Codable, Hashable, Sendable {
             case .boolean: return "checkmark.square"
             }
         }
+
+        var guidance: String {
+            switch self {
+            case .text: return "Developer or publisher name"
+            case .textarea: return "Long-form notes"
+            case .number: return "Metacritic rating (0–100)"
+            case .date: return "Release date"
+            case .singleSelect: return "Platform family"
+            case .multiSelect: return "Gameplay tags"
+            case .boolean: return "Cross-play enabled?"
+            }
+        }
+
+        var suggestion: String {
+            switch self {
+            case .text: return "Genre, Developer, Publisher"
+            case .textarea: return "Notes, Synopsis, Strategy"
+            case .number: return "Rating, Score, Year"
+            case .date: return "Release Date, Launch"
+            case .singleSelect: return "Platform, Status, Category"
+            case .multiSelect: return "Tags, Genres, Features"
+            case .boolean: return "Completed, Owned, Favorite"
+            }
+        }
+
+        var exampleValue: String {
+            switch self {
+            case .text: return "Arcadia Studios"
+            case .textarea: return "Boss fight strategy overview"
+            case .number: return "87"
+            case .date: return "Oct 22, 2024"
+            case .singleSelect: return "Console"
+            case .multiSelect: return "Co-op, Ranked"
+            case .boolean: return "Yes"
+            }
+        }
     }
 }

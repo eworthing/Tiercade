@@ -18,6 +18,12 @@ struct SettingsWizardPage: View, WizardPage {
     let pageTitle = "Project Settings"
     let pageDescription = "Configure basic project information and options"
 
+#if os(tvOS)
+    @Namespace private var defaultFocusNamespace
+    @FocusState private var focusedField: Field?
+    private enum Field: Hashable { case title, description }
+#endif
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
@@ -27,87 +33,101 @@ struct SettingsWizardPage: View, WizardPage {
                 publishingSection
                 validationSection
             }
-            .padding(40)
+            .padding(.horizontal, Metrics.grid * 6)
+            .padding(.vertical, Metrics.grid * 5)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+#if os(tvOS)
+        .onAppear { focusedField = .title }
+#endif
     }
 
     // MARK: - Sections
 
     private var projectInfoSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            sectionHeader("Project Information")
+        sectionContainer(title: "Project Information") {
+            TextField("Project Title", text: $draft.title, prompt: Text("Enter a descriptive title"))
+                .font(.title3)
+#if os(tvOS)
+                .wizardFieldDecoration()
+#else
+                .textFieldStyle(.roundedBorder)
+#endif
+                .accessibilityIdentifier("Settings_TitleField")
+                .onChange(of: draft.title) { appState.markDraftEdited(draft) }
+#if os(tvOS)
+                .focused($focusedField, equals: .title)
+                .prefersDefaultFocus(true, in: defaultFocusNamespace)
+#endif
 
-            VStack(alignment: .leading, spacing: 16) {
-                TextField("Project Title", text: $draft.title, prompt: Text("Enter a descriptive title"))
-                    #if !os(tvOS)
-                    .textFieldStyle(.roundedBorder)
-                    #endif
-                    .font(.title3)
-                    .onChange(of: draft.title) { appState.markDraftEdited(draft) }
-                    .accessibilityIdentifier("Settings_TitleField")
-
-                TextField("Description", text: $draft.summary, prompt: Text("Short description"), axis: .vertical)
-                    #if !os(tvOS)
-                    .textFieldStyle(.roundedBorder)
-                    #endif
-                    .lineLimit(3...6)
-                    .onChange(of: draft.summary) { appState.markDraftEdited(draft) }
-                    .accessibilityIdentifier("Settings_DescriptionField")
-            }
+            TextField("Description", text: $draft.summary, prompt: Text("Short description"), axis: .vertical)
+                .lineLimit(3...6)
+#if os(tvOS)
+                .wizardFieldDecoration()
+#else
+                .textFieldStyle(.roundedBorder)
+#endif
+                .accessibilityIdentifier("Settings_DescriptionField")
+                .onChange(of: draft.summary) { appState.markDraftEdited(draft) }
+#if os(tvOS)
+                .focused($focusedField, equals: .description)
+#endif
         }
     }
 
     private var displayOptionsSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            sectionHeader("Display Options")
-
-            VStack(alignment: .leading, spacing: 16) {
-                #if !os(tvOS)
-                Stepper(value: $draft.schemaVersion, in: 1...9) {
-                    Text("Schema Version: \(draft.schemaVersion)")
-                }
-                .onChange(of: draft.schemaVersion) { appState.markDraftEdited(draft) }
-                #else
-                HStack {
-                    Text("Schema Version")
-                    Spacer()
-                    Text("\(draft.schemaVersion)")
-                        .foregroundStyle(.secondary)
-                }
-                #endif
-
-                Toggle("Show Unranked Tier", isOn: $draft.showUnranked)
-                    .onChange(of: draft.showUnranked) { appState.markDraftEdited(draft) }
-                    .accessibilityIdentifier("Settings_ShowUnrankedToggle")
-
-                Toggle("Enable Grid Snap", isOn: $draft.gridSnap)
-                    .onChange(of: draft.gridSnap) { appState.markDraftEdited(draft) }
-                    .accessibilityIdentifier("Settings_GridSnapToggle")
+        sectionContainer(title: "Display Options") {
+#if !os(tvOS)
+            Stepper(value: $draft.schemaVersion, in: 1...9) {
+                Text("Schema Version: \(draft.schemaVersion)")
             }
+            .onChange(of: draft.schemaVersion) { appState.markDraftEdited(draft) }
+#else
+            HStack {
+                Text("Schema Version")
+                Spacer()
+                Text("\(draft.schemaVersion)")
+                    .foregroundStyle(Palette.textDim)
+            }
+            .font(.title3)
+#endif
+
+            Toggle("Show Unranked Tier", isOn: $draft.showUnranked)
+                .accessibilityIdentifier("Settings_ShowUnrankedToggle")
+                .onChange(of: draft.showUnranked) { appState.markDraftEdited(draft) }
+#if os(tvOS)
+                .wizardTogglePadding()
+#endif
+
+            Toggle("Enable Grid Snap", isOn: $draft.gridSnap)
+                .accessibilityIdentifier("Settings_GridSnapToggle")
+                .onChange(of: draft.gridSnap) { appState.markDraftEdited(draft) }
+#if os(tvOS)
+                .wizardTogglePadding()
+#endif
         }
     }
 
     private var accessibilitySection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            sectionHeader("Accessibility")
+        sectionContainer(title: "Accessibility") {
+            Toggle("VoiceOver Hints", isOn: $draft.accessibilityVoiceOver)
+                .accessibilityIdentifier("Settings_VoiceOverToggle")
+                .onChange(of: draft.accessibilityVoiceOver) { appState.markDraftEdited(draft) }
+#if os(tvOS)
+                .wizardTogglePadding()
+#endif
 
-            VStack(alignment: .leading, spacing: 16) {
-                Toggle("VoiceOver Hints", isOn: $draft.accessibilityVoiceOver)
-                    .onChange(of: draft.accessibilityVoiceOver) { appState.markDraftEdited(draft) }
-                    .accessibilityIdentifier("Settings_VoiceOverToggle")
-
-                Toggle("High Contrast Mode", isOn: $draft.accessibilityHighContrast)
-                    .onChange(of: draft.accessibilityHighContrast) { appState.markDraftEdited(draft) }
-                    .accessibilityIdentifier("Settings_HighContrastToggle")
-            }
+            Toggle("High Contrast Mode", isOn: $draft.accessibilityHighContrast)
+                .accessibilityIdentifier("Settings_HighContrastToggle")
+                .onChange(of: draft.accessibilityHighContrast) { appState.markDraftEdited(draft) }
+#if os(tvOS)
+                .wizardTogglePadding()
+#endif
         }
     }
 
     private var publishingSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            sectionHeader("Publishing")
-
+        sectionContainer(title: "Publishing") {
             Picker("Visibility", selection: $draft.visibility) {
                 Text("Private").tag("private")
                 Text("Unlisted").tag("unlisted")
@@ -120,42 +140,23 @@ struct SettingsWizardPage: View, WizardPage {
     }
 
     private var validationSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            sectionHeader("Validation")
-
+        sectionContainer(title: "Validation") {
             if appState.tierListCreatorIssues.isEmpty {
-                HStack(spacing: 12) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .font(.title2)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("No issues found")
-                            .font(.headline)
-                        Text("Your project configuration is valid")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.green.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                statusChip(
+                    icon: "checkmark.circle.fill",
+                    tint: Palette.tierColor("B"),
+                    title: "No issues found",
+                    message: "Your project configuration is valid"
+                )
             } else {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Metrics.grid * 2) {
                     ForEach(appState.tierListCreatorIssues) { issue in
-                        HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.yellow)
-                                .font(.title3)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(issue.message)
-                                    .font(.body)
-                            }
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.yellow.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        statusChip(
+                            icon: "exclamationmark.triangle.fill",
+                            tint: Palette.tierColor("S"),
+                            title: issue.category.rawValue.capitalized,
+                            message: issue.message
+                        )
                     }
                 }
             }
@@ -167,7 +168,76 @@ struct SettingsWizardPage: View, WizardPage {
             .font(.title2.weight(.semibold))
             .foregroundStyle(.primary)
     }
+
+    private func sectionContainer<Content: View>(
+        title: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: Metrics.grid * 2.5) {
+            sectionHeader(title)
+            content()
+        }
+        .padding(.all, Metrics.grid * 3)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: Metrics.rLg, style: .continuous)
+                .fill(Palette.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Metrics.rLg, style: .continuous)
+                        .stroke(Palette.stroke, lineWidth: 1)
+                )
+        )
+        .shadow(color: Palette.stroke.opacity(0.6), radius: 8, y: 4)
+    }
+
+    private func statusChip(icon: String, tint: Color, title: String, message: String) -> some View {
+        HStack(spacing: Metrics.grid * 2) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(tint)
+            VStack(alignment: .leading, spacing: Metrics.grid) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(Palette.text)
+                Text(message)
+                    .font(TypeScale.body)
+                    .foregroundStyle(Palette.textDim)
+            }
+        }
+        .padding(Metrics.grid * 2.5)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
+                .fill(tint.opacity(0.15))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
+                        .stroke(tint.opacity(0.35), lineWidth: 1)
+                )
+        )
+    }
 }
+
+#if os(tvOS)
+private extension View {
+    func wizardFieldDecoration() -> some View {
+        self
+            .padding(.vertical, Metrics.grid * 1.5)
+            .padding(.horizontal, Metrics.grid * 2)
+            .background(
+                RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
+                    .fill(Palette.surface.opacity(0.95))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
+                            .stroke(Palette.stroke, lineWidth: 1)
+                    )
+            )
+    }
+
+    func wizardTogglePadding() -> some View {
+        self.padding(.vertical, Metrics.grid)
+    }
+}
+#endif
 
 // MARK: - Schema Wizard Page (Item Fields Definition)
 
@@ -183,6 +253,12 @@ struct ItemsWizardPage: View, WizardPage {
 
     let pageTitle = "Items"
     let pageDescription = "Add and configure items for your tier list"
+
+#if os(tvOS)
+    @Namespace private var defaultFocusNamespace
+    @FocusState private var focusedField: Field?
+    private enum Field: Hashable { case search }
+#endif
 
     private enum ItemFilter: String, CaseIterable, Identifiable {
         case all
@@ -204,30 +280,10 @@ struct ItemsWizardPage: View, WizardPage {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search and filter controls
-            VStack(spacing: 16) {
-                TextField("Search items", text: $searchQuery)
-                    #if !os(tvOS)
-                    .textFieldStyle(.roundedBorder)
-                    #endif
-                    .font(.title3)
-                    .accessibilityIdentifier("Items_SearchField")
+            searchControls
 
-                Picker("Filter", selection: $itemFilter) {
-                    ForEach(ItemFilter.allCases) { filter in
-                        Text(filter.label).tag(filter)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("Items_FilterPicker")
-            }
-            .padding(.horizontal, 40)
-            .padding(.top, 40)
-            .padding(.bottom, 20)
-
-            // Items list
             ScrollView {
-                LazyVStack(spacing: 16) {
+                LazyVStack(spacing: Metrics.grid * 2) {
                     if filteredItems.isEmpty {
                         emptyStateView
                     } else {
@@ -236,53 +292,96 @@ struct ItemsWizardPage: View, WizardPage {
                         }
                     }
                 }
-                .padding(.horizontal, 40)
-                .padding(.bottom, 40)
+                .padding(.horizontal, Metrics.grid * 6)
+                .padding(.vertical, Metrics.grid * 5)
             }
 
-            // Add item button
-            HStack {
-                Spacer()
-                Button {
-                    let newItem = appState.addItem(to: draft)
-                    selectedItemID = newItem.identifier
-                    showingItemEditor = true
-                } label: {
-                    Label("Add New Item", systemImage: "plus.circle.fill")
-                }
-                #if os(tvOS)
-                .buttonStyle(.glassProminent)
-                #else
-                .buttonStyle(.borderedProminent)
-                #endif
-                .accessibilityIdentifier("Items_AddItem")
-            }
-            .padding(.horizontal, 40)
-            .padding(.vertical, 20)
-            .background(.ultraThinMaterial)
+            addItemBar
         }
+        .background(Palette.bg)
         .fullScreenCover(isPresented: $showingItemEditor) {
             if let item = currentItem {
                 LargeItemEditorView(appState: appState, draft: draft, item: item)
             }
         }
+#if os(tvOS)
+        .onAppear { focusedField = .search }
+#endif
+    }
+
+    private var searchControls: some View {
+        VStack(spacing: Metrics.grid * 2) {
+            TextField("Search items", text: $searchQuery)
+                .font(.title3)
+#if os(tvOS)
+                .wizardFieldDecoration()
+                .focused($focusedField, equals: .search)
+                .prefersDefaultFocus(true, in: defaultFocusNamespace)
+#else
+                .textFieldStyle(.roundedBorder)
+#endif
+                .accessibilityIdentifier("Items_SearchField")
+
+            Picker("Filter", selection: $itemFilter) {
+                ForEach(ItemFilter.allCases) { filter in
+                    Text(filter.label).tag(filter)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("Items_FilterPicker")
+        }
+        .padding(.horizontal, Metrics.grid * 6)
+        .padding(.top, Metrics.grid * 5)
+        .padding(.bottom, Metrics.grid * 3)
+    }
+
+    private var addItemBar: some View {
+        HStack {
+            Spacer()
+            Button {
+                let newItem = appState.addItem(to: draft)
+                selectedItemID = newItem.identifier
+                showingItemEditor = true
+            } label: {
+                Label("Add New Item", systemImage: "plus.circle.fill")
+            }
+#if os(tvOS)
+            .buttonStyle(.glassProminent)
+#else
+            .buttonStyle(.borderedProminent)
+#endif
+            .accessibilityIdentifier("Items_AddItem")
+        }
+        .padding(.horizontal, Metrics.grid * 6)
+        .padding(.vertical, Metrics.grid * 3)
+        .background(
+            Rectangle()
+                .fill(Palette.cardBackground.opacity(0.9))
+                .overlay(Rectangle().stroke(Palette.stroke, lineWidth: 1))
+        )
     }
 
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "square.grid.3x3")
                 .font(.system(size: 60))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Palette.textDim)
             Text("No items found")
                 .font(.title3)
             Text(searchQuery.isEmpty ? "Add items to populate your tier list" : "No items match your search")
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Palette.textDim)
         }
         .frame(maxWidth: .infinity)
         .padding(60)
-        .background(Color.white.opacity(0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .background(
+            RoundedRectangle(cornerRadius: Metrics.rLg, style: .continuous)
+                .fill(Palette.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Metrics.rLg, style: .continuous)
+                        .stroke(Palette.stroke, lineWidth: 1)
+                )
+        )
     }
 
     private func itemCard(_ item: TierDraftItem) -> some View {
@@ -300,7 +399,7 @@ struct ItemsWizardPage: View, WizardPage {
                     if !item.subtitle.isEmpty {
                         Text(item.subtitle)
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Palette.textDim)
                             .lineLimit(1)
                     }
 
@@ -308,17 +407,17 @@ struct ItemsWizardPage: View, WizardPage {
                         if let tier = item.tier {
                             Label(tier.label, systemImage: "tag")
                                 .font(.caption)
-                                .foregroundStyle(.blue)
+                                .foregroundStyle(Palette.brand)
                         } else {
                             Label("Unassigned", systemImage: "questionmark.circle")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Palette.textDim)
                         }
 
                         if item.hidden {
                             Label("Hidden", systemImage: "eye.slash")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Palette.textDim)
                         }
                     }
                 }
@@ -326,12 +425,19 @@ struct ItemsWizardPage: View, WizardPage {
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Palette.textDim)
                     .font(.title3)
             }
             .padding(24)
-            .background(Color.white.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
+                    .fill(Palette.cardBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
+                            .stroke(Palette.stroke, lineWidth: 1)
+                    )
+            )
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("Items_Card_\(item.itemId)")
@@ -390,18 +496,23 @@ struct TiersWizardPage: View, WizardPage {
     let pageTitle = "Tier Assignment"
     let pageDescription = "Review and manage item assignments to tiers"
 
+#if os(tvOS)
+    @Namespace private var defaultFocusNamespace
+#endif
+
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: Metrics.grid * 3) {
                     assignmentOverviewSection
 
                     Divider()
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, Metrics.grid * 6)
 
                     tierManagementSection
                 }
-                .padding(20)
+                .padding(.horizontal, Metrics.grid * 6)
+                .padding(.vertical, Metrics.grid * 5)
             }
 
             // Add tier button at bottom
@@ -416,14 +527,19 @@ struct TiersWizardPage: View, WizardPage {
                 }
                 #if os(tvOS)
                 .buttonStyle(.glassProminent)
+                .prefersDefaultFocus(true, in: defaultFocusNamespace)
                 #else
                 .buttonStyle(.borderedProminent)
                 #endif
                 .accessibilityIdentifier("Tiers_AddTier")
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(.ultraThinMaterial)
+            .padding(.horizontal, Metrics.grid * 6)
+            .padding(.vertical, Metrics.grid * 3)
+            .background(
+                Rectangle()
+                    .fill(Palette.cardBackground.opacity(0.9))
+                    .overlay(Rectangle().stroke(Palette.stroke, lineWidth: 1))
+            )
         }
         .sheet(isPresented: $showingTierDetailsSheet) {
             if let tier = currentTier {
@@ -433,21 +549,23 @@ struct TiersWizardPage: View, WizardPage {
     }
 
     private var assignmentOverviewSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: Metrics.grid * 2) {
             Text("Assignment Overview")
                 .font(.title2.weight(.semibold))
+                .foregroundStyle(Palette.text)
 
             let assignedCount = draft.items.filter { $0.tier != nil }.count
             let totalCount = draft.items.count
             let percentage = totalCount > 0 ? Double(assignedCount) / Double(totalCount) * 100 : 0
 
-            HStack(spacing: 24) {
+            HStack(spacing: Metrics.grid * 3) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Assigned Items")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Palette.textDim)
                     Text("\(assignedCount) / \(totalCount)")
                         .font(.title.weight(.bold))
+                        .foregroundStyle(Palette.text)
                 }
 
                 Divider()
@@ -456,29 +574,36 @@ struct TiersWizardPage: View, WizardPage {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Completion")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Palette.textDim)
                     Text(String(format: "%.0f%%", percentage))
                         .font(.title.weight(.bold))
-                        .foregroundStyle(percentage == 100 ? .green : .primary)
+                        .foregroundStyle(percentage == 100 ? Palette.tierColor("B") : Palette.text)
                 }
 
                 Spacer()
             }
-            .padding()
-            .background(Color.white.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .padding(Metrics.grid * 2.5)
+            .background(
+                RoundedRectangle(cornerRadius: Metrics.rLg, style: .continuous)
+                    .fill(Palette.cardBackground)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Metrics.rLg, style: .continuous)
+                            .stroke(Palette.stroke, lineWidth: 1)
+                    )
+            )
         }
     }
 
     private var tierManagementSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Metrics.grid * 2) {
             Text("Tier Management")
                 .font(.title2.weight(.semibold))
+                .foregroundStyle(Palette.text)
 
             if orderedTiers.isEmpty {
                 emptyStateView
             } else {
-                LazyVStack(spacing: 12) {
+                LazyVStack(spacing: Metrics.grid * 2) {
                     ForEach(orderedTiers) { tier in
                         tierManagementCard(tier)
                     }
@@ -491,18 +616,24 @@ struct TiersWizardPage: View, WizardPage {
         VStack(spacing: 16) {
             Image(systemName: "list.bullet.rectangle")
                 .font(.system(size: 60))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Palette.textDim)
             Text("No tiers defined")
                 .font(.title3)
             Text("Use the Add Tier button below to create ranking tiers")
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Palette.textDim)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(40)
-        .background(Color.white.opacity(0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .background(
+            RoundedRectangle(cornerRadius: Metrics.rLg, style: .continuous)
+                .fill(Palette.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Metrics.rLg, style: .continuous)
+                        .stroke(Palette.stroke, lineWidth: 1)
+                )
+        )
     }
 
     private func tierManagementCard(_ tier: TierDraftTier) -> some View {
@@ -512,11 +643,18 @@ struct TiersWizardPage: View, WizardPage {
             Circle()
                 .fill(ColorUtilities.color(hex: tier.colorHex))
                 .frame(width: 40, height: 40)
-                .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 2))
+                .overlay(
+                    Circle()
+                        .stroke(Palette.stroke.opacity(0.5), lineWidth: 2)
+                )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(tier.label).font(.headline)
-                Text("\(items.count) items").font(.caption).foregroundStyle(.secondary)
+                Text(tier.label)
+                    .font(.headline)
+                    .foregroundStyle(Palette.text)
+                Text("\(items.count) items")
+                    .font(.caption)
+                    .foregroundStyle(Palette.textDim)
             }
 
             Spacer()
@@ -532,8 +670,14 @@ struct TiersWizardPage: View, WizardPage {
             }
         }
         .padding()
-        .background(Color.white.opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .background(
+            RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
+                .fill(Palette.cardBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
+                        .stroke(Palette.stroke, lineWidth: 1)
+                )
+        )
     }
 
     private func tierActionButton(

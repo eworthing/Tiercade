@@ -22,7 +22,7 @@ Core domain models and logic for the Tiercade native apps. This Swift Package is
 
 ## Thread-safety & Sendable guarantees
 
-TiercadeCore is UI-free, pure Swift, and is audited with Swift 6 strict concurrency (`.enableUpcomingFeature("StrictConcurrency")` + `-strict-concurrency=complete`). Public value types (`Item`, `TierConfig`, etc.) conform to `Sendable`. The single escape hatch is the `RandomUtils.Generator` type, which is documented as **not** thread-safe—callers must confine it to a single task or wrap it in an actor if shared.
+TiercadeCore is UI-free, pure Swift, and is audited with Swift 6 strict concurrency (`.enableUpcomingFeature("StrictConcurrency")` + `-strict-concurrency=complete`). Public value types (`Item`, `TierConfig`, etc.) conform to `Sendable`. The `SeededRNG` struct is also `Sendable` but uses `mutating` methods—callers should use value semantics (copy-on-write) or confine mutations to a single task to avoid shared mutable state.
 
 ## Using in Xcode
 1. In your app project, go to File > Add Packages…
@@ -33,18 +33,21 @@ TiercadeCore is UI-free, pure Swift, and is audited with Swift 6 strict concurre
 ```swift
 import TiercadeCore
 
-let loader = ModelResolver()
-let project = try loader.loadProject(from: Data(/* … */))
+// Load from Data
+let project = try ModelResolver.decodeProject(from: Data(/* … */))
 let items = project.items
 let groups = project.groups
 
+// Or load from URL
+let projectFromFile = try ModelResolver.loadProject(from: url)
+
 let tiers: Items = [
-    "S": [], 
-    "A": [], 
-    "B": [], 
-    "C": [], 
-    "D": [], 
-    "F": [], 
+    "S": [],
+    "A": [],
+    "B": [],
+    "C": [],
+    "D": [],
+    "F": [],
     "unranked": [Item(id: "x", attributes: ["name": "X"])]
 ]
 let moved = TierLogic.moveItem(tiers, itemId: "x", targetTierName: "S")
@@ -55,8 +58,9 @@ let moved = TierLogic.moveItem(tiers, itemId: "x", targetTierName: "S")
 ```swift
 import TiercadeCore
 
-let resolver = ModelResolver()
-let project = try resolver.loadProject(from: bundledData)
+// Decode from data or load from URL
+let project = try ModelResolver.decodeProject(from: bundledData)
+// Or: let project = try ModelResolver.loadProject(from: bundledURL)
 
 var tiers = project.initialTiers()
 // Happy path: move succeeds when id + tier exist.
@@ -68,12 +72,12 @@ assert(unchanged == tiers)
 ```
 
 - `TierLogic.moveItem` and `TierLogic.moveItems` never throw; they return the original dictionary if the id/tier combination is invalid.
-- `HeadToHeadLogic.initialComparisonQueueWarmStart` throws `HeadToHeadError.notEnoughItems` when fewer than two items are supplied—bubble that to the UI to show a toast.
+- `HeadToHeadLogic.initialComparisonQueueWarmStart` returns an empty array when fewer than two items are supplied or when target comparisons is zero—callers should check the queue length before proceeding.
 
 ## Deterministic utilities
-- `RandomUtils` uses a Lehmer LCG; providing the same seed yields the same shuffle across app and tests.
-- Seeding contract: `RandomUtils.Generator(seed: UInt64)` normalises older 32-bit values, so tests can use fixture seeds (`12345`) safely.
-- All random helpers are pure functions over the generator; no global RNG is touched.
+- `SeededRNG` uses a Lehmer LCG (MINSTD); providing the same seed yields the same shuffle across app and tests.
+- Seeding contract: `SeededRNG(seed: Int)` initializes the generator; tests can use fixture seeds (`12345`) safely.
+- All random helpers are pure functions that take an `rng: () -> Double` closure; no global RNG is touched.
 
 ## Decoding contracts
 - `ModelResolver` accepts either string or numeric `season` values; it stores both the raw string and optional numeric conversion.

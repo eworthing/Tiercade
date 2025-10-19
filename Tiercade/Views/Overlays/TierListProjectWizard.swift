@@ -10,6 +10,10 @@ struct TierListProjectWizard: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedTab = 0
+#if os(tvOS)
+    @Namespace private var toolbarFocusNamespace
+    @Namespace private var tabFocusNamespace
+#endif
 
     // Sheet presentations for item/tier editing
     @State private var showingTierDetailsSheet = false
@@ -19,28 +23,8 @@ struct TierListProjectWizard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Compact toolbar with tabs and actions combined
-            compactToolbar
-
-            // Tab content (full height)
-            TabView(selection: $selectedTab) {
-                SettingsWizardPage(appState: appState, draft: draft)
-                    .tag(0)
-
-                SchemaWizardPage(appState: appState, draft: draft)
-                    .tag(1)
-
-                ItemsWizardPage(appState: appState, draft: draft)
-                    .tag(2)
-
-                TiersWizardPage(appState: appState, draft: draft)
-                    .tag(3)
-            }
-            #if os(tvOS)
-            .tabViewStyle(.page)
-            #else
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            #endif
+            toolbarSection
+            contentSection
         }
         .background(Palette.bg)
         .sheet(isPresented: $showingTierDetailsSheet) {
@@ -58,9 +42,58 @@ struct TierListProjectWizard: View {
         #endif
     }
 
-    // MARK: - Compact Toolbar
+    // MARK: - Sections
 
-    private var compactToolbar: some View {
+    private var toolbarSection: some View {
+        Group {
+#if os(tvOS)
+            tvGlassContainer(spacing: 0) {
+                toolbarContent
+            }
+            .focusSection()
+#else
+            toolbarContent
+                .background(.ultraThinMaterial)
+#endif
+        }
+    }
+
+    private var contentSection: some View {
+        TabView(selection: $selectedTab) {
+            SettingsWizardPage(appState: appState, draft: draft)
+                .tag(0)
+#if os(tvOS)
+                .focusSection()
+#endif
+
+            SchemaWizardPage(appState: appState, draft: draft)
+                .tag(1)
+#if os(tvOS)
+                .focusSection()
+#endif
+
+            ItemsWizardPage(appState: appState, draft: draft)
+                .tag(2)
+#if os(tvOS)
+                .focusSection()
+#endif
+
+            TiersWizardPage(appState: appState, draft: draft)
+                .tag(3)
+#if os(tvOS)
+                .focusSection()
+#endif
+        }
+#if os(tvOS)
+        .tabViewStyle(.page)
+#else
+        .tabViewStyle(.page(indexDisplayMode: .never))
+#endif
+    }
+
+    // MARK: - Toolbar Content
+
+    private var toolbarContent: some View {
         VStack(spacing: 0) {
             HStack(spacing: 16) {
                 // Title
@@ -84,6 +117,7 @@ struct TierListProjectWizard: View {
                     }
                     #if os(tvOS)
                     .buttonStyle(.glass)
+                    .prefersDefaultFocus(true, in: toolbarFocusNamespace)
                     #else
                     .buttonStyle(.borderless)
                     #endif
@@ -103,7 +137,7 @@ struct TierListProjectWizard: View {
                     .buttonStyle(.glassProminent)
                     #else
                     .buttonStyle(.borderless)
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(Palette.brand)
                     #endif
                     .accessibilityIdentifier("Wizard_Publish")
 
@@ -142,7 +176,6 @@ struct TierListProjectWizard: View {
 
             Divider()
         }
-        .background(.ultraThinMaterial)
     }
 
     private func tabButton(_ title: String, icon: String, index: Int) -> some View {
@@ -159,10 +192,17 @@ struct TierListProjectWizard: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            .background(selectedTab == index ? Color.accentColor.opacity(0.2) : Color.clear)
+            .background(
+                selectedTab == index
+                ? Palette.brand.opacity(0.25)
+                : Palette.surface.opacity(0.35)
+            )
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
+#if os(tvOS)
+        .prefersDefaultFocus(index == selectedTab, in: tabFocusNamespace)
+#endif
         .accessibilityIdentifier("Tab_\(title)")
     }
 

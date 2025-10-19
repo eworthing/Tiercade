@@ -16,8 +16,60 @@ Design tokens and SwiftUI styles for Tiercade on the OS 26 baseline. Tokens are 
 | Surface | Primary (tvOS 26+) | Fallback (iOS / iPadOS / Mac Catalyst) | Notes |
 | --- | --- | --- | --- |
 | Cards & collection cells | `.card()` + `tvGlassRounded()` or `GlassEffectContainer` when elevated | `.card()` + `.background(.ultraThinMaterial, in: RoundedRectangle)` | Avoid Liquid Glass on high-frequency scroll regions; default to `Palette.surface` for pagination-heavy grids. |
-| Toolbars & overlays | `tvGlassContainer(spacing:)` + `.buttonStyle(.glass)` or custom `glassEffect` | Material stack (`.ultraThinMaterial`) matching the same shape | Respect `Reduce Transparency` and `Increase Contrast`; ensure glass halos stay legible against content. |
+| Toolbars & overlays | `tvGlassContainer(spacing:)` + `.buttonStyle(.glass)` or custom `glassEffect` **ONLY on chrome** | Material stack (`.ultraThinMaterial`) matching the same shape | **⚠️ CRITICAL:** Apply glass to toolbar chrome ONLY, never to section backgrounds or containers. See warning below. |
 | Buttons | `TVRemoteButtonStyle` or `.buttonStyle(.glassProminent)` for primary actions | `PrimaryButtonStyle` / `GhostButtonStyle` with system focus visuals | Keep minimum 4.5:1 text contrast and pair focus scale with shadow lift. |
+| Section backgrounds | Solid backgrounds with `.background(Color.black.opacity(0.6))` + border overlays | Same solid pattern across platforms | **Never use glass effects on backgrounds** — they make focus overlays unreadable. |
+
+### ⚠️ Critical: Glass Effects Must NOT Be Applied to Backgrounds
+
+**Problem:** tvOS's built-in focus system applies overlay effects to text fields, keyboards, and focusable controls. When these overlays render through translucent glass backgrounds (`.tvGlassRounded()`, `.glassEffect()`, etc.), they become **completely unreadable**, appearing as illegible white films over text.
+
+**Solution:** Glass effects belong **ONLY** on interactive UI chrome (toolbars, buttons, headers). Section backgrounds and containers must use **solid, opaque backgrounds**.
+
+**Correct usage:**
+```swift
+// ✅ Glass on chrome/toolbar only
+VStack(spacing: 0) {
+    // Header with glass chrome
+    HStack { /* toolbar buttons */ }
+        .glassEffect(.regular, in: Rectangle())
+
+    // Content with SOLID backgrounds
+    ScrollView {
+        VStack {
+            TextField("Name", text: $name)
+                .padding(12)
+                .background(Color.black)  // Solid, not glass
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                }
+        }
+        .padding(20)
+        .background(Color.black.opacity(0.6))  // Solid section background
+        .overlay {
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+        }
+    }
+}
+```
+
+**Incorrect usage:**
+```swift
+// ❌ WRONG: Glass on section backgrounds
+VStack {
+    TextField("Name", text: $name)
+    // ... other content
+}
+.padding(20)
+.tvGlassRounded(20)  // ❌ Blocks focus overlays!
+```
+
+**Testing:** Always test text input and keyboard interaction in the tvOS simulator to verify that:
+- Text field content is readable when focused
+- Keyboard characters are visible when focused
+- No translucent overlays obscure interactive elements
 
 ### Reduce Transparency & Contrast
 

@@ -77,7 +77,7 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **Strict Concurrency** – All targets enable "Complete" checking; core logic favors `Sendable` value types and actors for isolation (see `AGENTS.md` for build-setting guardrails).
 - **Observation-First State** – UI state uses Swift Observation macros (`@Observable`, `@Bindable`) instead of `ObservableObject`/`@Published`.
 - **SwiftUI Everywhere** – Screens, overlays, and navigation are pure SwiftUI with `NavigationStack`/`NavigationSplitView`; UIKit appears only through targeted representable adapters when absolutely necessary.
-- **SwiftData Persistence** – New persistence flows adopt `@Model` + `@Query`; remaining Core Data touchpoints are migrated module-by-module.
+- **SwiftData Persistence** – SwiftData infrastructure (ModelContext) is wired in; primary tier list state currently persists via UserDefaults with planned migration to `@Model` + `@Query` for new features.
 - **Async Streams** – Legacy Combine pipelines are rewritten to `AsyncSequence`, `AsyncStream`, `async let`, or `TaskGroup` constructs.
 - **Liquid Glass Chrome** – Translucent, glassy effects stay confined to top-level chrome (toolbars, sheets) to keep fast-refreshing content performant.
 - **Swift Testing** – New tests rely on the Swift Testing framework (`@Test`, `#expect`) with incremental XCTest retirement.

@@ -265,6 +265,10 @@ struct SecondaryToolbarActions: ToolbarContent {
                 Button("JSON Format") { onShowExportFormat(.json) }
                 Button("Markdown Format") { onShowExportFormat(.markdown) }
                 Button("CSV Format") { onShowExportFormat(.csv) }
+                Button("PNG Image") { onShowExportFormat(.png) }
+                #if !os(tvOS)
+                Button("PDF Document") { onShowExportFormat(.pdf) }
+                #endif
             }
             #if os(iOS) || targetEnvironment(macCatalyst)
             Menu("Import From...") {

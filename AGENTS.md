@@ -26,7 +26,7 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 
 - Overlays (QuickMove, HeadToHead, ThemePicker, etc.) are separate focus sections using `.focusSection()` and `.focusable(interactions: .activate)`. Keep background content interactive by toggling `.allowsHitTesting(!overlayActive)`—never `.disabled()`.
 - Accessibility IDs must follow `{Component}_{Action}` on leaf elements (e.g. `Toolbar_H2H`, `QuickMove_Overlay`). Avoid placing IDs on containers using `.accessibilityElement(children: .contain)`.
-- Head-to-head overlay contract: render skip card with `clock.arrow.circlepath`, maintain `H2H_SkippedCount`, call `cancelH2H(fromExitCommand:)` from `.onExitCommand`.
+- Head-to-head overlay contract: render skip card with `arrow.uturn.left.circle`, maintain `H2H_SkippedCount`, call `cancelH2H(fromExitCommand:)` from `.onExitCommand`.
 - Apply glass effects via `glassEffect`, `GlassEffectContainer`, or `.buttonStyle(.glass)` when touching toolbars/overlays; validate focus halos in the Apple TV 4K (3rd gen) tvOS 26 simulator.
 
 ## Build · Test · Verify
@@ -269,6 +269,59 @@ tvOS Exit button (Menu/⌘) should dismiss modals, not exit app:
 }
 ```
 
+### ⚠️ Critical: Glass Effects and Focus Overlays
+
+**NEVER apply glass effects or translucent materials to section backgrounds, containers, or any layer behind focusable elements.**
+
+**Problem:** When tvOS text fields, keyboards, or other focusable controls receive focus, the system applies its own overlay effects. These overlays become **completely unreadable** when rendered through translucent glass backgrounds, appearing as illegible white films.
+
+**Solution:** Use glass effects **ONLY** on interactive UI chrome elements (toolbars, buttons, headers). All section backgrounds and containers must use solid, opaque backgrounds.
+
+**Correct pattern:**
+```swift
+// ✅ CORRECT: Glass on toolbar/chrome only
+VStack {
+    HStack { /* toolbar buttons */ }
+        .glassEffect(.regular, in: Rectangle())  // Glass on chrome
+
+    ScrollView {
+        VStack {
+            TextField("Name", text: $name)
+                .padding(12)
+                .background(Color.black)  // Solid background
+                .overlay {
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                }
+                .focusEffectDisabled(false)  // Allow system focus
+        }
+        .padding(20)
+        .background(Color.black.opacity(0.6))  // Solid section background
+        .overlay {
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+        }
+    }
+}
+```
+
+**Incorrect pattern:**
+```swift
+// ❌ WRONG: Glass on backgrounds blocks focus overlays
+VStack {
+    TextField("Name", text: $name)
+}
+.padding(20)
+.tvGlassRounded(20)  // ❌ Makes keyboard and focus unreadable!
+```
+
+**Best practices:**
+- ✅ **Use solid backgrounds** (`Color.black`, `Color.black.opacity(0.6)`) for all sections and containers
+- ✅ **Add borders** via `.overlay` with low-opacity strokes for definition
+- ✅ **Apply glass** only to toolbars, headers, and button chrome
+- ✅ **Enable focus effects** with `.focusEffectDisabled(false)` on text fields
+- ✅ **Test focus** in tvOS simulator to verify keyboard and focus overlays are readable
+
 ## Build & Test
 
 ### Build Commands
@@ -365,6 +418,5 @@ Maintain bundled images manually within `Tiercade/Assets.xcassets`. Ensure any c
 
 ### Security & runtime checklist
 - **ATS:** Keep App Transport Security enabled (default). Only add per-host exceptions with documented justification.
-- **Pinned hosts:** If we pin certificates, update the list in `Networking/TrustedHosts.swift` and cover it with integration tests.
-- **Retry/backoff:** Networking helpers default to exponential backoff (see `Networking/RetryPolicy.swift`). Respect those defaults unless a backend owner approves changes.
+- **Network security:** Certificate pinning and retry policies should be documented when implemented.
 
