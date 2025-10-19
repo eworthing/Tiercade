@@ -132,27 +132,39 @@ private extension ThemeCreatorOverlay {
             TextField("Theme Name", text: nameBinding)
                 .padding(.vertical, 14)
                 .padding(.horizontal, 18)
-                .tvGlassRounded(18)
+                .background {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.black)
+                }
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 2)
                 )
                 .focused($focusedElement, equals: .name)
                 .submitLabel(.done)
                 .accessibilityIdentifier("ThemeCreator_NameField")
+                #if os(tvOS)
+                .focusEffectDisabled(false)
+                #endif
 
             TextField("Short description", text: descriptionBinding)
                 .padding(.vertical, 14)
                 .padding(.horizontal, 18)
-                .tvGlassRounded(18)
+                .background {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(Color.black)
+                }
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 2)
                 )
                 .focused($focusedElement, equals: .description)
                 .submitLabel(.done)
                 .accessibilityIdentifier("ThemeCreator_DescriptionField")
                 .foregroundStyle(.secondary)
+                #if os(tvOS)
+                .focusEffectDisabled(false)
+                #endif
         }
     }
 

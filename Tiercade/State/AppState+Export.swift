@@ -1,5 +1,7 @@
 import Foundation
 import SwiftUI
+import UniformTypeIdentifiers
+import CryptoKit
 import TiercadeCore
 
 @MainActor
@@ -37,6 +39,13 @@ extension AppState {
                     throw ExportError.renderingFailed("Binary export failed")
                 case .notApplicable:
                     break
+                }
+
+                if format == .json {
+                    let (data, fileName) = try exportCanonicalProjectJSON(group: group, themeName: themeName)
+                    updateProgress(1.0)
+                    showSuccessToast("Export Complete", message: "Exported canonical JSON {export}")
+                    return (data, fileName)
                 }
 
                 guard let (content, fileName) = exportTextFormat(
@@ -85,36 +94,6 @@ extension AppState {
 
     func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String) {
         try await exportToFormat(format, group: "All", themeName: "Default")
-    }
-
-    private func exportToJSON(group: String, themeName: String) -> String {
-        let exportData = [
-            "metadata": [
-                "group": group,
-                "theme": themeName,
-                "exportDate": ISO8601DateFormatter().string(from: Date()),
-                "appVersion": "1.0"
-            ],
-            "tierOrder": tierOrder,
-            "tiers": tiers.mapValues { tierItems in
-                tierItems.map { item in
-                    var dict: [String: Any] = ["id": item.id]
-                    var attributes: [String: Any] = [:]
-                    if let name = item.name { attributes["name"] = name }
-                    if let season = item.seasonString { attributes["season"] = season }
-                    if let image = item.imageUrl { attributes["thumbUri"] = image }
-                    dict["attributes"] = attributes
-                    return dict
-                }
-            }
-        ] as [String: Any]
-
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: exportData, options: .prettyPrinted)
-            return String(data: jsonData, encoding: .utf8) ?? "{}"
-        } catch {
-            return "{}"
-        }
     }
 
     private func exportToMarkdown(group: String, themeName: String, tierConfig: TierConfig) -> String {
@@ -228,8 +207,6 @@ extension AppState {
                 tierConfig: tierConfig
             )
             return (content, "tier_list.txt")
-        case .json:
-            return (exportToJSON(group: group, themeName: themeName), "tier_list.json")
         case .markdown:
             return (
                 exportToMarkdown(group: group, themeName: themeName, tierConfig: tierConfig),
@@ -242,4 +219,289 @@ extension AppState {
             return nil
         }
     }
+
+    private func exportCanonicalProjectJSON(group: String, themeName: String) throws -> (Data, String) {
+        let artifacts = try buildProjectExportArtifacts(group: group, themeName: themeName)
+        let data = try encodeProjectForExport(artifacts.project)
+        let preferredName = artifacts.project.title?.isEmpty == false
+            ? artifacts.project.title!
+            : artifacts.project.projectId
+        let fileName = makeExportFileName(from: preferredName, fileExtension: "json")
+        return (data, fileName)
+    }
+
+    private func encodeProjectForExport(_ project: Project) throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        return try encoder.encode(project)
+    }
+
+    func buildProjectExportArtifacts(group: String, themeName: String) throws -> ProjectExportArtifacts {
+        let now = Date()
+        let projectId = exportProjectIdentifier()
+        let orderedTiers = exportTierOrderIncludingUnranked()
+        var itemsDictionary: [String: Project.Item] = [:]
+        var exportFiles: [ProjectExportArtifacts.ProjectExportFile] = []
+
+        for tierName in orderedTiers {
+            guard let tierItems = tiers[tierName] else { continue }
+            for item in tierItems {
+                if itemsDictionary[item.id] != nil { continue }
+                let projectItem = try makeProjectItem(from: item, collecting: &exportFiles)
+                itemsDictionary[item.id] = projectItem
+            }
+        }
+
+        let projectTiers: [Project.Tier] = orderedTiers.enumerated().map { index, tierName in
+            Project.Tier(
+                id: tierName,
+                label: tierLabels[tierName] ?? tierName,
+                color: tierColors[tierName],
+                order: tierName == "unranked" ? orderedTiers.count : index,
+                locked: lockedTiers.contains(tierName),
+                collapsed: nil,
+                rules: nil,
+                itemIds: tiers[tierName]?.map(\.id) ?? [],
+                additional: nil
+            )
+        }
+
+        var settingsAdditional: [String: JSONValue] = [
+            "cardDensityPreference": .string(cardDensityPreference.rawValue)
+        ]
+        if let activeGroup = activeTierList?.displayName {
+            settingsAdditional["activeList"] = .string(activeGroup)
+        }
+
+        let settings = Project.Settings(
+            theme: selectedTheme.slug,
+            tierSortOrder: nil,
+            gridSnap: nil,
+            showUnranked: true,
+            accessibility: nil,
+            additional: settingsAdditional
+        )
+
+        var additional: [String: JSONValue] = [:]
+        if !group.isEmpty {
+            additional["exportGroup"] = .string(group)
+        }
+        if !themeName.isEmpty {
+            additional["exportThemeName"] = .string(themeName)
+        }
+        if let customThemesPayload = makeCustomThemesPayload() {
+            additional["customThemes"] = customThemesPayload
+        }
+
+        let audit = Project.Audit(
+            createdAt: lastSavedTime ?? now,
+            updatedAt: now,
+            createdBy: "local-user",
+            updatedBy: "local-user"
+        )
+
+        let project = Project(
+            schemaVersion: 1,
+            projectId: projectId,
+            title: activeTierDisplayName,
+            description: nil,
+            tiers: projectTiers,
+            items: itemsDictionary,
+            overrides: nil,
+            links: nil,
+            storage: Project.Storage(mode: "local"),
+            settings: settings,
+            collab: nil,
+            audit: audit,
+            additional: additional.isEmpty ? nil : additional
+        )
+
+        return ProjectExportArtifacts(project: project, files: exportFiles)
+    }
+
+    private func makeProjectItem(
+        from item: Item,
+        collecting exportFiles: inout [ProjectExportArtifacts.ProjectExportFile]
+    ) throws -> Project.Item {
+        var attributes: [String: JSONValue] = [:]
+        if let season = item.seasonString, !season.isEmpty {
+            attributes["season"] = .string(season)
+        }
+        if let seasonNumber = item.seasonNumber {
+            attributes["seasonNumber"] = .number(Double(seasonNumber))
+        }
+        if let status = item.status, !status.isEmpty {
+            attributes["status"] = .string(status)
+        }
+        if let description = item.description, !description.isEmpty {
+            attributes["description"] = .string(description)
+        }
+
+        let mediaEntries = try makeMediaEntries(from: item, collecting: &exportFiles)
+        if let media = mediaEntries?.first, let thumb = media.thumbUri {
+            attributes["thumbUri"] = .string(thumb)
+        }
+
+        return Project.Item(
+            id: item.id,
+            title: item.name ?? item.id,
+            subtitle: item.seasonString,
+            summary: item.description,
+            slug: nil,
+            media: mediaEntries,
+            attributes: attributes.isEmpty ? nil : attributes,
+            tags: nil,
+            rating: nil,
+            sources: nil,
+            locale: nil,
+            meta: nil,
+            additional: nil
+        )
+    }
+
+    private func makeMediaEntries(
+        from item: Item,
+        collecting exportFiles: inout [ProjectExportArtifacts.ProjectExportFile]
+    ) throws -> [Project.Media]? {
+        guard
+            let imagePath = item.imageUrl,
+            let url = URL(string: imagePath),
+            url.isFileURL,
+            FileManager.default.fileExists(atPath: url.path)
+        else {
+            return nil
+        }
+
+        let export = try makeMediaExport(from: url, altText: item.name ?? item.id)
+        exportFiles.append(contentsOf: export.files)
+        return [export.media]
+    }
+
+    private func makeMediaExport(from url: URL, altText: String?) throws -> MediaExportResult {
+        let resolvedURL = url.standardizedFileURL
+        let data = try Data(contentsOf: resolvedURL)
+        let hash = sha256Hex(for: data)
+        let fileExtension = resolvedURL.pathExtension.lowercased()
+        let mediaFileName = fileExtension.isEmpty ? hash : "\(hash).\(fileExtension)"
+        let mediaRelativePath = "Media/\(mediaFileName)"
+
+        let type = UTType(filenameExtension: fileExtension) ?? .data
+        let mime = type.preferredMIMEType ?? "application/octet-stream"
+        let kind: ProjectMediaKind
+        if type.conforms(to: .gif) {
+            kind = .gif
+        } else if type.conforms(to: .image) {
+            kind = .image
+        } else if type.conforms(to: .audiovisualContent) && type.conforms(to: .audio) {
+            kind = .audio
+        } else if type.conforms(to: .audiovisualContent) {
+            kind = .video
+        } else {
+            kind = .image
+        }
+
+        var files: [ProjectExportArtifacts.ProjectExportFile] = [
+            ProjectExportArtifacts.ProjectExportFile(sourceURL: resolvedURL, relativePath: mediaRelativePath)
+        ]
+
+        var thumbURI: String?
+        if kind == .image {
+            let thumbExtension = fileExtension.isEmpty ? "bin" : fileExtension
+            let thumbFileName = "\(hash)_256.\(thumbExtension)"
+            let thumbRelativePath = "Thumbs/\(thumbFileName)"
+            thumbURI = "file://\(thumbRelativePath)"
+            files.append(ProjectExportArtifacts.ProjectExportFile(sourceURL: resolvedURL, relativePath: thumbRelativePath))
+        }
+
+        let media = Project.Media(
+            id: hash,
+            kind: kind,
+            uri: "file://\(mediaRelativePath)",
+            mime: mime,
+            w: nil,
+            h: nil,
+            durationMs: nil,
+            posterUri: nil,
+            thumbUri: thumbURI,
+            alt: altText,
+            attribution: nil,
+            additional: nil
+        )
+
+        return MediaExportResult(media: media, files: files)
+    }
+
+    private func sha256Hex(for data: Data) -> String {
+        let digest = SHA256.hash(data: data)
+        return digest.map { String(format: "%02x", $0) }.joined()
+    }
+
+    private func makeCustomThemesPayload() -> JSONValue? {
+        guard !customThemes.isEmpty else { return nil }
+
+        let themeValues: [JSONValue] = customThemes.map { theme in
+            let tierValues: [JSONValue] = theme.tiers.map { tier in
+                .object([
+                    "id": .string(tier.id.uuidString),
+                    "index": .number(Double(tier.index)),
+                    "name": .string(tier.name),
+                    "colorHex": .string(tier.colorHex),
+                    "isUnranked": .bool(tier.isUnranked)
+                ])
+            }
+
+            return .object([
+                "id": .string(theme.id.uuidString),
+                "slug": .string(theme.slug),
+                "displayName": .string(theme.displayName),
+                "shortDescription": .string(theme.shortDescription),
+                "tiers": .array(tierValues)
+            ])
+        }
+
+        return .array(themeValues)
+    }
+
+    private func exportProjectIdentifier() -> String {
+        if let handle = activeTierList {
+            return handle.identifier
+        }
+        if let currentFileName {
+            return currentFileName
+        }
+        return "tiercade-\(UUID().uuidString)"
+    }
+
+    private func exportTierOrderIncludingUnranked() -> [String] {
+        var ordered = tierOrder
+        if !ordered.contains("unranked") {
+            ordered.append("unranked")
+        }
+        return ordered
+    }
+
+    private func makeExportFileName(from preferredName: String, fileExtension ext: String) -> String {
+        let sanitized = preferredName
+            .lowercased()
+            .replacingOccurrences(of: "[^a-z0-9-_]+", with: "-", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        let base = sanitized.isEmpty ? "tiercade-project" : sanitized
+        return "\(base).\(ext)"
+    }
+}
+
+struct ProjectExportArtifacts {
+    struct ProjectExportFile {
+        let sourceURL: URL
+        let relativePath: String
+    }
+
+    let project: Project
+    let files: [ProjectExportFile]
+}
+
+private struct MediaExportResult {
+    let media: Project.Media
+    let files: [ProjectExportArtifacts.ProjectExportFile]
 }

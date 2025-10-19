@@ -7,7 +7,7 @@ import TiercadeCore
 extension AppState {
     func applyBundledProject(_ bundled: BundledProject) {
         let snapshot = captureTierSnapshot()
-        let state = resolvedTierState(for: bundled)
+        let state = resolvedTierState(from: bundled.project)
         tierOrder = state.order
         tiers = state.items
         tierLabels = state.labels
@@ -33,7 +33,7 @@ extension AppState {
         var locked: Set<String>
     }
 
-    func resolvedTierState(for bundled: BundledProject) -> BundledTierState {
+    func resolvedTierState(from project: Project) -> BundledTierState {
         var state = BundledTierState(
             order: [],
             items: [:],
@@ -42,13 +42,17 @@ extension AppState {
             locked: []
         )
 
-        let metadata = Dictionary(uniqueKeysWithValues: bundled.project.tiers.map { ($0.id, $0) })
-        let resolvedTiers = ModelResolver.resolveTiers(from: bundled.project)
+        let metadata = Dictionary(uniqueKeysWithValues: project.tiers.map { ($0.id, $0) })
+        let resolvedTiers = ModelResolver.resolveTiers(from: project)
 
         populateState(with: resolvedTiers, metadata: metadata, state: &state)
-        appendMissingTiers(from: bundled.project.tiers, state: &state)
+        appendMissingTiers(from: project.tiers, state: &state)
 
         return state
+    }
+
+    func resolvedTierState(for bundled: BundledProject) -> BundledTierState {
+        resolvedTierState(from: bundled.project)
     }
 
     func populateState(

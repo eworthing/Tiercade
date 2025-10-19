@@ -15,9 +15,11 @@ DerivedData/
 /.build/
 /Packages/
 *.xcodeproj/project.xcworkspace/
+Tiercade.xcodeproj/xcuserdata/
 
 # SwiftPM resolved file noise
 Package.resolved
+TiercadeCore/.swiftpm/
 
 # Playwright/Vitest outputs (from reference project)
 ReferenceCodeToConvert/**/test-results/

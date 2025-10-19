@@ -56,18 +56,6 @@ private struct CodableTheme: Codable {
     }
 }
 
-@MainActor
-private struct AppSaveFilePayload: Codable {
-    let tiers: Items
-    let tierLabels: [String: String]?
-    let tierColors: [String: String]?
-    let selectedThemeID: String?
-    let customThemes: [CodableTheme]?
-    let createdDate: Date
-    let appVersion: String
-    let cardDensityPreference: String?
-}
-
 extension AppState {
     // MARK: - SwiftData-backed persistence
 
@@ -113,17 +101,23 @@ extension AppState {
     }
 
     func saveToFile(named fileName: String) throws(PersistenceError) {
+        let sanitizedName = sanitizeFileName(fileName)
         do {
-            let data = try encodeCurrentStateForFileExport()
-            let fileURL = fileURLForExport(named: fileName)
-            try data.write(to: fileURL)
-            finalizeSuccessfulFileSave(named: fileName)
+            let artifacts = try buildProjectExportArtifacts(
+                group: "All",
+                themeName: selectedTheme.displayName
+            )
+            let destination = try fileURLForExport(named: sanitizedName)
+            try writeProjectBundle(artifacts, to: destination)
+            finalizeSuccessfulFileSave(named: sanitizedName)
+        } catch let error as ExportError {
+            throw PersistenceError.encodingFailed(error.localizedDescription)
         } catch let error as PersistenceError {
             throw error
         } catch let error as CocoaError where error.code == .fileWriteNoPermission {
             throw PersistenceError.permissionDenied
         } catch {
-            throw PersistenceError.fileSystemError("Could not write file: \(error.localizedDescription)")
+            throw PersistenceError.fileSystemError("Could not write bundle: \(error.localizedDescription)")
         }
     }
 
@@ -131,21 +125,28 @@ extension AppState {
     func loadFromFile(named fileName: String) -> Bool {
         let snapshot = captureTierSnapshot()
         do {
-            let data = try dataForFile(named: fileName)
-
-            if applyModernSave(from: data, fileName: fileName, snapshot: snapshot) {
-                return true
-            }
-
-            if applyLegacySave(from: data, fileName: fileName, snapshot: snapshot) {
-                return true
-            }
-
-            showErrorToast("Load Failed", message: "Unrecognized format for \(fileName).json {warning}")
+            let bundleURL = try fileURLForExport(named: fileName)
+            let project = try loadProjectBundle(from: bundleURL)
+            applyImportedProject(
+                project,
+                action: "Load File",
+                fileName: fileName,
+                undoSnapshot: snapshot
+            )
+            showSuccessToast("File Loaded", message: "Loaded \(fileName).tierproj {file}")
+            persistCurrentStateToStore()
+            return true
+        } catch let error as PersistenceError {
+            Logger.persistence.error("File load failed: \(error.localizedDescription)")
+            showErrorToast("Load Failed", message: error.localizedDescription)
+            return false
+        } catch let error as ImportError {
+            Logger.persistence.error("File load failed: \(error.localizedDescription)")
+            showErrorToast("Load Failed", message: error.localizedDescription)
             return false
         } catch {
             Logger.persistence.error("File load failed: \(error.localizedDescription)")
-            showErrorToast("Load Failed", message: "Could not load \(fileName).json {warning}")
+            showErrorToast("Load Failed", message: "Could not load \(fileName).tierproj {warning}")
             return false
         }
     }
@@ -163,97 +164,25 @@ extension AppState {
         }
     }
 
-    private func encodeCurrentStateForFileExport() throws(PersistenceError) -> Data {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
-
-        let payload = AppSaveFilePayload(
-            tiers: tiers,
-            tierLabels: tierLabels,
-            tierColors: tierColors,
-            selectedThemeID: selectedThemeID.uuidString,
-            customThemes: customThemes.map(CodableTheme.init),
-            createdDate: Date(),
-            appVersion: "1.0",
-            cardDensityPreference: cardDensityPreference.rawValue
-        )
-
-        do {
-            return try encoder.encode(payload)
-        } catch let error as EncodingError {
-            throw PersistenceError.encodingFailed("Failed to encode: \(error.localizedDescription)")
-        } catch {
-            throw PersistenceError.fileSystemError("Could not encode save data: \(error.localizedDescription)")
-        }
-    }
-
-    private func fileURLForExport(named fileName: String) -> URL {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return documentsPath.appendingPathComponent("\(fileName).json")
+    private func fileURLForExport(named fileName: String) throws -> URL {
+        let projects = try projectsDirectory()
+        let sanitized = sanitizeFileName(fileName)
+        return projects.appendingPathComponent("\(sanitized).tierproj")
     }
 
     private func finalizeSuccessfulFileSave(named fileName: String) {
         currentFileName = fileName
         hasUnsavedChanges = false
         lastSavedTime = Date()
-        showSuccessToast("File Saved", message: "Saved as \(fileName).json {file}")
-    }
-
-    private func dataForFile(named fileName: String) throws -> Data {
-        let fileURL = fileURLForExport(named: fileName)
-        return try Data(contentsOf: fileURL)
-    }
-
-    private func applyModernSave(from data: Data, fileName: String, snapshot: TierStateSnapshot) -> Bool {
-        guard let saveData = try? JSONDecoder().decode(AppSaveFilePayload.self, from: data) else {
-            return false
-        }
-
-        applyLoadedFileSync(
-            tiers: saveData.tiers,
-            fileName: fileName,
-            savedDate: saveData.createdDate
-        )
-        tierLabels = saveData.tierLabels ?? tierLabels
-        tierColors = saveData.tierColors ?? tierColors
-        restoreCustomThemes(saveData.customThemes ?? [])
-        restoreTheme(themeID: saveData.selectedThemeID.flatMap(UUID.init))
-        restoreCardDensityPreference(rawValue: saveData.cardDensityPreference)
-        showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
-        finalizeChange(action: "Load File", undoSnapshot: snapshot)
-        persistCurrentStateToStore()
-        return true
-    }
-
-    private func applyLegacySave(from data: Data, fileName: String, snapshot: TierStateSnapshot) -> Bool {
-        guard let legacyTiers = parseLegacyTiers(from: data) else {
-            return false
-        }
-
-        applyLoadedFileSync(
-            tiers: legacyTiers,
-            fileName: fileName,
-            savedDate: Date()
-        )
-        restoreCardDensityPreference(rawValue: nil)
-        showSuccessToast("File Loaded", message: "Loaded \(fileName).json {file}")
-        finalizeChange(action: "Load File", undoSnapshot: snapshot)
-        persistCurrentStateToStore()
-        return true
+        showSuccessToast("File Saved", message: "Saved as \(fileName).tierproj {file}")
     }
 
     func getAvailableSaveFiles() -> [String] {
         do {
-            let documentsPath = FileManager.default.urls(
-                for: .documentDirectory,
-                in: .userDomainMask
-            )[0]
-            let fileURLs = try FileManager.default.contentsOfDirectory(
-                at: documentsPath,
-                includingPropertiesForKeys: nil
-            )
+            let projects = try projectsDirectory()
+            let fileURLs = try FileManager.default.contentsOfDirectory(at: projects, includingPropertiesForKeys: nil)
             return fileURLs
-                .filter { $0.pathExtension == "json" }
+                .filter { $0.pathExtension == "tierproj" }
                 .map { $0.deletingPathExtension().lastPathComponent }
                 .sorted()
         } catch {
@@ -262,6 +191,245 @@ extension AppState {
         }
     }
 
+    private func writeProjectBundle(_ artifacts: ProjectExportArtifacts, to destination: URL) throws(PersistenceError) {
+        let fileManager = FileManager.default
+
+        do {
+            try ensureDirectoryExists(at: destination.deletingLastPathComponent())
+            if fileManager.fileExists(atPath: destination.path) {
+                try fileManager.removeItem(at: destination)
+            }
+
+            try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
+
+            let projectURL = destination.appendingPathComponent("project.json")
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(artifacts.project)
+            try data.write(to: projectURL, options: .atomic)
+
+            for exportFile in artifacts.files {
+                let destinationURL = destination.appendingPathComponent(exportFile.relativePath)
+                try fileManager.createDirectory(
+                    at: destinationURL.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                if fileManager.fileExists(atPath: destinationURL.path) {
+                    continue
+                }
+                guard fileManager.fileExists(atPath: exportFile.sourceURL.path) else {
+                    throw PersistenceError.fileSystemError("Missing media asset at \(exportFile.sourceURL.path)")
+                }
+                try fileManager.copyItem(at: exportFile.sourceURL, to: destinationURL)
+            }
+        } catch let error as PersistenceError {
+            throw error
+        } catch {
+            throw PersistenceError.fileSystemError("Failed to assemble bundle: \(error.localizedDescription)")
+        }
+    }
+
+    private func loadProjectBundle(from url: URL) throws -> Project {
+        let fileManager = FileManager.default
+
+        do {
+            guard fileManager.fileExists(atPath: url.path) else {
+                throw PersistenceError.fileSystemError("Bundle not found at \(url.path)")
+            }
+
+            let projectURL = url.appendingPathComponent("project.json")
+            guard fileManager.fileExists(atPath: projectURL.path) else {
+                throw PersistenceError.fileSystemError("Missing project.json in \(url.path)")
+            }
+
+            let data = try Data(contentsOf: projectURL)
+            let project = try ModelResolver.decodeProject(from: data)
+            return try relocateProject(project, extractedAt: url)
+        } catch let error as PersistenceError {
+            throw error
+        } catch let error as ImportError {
+            throw error
+        } catch let error as DecodingError {
+            throw ImportError.parsingFailed(error.localizedDescription)
+        } catch let error as NSError where error.domain == "Tiercade" {
+            throw ImportError.invalidData(error.localizedDescription)
+        } catch {
+            throw PersistenceError.fileSystemError("Failed to read bundle: \(error.localizedDescription)")
+        }
+    }
+
+    private func relocateProject(_ project: Project, extractedAt tempDirectory: URL) throws -> Project {
+        var updatedItems: [String: Project.Item] = [:]
+        for (id, item) in project.items {
+            var newItem = item
+            if let result = try relocateMediaList(item.media, extractedAt: tempDirectory) {
+                newItem.media = result.list
+                if var attributes = item.attributes {
+                    if let thumb = result.primaryThumb {
+                        attributes["thumbUri"] = .string(thumb)
+                    }
+                    newItem.attributes = attributes
+                }
+            }
+            updatedItems[id] = newItem
+        }
+
+        var updatedOverrides = project.overrides
+        if let overrides = project.overrides {
+            var mapped: [String: Project.ItemOverride] = [:]
+            for (id, override) in overrides {
+                var newOverride = override
+                if let result = try relocateMediaList(override.media, extractedAt: tempDirectory) {
+                    newOverride.media = result.list
+                }
+                mapped[id] = newOverride
+            }
+            updatedOverrides = mapped
+        }
+
+        var output = project
+        output.items = updatedItems
+        output.overrides = updatedOverrides
+        return output
+    }
+
+    private struct MediaRelocationResult {
+        let list: [Project.Media]
+        let primaryThumb: String?
+    }
+
+    private func relocateMediaList(
+        _ mediaList: [Project.Media]?,
+        extractedAt tempDirectory: URL
+    ) throws -> MediaRelocationResult? {
+        guard let mediaList else { return nil }
+        var relocated: [Project.Media] = []
+        var firstThumb: String?
+
+        for media in mediaList {
+            let updated = try relocateMedia(media, extractedAt: tempDirectory)
+            if firstThumb == nil, let thumb = updated.thumbUri {
+                firstThumb = thumb
+            }
+            relocated.append(updated)
+        }
+
+        return MediaRelocationResult(list: relocated, primaryThumb: firstThumb)
+    }
+
+    private func relocateMedia(_ media: Project.Media, extractedAt tempDirectory: URL) throws -> Project.Media {
+        var updated = media
+
+        let uri = media.uri
+        if let destination = try relocateFile(fromBundleURI: uri, extractedAt: tempDirectory) {
+            updated.uri = destination.absoluteString
+        }
+
+        if let thumb = media.thumbUri,
+           let destination = try relocateFile(fromBundleURI: thumb, extractedAt: tempDirectory) {
+            updated.thumbUri = destination.absoluteString
+        }
+
+        return updated
+    }
+
+    private func relocateFile(fromBundleURI uri: String, extractedAt tempDirectory: URL) throws -> URL? {
+        guard let relativePath = bundleRelativePath(from: uri) else { return nil }
+
+        let fileManager = FileManager.default
+        let sourceURL = tempDirectory.appendingPathComponent(relativePath)
+        guard fileManager.fileExists(atPath: sourceURL.path) else {
+            throw PersistenceError.fileSystemError("Missing asset inside bundle at \(relativePath)")
+        }
+
+        let destinationBase: URL
+        if relativePath.hasPrefix("Media/") {
+            destinationBase = try mediaStoreDirectory()
+        } else if relativePath.hasPrefix("Thumbs/") {
+            destinationBase = try thumbsStoreDirectory()
+        } else {
+            destinationBase = try mediaStoreDirectory()
+        }
+
+        let fileName = (relativePath as NSString).lastPathComponent
+        let destinationURL = destinationBase.appendingPathComponent(fileName)
+        try copyReplacingItem(at: sourceURL, to: destinationURL)
+        return destinationURL
+    }
+
+    private func projectsDirectory() throws -> URL {
+        let root = try applicationSupportRoot()
+        let directory = root.appendingPathComponent("Projects", isDirectory: true)
+        try ensureDirectoryExists(at: directory)
+        return directory
+    }
+
+    private func mediaStoreDirectory() throws -> URL {
+        let root = try applicationSupportRoot()
+        let directory = root.appendingPathComponent("Media", isDirectory: true)
+        try ensureDirectoryExists(at: directory)
+        return directory
+    }
+
+    private func thumbsStoreDirectory() throws -> URL {
+        let root = try applicationSupportRoot()
+        let directory = root.appendingPathComponent("Thumbs", isDirectory: true)
+        try ensureDirectoryExists(at: directory)
+        return directory
+    }
+
+    private func applicationSupportRoot() throws -> URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let root = base.appendingPathComponent("Tiercade", isDirectory: true)
+        try ensureDirectoryExists(at: root)
+        return root
+    }
+
+    private func ensureDirectoryExists(at url: URL) throws {
+        var isDirectory: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+        if exists {
+            if !isDirectory.boolValue {
+                throw PersistenceError.fileSystemError("Expected directory at \(url.path) but found a file.")
+            }
+            return
+        }
+        do {
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        } catch {
+            throw PersistenceError.fileSystemError("Could not create directory at \(url.path): \(error.localizedDescription)")
+        }
+    }
+
+    private func copyReplacingItem(at source: URL, to destination: URL) throws {
+        let fileManager = FileManager.default
+        try ensureDirectoryExists(at: destination.deletingLastPathComponent())
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: destination)
+        }
+        do {
+            try fileManager.copyItem(at: source, to: destination)
+        } catch {
+            throw PersistenceError.fileSystemError("Failed to copy asset to \(destination.path): \(error.localizedDescription)")
+        }
+    }
+
+    private func bundleRelativePath(from uri: String) -> String? {
+        guard uri.hasPrefix("file://") else { return nil }
+        let trimmed = String(uri.dropFirst("file://".count))
+        if trimmed.hasPrefix("/") {
+            return String(trimmed.dropFirst())
+        }
+        return trimmed
+    }
+
+    private func sanitizeFileName(_ fileName: String) -> String {
+        let sanitized = fileName
+            .replacingOccurrences(of: "[^A-Za-z0-9-_]+", with: "-", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        return sanitized.isEmpty ? "tiercade-project" : sanitized
+    }
     // MARK: - SwiftData helpers
 
     func fetchActiveTierListEntity() throws(PersistenceError) -> TierListEntity? {
@@ -483,47 +651,6 @@ extension AppState {
             $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
         }
         customThemeIDs = Set(restored.map(\TierTheme.id))
-    }
-
-    private func applyLoadedFileSync(
-        tiers: Items,
-        fileName: String,
-        savedDate: Date
-    ) {
-        self.tiers = tiers
-        hasUnsavedChanges = false
-        currentFileName = fileName
-        lastSavedTime = savedDate
-    }
-
-    private func parseLegacyTiers(from data: Data) -> Items? {
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let tierData = json["tiers"] as? [String: [[String: Any]]] else {
-            return nil
-        }
-        return parseLegacyTiers(from: tierData)
-    }
-
-    private func parseLegacyTiers(from tierData: [String: [[String: Any]]]) -> Items {
-        var newTiers: Items = [:]
-        for (tierName, itemData) in tierData {
-            newTiers[tierName] = itemData.compactMap { parseLegacyItem(from: $0) }
-        }
-        return newTiers
-    }
-
-    private func parseLegacyItem(from dict: [String: Any]) -> Item? {
-        guard let id = dict["id"] as? String else { return nil }
-
-        if let attrs = dict["attributes"] as? [String: String] {
-            return Item(id: id, attributes: attrs)
-        }
-
-        var attrs: [String: String] = [:]
-        for (k, v) in dict where k != "id" {
-            attrs[k] = String(describing: v)
-        }
-        return Item(id: id, attributes: attrs.isEmpty ? nil : attrs)
     }
 
     func encodedCustomThemesData() -> Data? {

@@ -11,14 +11,10 @@ extension AppState {
             try await withLoadingIndicator(message: "Importing JSON data...") {
                 updateProgress(0.2)
 
-                // Heavy JSON parsing and conversion on background thread pool
-                let newTiers = try await parseAndConvertJSON(jsonString)
-                updateProgress(0.8)
-
-                // State updates on MainActor
+                let project = try await decodeProject(fromJSON: jsonString)
+                updateProgress(0.7)
                 let snapshot = captureTierSnapshot()
-                tiers = newTiers
-                finalizeChange(action: "Import JSON", undoSnapshot: snapshot)
+                applyImportedProject(project, action: "Import JSON", fileName: nil, undoSnapshot: snapshot)
                 updateProgress(1.0)
 
                 showSuccessToast("Import Complete", message: "Successfully imported tier list {import}")
@@ -28,43 +24,6 @@ extension AppState {
         } catch {
             throw ImportError.parsingFailed("Unexpected error: \(error.localizedDescription)")
         }
-    }
-
-    // Swift 6.2 pattern: heavy JSON work runs on background thread pool via Task.detached
-    nonisolated
-    private func parseAndConvertJSON(_ jsonString: String) async throws(ImportError) -> Items {
-        guard let jsonData = jsonString.data(using: .utf8) else {
-            throw ImportError.invalidFormat("String is not valid UTF-8")
-        }
-
-        let importData: [String: Any]
-        do {
-            guard let data = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
-                throw ImportError.parsingFailed("Invalid JSON structure")
-            }
-            importData = data
-        } catch {
-            throw ImportError.parsingFailed("JSON parsing failed: \(error.localizedDescription)")
-        }
-
-        guard let tierData = importData["tiers"] as? [String: [[String: String]]] else {
-            throw ImportError.missingRequiredField("tiers")
-        }
-
-        // Convert tier data (pure transformation)
-        var newTiers: Items = [:]
-        for (tierName, itemData) in tierData {
-            newTiers[tierName] = itemData.compactMap { data in
-                guard let id = data["id"], !id.isEmpty else { return nil }
-                var attributes: [String: String] = [:]
-                for (key, value) in data where key != "id" {
-                    attributes[key] = value
-                }
-                return Item(id: id, attributes: attributes.isEmpty ? nil : attributes)
-            }
-        }
-
-        return newTiers
     }
 
     func importFromCSV(_ csvString: String) async throws(ImportError) {
@@ -146,14 +105,14 @@ extension AppState {
     func importFromJSON(url: URL) async throws(ImportError) {
         do {
             // File I/O and parsing on background thread pool
-            let (newTiers, newOrder) = try await loadProjectFromFile(url)
-
-            // State updates on MainActor
+            let project = try await loadProjectFromFile(url)
             let snapshot = captureTierSnapshot()
-            tierOrder = newOrder
-            tiers = newTiers
-            finalizeChange(action: "Import Project", undoSnapshot: snapshot)
-
+            applyImportedProject(
+                project,
+                action: "Import Project",
+                fileName: url.deletingPathExtension().lastPathComponent,
+                undoSnapshot: snapshot
+            )
             showSuccessToast("Import Complete", message: "Project loaded successfully {import}")
         } catch let error as NSError where error.domain == "Tiercade" {
             throw ImportError.invalidData(error.localizedDescription)
@@ -166,28 +125,17 @@ extension AppState {
 
     // Swift 6.2 pattern: file I/O and ModelResolver on background via Task.detached
     nonisolated
-    private func loadProjectFromFile(_ url: URL) async throws(ImportError) -> (Items, [String]) {
+    private func loadProjectFromFile(_ url: URL) async throws(ImportError) -> Project {
         do {
-            let project = try await ModelResolver.loadProjectAsync(from: url)
-            let resolvedTiers = ModelResolver.resolveTiers(from: project)
-            var newTiers: Items = [:]
-            var newOrder: [String] = []
-            for resolved in resolvedTiers {
-                newOrder.append(resolved.label)
-                newTiers[resolved.label] = resolved.items.map { item in
-                    Item(id: item.id, name: item.title, imageUrl: item.thumbUri)
-                }
-            }
-            return (newTiers, newOrder)
+            return try await ModelResolver.loadProjectAsync(from: url)
         } catch {
-            // Fallback: try loading as plain JSON
             do {
                 let data = try Data(contentsOf: url)
-                let content = String(data: data, encoding: .utf8) ?? ""
-                let newTiers = try await parseAndConvertJSON(content)
-                return (newTiers, ["S", "A", "B", "C", "D", "F"])
+                return try await decodeProject(fromData: data)
+            } catch let error as ImportError {
+                throw error
             } catch {
-                throw ImportError.invalidData("Could not load project or JSON: \(error.localizedDescription)")
+                throw ImportError.invalidData("Could not load project: \(error.localizedDescription)")
             }
         }
     }
@@ -235,6 +183,196 @@ extension AppState {
             component
                 .trimmingCharacters(in: .whitespacesAndNewlines)
                 .replacingOccurrences(of: "\"", with: "")
+        }
+    }
+
+    // MARK: - Canonical project helpers
+
+    func applyImportedProject(
+        _ project: Project,
+        action: String,
+        fileName: String?,
+        undoSnapshot: TierStateSnapshot
+    ) {
+        let state = resolvedTierState(from: project)
+        tierOrder = state.order
+        tiers = state.items
+        tierLabels = state.labels
+        tierColors = state.colors
+        lockedTiers = state.locked
+
+        applyProjectMetadata(from: project)
+
+        if let fileName {
+            currentFileName = fileName
+        }
+
+        finalizeChange(action: action, undoSnapshot: undoSnapshot)
+    }
+
+    private func applyProjectMetadata(from project: Project) {
+        restoreCustomThemes(from: project)
+
+        if let settings = project.settings {
+            if let themeSlug = settings.theme {
+                applyTheme(slug: themeSlug)
+            }
+
+            if let densityValue = settings.additional?["cardDensityPreference"]?.stringValue,
+               let preference = CardDensityPreference(rawValue: densityValue) {
+                cardDensityPreference = preference
+            }
+        }
+    }
+
+    private func restoreCustomThemes(from project: Project) {
+        guard
+            let value = project.additional?["customThemes"],
+            case let .array(themeValues) = value
+        else {
+            customThemes = []
+            customThemeIDs = []
+            return
+        }
+
+        var restored: [TierTheme] = []
+        restored.reserveCapacity(themeValues.count)
+
+        for entry in themeValues {
+            if let theme = decodeTheme(from: entry) {
+                restored.append(theme)
+            }
+        }
+
+        customThemes = restored
+        customThemeIDs = Set(restored.map(\.id))
+    }
+
+    private func decodeTheme(from value: JSONValue) -> TierTheme? {
+        guard
+            case let .object(themeDict) = value,
+            let idString = themeDict["id"]?.stringValue,
+            let id = UUID(uuidString: idString),
+            let slug = themeDict["slug"]?.stringValue,
+            let displayName = themeDict["displayName"]?.stringValue,
+            let shortDescription = themeDict["shortDescription"]?.stringValue,
+            let tiersValue = themeDict["tiers"],
+            case let .array(tierValues) = tiersValue
+        else {
+            return nil
+        }
+
+        var tiers: [TierTheme.Tier] = []
+        tiers.reserveCapacity(tierValues.count)
+
+        for tierEntry in tierValues {
+            guard
+                case let .object(tierDict) = tierEntry,
+                let tierIdString = tierDict["id"]?.stringValue,
+                let tierId = UUID(uuidString: tierIdString),
+                let indexValue = tierDict["index"]?.numberValue,
+                let name = tierDict["name"]?.stringValue,
+                let colorHex = tierDict["colorHex"]?.stringValue,
+                let isUnranked = tierDict["isUnranked"]?.boolValue
+            else {
+                continue
+            }
+
+            tiers.append(
+                TierTheme.Tier(
+                    id: tierId,
+                    index: Int(indexValue),
+                    name: name,
+                    colorHex: colorHex,
+                    isUnranked: isUnranked
+                )
+            )
+        }
+
+        guard !tiers.isEmpty else { return nil }
+
+        return TierTheme(
+            id: id,
+            slug: slug,
+            displayName: displayName,
+            shortDescription: shortDescription,
+            tiers: tiers
+        )
+    }
+
+    private func applyTheme(slug: String) {
+        if let builtIn = TierThemeCatalog.theme(slug: slug) {
+            setSelectedTheme(builtIn)
+            return
+        }
+
+        if let custom = customThemes.first(where: { $0.slug.caseInsensitiveCompare(slug) == .orderedSame }) {
+            setSelectedTheme(custom)
+        }
+    }
+
+    private func setSelectedTheme(_ theme: TierTheme) {
+        selectedTheme = theme
+        selectedThemeID = theme.id
+    }
+
+    // MARK: - Decoding helpers
+
+    nonisolated
+    private func decodeProject(fromJSON jsonString: String) async throws(ImportError) -> Project {
+        guard let data = jsonString.data(using: .utf8) else {
+            throw ImportError.invalidFormat("String is not valid UTF-8")
+        }
+        return try await decodeProject(fromData: data)
+    }
+
+    nonisolated
+    private func decodeProject(fromData data: Data) async throws(ImportError) -> Project {
+        do {
+            return try await Task.detached(priority: .userInitiated) {
+                try ModelResolver.decodeProject(from: data)
+            }.value
+        } catch let error as NSError where error.domain == "Tiercade" {
+            throw ImportError.invalidData(error.localizedDescription)
+        } catch {
+            throw ImportError.parsingFailed("JSON parsing failed: \(error.localizedDescription)")
+        }
+    }
+}
+
+private extension JSONValue {
+    var stringValue: String? {
+        switch self {
+        case .string(let value):
+            return value
+        case .number(let number):
+            return String(number)
+        case .bool(let bool):
+            return bool ? "true" : "false"
+        default:
+            return nil
+        }
+    }
+
+    var numberValue: Double? {
+        switch self {
+        case .number(let value):
+            return value
+        case .string(let string):
+            return Double(string)
+        default:
+            return nil
+        }
+    }
+
+    var boolValue: Bool? {
+        switch self {
+        case .bool(let value):
+            return value
+        case .string(let string):
+            return (string as NSString).boolValue
+        default:
+            return nil
         }
     }
 }
