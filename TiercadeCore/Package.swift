@@ -21,6 +21,14 @@ let package = Package(
                 // Note: No default MainActor isolation for library code
                 // Library remains nonisolated by default for maximum flexibility
             ]
+        ),
+        .testTarget(
+            name: "TiercadeCoreTests",
+            dependencies: ["TiercadeCore"],
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency"),
+                .unsafeFlags(["-strict-concurrency=complete"])
+            ]
         )
     ]
 )

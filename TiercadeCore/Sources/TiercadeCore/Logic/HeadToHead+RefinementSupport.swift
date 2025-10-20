@@ -240,6 +240,7 @@ extension HeadToHeadLogic {
 
     static func logRefinementDetails(_ context: RefinementLogContext) {
 #if DEBUG
+        guard HeadToHeadLogic.loggingEnabled else { return }
         logRefinementSummary(context)
         logOrderedMetrics(context)
         logGapMetrics(context)

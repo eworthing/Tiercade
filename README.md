@@ -147,7 +147,29 @@ TiercadeCore Logic → State Update → UI Refresh
 
 ## 🧪 Testing
 
-The repository currently has no active test targets. All previous unit/UI tests were intentionally removed to enable a clean slate. When we reintroduce tests, we’ll use the Swift Testing framework (`@Test`, `#expect`) and keep tvOS UI automation lean and accessibility-driven.
+TiercadeCore now ships with a Swift Testing target (`TiercadeCoreTests`) covering the critical logic surface:
+
+- Core tier manipulation (`TierLogic`, `QuickRankLogic`)
+- Head-to-head quick pass, refinement heuristics, and warm-start queueing
+- Shared utilities (`RandomUtils`, `TierIdentifier`, `Formatters`, `DataLoader`)
+- Bundled project descriptors and model decoding/normalization paths
+
+Run the suite with:
+
+```bash
+cd TiercadeCore
+swift test --enable-code-coverage
+```
+
+The command emits coverage data to `.build/debug/codecov/default.profdata`; inspect it with:
+
+```bash
+xcrun llvm-cov report \
+  --instr-profile .build/debug/codecov/default.profdata \
+  .build/debug/TiercadeCorePackageTests.xctest/Contents/MacOS/TiercadeCorePackageTests
+```
+
+We keep tvOS UI automation lean and accessibility-driven; add high-value Swift Testing coverage before considering UI scripts.
 
 ## 🛠️ Development
 
