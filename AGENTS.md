@@ -35,8 +35,18 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 
 1. **Build & launch tvOS** – `Cmd` + `Shift` + `B` in VS Code (task **Build, Install & Launch tvOS**). Script flow: 🧹 clean → 🔨 build → 📦 install → 🚀 launch. Confirm the timestamp printed at the end and the in-app `BuildInfoView` (DEBUG) match the current time.
 2. **Run Catalyst (when needed)** – `./build_install_launch.sh catalyst`. This cleanly builds, installs, and launches the Mac Catalyst app. Use it before validating cross-platform fixes.
-3. **Run package tests** – `cd TiercadeCore && swift test`. All suites use Swift Testing (`@Test`, `#expect`) and respect the same strict concurrency flags as the app.
+3. **Run package tests** – `cd TiercadeCore && swift test`. The `TiercadeCoreTests` target covers tier manipulation, head-to-head heuristics, bundled catalog metadata, and model decoding using Swift Testing (`@Test`, `#expect`) under the same strict concurrency flags.
 4. **Manual focus sweep** – With the tvOS 26 Apple TV 4K simulator open, cycle focus with the remote/arrow keys to confirm overlays and default focus behave. Capture issues with `/tmp/tiercade_debug.log` (see Operational Notes).
+
+Optional coverage pass:
+
+```bash
+cd TiercadeCore
+swift test --enable-code-coverage
+xcrun llvm-cov report \
+  --instr-profile .build/debug/codecov/default.profdata \
+  .build/debug/TiercadeCorePackageTests.xctest/Contents/MacOS/TiercadeCorePackageTests
+```
 
 UI automation relies on accessibility IDs and short paths—prefer existence checks over long XCUIRemote navigation (target < 12 s per path).
 

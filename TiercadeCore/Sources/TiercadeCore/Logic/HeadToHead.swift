@@ -8,6 +8,9 @@ public struct H2HRecord: Sendable {
 }
 
 public enum HeadToHeadLogic {
+    /// Controls diagnostic logging during refinement; set to `false` in tests to suppress noisy output.
+    nonisolated(unsafe) public static var loggingEnabled: Bool = true
+
     // MARK: Pair generation & voting
 
     public static func pickPair(from pool: [Item], rng: () -> Double) -> (Item, Item)? {
