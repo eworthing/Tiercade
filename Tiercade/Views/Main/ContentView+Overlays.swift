@@ -92,7 +92,7 @@ struct ToastView: View {
             }
         }
         #if os(iOS) || targetEnvironment(macCatalyst)
-        .focusable(true)
+        .focusable(interactions: .activate)
         .accessibilityAddTraits(.isModal)
         #endif
     }

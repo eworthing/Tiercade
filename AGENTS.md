@@ -88,7 +88,7 @@ A SwiftUI tier list management app targeting tvOS 26+/iOS 26+ with Swift 6 stric
 - **Dependencies:** SwiftPM only. Use SPM traits: `traits: [.featureFlag("feature-name")]`
 - **Complexity:** `cyclomatic_complexity` warning at 8, error at 12
 
-**Migration priorities:** `ObservableObject`→`@Observable` | Combine→`AsyncSequence` | `NavigationView`→`NavigationStack` | Core Data→SwiftData | XCTest→Swift Testing | callbacks→`async/await` | queues→actors
+**Migration priorities:** `ObservableObject`→`@Observable` | Combine→`AsyncSequence` | `NavigationView`→`NavigationStack` | Core Data→SwiftData | XCTest→Swift Testing | callbacks→`async/await` | queues→actors | String `+`→String interpolation | Test RTL text handling
 
 ## Platform Strategy: Mac Catalyst
 
@@ -414,9 +414,8 @@ Maintain bundled images manually within `Tiercade/Assets.xcassets`. Ensure any c
 1. **Build fails:** Check TiercadeCore is added as local package dependency
 2. **UI test timeouts:** Reduce navigation complexity, use direct element access
 3. **Focus loss:** Verify `.focusSection()` boundaries, check accessibility ID placement
-4. tvOS 26 requires TLS 1.2+ by default for outbound network requests; ensure remote endpoints negotiate an acceptable cipher suite or customize `NWProtocolTLS.Options` if absolutely necessary.
+4. iOS 26, macOS 26, and tvOS 26 require TLS 1.2+ by default for outbound `URLSession`/Network requests when the app links against the OS 26 SDKs; ensure remote endpoints negotiate an acceptable cipher suite or customize `NWProtocolTLS.Options` if absolutely necessary.
 
 ### Security & runtime checklist
 - **ATS:** Keep App Transport Security enabled (default). Only add per-host exceptions with documented justification.
 - **Network security:** Certificate pinning and retry policies should be documented when implemented.
-

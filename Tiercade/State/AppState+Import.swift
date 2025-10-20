@@ -50,7 +50,7 @@ extension AppState {
         }
     }
 
-    // Swift 6.2 pattern: heavy CSV parsing runs on background thread pool via Task.detached
+    // Swift 6 (Swift 6.2 toolchain) pattern: heavy CSV parsing runs on background thread pool via Task.detached
     nonisolated
     private func parseCSVInBackground(_ csvString: String) async throws(ImportError) -> Items {
         let lines = csvString.components(separatedBy: .newlines)
@@ -123,7 +123,7 @@ extension AppState {
         }
     }
 
-    // Swift 6.2 pattern: file I/O and ModelResolver on background via Task.detached
+    // Swift 6 (Swift 6.2 toolchain) pattern: file I/O and ModelResolver on background via Task.detached
     nonisolated
     private func loadProjectFromFile(_ url: URL) async throws(ImportError) -> Project {
         do {
@@ -148,7 +148,7 @@ extension AppState {
         try await importFromCSV(content)
     }
 
-    // Swift 6.2 pattern: file I/O on background via Task.detached
+    // Swift 6 (Swift 6.2 toolchain) pattern: file I/O on background via Task.detached
     nonisolated
     private func loadCSVFromFile(_ url: URL) async throws(ImportError) -> String {
         do {

@@ -123,9 +123,9 @@ struct QuickMoveOverlay: View {
                     focusedElement = computeDefaultFocus()
                 }
                 .onExitCommand { app.cancelQuickMove() }
+                .accessibilityIdentifier("QuickMove_Overlay")
                 .accessibilityElement(children: .contain)
                 .accessibilityAddTraits(.isModal)
-                .accessibilityIdentifier("QuickMove_Overlay")
             }
             .transition(.opacity.combined(with: .scale))
         }
@@ -229,6 +229,7 @@ private struct TierButton: View {
             }
         )
         .buttonStyle(.plain)
+        .focusable(interactions: .activate)
         .disabled(isCurrentTier)
         .accessibilityLabel(isCurrentTier ? "Current tier: \(displayLabel)" : "Move to \(displayLabel)")
     }

@@ -55,7 +55,7 @@ public enum ModelResolver {
         return project
     }
 
-    // Swift 6.2 @concurrent pattern: async API for background file I/O and decoding
+    // Swift 6 (Swift 6.2 toolchain) @concurrent pattern: async API for background file I/O and decoding
     @concurrent
     public static func loadProjectAsync(from url: URL) async throws -> Project {
         let data = try Data(contentsOf: url)

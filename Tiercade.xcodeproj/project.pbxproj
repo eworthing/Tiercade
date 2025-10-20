@@ -277,7 +277,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
-				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature StrictConcurrency -default-isolation MainActor";
+				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature StrictConcurrency -strict-concurrency=complete -default-isolation MainActor";
 				PRODUCT_BUNDLE_IDENTIFIER = eworthing.Tiercade;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -321,7 +321,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
-				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature StrictConcurrency -default-isolation MainActor";
+				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature StrictConcurrency -strict-concurrency=complete -default-isolation MainActor";
 				PRODUCT_BUNDLE_IDENTIFIER = eworthing.Tiercade;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;

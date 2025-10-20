@@ -53,19 +53,9 @@ extension View {
 
 @ViewBuilder
 func tvGlassContainer<Content: View>(spacing: CGFloat? = nil, @ViewBuilder content: () -> Content) -> some View {
-    #if os(tvOS)
     if let spacing {
         GlassEffectContainer(spacing: spacing, content: content)
     } else {
         GlassEffectContainer(content: content)
     }
-    #else
-    // For iOS/iPadOS/Catalyst, just return the content without GlassEffectContainer
-    // since Liquid Glass container is tvOS-specific
-    if let spacing {
-        VStack(spacing: spacing, content: content)
-    } else {
-        VStack(content: content)
-    }
-    #endif
 }
