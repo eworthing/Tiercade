@@ -18,7 +18,9 @@ Core domain models and logic for the Tiercade native apps. This Swift Package is
 - **Platforms**: iOS 26+ / macOS 26+ / tvOS 26+
 - **Language Mode**: Swift 6 with complete concurrency checking enabled
 
-> Note: The core package now shares the Tiercade app's OS 26.0+ baseline so we can rely on Swift 6 APIs, Liquid Glass effects, and strict concurrency across every module.
+> Note: The core package now shares the Tiercade app's OS 26.0+ baseline so we can rely on Swift 6 APIs, Liquid Glass effects, and strict concurrency across every module. We build with the Swift 6
+> language mode while using the Swift 6.2 toolchain (via `swift-tools-version: 6.2`), matching the
+> configuration used by the main app target.
 
 ## Thread-safety & Sendable guarantees
 
@@ -85,15 +87,13 @@ assert(unchanged == tiers)
 - Required fields: `Item.id`, tier identifiers, and schema version. Missing required fields throw `ModelResolver.Error.invalidResource`.
 
 ## Tests
-From the `TiercadeCore` directory:
+Swift Testing suites are planned but not yet checked in. The package manifest is ready for them, and
+the recommended layout is:
 
-```sh
-swift test
-```
-
-All tests use Swift Testing framework (`@Test`, `@Suite`, `#expect`) instead of legacy XCTest.
-- Place new suites under `Tests/TiercadeCoreTests`.
-- CI runs `swift test` with the same strict concurrency flags, so avoid `@MainActor` in tests unless needed.
+- Use the Swift Testing framework (`@Test`, `@Suite`, `#expect`).
+- Place future suites under `Tests/TiercadeCoreTests`.
+- Run `swift test` from the `TiercadeCore` directory once coverage lands; ensure new code respects the
+  strict concurrency flags already enabled in `Package.swift`.
 
 ## Semantic versioning & migration
 - **MAJOR** – breaking changes to data models (e.g., removing a field or changing required keys) or observable behaviour in core algorithms.

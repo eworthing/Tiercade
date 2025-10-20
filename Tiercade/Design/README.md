@@ -1,4 +1,4 @@
-# Tiercade Design System (Swift 6.2, OS 26+, tvOS-first)
+# Tiercade Design System (Swift 6 language mode, Swift 6.2 toolchain, OS 26+, tvOS-first)
 
 Design tokens and SwiftUI styles for Tiercade on the OS 26 baseline. Tokens are authored tvOS-first and fall back to adaptive system materials on iOS, iPadOS, and Mac Catalyst so a single definitions file supports every platform we ship.
 

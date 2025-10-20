@@ -295,6 +295,7 @@ private struct ThemeLibraryTile: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
+        .focusable(interactions: .activate)
         #if swift(>=6.0)
         .glassEffect(
             Glass.regular.tint(tint.opacity(0.5)).interactive(),

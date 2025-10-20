@@ -10,7 +10,7 @@ struct TierDetailsSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     // Tier color preview
@@ -92,9 +92,6 @@ struct TierDetailsSheet: View {
                 }
             }
         }
-        #if os(tvOS)
-        .navigationViewStyle(.stack)
-        #endif
     }
 }
 
@@ -108,7 +105,7 @@ struct ItemDetailsSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     // Essentials
@@ -273,9 +270,6 @@ struct ItemDetailsSheet: View {
                 }
             }
         }
-        #if os(tvOS)
-        .navigationViewStyle(.stack)
-        #endif
     }
 }
 
@@ -287,7 +281,7 @@ struct ProjectSettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section("Project Information") {
                     TextField("Project Title", text: $draft.title, prompt: Text("Enter a descriptive title"))
@@ -367,8 +361,5 @@ struct ProjectSettingsSheet: View {
                 }
             }
         }
-        #if os(tvOS)
-        .navigationViewStyle(.stack)
-        #endif
     }
 }
