@@ -19,10 +19,11 @@ public enum ExportFormatter {
         text += "Theme: \(themeName)\n\n"
         let ordered = tiers.filter { $0.key != "unranked" }
         let parts = ordered.compactMap { (tier, items) -> String? in
-            guard let cfg = tierConfig[tier], !items.isEmpty else { return nil }
+            guard !items.isEmpty else { return nil }
+            let cfg = tierConfig[tier] ?? TierConfigEntry(name: tier, colorHex: nil, description: nil)
             let names = items.map { $0.name ?? "" }.joined(separator: ", ")
-            let desc = cfg.description ?? ""
-            return "\(cfg.name) Tier (\(desc)): \(names)"
+            let descriptionSuffix = cfg.description.flatMap { " (\($0))" } ?? ""
+            return "\(cfg.name) Tier\(descriptionSuffix): \(names)"
         }
         text += parts.joined(separator: "\n\n")
         return text
