@@ -102,6 +102,64 @@ struct HeadToHeadInternalsTests {
         }
     }
 
+    @Test("Warm start handles large pools off-main thread")
+    func warmStartQueueHandlesLargePoolsInBackground() async {
+        let tierOrder = ["S", "A", "B", "C", "D", "F"]
+        let poolCount = 480
+        let pool: [Item] = (0..<poolCount).map { index in
+            Item(id: "stress-\(index)", name: "Item \(index)")
+        }
+
+        var mutableTiers: Items = [:]
+        for (index, item) in pool.enumerated() {
+            if index.isMultiple(of: 11) {
+                mutableTiers["unranked", default: []].append(item)
+            } else {
+                let tier = tierOrder[index % tierOrder.count]
+                mutableTiers[tier, default: []].append(item)
+            }
+        }
+
+        let tiers = mutableTiers
+        let poolIds = Set(pool.map(\.id))
+        let target = 3
+        let runs = 4
+
+        let queues = await withTaskGroup(of: [(Item, Item)].self, returning: [[(Item, Item)]].self) { group in
+            for _ in 0..<runs {
+                group.addTask {
+                    await Task.detached(priority: .background) {
+                        HeadToHeadLogic.initialComparisonQueueWarmStart(
+                            from: pool,
+                            records: [:],
+                            tierOrder: tierOrder,
+                            currentTiers: tiers,
+                            targetComparisonsPerItem: target
+                        )
+                    }.value
+                }
+            }
+
+            var results: [[(Item, Item)]] = []
+            for await queue in group {
+                results.append(queue)
+            }
+            return results
+        }
+
+        #expect(queues.count == runs)
+
+        for queue in queues {
+            #expect(!queue.isEmpty)
+            #expect(queue.count <= pool.count * target)
+            let uniquePairs = Set(queue.map { HeadToHeadLogic.PairKey($0.0, $0.1) })
+            #expect(uniquePairs.count == queue.count)
+            #expect(queue.allSatisfy { pair in
+                poolIds.contains(pair.0.id) && poolIds.contains(pair.1.id) && pair.0.id != pair.1.id
+            })
+        }
+    }
+
     @Test("Quick support routes undersampled into unranked ordered by metrics")
     func quickSupportHandlesUndersampled() {
         let dataset = sampleDataset()

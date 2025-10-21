@@ -6,7 +6,7 @@ import TiercadeCore
 extension AppState {
     // MARK: - Head-to-Head lifecycle
 
-    func startH2H() {
+    func startH2H() async {
         if h2hActive {
             showInfoToast("Head-to-Head Already Active", message: "Finish or cancel the current matchup first")
             return
@@ -19,13 +19,16 @@ extension AppState {
 
         let pool = (tiers["unranked"] ?? []) + tierOrder.flatMap { tiers[$0] ?? [] }
         let targetComparisons = quickPhaseTargetComparisons(for: pool.count)
-        let pairs = HeadToHeadLogic.initialComparisonQueueWarmStart(
-            from: pool,
-            records: [:],
-            tierOrder: tierOrder,
-            currentTiers: tiers,
-            targetComparisonsPerItem: targetComparisons
-        )
+        let currentTiers = tiers
+
+        let pairs = await withLoadingIndicator(message: "Preparing matchups...") {
+            await buildWarmStartQueue(
+                pool: pool,
+                targetComparisons: targetComparisons,
+                tierOrder: tierOrder,
+                currentTiers: currentTiers
+            )
+        }
 
         guard !pairs.isEmpty else {
             showInfoToast("Not Enough Matchups", message: "Add more items before starting Head-to-Head")
@@ -54,6 +57,23 @@ extension AppState {
         )
 
         nextH2HPair()
+    }
+
+    private func buildWarmStartQueue(
+        pool: [Item],
+        targetComparisons: Int,
+        tierOrder: [String],
+        currentTiers: Items
+    ) async -> [(Item, Item)] {
+        await Task.detached(priority: .userInitiated) {
+            HeadToHeadLogic.initialComparisonQueueWarmStart(
+                from: pool,
+                records: [:],
+                tierOrder: tierOrder,
+                currentTiers: currentTiers,
+                targetComparisonsPerItem: targetComparisons
+            )
+        }.value
     }
 
     func nextH2HPair() {
