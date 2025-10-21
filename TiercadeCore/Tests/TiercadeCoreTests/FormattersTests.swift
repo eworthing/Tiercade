@@ -67,6 +67,24 @@ struct FormattersTests {
         #expect(summary.contains("Leading contender"))
         #expect(summary.contains("Beta (Season 2, Retired)"))
     }
+
+    @Test("Export formatter falls back to tier identifier when metadata missing")
+    func exportFormatterFallsBackToTierName() {
+        let items: Items = [
+            "SS": [Item(id: "legend", name: "Legend"), Item(id: "nova", name: "Nova")]
+        ]
+        let export = ExportFormatter.generate(
+            group: "Custom",
+            date: Date(timeIntervalSince1970: 1_700_000_000),
+            themeName: "Aurora",
+            tiers: items,
+            tierConfig: [:],
+            locale: Locale(identifier: "en_US_POSIX")
+        )
+
+        #expect(export.contains("SS Tier"))
+        #expect(export.contains("Legend, Nova"))
+    }
 }
 
 private func mediumDateString(for date: Date, locale: Locale) -> String {

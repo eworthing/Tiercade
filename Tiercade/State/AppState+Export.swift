@@ -17,14 +17,7 @@ extension AppState {
             return try await withLoadingIndicator(message: "Exporting \(format.displayName)...") {
                 updateProgress(0.2)
 
-                let tierConfig: TierConfig = [
-                    "S": TierConfigEntry(name: "S", description: nil),
-                    "A": TierConfigEntry(name: "A", description: nil),
-                    "B": TierConfigEntry(name: "B", description: nil),
-                    "C": TierConfigEntry(name: "C", description: nil),
-                    "D": TierConfigEntry(name: "D", description: nil),
-                    "F": TierConfigEntry(name: "F", description: nil)
-                ]
+                let tierConfig = makeActiveTierConfig()
                 updateProgress(0.4)
 
                 switch exportBinaryFormat(format, group: group, themeName: themeName) {
@@ -75,14 +68,7 @@ extension AppState {
     }
 
     func exportText(group: String = "All", themeName: String = "Default") -> String {
-        let config: TierConfig = [
-            "S": TierConfigEntry(name: "S", description: nil),
-            "A": TierConfigEntry(name: "A", description: nil),
-            "B": TierConfigEntry(name: "B", description: nil),
-            "C": TierConfigEntry(name: "C", description: nil),
-            "D": TierConfigEntry(name: "D", description: nil),
-            "F": TierConfigEntry(name: "F", description: nil)
-        ]
+        let config = makeActiveTierConfig()
         return ExportFormatter.generate(
             group: group,
             date: .now,
@@ -96,19 +82,16 @@ extension AppState {
         try await exportToFormat(format, group: "All", themeName: "Default")
     }
 
-    private func exportToMarkdown(group: String, themeName: String, tierConfig: TierConfig) -> String {
+    fileprivate func exportToMarkdown(group: String, themeName: String, tierConfig: TierConfig) -> String {
         var markdown = "# My Tier List - \(group)\n\n"
         markdown += "**Theme:** \(themeName)  \n"
         markdown += "**Date:** \(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .none))\n\n"
 
         for tierName in tierOrder {
-            guard
-                let items = tiers[tierName],
-                !items.isEmpty,
-                let config = tierConfig[tierName]
-            else { continue }
+            guard let items = tiers[tierName], !items.isEmpty else { continue }
+            let displayName = tierConfig[tierName]?.name ?? exportDisplayName(for: tierName)
 
-            markdown += "## \(config.name) Tier\n\n"
+            markdown += "## \(displayName) Tier\n\n"
             for item in items {
                 markdown += "- **\(item.name ?? item.id)** (Season \(item.seasonString ?? "?"))\n"
             }
@@ -116,7 +99,8 @@ extension AppState {
         }
 
         if let unranked = tiers["unranked"], !unranked.isEmpty {
-            markdown += "## Unranked\n\n"
+            let unrankedDisplay = tierConfig["unranked"]?.name ?? exportDisplayName(for: "unranked")
+            markdown += "## \(unrankedDisplay)\n\n"
             for item in unranked {
                 markdown += "- \(item.name ?? item.id) (Season \(item.seasonString ?? "?"))\n"
             }
@@ -125,27 +109,58 @@ extension AppState {
         return markdown
     }
 
-    private func exportToCSV(group: String, themeName: String) -> String {
+    fileprivate func exportToCSV(group: String, themeName: String) -> String {
         var csv = "Name,Season,Tier\n"
 
         for tierName in tierOrder {
             guard let items = tiers[tierName] else { continue }
+            let tierDisplay = exportDisplayName(for: tierName)
             for item in items {
                 let name = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
                 let season = item.seasonString ?? "?"
-                csv += "\"\(name)\",\"\(season)\",\"\(tierName)\"\n"
+                csv += "\"\(name)\",\"\(season)\",\"\(tierDisplay)\"\n"
             }
         }
 
         if let unranked = tiers["unranked"] {
+            let unrankedDisplay = exportDisplayName(for: "unranked")
             for item in unranked {
                 let name = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
                 let season = item.seasonString ?? "?"
-                csv += "\"\(name)\",\"\(season)\",\"Unranked\"\n"
+                csv += "\"\(name)\",\"\(season)\",\"\(unrankedDisplay)\"\n"
             }
         }
 
         return csv
+    }
+
+    fileprivate func makeActiveTierConfig() -> TierConfig {
+        var config: TierConfig = [:]
+        for tierId in tierOrder {
+            config[tierId] = TierConfigEntry(
+                name: exportDisplayName(for: tierId),
+                colorHex: tierColors[tierId],
+                description: nil
+            )
+        }
+        if tiers.keys.contains("unranked") || tierLabels.keys.contains("unranked") || tierColors.keys.contains("unranked") {
+            config["unranked"] = TierConfigEntry(
+                name: exportDisplayName(for: "unranked"),
+                colorHex: tierColors["unranked"],
+                description: nil
+            )
+        }
+        return config
+    }
+
+    fileprivate func exportDisplayName(for tierId: String) -> String {
+        if let label = tierLabels[tierId], !label.isEmpty {
+            return label
+        }
+        if tierId == "unranked" {
+            return "Unranked"
+        }
+        return tierId
     }
 
     private enum BinaryExportResult {
@@ -490,6 +505,100 @@ extension AppState {
         return "\(base).\(ext)"
     }
 }
+
+#if DEBUG
+extension AppState {
+    struct ExportRegressionPreview: View {
+        private let markdown: String
+        private let csv: String
+        private let json: String
+
+        @MainActor
+        init() {
+            let state = AppState(inMemory: true)
+            state.tierOrder = ["SS", "S", "Indie"]
+            state.tiers = [
+                "SS": [
+                    Item(id: "zeta-prime", name: "Zeta Prime", seasonString: "1"),
+                    Item(id: "omega", name: "Omega", seasonString: "Finale")
+                ],
+                "S": [
+                    Item(id: "alpha", name: "Alpha", seasonString: "2"),
+                    Item(id: "beta", name: "Beta", seasonString: "2")
+                ],
+                "Indie": [
+                    Item(id: "indie-hero", name: "Indie Hero", seasonString: "Special"),
+                    Item(id: "pixel", name: "Pixel Legend", seasonString: "Arcade")
+                ],
+                "unranked": [Item(id: "rookie", name: "Rookie", seasonString: "0")]
+            ]
+            state.tierLabels = [
+                "SS": "Mythic",
+                "S": "Spotlight",
+                "Indie": "Indie Gems",
+                "unranked": "Backlog"
+            ]
+            state.tierColors = [
+                "SS": "#FFD700",
+                "S": "#FF6B35",
+                "Indie": "#6C5CE7",
+                "unranked": "#95A5A6"
+            ]
+
+            let config = state.makeActiveTierConfig()
+            markdown = state.exportToMarkdown(group: "Preview Group", themeName: "Aurora", tierConfig: config)
+            csv = state.exportToCSV(group: "Preview Group", themeName: "Aurora")
+            if let artifacts = try? state.buildProjectExportArtifacts(group: "Preview Group", themeName: "Aurora") {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                encoder.dateEncodingStrategy = .iso8601
+                if let data = try? encoder.encode(artifacts.project) {
+                    json = String(decoding: data, as: UTF8.self)
+                } else {
+                    json = "<Failed to encode project JSON>"
+                }
+            } else {
+                json = "<Failed to build export artifacts>"
+            }
+        }
+
+        var body: some View {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    exportSection(title: "Markdown", content: markdown)
+                    exportSection(title: "CSV", content: csv)
+                    exportSection(title: "JSON", content: json)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+            }
+            .background(Color.black.opacity(0.9))
+        }
+
+        @ViewBuilder
+        private func exportSection(title: String, content: String) -> some View {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.title3)
+                    .bold()
+                    .foregroundStyle(.white)
+                Text(content)
+                    .font(.system(size: 14, weight: .regular, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+            }
+        }
+    }
+}
+
+#Preview("Export Regression") {
+    AppState.ExportRegressionPreview()
+        .frame(width: 640)
+}
+#endif
 
 struct ProjectExportArtifacts {
     struct ProjectExportFile {
