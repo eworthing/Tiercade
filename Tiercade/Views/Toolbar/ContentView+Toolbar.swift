@@ -26,10 +26,17 @@ struct ToolbarView: ToolbarContent {
 
     var body: some ToolbarContent {
         #if os(iOS) || targetEnvironment(macCatalyst)
+#if targetEnvironment(macCatalyst)
+        ToolbarItem(placement: .principal) {
+            TierListQuickMenu(app: app)
+                .frame(minWidth: 220, idealWidth: 280, maxWidth: 360)
+        }
+#else
         ToolbarItemGroup(placement: .topBarLeading) {
             TierListQuickMenu(app: app)
                 .frame(minWidth: 200)
         }
+        #endif
 
         ToolbarItemGroup(placement: .topBarTrailing) {
             Button {
@@ -38,6 +45,9 @@ struct ToolbarView: ToolbarContent {
                 Label("New Tier List…", systemImage: "square.and.pencil")
             }
             .accessibilityIdentifier("Toolbar_NewTierList")
+#if targetEnvironment(macCatalyst)
+            .help("Create a new tier list (⇧⌘N)")
+#endif
 
             Button {
                 app.toggleAnalysis()
@@ -47,6 +57,9 @@ struct ToolbarView: ToolbarContent {
             }
             .disabled(!app.canShowAnalysis && !app.showingAnalysis)
             .accessibilityIdentifier("Toolbar_Analysis")
+#if targetEnvironment(macCatalyst)
+            .help(app.showingAnalysis ? "Close analysis (⌘A)" : "Open analysis (⌘A)")
+#endif
 
             Button {
                 app.toggleThemePicker()
@@ -55,6 +68,9 @@ struct ToolbarView: ToolbarContent {
                     .accessibilityLabel("Themes")
             }
             .accessibilityIdentifier("Toolbar_Themes")
+#if targetEnvironment(macCatalyst)
+            .help("Browse themes (⌘T)")
+#endif
 
             Button {
                 app.startH2H()
@@ -64,9 +80,31 @@ struct ToolbarView: ToolbarContent {
             }
             .disabled(!app.canStartHeadToHead)
             .accessibilityIdentifier("Toolbar_H2H")
+#if targetEnvironment(macCatalyst)
+            .help("Start head-to-head (⌘H)")
+#endif
 
-            EditButton()
-                .accessibilityIdentifier("Toolbar_Edit")
+            let multiSelectActive = editMode?.wrappedValue == .active
+            Button {
+                let isActive = editMode?.wrappedValue == .active
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    editMode?.wrappedValue = isActive ? .inactive : .active
+                }
+                if isActive {
+                    app.clearSelection()
+                }
+            } label: {
+                Label(
+                    multiSelectActive ? "Done" : "Multi-Select",
+                    systemImage: multiSelectActive ? "checkmark.rectangle.stack.fill" : "rectangle.stack.badge.plus"
+                )
+                .symbolRenderingMode(.hierarchical)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(multiSelectActive ? Color.accentColor : Color.secondary.opacity(0.35))
+            .accessibilityIdentifier("Toolbar_MultiSelect")
+            .accessibilityLabel(multiSelectActive ? "Finish Multi-Select" : "Start Multi-Select")
+            .accessibilityValue(multiSelectActive ? "\(app.selection.count) items selected" : "")
         }
 
         ToolbarItemGroup(placement: .bottomBar) {

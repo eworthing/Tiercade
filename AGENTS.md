@@ -25,6 +25,7 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 ## tvOS-first UX rules
 
 - Overlays (QuickMove, HeadToHead, ThemePicker, etc.) are separate focus sections using `.focusSection()` and `.focusable(interactions: .activate)`. Keep background content interactive by toggling `.allowsHitTesting(!overlayActive)`—never `.disabled()`.
+- **Overlay Accessibility Pattern**: When adding new overlays for Catalyst/iOS, use `AccessibilityBridgeView` to ensure immediate accessibility tree presence. See `Tiercade/Views/OVERLAY_ACCESSIBILITY_PATTERN.md` for full pattern documentation. This solves async timing issues between state updates and accessibility registration on non-tvOS platforms.
 - Accessibility IDs must follow `{Component}_{Action}` on leaf elements (e.g. `Toolbar_H2H`, `QuickMove_Overlay`). Avoid placing IDs on containers using `.accessibilityElement(children: .contain)`.
 - Head-to-head overlay contract: render skip card with `arrow.uturn.left.circle`, maintain `H2H_SkippedCount`, call `cancelH2H(fromExitCommand:)` from `.onExitCommand`.
 - Apply glass effects via `glassEffect`, `GlassEffectContainer`, or `.buttonStyle(.glass)` when touching toolbars/overlays; validate focus halos in the Apple TV 4K (3rd gen) tvOS 26 simulator.
@@ -150,6 +151,13 @@ import UIKit
 # Mac Catalyst
 ./build_install_launch.sh catalyst
 ```
+
+**NavigationSplitView guardrails (Catalyst/iPad):**
+- Always feed production content into the active detail column. `NavigationSplitView` defaults to showing the detail pane, so leaving it empty (or replacing it with temporary placeholders) hides the toolbar and tier grid in Catalyst builds.
+- Route Catalyst/iPad through the shared `tierGridLayer` + `ToolbarView` composition. If you need to debug layouts, keep scaffolding behind `#if DEBUG` and delete it before merging so the detail column continues to render real state.
+- Prefer the two-column initializer (`sidebar:detail:`) unless you truly need a middle content column. The earlier three-column setup with an empty detail pane was the root cause of the missing top bar we chased in October 2025.
+- Whenever you add or rename toolbar actions on tvOS, wire the same control into the Catalyst toolbar and assign the shared accessibility identifier (e.g., `Toolbar_MultiSelect`). Reviews should fail if Catalyst (or iOS regular size class) loses parity with the tvOS toolbar. Validate both platforms during code review instead of relying on manual follow-up.
+- Hardware keyboard parity: treat arrow keys and Escape/Return as first-class inputs. New overlays and interactive surfaces should forward tvOS `.onMoveCommand` handlers to shared directional helpers and register `.onKeyPress` equivalents for iPad and Mac Catalyst so hardware keyboards mirror Siri Remote navigation.
 
 ## Architecture & Data Flow
 
@@ -425,6 +433,13 @@ Maintain bundled images manually within `Tiercade/Assets.xcassets`. Ensure any c
 2. **UI test timeouts:** Reduce navigation complexity, use direct element access
 3. **Focus loss:** Verify `.focusSection()` boundaries, check accessibility ID placement
 4. iOS 26, macOS 26, and tvOS 26 require TLS 1.2+ by default for outbound `URLSession`/Network requests when the app links against the OS 26 SDKs; ensure remote endpoints negotiate an acceptable cipher suite or customize `NWProtocolTLS.Options` if absolutely necessary.
+
+### Gatekeeper & UI test runner
+- macOS can quarantine the Catalyst UI test host, producing the dialog “`TiercadeUITests-Runner` is damaged and can't be opened.” Remove the quarantine bit before rerunning UI tests:
+  ```bash
+  xattr -dr com.apple.quarantine ~/Library/Developer/Xcode/DerivedData/Tiercade-*/Build/Products/Debug-maccatalyst/TiercadeUITests-Runner.app
+  ```
+- Repeat after DerivedData resets (the hash segment changes per build directory).
 
 ### Security & runtime checklist
 - **ATS:** Keep App Transport Security enabled (default). Only add per-host exceptions with documented justification.

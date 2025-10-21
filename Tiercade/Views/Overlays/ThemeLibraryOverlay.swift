@@ -6,6 +6,9 @@ struct ThemeLibraryOverlay: View {
     @Environment(AppState.self) private var appState
     @Namespace private var glassNamespace
     @FocusState private var focusedThemeID: TierTheme.ID?
+    #if !os(tvOS)
+    @FocusState private var overlayHasFocus: Bool
+    #endif
 
     private var columns: [GridItem] {
         let spacing = platformCardSpacing
@@ -30,7 +33,12 @@ struct ThemeLibraryOverlay: View {
         .persistentSystemOverlays(.hidden)
         #endif
         .onAppear(perform: handleAppear)
-        .onDisappear { appState.themePickerActive = false }
+        .onDisappear {
+            appState.themePickerActive = false
+            #if !os(tvOS)
+            overlayHasFocus = false
+            #endif
+        }
     }
 }
 
@@ -56,7 +64,26 @@ private extension ThemeLibraryOverlay {
         .focusSection()
         .defaultFocus($focusedThemeID, defaultFocusID)
         .onExitCommand { appState.dismissThemePicker() }
-        #endif
+        .onMoveCommand(perform: handleMoveCommand)
+#else
+        .focusable()
+        .focused($overlayHasFocus)
+        .onKeyPress(.upArrow) { handleDirectionalInput(.up); return .handled }
+        .onKeyPress(.downArrow) { handleDirectionalInput(.down); return .handled }
+        .onKeyPress(.leftArrow) { handleDirectionalInput(.left); return .handled }
+        .onKeyPress(.rightArrow) { handleDirectionalInput(.right); return .handled }
+        .onKeyPress(.space) { activateFocusedTheme(); return .handled }
+        .onKeyPress(.return) { activateFocusedTheme(); return .handled }
+        .onChange(of: overlayHasFocus) { _, newValue in
+            guard !newValue, appState.themePickerActive else { return }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(50))
+                if appState.themePickerActive {
+                    overlayHasFocus = true
+                }
+            }
+        }
+#endif
         .onChange(of: appState.availableThemes) { ensureValidFocus() }
         .onChange(of: appState.selectedTheme.id) { assignFocusToSelectedTheme() }
     }
@@ -115,6 +142,9 @@ private extension ThemeLibraryOverlay {
                 appState.dismissThemePicker()
             }
             .accessibilityIdentifier("ThemePicker_Close")
+#if !os(tvOS)
+            .keyboardShortcut(.cancelAction)
+#endif
             #if swift(>=6.0)
             .buttonStyle(.glass)
             #else
@@ -187,9 +217,72 @@ private extension ThemeLibraryOverlay {
 // MARK: - Focus helpers
 
 private extension ThemeLibraryOverlay {
+
+#if os(tvOS)
+    func handleMoveCommand(_ direction: MoveCommandDirection) {
+        guard let mapped = DirectionalMove(moveCommand: direction) else { return }
+        handleDirectionalInput(mapped)
+    }
+#endif
+
+    func handleDirectionalInput(_ move: DirectionalMove) {
+        #if !os(tvOS)
+        overlayHasFocus = true
+        #endif
+        let themes = appState.availableThemes
+        guard !themes.isEmpty else { return }
+        let columnCount = max(columns.count, 1)
+        let currentId = focusedThemeID ?? defaultFocusID
+
+        guard let currentId,
+              let currentIndex = themes.firstIndex(where: { $0.id == currentId }) else {
+            assignFocus(defaultFocusID)
+            return
+        }
+
+        var targetIndex = currentIndex
+
+        switch move {
+        case .left:
+            if currentIndex > 0 {
+                targetIndex = currentIndex - 1
+            }
+        case .right:
+            if currentIndex + 1 < themes.count {
+                targetIndex = currentIndex + 1
+            }
+        case .up:
+            let candidate = currentIndex - columnCount
+            if candidate >= 0 {
+                targetIndex = candidate
+            }
+        case .down:
+            let candidate = currentIndex + columnCount
+            if candidate < themes.count {
+                targetIndex = candidate
+            } else if currentIndex != themes.count - 1 {
+                targetIndex = themes.count - 1
+            }
+        }
+
+        if targetIndex != currentIndex, themes.indices.contains(targetIndex) {
+            assignFocus(themes[targetIndex].id)
+        }
+    }
+
+    func activateFocusedTheme() {
+        let themes = appState.availableThemes
+        guard let id = focusedThemeID ?? defaultFocusID,
+              let theme = themes.first(where: { $0.id == id }) else { return }
+        appState.applyTheme(theme)
+    }
+
     func handleAppear() {
         appState.themePickerActive = true
         assignFocusToSelectedTheme()
+        #if !os(tvOS)
+        overlayHasFocus = true
+        #endif
     }
 
     func assignFocusToSelectedTheme() {

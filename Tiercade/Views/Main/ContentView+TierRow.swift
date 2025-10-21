@@ -1,6 +1,13 @@
 import SwiftUI
 import TiercadeCore
 
+#if !os(tvOS)
+struct CardFocus: Hashable {
+    let tier: String
+    let itemID: String
+}
+#endif
+
 struct TierRowWrapper: View {
     @Environment(AppState.self) private var app: AppState
     let tier: String
@@ -10,21 +17,11 @@ struct TierRowWrapper: View {
     #else
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let hardwareFocus: FocusState<CardFocus?>.Binding
     #endif
 
     private var filteredCards: [Item] {
-        let allCards = app.items(for: tier)
-
-        switch app.activeFilter {
-        case .all:
-            break
-        case .ranked:
-            if tier == "unranked" { return [] }
-        case .unranked:
-            if tier != "unranked" { return [] }
-        }
-
-        return app.applySearchFilter(to: allCards)
+        app.filteredItems(for: tier)
     }
 
     var body: some View {
@@ -172,8 +169,19 @@ struct TierRowWrapper: View {
             spacing: layout.rowSpacing
         ) {
             ForEach(filteredCards, id: \.id) { item in
-                CardView(item: item, layout: layout)
-                    .draggable(item.id)
+                let focusID = CardFocus(tier: tier, itemID: item.id)
+                CardView(item: item, layout: layout, onTapFocus: {
+                    // Update hardware focus when card is clicked
+                    hardwareFocus.wrappedValue = focusID
+                })
+                .draggable(item.id)
+                .focused(hardwareFocus, equals: focusID)
+                .overlay {
+                    if hardwareFocus.wrappedValue == focusID {
+                        RoundedRectangle(cornerRadius: layout.cornerRadius)
+                            .stroke(Color.accentColor.opacity(0.85), lineWidth: 3)
+                    }
+                }
             }
         }
         .padding(.bottom, layout.rowSpacing * 0.5)

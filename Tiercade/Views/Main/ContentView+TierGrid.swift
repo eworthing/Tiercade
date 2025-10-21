@@ -6,8 +6,46 @@ import TiercadeCore
 struct TierGridView: View {
     @Environment(AppState.self) private var app: AppState
     let tierOrder: [String]
+    @Environment(\.editMode) private var editMode
+#if !os(tvOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @FocusState private var hardwareFocus: CardFocus?
+    @State private var lastHardwareFocus: CardFocus?
+    @FocusState private var gridHasFocus: Bool
+#endif
 
     var body: some View {
+        #if !os(tvOS)
+        ZStack {
+            ScrollView {
+                LazyVStack(spacing: 16) {
+                    ForEach(tierOrder, id: \.self) { tier in
+                        TierRowWrapper(tier: tier, hardwareFocus: $hardwareFocus)
+                    }
+                    UnrankedView(hardwareFocus: $hardwareFocus)
+                }
+                .padding(Metrics.grid * 2)
+                .frame(maxWidth: .infinity, alignment: .top)
+            }
+            .background(Palette.appBackground.ignoresSafeArea())
+        }
+        .focusable()
+        .focused($gridHasFocus)
+        .onAppear {
+            gridHasFocus = true
+            seedHardwareFocus()
+        }
+        .onKeyPress(.upArrow) { handleDirectionalInput(.up); return .handled }
+        .onKeyPress(.downArrow) { handleDirectionalInput(.down); return .handled }
+        .onKeyPress(.leftArrow) { handleDirectionalInput(.left); return .handled }
+        .onKeyPress(.rightArrow) { handleDirectionalInput(.right); return .handled }
+        .onChange(of: app.searchQuery) { _ in ensureHardwareFocusValid() }
+        .onChange(of: app.activeFilter) { _ in ensureHardwareFocusValid() }
+        .onChange(of: app.cardDensityPreference) { _ in ensureHardwareFocusValid() }
+        .onChange(of: app.tierOrder) { _ in ensureHardwareFocusValid() }
+        .onChange(of: hardwareFocus) { _, _ in gridHasFocus = true }
+        .onTapGesture { gridHasFocus = true }
+        #else
         ScrollView {
             LazyVStack(spacing: 16) {
                 ForEach(tierOrder, id: \.self) { tier in
@@ -15,15 +53,11 @@ struct TierGridView: View {
                 }
                 UnrankedView()
             }
-            #if os(tvOS)
             .padding(.horizontal, TVMetrics.contentHorizontalPadding)
             .padding(.vertical, Metrics.grid)
-            #else
-            .padding(Metrics.grid * 2)
-            .frame(maxWidth: .infinity, alignment: .top)
-            #endif
         }
         .background(Palette.appBackground.ignoresSafeArea())
+        #endif
     }
 }
 
@@ -34,19 +68,11 @@ struct UnrankedView: View {
     #else
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let hardwareFocus: FocusState<CardFocus?>.Binding
     #endif
 
     private var filteredItems: [Item] {
-        let allUnranked = app.items(for: "unranked")
-
-        switch app.activeFilter {
-        case .all, .unranked:
-            break
-        case .ranked:
-            return []
-        }
-
-        return app.applySearchFilter(to: allUnranked)
+        app.filteredItems(for: "unranked")
     }
 
     var body: some View {
@@ -83,8 +109,19 @@ struct UnrankedView: View {
                     spacing: layout.rowSpacing
                 ) {
                     ForEach(filteredItems, id: \.id) { item in
-                        CardView(item: item, layout: layout)
-                            .draggable(item.id)
+                        let focusID = CardFocus(tier: "unranked", itemID: item.id)
+                        CardView(item: item, layout: layout, onTapFocus: {
+                            // Update hardware focus when card is clicked
+                            hardwareFocus.wrappedValue = focusID
+                        })
+                        .draggable(item.id)
+                        .focused(hardwareFocus, equals: focusID)
+                        .overlay {
+                            if hardwareFocus.wrappedValue == focusID {
+                                RoundedRectangle(cornerRadius: layout.cornerRadius)
+                                    .stroke(Color.accentColor.opacity(0.85), lineWidth: 3)
+                            }
+                        }
                     }
                 }
                 .padding(.bottom, layout.rowSpacing * 0.5)
@@ -149,6 +186,7 @@ struct CardView: View {
     let layout: TVCardLayout
     #else
     let layout: PlatformCardLayout
+    var onTapFocus: (() -> Void)?  // Called when card is tapped to update focus
     #endif
 
     private var isMultiSelectActive: Bool {
@@ -181,10 +219,23 @@ struct CardView: View {
         Button(action: handleTap) {
             cardBody
         }
-        #if os(tvOS)
         .buttonStyle(.plain)
-        #else
-        .buttonStyle(PlainButtonStyle())
+        #if !os(tvOS)
+        .focusable()  // Enable keyboard event handling (Space/Return) on Catalyst/iOS
+        .onKeyPress(.space) {
+            onTapFocus?()  // Update focus state
+            if !isMultiSelectActive {
+                app.beginQuickRank(item)
+            }
+            return .handled
+        }
+        .onKeyPress(.return) {
+            onTapFocus?()  // Update focus state
+            if !isMultiSelectActive {
+                app.beginQuickRank(item)
+            }
+            return .handled
+        }
         #endif
         .accessibilityIdentifier("Card_\(item.id)")
         .scaleEffect(app.draggingId == item.id ? 0.98 : 1.0)
@@ -200,7 +251,7 @@ struct CardView: View {
         #if os(iOS) && !os(tvOS) || targetEnvironment(macCatalyst)
         .accessibilityAddTraits(.isButton)
         #endif
-        #if !os(tvOS)
+#if !os(tvOS)
         .onDrag {
             app.setDragging(item.id)
             return NSItemProvider(object: NSString(string: item.id))
@@ -236,9 +287,12 @@ struct CardView: View {
             app.beginQuickMove(item)
         }
         #else
+        // On Catalyst, clicking a card updates focus for keyboard navigation
+        // The actual QuickRank action is triggered by Space/Return on the grid
         if isMultiSelectActive {
             app.toggleSelection(item.id)
         } else {
+            onTapFocus?()  // Update hardware focus to this card
             app.beginQuickRank(item)
         }
         #endif
@@ -359,6 +413,236 @@ struct CardView: View {
             #endif
     }
 }
+
+#if !os(tvOS)
+private extension TierGridView {
+    struct TierSnapshot {
+        let tier: String
+        let items: [Item]
+        let layout: PlatformCardLayout
+    }
+
+    var navigationTierSequence: [String] {
+        var sequence = tierOrder
+        sequence.append("unranked")
+        return sequence
+    }
+
+    func seedHardwareFocus() {
+        let snapshot = currentSnapshot()
+        guard !snapshot.isEmpty else {
+            hardwareFocus = nil
+            lastHardwareFocus = nil
+            return
+        }
+        if let existing = hardwareFocus,
+           snapshot.contains(where: {
+               $0.tier == existing.tier && $0.items.contains(where: { $0.id == existing.itemID })
+           }) {
+            lastHardwareFocus = existing
+            return
+        }
+        if let fallback = defaultHardwareFocus(for: snapshot) {
+            hardwareFocus = fallback
+            lastHardwareFocus = fallback
+        }
+    }
+
+    func ensureHardwareFocusValid() {
+        let snapshot = currentSnapshot()
+        guard !snapshot.isEmpty else {
+            hardwareFocus = nil
+            lastHardwareFocus = nil
+            return
+        }
+        if let focus = hardwareFocus,
+           snapshot.contains(where: { $0.tier == focus.tier && $0.items.contains(where: { $0.id == focus.itemID }) }) {
+            lastHardwareFocus = focus
+            return
+        }
+        if let fallback = defaultHardwareFocus(for: snapshot) {
+            hardwareFocus = fallback
+            lastHardwareFocus = fallback
+        }
+    }
+
+    func handleDirectionalInput(_ move: DirectionalMove) {
+        gridHasFocus = true
+        let snapshot = currentSnapshot()
+        guard !snapshot.isEmpty else {
+            hardwareFocus = nil
+            lastHardwareFocus = nil
+            return
+        }
+
+        let activeFocus = hardwareFocus ?? defaultHardwareFocus(for: snapshot)
+        guard let focus = activeFocus else { return }
+
+        guard let next = focusAfter(focus, move: move, snapshot: snapshot) else { return }
+        hardwareFocus = next
+        lastHardwareFocus = next
+    }
+
+    func currentSnapshot() -> [TierSnapshot] {
+        navigationTierSequence.compactMap { tier in
+            let items = app.filteredItems(for: tier)
+            guard !items.isEmpty else { return nil }
+            let layout = PlatformCardLayoutProvider.layout(
+                for: items.count,
+                preference: app.cardDensityPreference,
+                horizontalSizeClass: horizontalSizeClass
+            )
+            return TierSnapshot(tier: tier, items: items, layout: layout)
+        }
+    }
+
+    func defaultHardwareFocus(for snapshot: [TierSnapshot]) -> CardFocus? {
+        if let cached = lastHardwareFocus,
+           snapshot.contains(where: {
+               $0.tier == cached.tier && $0.items.contains(where: { $0.id == cached.itemID })
+           }) {
+            return cached
+        }
+        guard let firstTier = snapshot.first, let firstItem = firstTier.items.first else { return nil }
+        return CardFocus(tier: firstTier.tier, itemID: firstItem.id)
+    }
+
+    func focusAfter(
+        _ current: CardFocus,
+        move: DirectionalMove,
+        snapshot: [TierSnapshot]
+    ) -> CardFocus? {
+        guard let tierIndex = snapshot.firstIndex(where: { $0.tier == current.tier }) else {
+            return defaultHardwareFocus(for: snapshot)
+        }
+        let tierData = snapshot[tierIndex]
+        guard let currentIndex = tierData.items.firstIndex(where: { $0.id == current.itemID }) else {
+            return defaultHardwareFocus(for: snapshot)
+        }
+
+        switch move {
+        case .left:
+            return focusLeft(
+                from: currentIndex,
+                tier: current.tier,
+                tierIndex: tierIndex,
+                tierData: tierData,
+                snapshot: snapshot
+            )
+        case .right:
+            return focusRight(
+                from: currentIndex,
+                tier: current.tier,
+                tierIndex: tierIndex,
+                tierData: tierData,
+                snapshot: snapshot
+            )
+        case .up:
+            return focusUp(
+                from: currentIndex,
+                tierIndex: tierIndex,
+                tierData: tierData,
+                snapshot: snapshot
+            )
+        case .down:
+            return focusDown(
+                from: currentIndex,
+                tierIndex: tierIndex,
+                tierData: tierData,
+                snapshot: snapshot
+            )
+        @unknown default:
+            return current
+        }
+    }
+
+    private func focusLeft(
+        from currentIndex: Int,
+        tier: String,
+        tierIndex: Int,
+        tierData: TierSnapshot,
+        snapshot: [TierSnapshot]
+    ) -> CardFocus {
+        if currentIndex > 0 {
+            return CardFocus(tier: tier, itemID: tierData.items[currentIndex - 1].id)
+        } else if tierIndex > 0 {
+            let previous = snapshot[tierIndex - 1]
+            guard let target = previous.items.last else {
+                return CardFocus(tier: tier, itemID: tierData.items[currentIndex].id)
+            }
+            return CardFocus(tier: previous.tier, itemID: target.id)
+        }
+        return CardFocus(tier: tier, itemID: tierData.items[currentIndex].id)
+    }
+
+    private func focusRight(
+        from currentIndex: Int,
+        tier: String,
+        tierIndex: Int,
+        tierData: TierSnapshot,
+        snapshot: [TierSnapshot]
+    ) -> CardFocus {
+        if currentIndex + 1 < tierData.items.count {
+            return CardFocus(tier: tier, itemID: tierData.items[currentIndex + 1].id)
+        } else if tierIndex + 1 < snapshot.count {
+            let next = snapshot[tierIndex + 1]
+            guard let target = next.items.first else {
+                return CardFocus(tier: tier, itemID: tierData.items[currentIndex].id)
+            }
+            return CardFocus(tier: next.tier, itemID: target.id)
+        }
+        return CardFocus(tier: tier, itemID: tierData.items[currentIndex].id)
+    }
+
+    private func focusUp(
+        from currentIndex: Int,
+        tierIndex: Int,
+        tierData: TierSnapshot,
+        snapshot: [TierSnapshot]
+    ) -> CardFocus {
+        let columns = max(1, tierData.layout.gridColumns.count)
+        let targetIndex = currentIndex - columns
+
+        if targetIndex >= 0 {
+            return CardFocus(tier: tierData.tier, itemID: tierData.items[targetIndex].id)
+        } else if tierIndex > 0 {
+            let previous = snapshot[tierIndex - 1]
+            let prevColumns = max(1, previous.layout.gridColumns.count)
+            let targetColumn = min(currentIndex % columns, prevColumns - 1)
+            let lastRowStart = max(previous.items.count - prevColumns, 0)
+            let index = min(previous.items.count - 1, lastRowStart + targetColumn)
+            return CardFocus(tier: previous.tier, itemID: previous.items[index].id)
+        }
+        return CardFocus(tier: tierData.tier, itemID: tierData.items[currentIndex].id)
+    }
+
+    private func focusDown(
+        from currentIndex: Int,
+        tierIndex: Int,
+        tierData: TierSnapshot,
+        snapshot: [TierSnapshot]
+    ) -> CardFocus {
+        let columns = max(1, tierData.layout.gridColumns.count)
+        let targetIndex = currentIndex + columns
+
+        if targetIndex < tierData.items.count {
+            return CardFocus(tier: tierData.tier, itemID: tierData.items[targetIndex].id)
+        } else if tierIndex + 1 < snapshot.count {
+            let next = snapshot[tierIndex + 1]
+            let nextColumns = max(1, next.layout.gridColumns.count)
+            let targetColumn = min(currentIndex % columns, nextColumns - 1)
+            let index = min(next.items.count - 1, targetColumn)
+            return CardFocus(tier: next.tier, itemID: next.items[index].id)
+        }
+        return CardFocus(tier: tierData.tier, itemID: tierData.items[currentIndex].id)
+    }
+
+    func item(for focus: CardFocus, in snapshot: [TierSnapshot]) -> Item? {
+        guard let tierData = snapshot.first(where: { $0.tier == focus.tier }) else { return nil }
+        return tierData.items.first(where: { $0.id == focus.itemID })
+    }
+}
+#endif
 
 private struct ThumbnailView: View {
     let item: Item
