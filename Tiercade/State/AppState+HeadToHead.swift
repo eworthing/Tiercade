@@ -59,13 +59,14 @@ extension AppState {
         nextH2HPair()
     }
 
+    nonisolated
     private func buildWarmStartQueue(
         pool: [Item],
         targetComparisons: Int,
         tierOrder: [String],
         currentTiers: Items
     ) async -> [(Item, Item)] {
-        await Task.detached(priority: .userInitiated) {
+        await Task(priority: .userInitiated) {
             HeadToHeadLogic.initialComparisonQueueWarmStart(
                 from: pool,
                 records: [:],

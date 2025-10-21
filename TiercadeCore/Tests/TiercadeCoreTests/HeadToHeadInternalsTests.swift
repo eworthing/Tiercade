@@ -128,7 +128,7 @@ struct HeadToHeadInternalsTests {
         let queues = await withTaskGroup(of: [(Item, Item)].self, returning: [[(Item, Item)]].self) { group in
             for _ in 0..<runs {
                 group.addTask {
-                    await Task.detached(priority: .background) {
+                    await Task(priority: .background) {
                         HeadToHeadLogic.initialComparisonQueueWarmStart(
                             from: pool,
                             records: [:],
