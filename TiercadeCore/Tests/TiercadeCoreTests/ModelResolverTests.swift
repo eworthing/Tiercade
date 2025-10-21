@@ -40,6 +40,46 @@ struct ModelResolverTests {
         #expect(fallback.title == "Beta")
         #expect(fallback.thumbUri == "file://base-thumb.png")
     }
+
+    @Test("CSV import assigns unique identifiers for duplicate names")
+    func csvImportAssignsUniqueIdentifiers() throws {
+        var identifiers: Set<String> = []
+
+        let first = try #require(
+            CSVImportRowBuilder.makeItem(
+                from: ["Alpha", "1", "S"],
+                usedIdentifiers: &identifiers
+            )
+        )
+
+        let second = try #require(
+            CSVImportRowBuilder.makeItem(
+                from: ["Alpha", "2", "A"],
+                usedIdentifiers: &identifiers
+            )
+        )
+
+        #expect(first.id != second.id)
+        #expect(first.name == "Alpha")
+        #expect(second.name == "Alpha")
+
+        let explicit = try #require(
+            CSVImportRowBuilder.makeItem(
+                from: ["Beta", "3", "S", "beta-001"],
+                usedIdentifiers: &identifiers
+            )
+        )
+        #expect(explicit.id == "beta-001")
+
+        let explicitDuplicate = try #require(
+            CSVImportRowBuilder.makeItem(
+                from: ["Beta", "4", "A", "beta-001"],
+                usedIdentifiers: &identifiers
+            )
+        )
+        #expect(explicitDuplicate.id.hasPrefix("beta-001"))
+        #expect(explicitDuplicate.id != "beta-001")
+    }
 }
 
 private extension ModelResolverTests {

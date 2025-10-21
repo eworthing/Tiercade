@@ -62,13 +62,15 @@ extension AppState {
             "S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []
         ]
 
+        var usedIdentifiers: Set<String> = []
+
         for line in lines.dropFirst() {
             guard !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
 
             let components = Self.parseCSVLine(line)
             guard components.count >= 3 else { continue }
 
-            if let item = Self.createItemFromCSVComponents(components) {
+            if let item = Self.createItemFromCSVComponents(components, usedIdentifiers: &usedIdentifiers) {
                 Self.addItemToTier(item, tier: components[2], in: &newTiers)
             }
         }
@@ -76,30 +78,44 @@ extension AppState {
         return newTiers
     }
 
-    nonisolated private static func createItemFromCSVComponents(_ components: [String]) -> Item? {
-        let name = components[0].trimmingCharacters(in: .whitespacesAndNewlines)
-        let season = components[1].trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !name.isEmpty else { return nil }
-
-        let id = name.lowercased().replacingOccurrences(of: " ", with: "_")
-        var attributes: [String: String] = ["name": name]
-        if !season.isEmpty {
-            attributes["season"] = season
-        }
-
-        return Item(id: id, attributes: attributes.isEmpty ? nil : attributes)
+    nonisolated private static func createItemFromCSVComponents(
+        _ components: [String],
+        usedIdentifiers: inout Set<String>
+    ) -> Item? {
+        CSVImportRowBuilder.makeItem(from: components, usedIdentifiers: &usedIdentifiers)
     }
 
     nonisolated private static func addItemToTier(_ item: Item, tier: String, in tiers: inout Items) {
         let tierKey = tier.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedKey = tierKey.lowercased() == "unranked" ? "unranked" : tierKey.uppercased()
 
+        let resolvedItem = ensureUniqueItem(item, in: tiers)
+
         if tiers[normalizedKey] != nil {
-            tiers[normalizedKey]?.append(item)
+            tiers[normalizedKey]?.append(resolvedItem)
         } else {
-            tiers["unranked"]?.append(item)
+            tiers["unranked"]?.append(resolvedItem)
         }
+    }
+
+    nonisolated private static func ensureUniqueItem(_ item: Item, in tiers: Items) -> Item {
+        let idExists = tiers.values.contains { items in
+            items.contains(where: { $0.id == item.id })
+        }
+
+        guard idExists else { return item }
+
+        let newIdentifier = UUID().uuidString
+        return Item(
+            id: newIdentifier,
+            name: item.name,
+            seasonString: item.seasonString,
+            seasonNumber: item.seasonNumber,
+            status: item.status,
+            description: item.description,
+            imageUrl: item.imageUrl,
+            videoUrl: item.videoUrl
+        )
     }
 
     func importFromJSON(url: URL) async throws(ImportError) {
