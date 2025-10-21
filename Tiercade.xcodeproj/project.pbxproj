@@ -8,10 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		6E166BF72E78EE7100E74DA5 /* TiercadeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6E166BF62E78EE7100E74DA5 /* TiercadeCore */; };
+		6EF0B10E2E78F0B0008EABCD /* TiercadeKeyboardNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EF0B10D2E78F0B0008EABCD /* TiercadeKeyboardNavigationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		6EB443672E77178A005B024E /* Tiercade.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tiercade.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6EF0B1052E78F0B0008EABCD /* TiercadeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.uibundle; includeInIndex = 0; path = TiercadeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		6EF0B10D2E78F0B0008EABCD /* TiercadeKeyboardNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TiercadeKeyboardNavigationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -31,6 +34,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6EF0B1032E78F0B0008EABCD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -38,6 +48,7 @@
 			isa = PBXGroup;
 			children = (
 				6EB443692E77178A005B024E /* Tiercade */,
+				6EF0B1012E78F0B0008EABCD /* TiercadeUITests */,
 				6EB443682E77178A005B024E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -46,11 +57,30 @@
 			isa = PBXGroup;
 			children = (
 				6EB443672E77178A005B024E /* Tiercade.app */,
+				6EF0B1052E78F0B0008EABCD /* TiercadeUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
+		6EF0B1012E78F0B0008EABCD /* TiercadeUITests */ = {
+			isa = PBXGroup;
+			children = (
+				6EF0B10D2E78F0B0008EABCD /* TiercadeKeyboardNavigationTests.swift */,
+			);
+			path = TiercadeUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
+
+/* Begin PBXContainerItemProxy section */
+		6EF0B1322E78F0B0008EABCD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6EB4435F2E77178A005B024E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6EB443662E77178A005B024E;
+			remoteInfo = Tiercade;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXNativeTarget section */
 		6EB443662E77178A005B024E /* Tiercade */ = {
@@ -76,7 +106,33 @@
 			productReference = 6EB443672E77178A005B024E /* Tiercade.app */;
 			productType = "com.apple.product-type.application";
 		};
+		6EF0B1002E78F0B0008EABCD /* TiercadeUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6EF0B1202E78F0B0008EABCD /* Build configuration list for PBXNativeTarget "TiercadeUITests" */;
+			buildPhases = (
+				6EF0B1022E78F0B0008EABCD /* Sources */,
+				6EF0B1032E78F0B0008EABCD /* Frameworks */,
+				6EF0B1042E78F0B0008EABCD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				6EF0B1332E78F0B0008EABCD /* PBXTargetDependency */,
+			);
+			name = TiercadeUITests;
+			productName = TiercadeUITests;
+			productReference = 6EF0B1052E78F0B0008EABCD /* TiercadeUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
+
+/* Begin PBXTargetDependency section */
+		6EF0B1332E78F0B0008EABCD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6EB443662E77178A005B024E /* Tiercade */;
+			targetProxy = 6EF0B1322E78F0B0008EABCD /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		6EB4435F2E77178A005B024E /* Project object */ = {
@@ -88,6 +144,10 @@
 				TargetAttributes = {
 					6EB443662E77178A005B024E = {
 						CreatedOnToolsVersion = 16.4;
+					};
+					6EF0B1002E78F0B0008EABCD = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 6EB443662E77178A005B024E;
 					};
 				};
 			};
@@ -109,12 +169,20 @@
 			projectRoot = "";
 			targets = (
 				6EB443662E77178A005B024E /* Tiercade */,
+				6EF0B1002E78F0B0008EABCD /* TiercadeUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		6EB443652E77178A005B024E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6EF0B1042E78F0B0008EABCD /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -128,6 +196,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6EF0B1022E78F0B0008EABCD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6EF0B10E2E78F0B0008EABCD /* TiercadeKeyboardNavigationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -262,6 +338,7 @@
 				DEVELOPMENT_TEAM = Z8FUXLNT6G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -306,6 +383,7 @@
 				DEVELOPMENT_TEAM = Z8FUXLNT6G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -336,6 +414,64 @@
 			};
 			name = Release;
 		};
+		6EF0B1212E78F0B0008EABCD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				DEVELOPMENT_TEAM = Z8FUXLNT6G;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature StrictConcurrency -strict-concurrency=complete";
+				PRODUCT_BUNDLE_IDENTIFIER = eworthing.TiercadeUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2,3";
+				TEST_TARGET_NAME = Tiercade;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		6EF0B1222E78F0B0008EABCD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				DEVELOPMENT_TEAM = Z8FUXLNT6G;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature StrictConcurrency -strict-concurrency=complete";
+				PRODUCT_BUNDLE_IDENTIFIER = eworthing.TiercadeUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2,3";
+				TEST_TARGET_NAME = Tiercade;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -353,6 +489,15 @@
 			buildConfigurations = (
 				6EB4438A2E77178B005B024E /* Debug */,
 				6EB4438B2E77178B005B024E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6EF0B1202E78F0B0008EABCD /* Build configuration list for PBXNativeTarget "TiercadeUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6EF0B1212E78F0B0008EABCD /* Debug */,
+				6EF0B1222E78F0B0008EABCD /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

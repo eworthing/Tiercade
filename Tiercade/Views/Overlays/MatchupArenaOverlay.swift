@@ -15,6 +15,9 @@ struct MatchupArenaOverlay: View {
     @FocusState private var focusAnchor: MatchupFocusAnchor?
     @State private var lastFocus: MatchupFocusAnchor = .primary
     @State private var suppressFocusReset = false
+    #if !os(tvOS)
+    @FocusState private var overlayHasFocus: Bool
+    #endif
 
     private let minOverlayWidth: CGFloat = 960
 
@@ -81,8 +84,29 @@ struct MatchupArenaOverlay: View {
 #if os(tvOS)
         .onExitCommand { app.cancelH2H(fromExitCommand: true) }
         .onDisappear { suppressFocusReset = true }
+#endif
+#if os(tvOS)
         .onMoveCommand(perform: handleMoveCommand)
-#else
+#endif
+#if !os(tvOS)
+        .onDisappear { overlayHasFocus = false }
+        .focusable()
+        .focused($overlayHasFocus)
+        .onKeyPress(.upArrow) { handleDirectionalInput(.up); return .handled }
+        .onKeyPress(.downArrow) { handleDirectionalInput(.down); return .handled }
+        .onKeyPress(.leftArrow) { handleDirectionalInput(.left); return .handled }
+        .onKeyPress(.rightArrow) { handleDirectionalInput(.right); return .handled }
+        .onKeyPress(.space) { handlePrimaryAction(); return .handled }
+        .onKeyPress(.return) { handlePrimaryAction(); return .handled }
+        .onChange(of: overlayHasFocus) { _, newValue in
+            guard !newValue, app.h2hActive else { return }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(50))
+                if app.h2hActive {
+                    overlayHasFocus = true
+                }
+            }
+        }
         .accessibilityAddTraits(.isModal)
 #endif
     }
@@ -221,6 +245,7 @@ struct MatchupArenaOverlay: View {
             .buttonStyle(.glass)
             #else
             .buttonStyle(.borderedProminent)
+            .keyboardShortcut(.cancelAction)
             #endif
             .focused($focusAnchor, equals: .abort)
             .accessibilityIdentifier("MatchupOverlay_Cancel")
@@ -238,6 +263,7 @@ struct MatchupArenaOverlay: View {
             .buttonStyle(.glassProminent)
             #else
             .buttonStyle(.borderedProminent)
+            .keyboardShortcut(.defaultAction)
             #endif
             .focused($focusAnchor, equals: .apply)
             .accessibilityIdentifier("MatchupOverlay_Apply")
@@ -284,6 +310,9 @@ struct MatchupArenaOverlay: View {
     private func handleAppear() {
         suppressFocusReset = false
         synchronizeFocus()
+        #if !os(tvOS)
+        overlayHasFocus = true
+        #endif
     }
 
     private func synchronizeFocus() {
@@ -294,24 +323,32 @@ struct MatchupArenaOverlay: View {
         }
     }
 
-    #if os(tvOS)
+#if os(tvOS)
     private func handleMoveCommand(_ direction: MoveCommandDirection) {
+        guard let mapped = DirectionalMove(moveCommand: direction) else { return }
+        handleDirectionalInput(mapped)
+    }
+#endif
+
+    private func handleDirectionalInput(_ move: DirectionalMove) {
         guard !suppressFocusReset else { return }
+        #if !os(tvOS)
+        overlayHasFocus = true
+        #endif
         let current = focusAnchor ?? lastFocus
-        guard let next = nextFocusAnchor(from: current, direction: direction) else { return }
+        guard let next = nextFocusAnchor(from: current, direction: move) else { return }
         focusAnchor = next
     }
 
     private func nextFocusAnchor(
         from current: MatchupFocusAnchor,
-        direction: MoveCommandDirection
+        direction: DirectionalMove
     ) -> MatchupFocusAnchor? {
         switch direction {
         case .left: return moveLeft(from: current)
         case .right: return moveRight(from: current)
         case .up: return moveUp(from: current)
         case .down: return moveDown(from: current)
-        @unknown default: return nil
         }
     }
 
@@ -352,7 +389,26 @@ struct MatchupArenaOverlay: View {
             return nil
         }
     }
-    #endif
+
+    private func handlePrimaryAction() {
+        let anchor = focusAnchor ?? defaultFocus
+        switch anchor {
+        case .primary:
+            if let pair = app.h2hPair {
+                app.voteH2H(winner: pair.0)
+            }
+        case .secondary:
+            if let pair = app.h2hPair {
+                app.voteH2H(winner: pair.1)
+            }
+        case .pass:
+            app.skipCurrentH2HPair()
+        case .apply:
+            app.finishH2H()
+        case .abort:
+            app.cancelH2H()
+        }
+    }
 }
 
 private struct MatchupProgressDial: View {

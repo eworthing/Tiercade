@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -210,8 +211,12 @@ struct QuickRankOverlay: View {
         case tier(String)
         case cancel
     }
+    #if !os(tvOS)
+    @FocusState private var overlayHasFocus: Bool
+    #endif
     var body: some View {
         if let item = app.quickRankTarget {
+            let isUITest = ProcessInfo.processInfo.arguments.contains("-uiTest")
             ZStack {
                 Color.black.opacity(0.65)
                     .ignoresSafeArea()
@@ -248,11 +253,34 @@ struct QuickRankOverlay: View {
                 #if os(tvOS)
                 .focusSection()
                 .defaultFocus($focused, defaultFocusField)
-                #endif
                 .onAppear { focused = defaultFocusField }
                 .onDisappear { focused = nil }
+                #else
+                .focusable()
+                .focused($overlayHasFocus)
+                .onKeyPress(.escape) {
+                    app.cancelQuickRank()
+                    return .handled
+                }
+                .onAppear {
+                    focused = defaultFocusField
+                    overlayHasFocus = true
+                }
+                .onDisappear {
+                    focused = nil
+                    overlayHasFocus = false
+                }
+                .onChange(of: overlayHasFocus) { _, newValue in
+                    if !newValue {
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(50))
+                            overlayHasFocus = true
+                        }
+                    }
+                }
+                #endif
             }
-            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .transition(isUITest ? .identity : .move(edge: .bottom).combined(with: .opacity))
         }
     }
 

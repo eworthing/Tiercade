@@ -19,6 +19,9 @@ struct ThemeCreatorOverlay: View {
     @State private var paletteFocusIndex: Int = 0
     @State private var lastFocus: FocusField?
     @State private var suppressFocusReset = false
+    #if !os(tvOS)
+    @FocusState private var overlayHasFocus: Bool
+    #endif
 
     private let paletteColumns = 6
     private static let paletteHexes: [String] = [
@@ -71,8 +74,19 @@ struct ThemeCreatorOverlay: View {
             }
             #if os(tvOS)
             .onExitCommand { dismiss(returnToPicker: true) }
-            .onMoveCommand(perform: handleMoveCommand)
             #endif
+#if os(tvOS)
+            .onMoveCommand(perform: handleMoveCommand)
+#else
+            .focusable()
+            .focused($overlayHasFocus)
+            .onKeyPress(.upArrow) { handleDirectionalMove(.up); return .handled }
+            .onKeyPress(.downArrow) { handleDirectionalMove(.down); return .handled }
+            .onKeyPress(.leftArrow) { handleDirectionalMove(.left); return .handled }
+            .onKeyPress(.rightArrow) { handleDirectionalMove(.right); return .handled }
+            .onKeyPress(.space) { handlePrimaryAction(); return .handled }
+            .onKeyPress(.return) { handlePrimaryAction(); return .handled }
+#endif
             .onChange(of: focusedElement) { _, newValue in
                 guard !suppressFocusReset else { return }
                 if let newValue {
@@ -85,11 +99,21 @@ struct ThemeCreatorOverlay: View {
         #if os(tvOS)
         .persistentSystemOverlays(.hidden)
         #endif
+        #if !os(tvOS)
+        .onAppear { overlayHasFocus = true }
+        .onDisappear { overlayHasFocus = false }
+        #endif
     }
 
 }
 
 private extension ThemeCreatorOverlay {
+    #if os(tvOS)
+    func directionalMove(from direction: MoveCommandDirection) -> DirectionalMove? {
+        DirectionalMove(moveCommand: direction)
+    }
+    #endif
+
     var header: some View {
         HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
@@ -315,6 +339,9 @@ private extension ThemeCreatorOverlay {
             .controlSize(.large)
             .focused($focusedElement, equals: .cancel)
             .accessibilityIdentifier("ThemeCreator_FooterCancel")
+#if !os(tvOS)
+            .keyboardShortcut(.cancelAction)
+#endif
 
             Spacer()
 
@@ -326,6 +353,9 @@ private extension ThemeCreatorOverlay {
             .focused($focusedElement, equals: .save)
             .disabled(nameBinding.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .accessibilityIdentifier("ThemeCreator_Save")
+#if !os(tvOS)
+            .keyboardShortcut(.defaultAction)
+#endif
         }
         .padding(platformOverlayPadding)
         .tvGlassRounded(0)
@@ -344,52 +374,81 @@ private extension ThemeCreatorOverlay {
         setFocus(.tier(tierID))
     }
 
-    #if os(tvOS)
+#if os(tvOS)
     func handleMoveCommand(_ direction: MoveCommandDirection) {
+        guard let move = directionalMove(from: direction) else { return }
+        handleDirectionalMove(move)
+    }
+#endif
+
+    func handleDirectionalMove(_ move: DirectionalMove) {
+        #if !os(tvOS)
+        overlayHasFocus = true
+        #endif
         guard let focus = focusedElement else { return }
         switch focus {
         case .name:
-            handleNameMove(direction)
+            handleNameMove(move)
         case .description:
-            handleDescriptionMove(direction)
+            handleDescriptionMove(move)
         case .tier(let id):
-            handleTierMove(direction, tierID: id)
+            handleTierMove(move, tierID: id)
         case .palette(let index):
-            handlePaletteMove(direction, index: index)
+            handlePaletteMove(move, index: index)
         case .save:
-            handleSaveMove(direction)
+            handleSaveMove(move)
         case .cancel:
-            handleCancelMove(direction)
+            handleCancelMove(move)
         }
     }
 
-    func handleNameMove(_ direction: MoveCommandDirection) {
-        switch direction {
+    func handlePrimaryAction() {
+        guard let focus = focusedElement ?? lastFocus else { return }
+        switch focus {
+        case .name, .description:
+            // Let system handle text field activation
+            break
+        case .tier(let id):
+            setActiveTier(id)
+        case .palette(let index):
+            paletteFocusIndex = index
+            if index < Self.paletteHexes.count {
+                let hex = Self.paletteHexes[index]
+                appState.assignColorToActiveTier(hex)
+            }
+            setFocus(.palette(index))
+        case .save:
+            appState.completeThemeCreation()
+        case .cancel:
+            dismiss(returnToPicker: true)
+        }
+    }
+
+    func handleNameMove(_ move: DirectionalMove) {
+        switch move {
         case .down:
             setFocus(.description)
         case .right:
             setFocus(.tier(draft.activeTierID))
-        @unknown default:
+        default:
             setFocus(.name)
         }
     }
 
-    func handleDescriptionMove(_ direction: MoveCommandDirection) {
-        switch direction {
+    func handleDescriptionMove(_ move: DirectionalMove) {
+        switch move {
         case .up:
             setFocus(.name)
-        case .down:
+        case .down, .right:
             setFocus(.tier(draft.activeTierID))
-        case .right:
-            setFocus(.tier(draft.activeTierID))
-        @unknown default:
+        default:
             setFocus(.description)
         }
     }
 
-    func handleTierMove(_ direction: MoveCommandDirection, tierID: UUID) {
+    func handleTierMove(_ move: DirectionalMove, tierID: UUID) {
         guard let currentIndex = tierIndex(for: tierID) else { return }
-        switch direction {
+        switch move {
         case .up:
             if currentIndex == 0 {
                 setFocus(.description)
@@ -405,13 +464,13 @@ private extension ThemeCreatorOverlay {
         case .right:
             paletteFocusIndex = paletteIndex(for: draft.tiers[currentIndex].colorHex)
             setFocus(.palette(paletteFocusIndex))
-        @unknown default:
-            setFocus(.tier(tierID))
+        case .left:
+            setFocus(.cancel)
         }
     }
 
-    func handlePaletteMove(_ direction: MoveCommandDirection, index: Int) {
-        switch direction {
+    func handlePaletteMove(_ move: DirectionalMove, index: Int) {
+        switch move {
         case .left:
             setFocus(.tier(draft.activeTierID))
         case .up:
@@ -430,35 +489,30 @@ private extension ThemeCreatorOverlay {
             let target = min(index + 1, Self.paletteHexes.count - 1)
             paletteFocusIndex = target
             setFocus(.palette(target))
-        @unknown default:
-            setFocus(.palette(index))
         }
     }
 
-    func handleSaveMove(_ direction: MoveCommandDirection) {
-        switch direction {
+    func handleSaveMove(_ move: DirectionalMove) {
+        switch move {
         case .up:
             setFocus(.palette(paletteFocusIndex))
         case .left:
             setFocus(.cancel)
-        @unknown default:
+        default:
             setFocus(.save)
         }
     }
 
-    func handleCancelMove(_ direction: MoveCommandDirection) {
-        switch direction {
+    func handleCancelMove(_ move: DirectionalMove) {
+        switch move {
         case .up:
             setFocus(.tier(draft.activeTierID))
-        case .right:
+        case .right, .down:
             setFocus(.save)
-        case .down:
-            setFocus(.save)
-        @unknown default:
-            setFocus(.cancel)
+        case .left:
+            setFocus(.name)
         }
     }
-    #endif
 
     func focusTier(at index: Int) {
         let tier = draft.tiers[index]

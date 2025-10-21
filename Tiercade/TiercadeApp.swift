@@ -61,30 +61,5 @@ struct TiercadeApp: App {
         }
         .modelContainer(modelContainer)
 
-#if DEBUG
-        WindowGroup("Toolbar Debug") {
-            NavigationSplitView {
-                List {
-                    Text("Sidebar Item")
-                }
-            } detail: {
-                NavigationStack {
-                    Text("Debug Detail")
-                        .padding()
-                        .navigationTitle("Toolbar Debug")
-#if !os(tvOS)
-                        .toolbarRole(.editor)
-#endif
-                        .toolbar {
-                            ToolbarItem(placement: .primaryAction) {
-                                Button("Test Toolbar") {
-                                    print("Debug toolbar tapped")
-                                }
-                            }
-                        }
-                }
-            }
-        }
-#endif
     }
 }

@@ -5,8 +5,19 @@ import TiercadeCore
 extension AppState {
     // MARK: - Search & Filter
     func filteredItems(for tier: String) -> [Item] {
-        let items = tiers[tier] ?? []
-        return applySearchFilter(to: items)
+        var items = tiers[tier] ?? []
+
+        switch activeFilter {
+        case .all:
+            break
+        case .ranked:
+            if tier == "unranked" { return [] }
+        case .unranked:
+            if tier != "unranked" { return [] }
+        }
+
+        items = applySearchFilter(to: items)
+        return items
     }
 
     func allItems() -> [Item] {

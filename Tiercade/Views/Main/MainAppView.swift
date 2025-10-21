@@ -62,32 +62,22 @@ struct MainAppView: View {
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active { FocusUtils.seedFocus() }
         }
-        .onExitCommand {
-            if app.quickMoveTarget != nil {
-                app.cancelQuickMove()
-            } else if app.showThemeCreator {
-                app.cancelThemeCreation(returnToThemePicker: false)
-            } else if app.showTierListCreator {
-                app.cancelTierListCreator()
-            } else if app.showingTierListBrowser {
-                app.dismissTierListBrowser()
-            } else if app.showAnalyticsSidebar {
-                app.closeAnalyticsSidebar()
-            } else if app.h2hActive {
-                app.cancelH2H(fromExitCommand: true)
-            } else if detailPresented {
-                app.detailItem = nil
-            } else if editMode == .active {
-                // Exit selection mode when Menu button pressed with no overlays active
-                editMode = .inactive
-                app.clearSelection()
-            }
-        }
+        .onExitCommand { handleBackCommand() }
         #endif
         .overlay {
             // Compose overlays here so they appear on all platforms (including tvOS)
             ZStack { overlayStack }
         }
+#if !os(tvOS)
+        .overlay(alignment: .topLeading) {
+            Button(action: { handleBackCommand() }) {
+                EmptyView()
+            }
+            .keyboardShortcut(.cancelAction)
+            .frame(width: 0, height: 0)
+            .accessibilityHidden(true)
+        }
+#endif
         #if !os(tvOS)
         .sheet(item: Binding(
             get: { app.detailItem },
@@ -165,8 +155,12 @@ struct MainAppView: View {
         }
 
         // Quick Rank overlay
-        QuickRankOverlay(app: app)
-            .zIndex(40)
+        if app.quickRankTarget != nil {
+            AccessibilityBridgeView(identifier: "QuickRank_Overlay")
+
+            QuickRankOverlay(app: app)
+                .zIndex(40)
+        }
 
         #if os(tvOS)
         // Quick Move overlay (unified item actions overlay)
@@ -175,8 +169,12 @@ struct MainAppView: View {
         #endif
 
         // Head-to-Head overlay
-        MatchupArenaOverlay(app: app)
-            .zIndex(40)
+        if app.h2hActive {
+            AccessibilityBridgeView(identifier: "MatchupOverlay_Root")
+
+            MatchupArenaOverlay(app: app)
+                .zIndex(40)
+        }
 
         #if os(tvOS)
         if app.showAnalyticsSidebar {
@@ -263,25 +261,16 @@ struct MainAppView: View {
     @ViewBuilder
     private func macSplitView(modalBlockingFocus: Bool) -> some View {
         NavigationSplitView {
-            List(app.tierOrder, id: \.self) { tier in
-                Text("Sidebar • " + tier)
-            }
-            .navigationSplitViewColumnWidth(min: 300, ideal: 340, max: 420)
+            SidebarView(tierOrder: app.tierOrder)
+                .allowsHitTesting(!modalBlockingFocus)
+                .navigationSplitViewColumnWidth(min: 300, ideal: 340, max: 420)
         } detail: {
-            Text("Debug Detail")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.yellow.opacity(0.2))
+            tierGridLayer(modalBlockingFocus: modalBlockingFocus)
+                .toolbar { ToolbarView(app: app) }
+                .navigationTitle("Tiercade")
         }
         .navigationSplitViewStyle(.balanced)
-        .navigationTitle("Tiercade Debug")
         .toolbarRole(.editor)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Split Toolbar Test") {
-                    print("Split toolbar tapped")
-                }
-            }
-        }
     }
     #endif
 
@@ -289,39 +278,26 @@ struct MainAppView: View {
     @ViewBuilder
     private func regularWidthSplitView(modalBlockingFocus: Bool) -> some View {
         NavigationSplitView {
-            List(app.tierOrder, id: \.self) { tier in
-                Text("Sidebar • " + tier)
-            }
+            SidebarView(tierOrder: app.tierOrder)
+                .allowsHitTesting(!modalBlockingFocus)
+                .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 360)
         } detail: {
-            Text("Debug Detail")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.yellow.opacity(0.2))
+            tierGridLayer(modalBlockingFocus: modalBlockingFocus)
+                .toolbar { ToolbarView(app: app) }
+                .navigationTitle("Tiercade")
         }
-        .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 360)
         .navigationSplitViewStyle(.balanced)
-        .navigationTitle("Tiercade Debug")
         .toolbarRole(.editor)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Split Toolbar Test") {
-                    print("iPad toolbar tapped")
-                }
-            }
-        }
     }
 
     @ViewBuilder
     private func compactStack(modalBlockingFocus: Bool) -> some View {
-        Text("Debug Detail")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.yellow.opacity(0.2))
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Stack Toolbar Test") {
-                        print("Stack toolbar tapped")
-                    }
-                }
-            }
+        NavigationStack {
+            tierGridLayer(modalBlockingFocus: modalBlockingFocus)
+                .navigationTitle("Tiercade")
+        }
+        .toolbarRole(.automatic)
+        .toolbar { ToolbarView(app: app) }
     }
     #endif
 
@@ -351,25 +327,41 @@ struct MainAppView: View {
     #if os(tvOS)
     @ViewBuilder
     private func tvOSPrimaryContent(modalBlockingFocus: Bool) -> some View {
-        tierGridLayer(modalBlockingFocus: modalBlockingFocus)
-            .overlay(alignment: .top) {
-                TVToolbarView(
-                    app: app,
-                    modalActive: modalBlockingFocus,
-                    editMode: $editMode,
-                    glassNamespace: glassNamespace
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(height: TVMetrics.topBarHeight)
+        ZStack {
+            // Grid content - no focus section on Catalyst for keyboard navigation
+            #if os(tvOS)
+            tierGridLayer(modalBlockingFocus: modalBlockingFocus)
+                .focusSection()
+            #else
+            tierGridLayer(modalBlockingFocus: modalBlockingFocus)
+            #endif
+
+            // Toolbar overlay (already has its own focus section)
+            TVToolbarView(
+                app: app,
+                modalActive: modalBlockingFocus,
+                editMode: $editMode,
+                glassNamespace: glassNamespace
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: TVMetrics.topBarHeight)
+            .allowsHitTesting(!modalBlockingFocus)
+            .accessibilityElement(children: .contain)
+
+            // Action bar - no focus section on Catalyst for keyboard navigation
+            #if os(tvOS)
+            TVActionBar(app: app, glassNamespace: glassNamespace)
+                .environment(\.editMode, $editMode)
                 .allowsHitTesting(!modalBlockingFocus)
                 .accessibilityElement(children: .contain)
-            }
-            .overlay(alignment: .bottom) {
-                TVActionBar(app: app, glassNamespace: glassNamespace)
-                    .environment(\.editMode, $editMode)
-                    .allowsHitTesting(!modalBlockingFocus)
-                    .accessibilityElement(children: .contain)
-            }
+                .focusSection()
+            #else
+            TVActionBar(app: app, glassNamespace: glassNamespace)
+                .environment(\.editMode, $editMode)
+                .allowsHitTesting(!modalBlockingFocus)
+                .accessibilityElement(children: .contain)
+            #endif
+        }
             #if DEBUG
             .overlay(alignment: .bottomTrailing) {
                 BuildInfoView()
@@ -383,12 +375,39 @@ struct MainAppView: View {
     #else
     @ViewBuilder
     private func platformPrimaryContent(modalBlockingFocus: Bool) -> some View {
-        Text("Platform Debug Content")
-            .font(.title)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.green.opacity(0.2))
+        NavigationStack {
+            tierGridLayer(modalBlockingFocus: modalBlockingFocus)
+                .navigationTitle("Tiercade")
+        }
+        .toolbarRole(.automatic)
+        .toolbar { ToolbarView(app: app) }
     }
     #endif
+}
+
+private extension MainAppView {
+    func handleBackCommand() {
+        if app.quickRankTarget != nil {
+            app.cancelQuickRank()
+        } else if app.quickMoveTarget != nil {
+            app.cancelQuickMove()
+        } else if app.showThemeCreator {
+            app.cancelThemeCreation(returnToThemePicker: false)
+        } else if app.showTierListCreator {
+            app.cancelTierListCreator()
+        } else if app.showingTierListBrowser {
+            app.dismissTierListBrowser()
+        } else if app.showAnalyticsSidebar {
+            app.closeAnalyticsSidebar()
+        } else if app.h2hActive {
+            app.cancelH2H(fromExitCommand: true)
+        } else if app.detailItem != nil {
+            app.detailItem = nil
+        } else if editMode == .active {
+            editMode = .inactive
+            app.clearSelection()
+        }
+    }
 }
 
 // Small preview
@@ -396,10 +415,16 @@ struct MainAppView: View {
 
 // File-scoped helper to expose an immediate accessibility element for UI tests.
 private struct AccessibilityBridgeView: View {
+    let identifier: String
+
+    init(identifier: String = "ThemePicker_Overlay") {
+        self.identifier = identifier
+    }
+
     var body: some View {
         Color.clear
             .frame(width: 1, height: 1)
-            .accessibilityIdentifier("ThemePicker_Overlay")
+            .accessibilityIdentifier(identifier)
             .accessibilityHidden(false)
             .allowsHitTesting(false)
             .accessibilityElement(children: .ignore)
