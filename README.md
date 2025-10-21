@@ -77,7 +77,8 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **Strict Concurrency** – All targets enable "Complete" checking; core logic favors `Sendable` value types and actors for isolation (see `AGENTS.md` for build-setting guardrails).
 - **Observation-First State** – UI state uses Swift Observation macros (`@Observable`, `@Bindable`) instead of `ObservableObject`/`@Published`.
 - **SwiftUI Everywhere** – Screens, overlays, and navigation are pure SwiftUI with `NavigationStack`/`NavigationSplitView`; UIKit appears only through targeted representable adapters when absolutely necessary.
-- **SwiftData Persistence** – SwiftData infrastructure (ModelContext) is wired in; primary tier list state currently persists via UserDefaults with planned migration to `@Model` + `@Query` for new features.
+- **SwiftData Persistence** – Tier lists now persist end-to-end through SwiftData: `TiercadeApp` boots a shared `ModelContainer`, injects its `ModelContext` into `AppState`, and the `AppState+Persistence` pipeline handles save/load and autosave against that context.
+  - *Migration note:* During initialization (`AppState.init`) legacy UserDefaults keys are cleared before seeding so upgrades land on the SwiftData-backed store without conflicts.
 - **Async Streams** – Legacy Combine pipelines are rewritten to `AsyncSequence`, `AsyncStream`, `async let`, or `TaskGroup` constructs.
 - **Liquid Glass Chrome** – Translucent, glassy effects stay confined to top-level chrome (toolbars, sheets) to keep fast-refreshing content performant.
 - **Swift Testing** – New tests rely on the Swift Testing framework (`@Test`, `#expect`) with incremental XCTest retirement.
