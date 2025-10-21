@@ -73,7 +73,9 @@ struct ToolbarView: ToolbarContent {
 #endif
 
             Button {
-                app.startH2H()
+                Task(priority: .userInitiated) {
+                    await app.startH2H()
+                }
             } label: {
                 Image(systemName: "rectangle.grid.2x2")
                     .accessibilityLabel("Head-to-Head")
@@ -240,7 +242,11 @@ struct SecondaryToolbarActions: ToolbarContent {
                 Divider()
                 fileOperationsMenu
                 exportImportMenu
-                Button("Head-to-Head") { app.startH2H() }
+                Button("Head-to-Head") {
+                    Task(priority: .userInitiated) {
+                        await app.startH2H()
+                    }
+                }
                     .disabled(!app.canStartHeadToHead)
                     #if !os(tvOS)
                     .keyboardShortcut("h", modifiers: [.command])

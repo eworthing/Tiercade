@@ -144,7 +144,11 @@ struct TVToolbarView: View {
             .accessibilityValue(editMode == .active ? "\(app.selection.count) items selected" : "")
             .focusTooltip(editMode == .active ? "Exit Selection" : "Multi-Select")
 
-            Button(action: { app.startH2H() }, label: {
+            Button(action: {
+                Task(priority: .userInitiated) {
+                    await app.startH2H()
+                }
+            }, label: {
                 Image(systemName: "person.line.dotted.person.fill")
                     .font(.system(size: Metrics.toolbarIconSize * 0.9))
                     .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
