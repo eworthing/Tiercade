@@ -50,55 +50,17 @@ extension AppState {
         }
     }
 
-    // Swift 6 (Swift 6.2 toolchain) pattern: heavy CSV parsing runs on background thread pool via Task.detached
+    // Swift 6 (Swift 6.2 toolchain) pattern: heavy CSV parsing runs on background executor via Task.detached
     nonisolated
     private func parseCSVInBackground(_ csvString: String) async throws(ImportError) -> Items {
-        let lines = csvString.components(separatedBy: .newlines)
-        guard lines.count > 1 else {
+        do {
+            return try await Task.detached(priority: .userInitiated) {
+                try CSVImporter.parse(csvString)
+            }.value
+        } catch CSVImporter.CSVImportError.emptyFile {
             throw ImportError.invalidData("CSV file appears to be empty")
-        }
-
-        var newTiers: Items = [
-            "S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []
-        ]
-
-        for line in lines.dropFirst() {
-            guard !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
-
-            let components = Self.parseCSVLine(line)
-            guard components.count >= 3 else { continue }
-
-            if let item = Self.createItemFromCSVComponents(components) {
-                Self.addItemToTier(item, tier: components[2], in: &newTiers)
-            }
-        }
-
-        return newTiers
-    }
-
-    nonisolated private static func createItemFromCSVComponents(_ components: [String]) -> Item? {
-        let name = components[0].trimmingCharacters(in: .whitespacesAndNewlines)
-        let season = components[1].trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard !name.isEmpty else { return nil }
-
-        let id = name.lowercased().replacingOccurrences(of: " ", with: "_")
-        var attributes: [String: String] = ["name": name]
-        if !season.isEmpty {
-            attributes["season"] = season
-        }
-
-        return Item(id: id, attributes: attributes.isEmpty ? nil : attributes)
-    }
-
-    nonisolated private static func addItemToTier(_ item: Item, tier: String, in tiers: inout Items) {
-        let tierKey = tier.trimmingCharacters(in: .whitespacesAndNewlines)
-        let normalizedKey = tierKey.lowercased() == "unranked" ? "unranked" : tierKey.uppercased()
-
-        if tiers[normalizedKey] != nil {
-            tiers[normalizedKey]?.append(item)
-        } else {
-            tiers["unranked"]?.append(item)
+        } catch {
+            throw ImportError.parsingFailed("Unexpected error: \(error.localizedDescription)")
         }
     }
 
@@ -151,39 +113,20 @@ extension AppState {
     // Swift 6 (Swift 6.2 toolchain) pattern: file I/O on background via Task.detached
     nonisolated
     private func loadCSVFromFile(_ url: URL) async throws(ImportError) -> String {
-        do {
-            let data = try Data(contentsOf: url)
-            guard let content = String(data: data, encoding: .utf8) else {
-                throw ImportError.invalidFormat("CSV file is not valid UTF-8")
+        try await Task.detached(priority: .userInitiated) {
+            do {
+                let data = try Data(contentsOf: url)
+                guard let content = String(data: data, encoding: .utf8) else {
+                    throw ImportError.invalidFormat("CSV file is not valid UTF-8")
+                }
+                return content
+            } catch {
+                if let importError = error as? ImportError {
+                    throw importError
+                }
+                throw ImportError.invalidData("Could not read CSV file: \(error.localizedDescription)")
             }
-            return content
-        } catch {
-            throw ImportError.invalidData("Could not read CSV file: \(error.localizedDescription)")
-        }
-    }
-
-    nonisolated private static func parseCSVLine(_ line: String) -> [String] {
-        var components: [String] = []
-        var currentComponent = ""
-        var insideQuotes = false
-
-        for character in line {
-            if character == "\"" {
-                insideQuotes.toggle()
-            } else if character == "," && !insideQuotes {
-                components.append(currentComponent)
-                currentComponent = ""
-            } else {
-                currentComponent.append(character)
-            }
-        }
-        components.append(currentComponent)
-
-        return components.map { component in
-            component
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .replacingOccurrences(of: "\"", with: "")
-        }
+        }.value
     }
 
     // MARK: - Canonical project helpers
