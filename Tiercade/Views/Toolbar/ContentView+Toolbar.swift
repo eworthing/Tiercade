@@ -72,6 +72,18 @@ struct ToolbarView: ToolbarContent {
             .help("Browse themes (⌘T)")
 #endif
 
+            if AppleIntelligenceService.isSupportedOnCurrentPlatform {
+                Button {
+                    app.toggleAIChat()
+                } label: {
+                    Label("Apple Intelligence", systemImage: "sparkles")
+                }
+                .accessibilityIdentifier("Toolbar_AIChat")
+#if targetEnvironment(macCatalyst)
+                .help("Chat with Apple Intelligence")
+#endif
+            }
+
             Button {
                 app.startH2H()
             } label: {

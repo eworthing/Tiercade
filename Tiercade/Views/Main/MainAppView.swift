@@ -29,6 +29,7 @@ struct MainAppView: View {
     let themeCreatorPresented = app.showThemeCreator
     let tierCreatorPresented = app.showTierListCreator
     let quickMovePresented = app.quickMoveTarget != nil
+    let aiChatPresented = app.showAIChat && AppleIntelligenceService.isSupportedOnCurrentPlatform
     // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
     // which provides automatic focus containment via separate presentation context
     #if os(tvOS)
@@ -38,8 +39,13 @@ struct MainAppView: View {
         || quickMovePresented
         || app.showThemePicker
         || tierCreatorPresented
+        || aiChatPresented
     #else
-    let modalBlockingFocus = detailPresented || headToHeadPresented || themeCreatorPresented || tierCreatorPresented
+    let modalBlockingFocus = detailPresented
+        || headToHeadPresented
+        || themeCreatorPresented
+        || tierCreatorPresented
+        || aiChatPresented
     #endif
 
         return Group {
@@ -209,6 +215,24 @@ struct MainAppView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
                     .zIndex(54)
             }
+        }
+
+        // AI Chat overlay
+        if app.showAIChat && AppleIntelligenceService.isSupportedOnCurrentPlatform {
+            AccessibilityBridgeView(identifier: "AIChat_Overlay")
+
+            ZStack {
+                Color.black.opacity(0.5)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(true)
+                    .onTapGesture {
+                        app.closeAIChat()
+                    }
+
+                AIChatOverlay()
+            }
+            .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            .zIndex(55)
         }
 
         if app.showThemeCreator, let draft = app.themeDraft {
@@ -387,7 +411,9 @@ struct MainAppView: View {
 
 private extension MainAppView {
     func handleBackCommand() {
-        if app.quickRankTarget != nil {
+        if app.showAIChat {
+            app.closeAIChat()
+        } else if app.quickRankTarget != nil {
             app.cancelQuickRank()
         } else if app.quickMoveTarget != nil {
             app.cancelQuickMove()
