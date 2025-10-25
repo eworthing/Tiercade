@@ -10,7 +10,7 @@ struct TVToolbarView: View {
     @FocusState private var focusedControl: Control?
 
     private enum Control: Hashable {
-        case undo, redo, randomize, reset, library, newTierList, multiSelect, h2h, analytics, density, theme
+        case undo, redo, randomize, reset, library, newTierList, multiSelect, h2h, analytics, density, theme, aiChat
     }
 
     var body: some View {
@@ -205,6 +205,23 @@ struct TVToolbarView: View {
 #if swift(>=6.0)
             .glassEffectID("themePickerButton", in: glassNamespace)
 #endif
+
+            if AppleIntelligenceService.isSupportedOnCurrentPlatform {
+                Button(action: { app.toggleAIChat() }, label: {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: Metrics.toolbarIconSize))
+                        .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
+                })
+                .buttonStyle(.tvRemote(.primary))
+                .accessibilityIdentifier("Toolbar_AIChat")
+                .focused($focusedControl, equals: .aiChat)
+                .accessibilityLabel("Apple Intelligence")
+                .accessibilityHint("Chat with Apple Intelligence")
+                .focusTooltip("AI Chat")
+#if swift(>=6.0)
+                .glassEffectID("aiChatButton", in: glassNamespace)
+#endif
+            }
         }
         .padding(.horizontal, TVMetrics.barHorizontalPadding)
         .padding(.vertical, TVMetrics.barVerticalPadding)

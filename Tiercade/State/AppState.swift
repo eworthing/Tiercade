@@ -167,6 +167,7 @@ final class AppState {
     var isProcessingSearch: Bool = false
     var showAnalyticsSidebar: Bool = false
     var showingTierListBrowser: Bool = false
+    var showAIChat: Bool = false
     let bundledProjects: [BundledProject] = BundledProjects.all
     var activeTierList: TierListHandle?
     var recentTierLists: [TierListHandle] = []
