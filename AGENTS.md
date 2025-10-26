@@ -2,6 +2,16 @@
 
 <!-- markdownlint-disable -->
 
+<!--
+⚠️ WARNING: This is the SOURCE file for AI agent instructions.
+Do NOT delete this file - it has two symlinks pointing to it:
+- CLAUDE.md → AGENTS.md
+- .github/copilot-instructions.md → ../AGENTS.md
+
+To update AI instructions, edit THIS file (AGENTS.md).
+Changes will automatically propagate through the symlinks.
+-->
+
 ```instructions
 When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (SwiftUI, UIKit, Focus, HIG), consult authoritative Apple documentation via apple-docs MCP tools before other sources.
 ```

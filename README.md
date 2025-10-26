@@ -186,6 +186,9 @@ We keep tvOS UI automation lean and accessibility-driven; add high-value Swift T
 - Design tokens, Liquid Glass, and focus patterns: [`Tiercade/Design/README.md`](Tiercade/Design/README.md)
 - Core domain models and deterministic helpers: [`TiercadeCore/README.md`](TiercadeCore/README.md)
 - Platform guardrails, tvOS focus, and build scripts: [`AGENTS.md`](AGENTS.md)
+  - **Note**: `AGENTS.md` is the source file with symlinks:
+    - `CLAUDE.md` → `AGENTS.md` (for Claude Code compatibility)
+    - `.github/copilot-instructions.md` → `../AGENTS.md` (for GitHub Copilot)
 - **macOS** - Development platform
 - **SwiftLint** - Enforce cyclomatic complexity thresholds (warning 8, error 12) as part of pre-commit checks
 
