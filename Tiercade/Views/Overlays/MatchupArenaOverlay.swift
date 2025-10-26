@@ -1,7 +1,7 @@
 import SwiftUI
 import TiercadeCore
 
-private enum MatchupFocusAnchor: Hashable {
+enum MatchupFocusAnchor: Hashable {
     case primary
     case secondary
     case pass
@@ -42,6 +42,48 @@ struct MatchupArenaOverlay: View {
     }
 
     private func overlayContent(maxWidth: CGFloat) -> some View {
+        #if os(tvOS)
+        buildOverlayContainer(maxWidth: maxWidth)
+            .applyOverlayModifiers(namespace: glassNamespace)
+            .applyFocusModifiers(
+                focusAnchor: $focusAnchor,
+                defaultFocus: defaultFocus,
+                onAppear: handleAppear,
+                onFocusChange: handleFocusAnchorChange
+            )
+            .applyH2HPairTracking(
+                app: app,
+                onSync: synchronizeFocus,
+                onDisappear: { suppressFocusReset = true }
+            )
+            .applyTVOSModifiers(
+                app: app,
+                handleMove: handleMoveCommand
+            )
+        #else
+        buildOverlayContainer(maxWidth: maxWidth)
+            .applyOverlayModifiers(namespace: glassNamespace)
+            .applyFocusModifiers(
+                focusAnchor: $focusAnchor,
+                defaultFocus: defaultFocus,
+                onAppear: handleAppear,
+                onFocusChange: handleFocusAnchorChange
+            )
+            .applyH2HPairTracking(
+                app: app,
+                onSync: synchronizeFocus,
+                onDisappear: { overlayHasFocus = false }
+            )
+            .applyNonTVOSModifiers(
+                app: app,
+                overlayHasFocus: $overlayHasFocus,
+                handleInput: handleDirectionalInput,
+                handleAction: handlePrimaryAction
+            )
+        #endif
+    }
+
+    private func buildOverlayContainer(maxWidth: CGFloat) -> some View {
         tvGlassContainer(spacing: 0) {
             VStack(alignment: .leading, spacing: sectionSpacing) {
                 headerSection
@@ -54,61 +96,17 @@ struct MatchupArenaOverlay: View {
             }
             .padding(.vertical, verticalPadding)
             .padding(.horizontal, horizontalPadding)
-        .frame(maxWidth: maxWidth)
+            .frame(maxWidth: maxWidth)
         }
-        .tvGlassRounded(40)
-#if swift(>=6.0)
-        .glassEffectID("matchupOverlay", in: glassNamespace)
-        .glassEffectTransition(.matchedGeometry)
-#endif
-        .overlay(
-            RoundedRectangle(cornerRadius: 36, style: .continuous)
-                .stroke(Color.white.opacity(0.18), lineWidth: 1.2)
-        )
-        .shadow(color: Color.black.opacity(0.3), radius: 36, y: 18)
-        .padding(.horizontal, Metrics.grid * 2)
-        .accessibilityIdentifier("MatchupOverlay_Root")
-        .accessibilityElement(children: .contain)
-#if os(tvOS)
-        .focusSection()
-#endif
-        .defaultFocus($focusAnchor, defaultFocus)
-        .onAppear { handleAppear() }
-        .onChange(of: app.h2hPair?.0.id) { _, _ in synchronizeFocus() }
-        .onChange(of: app.h2hPair?.1.id) { _, _ in synchronizeFocus() }
-        .onChange(of: app.h2hPair == nil) { _, _ in synchronizeFocus() }
-        .onChange(of: focusAnchor) { _, newValue in
-            guard !suppressFocusReset else { return }
-            if let newValue { lastFocus = newValue } else { focusAnchor = lastFocus }
+    }
+
+    private func handleFocusAnchorChange(newValue: MatchupFocusAnchor?) {
+        guard !suppressFocusReset else { return }
+        if let newValue {
+            lastFocus = newValue
+        } else {
+            focusAnchor = lastFocus
         }
-#if os(tvOS)
-        .onExitCommand { app.cancelH2H(fromExitCommand: true) }
-        .onDisappear { suppressFocusReset = true }
-#endif
-#if os(tvOS)
-        .onMoveCommand(perform: handleMoveCommand)
-#endif
-#if !os(tvOS)
-        .onDisappear { overlayHasFocus = false }
-        .focusable()
-        .focused($overlayHasFocus)
-        .onKeyPress(.upArrow) { handleDirectionalInput(.up); return .handled }
-        .onKeyPress(.downArrow) { handleDirectionalInput(.down); return .handled }
-        .onKeyPress(.leftArrow) { handleDirectionalInput(.left); return .handled }
-        .onKeyPress(.rightArrow) { handleDirectionalInput(.right); return .handled }
-        .onKeyPress(.space) { handlePrimaryAction(); return .handled }
-        .onKeyPress(.return) { handlePrimaryAction(); return .handled }
-        .onChange(of: overlayHasFocus) { _, newValue in
-            guard !newValue, app.h2hActive else { return }
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(50))
-                if app.h2hActive {
-                    overlayHasFocus = true
-                }
-            }
-        }
-        .accessibilityAddTraits(.isModal)
-#endif
     }
 
     private var defaultFocus: MatchupFocusAnchor {
@@ -116,42 +114,42 @@ struct MatchupArenaOverlay: View {
     }
 
     private func overlayMaxWidth(for proxy: GeometryProxy) -> CGFloat {
-#if os(tvOS)
+        #if os(tvOS)
         let safeArea = proxy.safeAreaInsets
         let available = max(proxy.size.width - safeArea.leading - safeArea.trailing, 0)
         let horizontalMargin = Metrics.grid * 4
         let desired = max(available - horizontalMargin, minOverlayWidth)
         return min(desired, available)
-#else
+        #else
         let available = proxy.size.width
         let horizontalMargin = Metrics.grid * 4
         let desired = max(available - horizontalMargin, 860)
         return min(desired, available)
-#endif
+        #endif
     }
 
     private var verticalPadding: CGFloat {
-#if os(tvOS)
+        #if os(tvOS)
         return TVMetrics.overlayPadding * 1.25
-#else
+        #else
         return Metrics.grid * 5
-#endif
+        #endif
     }
 
     private var horizontalPadding: CGFloat {
-#if os(tvOS)
+        #if os(tvOS)
         return TVMetrics.overlayPadding * 1.1
-#else
+        #else
         return Metrics.grid * 4.5
-#endif
+        #endif
     }
 
     private var sectionSpacing: CGFloat {
-#if os(tvOS)
+        #if os(tvOS)
         return TVMetrics.cardSpacing * 1.15
-#else
+        #else
         return Metrics.grid * 3.5
-#endif
+        #endif
     }
 
     private var headerSection: some View {
@@ -271,11 +269,11 @@ struct MatchupArenaOverlay: View {
     }
 
     private var pairSpacing: CGFloat {
-#if os(tvOS)
+        #if os(tvOS)
         return TVMetrics.cardSpacing * 1.3
-#else
+        #else
         return Metrics.grid * 4
-#endif
+        #endif
     }
 
     private var progressLabel: String {
@@ -323,12 +321,12 @@ struct MatchupArenaOverlay: View {
         }
     }
 
-#if os(tvOS)
+    #if os(tvOS)
     private func handleMoveCommand(_ direction: MoveCommandDirection) {
         guard let mapped = DirectionalMove(moveCommand: direction) else { return }
         handleDirectionalInput(mapped)
     }
-#endif
+    #endif
 
     private func handleDirectionalInput(_ move: DirectionalMove) {
         guard !suppressFocusReset else { return }
@@ -408,214 +406,5 @@ struct MatchupArenaOverlay: View {
         case .abort:
             app.cancelH2H()
         }
-    }
-}
-
-private struct MatchupProgressDial: View {
-    let progress: Double
-    let label: String
-
-    private var clampedProgress: Double {
-        min(max(progress, 0), 1)
-    }
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.12), lineWidth: 14)
-
-            Circle()
-                .trim(from: 0, to: clampedProgress)
-                .stroke(
-                    AngularGradient(
-                        gradient: Gradient(colors: [Palette.brand, Palette.tierColor("S"), Palette.brand]),
-                        center: .center
-                    ),
-                    style: StrokeStyle(lineWidth: 14, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-
-            VStack(spacing: 6) {
-                Image(systemName: symbolName)
-                    .font(.system(size: 26, weight: .semibold))
-                Text(label)
-                    .font(.headline)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.horizontal, 12)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Matchup progress")
-        .accessibilityValue(label)
-    }
-
-    private var symbolName: String {
-        switch clampedProgress {
-        case 0..<0.25:
-            return "gauge.low"
-        case 0.25..<0.75:
-            return "gauge.medium"
-        default:
-            return "gauge.high"
-        }
-    }
-}
-
-private struct MatchupCandidateCard: View {
-    enum AlignmentHint { case leading, trailing }
-
-    let item: Item
-    let accentColor: Color
-    let alignment: AlignmentHint
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: 18) {
-                header
-                detail
-            }
-            .padding(Metrics.grid * 3)
-            .frame(
-                minWidth: 360,
-                maxWidth: 520,
-                minHeight: 280,
-                alignment: alignment == .leading ? .topLeading : .topTrailing
-            )
-            .background(backgroundShape)
-        }
-        #if os(tvOS)
-        .buttonStyle(.glass)
-        #else
-        .buttonStyle(.plain)
-        #endif
-        .accessibilityLabel(item.name ?? item.id)
-        .accessibilityHint(item.description ?? "Choose this contender")
-    }
-
-    private var header: some View {
-        VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: 10) {
-            Text(item.name ?? item.id)
-                .font(TypeScale.h3)
-                .multilineTextAlignment(alignment == .leading ? .leading : .trailing)
-                .lineLimit(3)
-            if let season = item.seasonString, !season.isEmpty {
-                Text("Season \(season)")
-                    .font(.headline)
-                    .foregroundStyle(accentColor)
-            }
-        }
-    }
-
-    private var detail: some View {
-        VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: 12) {
-            if !metadataTokens.isEmpty {
-                metadataStack
-            }
-
-            if let description = item.description, !description.isEmpty {
-                Text(description)
-                    .font(TypeScale.body)
-                    .foregroundStyle(.primary)
-                    .lineLimit(5)
-                    .lineSpacing(6)
-                    .multilineTextAlignment(alignment == .leading ? .leading : .trailing)
-            }
-        }
-    }
-
-    private var metadataStack: some View {
-        let alignment: HorizontalAlignment = self.alignment == .leading ? .leading : .trailing
-
-        return VStack(alignment: alignment, spacing: 6) {
-            ForEach(metadataTokens, id: \.self) { token in
-                Text(token)
-                    .font(TypeScale.metadata)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(self.alignment == .leading ? .leading : .trailing)
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    private var metadataTokens: [String] {
-        var tokens: [String] = []
-        if let season = item.seasonString, !season.isEmpty {
-            tokens.append("Season \(season)")
-        }
-        if let status = item.status, !status.isEmpty {
-            tokens.append(status)
-        }
-        return tokens
-    }
-
-    private var backgroundShape: some View {
-        RoundedRectangle(cornerRadius: 30, style: .continuous)
-            .fill(Color.white.opacity(0.08))
-            .overlay(
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(accentColor.opacity(0.4), lineWidth: 1.6)
-            )
-    }
-}
-
-private struct MatchupPassTile: View {
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 16) {
-                Image(systemName: "arrow.uturn.left.circle")
-                    .font(.system(size: 48, weight: .semibold))
-                Text("Pass for Now")
-                    .font(.headline)
-            }
-            .frame(width: 240, height: 240)
-            .background(tileShape)
-        }
-        #if os(tvOS)
-        .buttonStyle(.glass)
-        #else
-        .buttonStyle(.plain)
-        #endif
-        .accessibilityLabel("Pass on this matchup")
-        .accessibilityHint("Skip and revisit later")
-    }
-
-    private var tileShape: some View {
-        RoundedRectangle(cornerRadius: 28, style: .continuous)
-            .fill(Color.white.opacity(0.1))
-            .overlay(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Color.white.opacity(0.26), lineWidth: 1.4)
-            )
-    }
-}
-
-private struct MatchupCompletionPanel: View {
-    var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "crown.fill")
-                .font(.system(size: 64, weight: .bold))
-                .symbolRenderingMode(.hierarchical)
-            Text("Every matchup reviewed")
-                .font(.title2.weight(.semibold))
-            Text("Choose Commit Rankings to apply your results or leave the session to discard them.")
-                .font(TypeScale.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 520)
-        }
-        .padding(.vertical, Metrics.grid * 4)
-        .padding(.horizontal, Metrics.grid * 5)
-        .background(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .fill(Color.white.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .stroke(Color.white.opacity(0.22), lineWidth: 1.4)
-                )
-        )
-        .accessibilityIdentifier("MatchupOverlay_Complete")
     }
 }

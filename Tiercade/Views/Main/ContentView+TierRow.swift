@@ -405,7 +405,7 @@ private struct TierLabelEditor: View {
                 .buttonStyle(.bordered)
                 .focused($focusedField, equals: .clear)
                 Button("Close", role: .cancel) { showMenu = false }
-                .focused($focusedField, equals: .close)
+                    .focused($focusedField, equals: .close)
             }
         }
         .padding(24)

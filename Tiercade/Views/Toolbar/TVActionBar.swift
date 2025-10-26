@@ -75,10 +75,10 @@ struct TVActionBar: View {
                 .padding(.horizontal, TVMetrics.barHorizontalPadding)
                 .padding(.vertical, TVMetrics.barVerticalPadding)
                 .tvGlassRounded(28)
-#if swift(>=6.0)
+                #if swift(>=6.0)
                 .glassEffectID("actionBar", in: glassNamespace)
                 .glassEffectUnion(id: "tiercade.controls", namespace: glassNamespace)
-#endif
+                #endif
                 .focusSection()
                 .defaultFocus($focusedControl, defaultFocus)
                 .onAppear { focusedControl = defaultFocus }

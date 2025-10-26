@@ -10,17 +10,17 @@ extension AppState {
         do {
             container = try ModelContainer(
                 for: TierListEntity.self,
-                    TierEntity.self,
-                    TierItemEntity.self,
-                    TierThemeEntity.self,
-                    TierColorEntity.self,
-                    TierProjectDraft.self,
-                    TierDraftTier.self,
-                    TierDraftItem.self,
-                    TierDraftOverride.self,
-                    TierDraftMedia.self,
-                    TierDraftAudit.self,
-                    TierDraftCollabMember.self,
+                TierEntity.self,
+                TierItemEntity.self,
+                TierThemeEntity.self,
+                TierColorEntity.self,
+                TierProjectDraft.self,
+                TierDraftTier.self,
+                TierDraftItem.self,
+                TierDraftOverride.self,
+                TierDraftMedia.self,
+                TierDraftAudit.self,
+                TierDraftCollabMember.self,
                 configurations: configuration
             )
         } catch {

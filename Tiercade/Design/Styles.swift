@@ -55,8 +55,8 @@ struct GhostButtonStyle: ButtonStyle {
             .padding(.horizontal, Metrics.grid * 2).padding(.vertical, Metrics.grid * 1.25)
             .background(
                 isFocused
-                ? Palette.brand.opacity(0.32)
-                : Palette.surfHi.opacity(0.85)
+                    ? Palette.brand.opacity(0.32)
+                    : Palette.surfHi.opacity(0.85)
             )
             .foregroundColor(.white)
             .cornerRadius(Metrics.rSm)

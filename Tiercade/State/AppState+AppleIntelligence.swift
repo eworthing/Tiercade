@@ -171,9 +171,7 @@ final class AppleIntelligenceService {
 
     /// Send a message to Apple Intelligence
     func sendMessage(_ text: String) async {
-        print("🤖 [AI] ===== sendMessage START =====")
-        print("🤖 [AI] Message count before: \(messages.count)")
-        print("🤖 [AI] Estimated tokens before: \(estimatedTokenCount)")
+        logSendMessageStart()
 
         // Append user message immediately
         messages.append(AIChatMessage(content: text, isUser: true))
@@ -186,31 +184,65 @@ final class AppleIntelligenceService {
         }
 
         #if canImport(FoundationModels)
+        // Check model availability and ensure session
+        guard validateModelAvailability() else { return }
+        guard ensureSessionAvailable() else { return }
+
+        // Try advanced list generation if enabled (POC)
+        if await tryAdvancedListGeneration(text: text) { return }
+
+        // Standard response path
+        await executeStandardResponse(text: text)
+        print("🤖 [AI] ===== sendMessage END =====")
+        #else
+        handleFoundationModelsUnavailable()
+        #endif
+    }
+
+    private func logSendMessageStart() {
+        print("🤖 [AI] ===== sendMessage START =====")
+        print("🤖 [AI] Message count before: \(messages.count)")
+        print("🤖 [AI] Estimated tokens before: \(estimatedTokenCount)")
+    }
+
+    #if canImport(FoundationModels)
+    /// Validate that the Apple Intelligence model is available
+    /// - Returns: true if available and can proceed, false if unavailable (error message added)
+    private func validateModelAvailability() -> Bool {
         print("🤖 [AI] Checking model availability...")
         // Check system model availability (iOS/iPadOS/macOS/Catalyst/visionOS 26+)
         let model = SystemLanguageModel.default
         switch model.availability {
         case .available:
             print("🤖 [AI] Model is available ✓")
-            break // proceed
+            return true
         case .unavailable(let reason):
             print("🤖 [AI] ❌ Model unavailable: \(reason)")
             messages.append(AIChatMessage(content: availabilityExplanation(for: reason), isUser: false))
             updateTokenEstimate()
-            return
+            return false
         }
+    }
 
+    /// Ensure session is created and available
+    /// - Returns: true if session exists, false if creation failed (error message added)
+    private func ensureSessionAvailable() -> Bool {
         ensureSession()
-        guard let session else {
+        guard session != nil else {
             print("🤖 [AI] ❌ Failed to create session")
             messages.append(AIChatMessage(content: "Apple Intelligence session couldn't be created.", isUser: false))
             updateTokenEstimate()
-            return
+            return false
         }
 
         print("🤖 [AI] Session exists ✓")
-        print("🤖 [AI] Session.isResponding: \(session.isResponding)")
+        print("🤖 [AI] Session.isResponding: \(session!.isResponding)")
+        return true
+    }
 
+    /// Try advanced list generation if enabled (EXPERIMENTAL POC)
+    /// - Returns: true if advanced generation was used and completed, false to fall through to standard path
+    private func tryAdvancedListGeneration(text: String) async -> Bool {
         // EXPERIMENTAL: Try advanced list generation if enabled (POC)
         if #available(iOS 26.0, macOS 26.0, *),
            UniqueListGenerationFlags.enableAdvancedGeneration {
@@ -225,13 +257,19 @@ final class AppleIntelligenceService {
                     updateTokenEstimate()
                     print("🤖 [AI] 🧪 POC: Advanced generation succeeded")
                     print("🤖 [AI] ===== sendMessage END (POC path) =====")
-                    return
+                    return true
                 } catch {
                     print("🤖 [AI] ⚠️ POC: Advanced generation failed, falling back to standard: \(error)")
                     // Fall through to standard path
                 }
             }
         }
+        return false
+    }
+
+    /// Execute standard response flow using session.respond()
+    private func executeStandardResponse(text: String) async {
+        guard let session else { return }
 
         do {
             let startTime = Date()
@@ -240,10 +278,7 @@ final class AppleIntelligenceService {
 
             let response = try await session.respond(to: Prompt(text))
 
-            let elapsed = Date().timeIntervalSince(startTime)
-            print("🤖 [AI] ✓ Received response after \(String(format: "%.2f", elapsed))s")
-            print("🤖 [AI] Response content: \"\(response.content)\"")
-            print("🤖 [AI] Response length: \(response.content.count) chars")
+            logResponseReceived(response: response, startTime: startTime)
 
             // Apply deduplication filter to remove duplicate list items
             let deduplicated = deduplicateListItems(response.content)
@@ -252,55 +287,81 @@ final class AppleIntelligenceService {
             print("🤖 [AI] Message count after: \(messages.count)")
             print("🤖 [AI] Estimated tokens after: \(estimatedTokenCount)")
         } catch let error as LanguageModelSession.GenerationError {
-            print("🤖 [AI] ❌ GenerationError caught: \(error)")
-            print("🤖 [AI] Error description: \(error.localizedDescription)")
-            print("🤖 [AI] Error type: \(type(of: error))")
-
-            // Handle context window overflow by resetting the session
-            if case .exceededContextWindowSize = error {
-                print("🤖 [AI] Context window exceeded - resetting session")
-                // Remove the user message we just added (will be re-added on retry)
-                if messages.last?.isUser == true {
-                    messages.removeLast()
-                }
-                resetSessionWithSummary()
-                messages.append(AIChatMessage(
-                    content: "Context window limit reached. Continuing with a fresh session...",
-                    isUser: false
-                ))
-                updateTokenEstimate()
-                // Retry the current message with new session
-                print("🤖 [AI] Retrying with new session...")
-                await sendMessage(text)
-                return
-            }
-
-            // Check for other specific error types
-            print("🤖 [AI] Checking error cases...")
-            switch error {
-            case .refusal(let refusal, _):
-                print("🤖 [AI] Refusal error: \(refusal)")
-                messages.append(AIChatMessage(content: "Request refused: \(String(describing: refusal))", isUser: false))
-            case .rateLimited:
-                print("🤖 [AI] Rate limited!")
-                messages.append(AIChatMessage(content: "Rate limited. Please wait a moment and try again.", isUser: false))
-            case .concurrentRequests:
-                print("🤖 [AI] Concurrent requests error")
-                messages.append(AIChatMessage(content: "Please wait for the current request to complete.", isUser: false))
-            default:
-                print("🤖 [AI] Other generation error")
-                messages.append(AIChatMessage(content: "Generation failed: \(error.localizedDescription)", isUser: false))
-            }
-            updateTokenEstimate()
+            await handleGenerationError(error, originalText: text)
         } catch {
-            print("🤖 [AI] ❌ Unexpected error type: \(type(of: error))")
-            print("🤖 [AI] Error: \(error)")
-            print("🤖 [AI] Error description: \(error.localizedDescription)")
-            messages.append(AIChatMessage(content: "Unexpected error: \(error.localizedDescription)", isUser: false))
-            updateTokenEstimate()
+            handleUnexpectedError(error)
         }
-        print("🤖 [AI] ===== sendMessage END =====")
-        #else
+    }
+
+    private func logResponseReceived(response: LanguageModelSession.Response<String>, startTime: Date) {
+        let elapsed = Date().timeIntervalSince(startTime)
+        print("🤖 [AI] ✓ Received response after \(String(format: "%.2f", elapsed))s")
+        print("🤖 [AI] Response content: \"\(response.content)\"")
+        print("🤖 [AI] Response length: \(response.content.count) chars")
+    }
+
+    /// Handle LanguageModelSession.GenerationError cases
+    private func handleGenerationError(_ error: LanguageModelSession.GenerationError, originalText: String) async {
+        print("🤖 [AI] ❌ GenerationError caught: \(error)")
+        print("🤖 [AI] Error description: \(error.localizedDescription)")
+        print("🤖 [AI] Error type: \(type(of: error))")
+
+        // Handle context window overflow by resetting the session
+        if case .exceededContextWindowSize = error {
+            print("🤖 [AI] Context window exceeded - resetting session")
+            // Remove the user message we just added (will be re-added on retry)
+            if messages.last?.isUser == true {
+                messages.removeLast()
+            }
+            resetSessionWithSummary()
+            messages.append(AIChatMessage(
+                content: "Context window limit reached. Continuing with a fresh session...",
+                isUser: false
+            ))
+            updateTokenEstimate()
+            // Retry the current message with new session
+            print("🤖 [AI] Retrying with new session...")
+            await sendMessage(originalText)
+            return
+        }
+
+        // Check for other specific error types
+        print("🤖 [AI] Checking error cases...")
+        switch error {
+        case .refusal(let refusal, _):
+            print("🤖 [AI] Refusal error: \(refusal)")
+            messages.append(
+                AIChatMessage(content: "Request refused: \(String(describing: refusal))", isUser: false)
+            )
+        case .rateLimited:
+            print("🤖 [AI] Rate limited!")
+            messages.append(
+                AIChatMessage(content: "Rate limited. Please wait a moment and try again.", isUser: false)
+            )
+        case .concurrentRequests:
+            print("🤖 [AI] Concurrent requests error")
+            messages.append(
+                AIChatMessage(content: "Please wait for the current request to complete.", isUser: false)
+            )
+        default:
+            print("🤖 [AI] Other generation error")
+            messages.append(
+                AIChatMessage(content: "Generation failed: \(error.localizedDescription)", isUser: false)
+            )
+        }
+        updateTokenEstimate()
+    }
+
+    private func handleUnexpectedError(_ error: Error) {
+        print("🤖 [AI] ❌ Unexpected error type: \(type(of: error))")
+        print("🤖 [AI] Error: \(error)")
+        print("🤖 [AI] Error description: \(error.localizedDescription)")
+        messages.append(AIChatMessage(content: "Unexpected error: \(error.localizedDescription)", isUser: false))
+        updateTokenEstimate()
+    }
+    #endif
+
+    private func handleFoundationModelsUnavailable() {
         print("🤖 [AI] FoundationModels not available at compile time")
         // Platform does not provide FoundationModels (e.g., tvOS)
         messages.append(AIChatMessage(
@@ -308,7 +369,6 @@ final class AppleIntelligenceService {
             isUser: false
         ))
         updateTokenEstimate()
-        #endif
     }
 
     #if canImport(FoundationModels)
@@ -365,7 +425,7 @@ final class AppleIntelligenceService {
     private func generateUniqueList(query: String, count: Int) async throws -> String {
         guard let session else {
             throw NSError(domain: "AppleIntelligenceService", code: -1,
-                         userInfo: [NSLocalizedDescriptionKey: "No active session"])
+                          userInfo: [NSLocalizedDescriptionKey: "No active session"])
         }
 
         let fm = FMClient(session: session) { message in
@@ -380,7 +440,7 @@ final class AppleIntelligenceService {
             }
         }
 
-        let items = try await coordinator.uniqueList(query: query, N: count, seed: nil)
+        let items = try await coordinator.uniqueList(query: query, targetCount: count, seed: nil)
 
         // Format as numbered list for chat display
         let formatted = items.enumerated()
@@ -398,7 +458,7 @@ final class AppleIntelligenceService {
         let listPatterns = [
             #"(?:give|tell|show|list|name)\s+(?:me\s+)?(\d+)"#,
             #"(\d+)\s+(?:examples?|items?|things?|names?)"#,
-            #"top\s+(\d+)"#,
+            #"top\s+(\d+)"#
         ]
 
         for pattern in listPatterns {

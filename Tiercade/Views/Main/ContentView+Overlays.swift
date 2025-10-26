@@ -259,24 +259,24 @@ struct QuickRankOverlay: View {
                 .focusable()
                 .focused($overlayHasFocus)
                 .onKeyPress(.escape) {
-                    app.cancelQuickRank()
-                    return .handled
+                app.cancelQuickRank()
+                return .handled
                 }
                 .onAppear {
-                    focused = defaultFocusField
-                    overlayHasFocus = true
+                focused = defaultFocusField
+                overlayHasFocus = true
                 }
                 .onDisappear {
-                    focused = nil
-                    overlayHasFocus = false
+                focused = nil
+                overlayHasFocus = false
                 }
                 .onChange(of: overlayHasFocus) { _, newValue in
-                    if !newValue {
-                        Task { @MainActor in
-                            try? await Task.sleep(for: .milliseconds(50))
-                            overlayHasFocus = true
-                        }
-                    }
+                if !newValue {
+                Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(50))
+                overlayHasFocus = true
+                }
+                }
                 }
                 #endif
             }

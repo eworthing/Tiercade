@@ -50,14 +50,14 @@ struct TierListQuickMenu: View {
         Button("Browse All Lists…") {
             app.presentTierListBrowser()
         }
-#if !os(tvOS)
+        #if !os(tvOS)
         .keyboardShortcut(.downArrow, modifiers: [])
-#endif
+        #endif
     }
 
     private var menuLabel: some View {
         #if os(tvOS)
-    HStack(spacing: 12) {
+        HStack(spacing: 12) {
             Image(systemName: "square.grid.2x2")
                 .font(.system(size: Metrics.toolbarIconSize))
                 .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)

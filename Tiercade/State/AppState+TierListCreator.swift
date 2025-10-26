@@ -67,7 +67,10 @@ extension AppState {
                     return try TierListCreatorCodec.makeDecoder().decode(Project.self, from: data)
                 } catch {
                     Logger.appState.error(
-                        "Failed to decode stored projectData for handle \(handle.id, privacy: .public): \(error.localizedDescription, privacy: .public)"
+                        """
+                        Failed to decode stored projectData for handle \(handle.id, privacy: .public): \
+                        \(error.localizedDescription, privacy: .public)
+                        """
                     )
                 }
             }

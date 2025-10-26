@@ -94,13 +94,13 @@ enum TypeScale {
     static let h3 = Font.title.weight(.semibold)
     static let body = Font.title3
     static let label = Font.body
-        static let metadata = Font.title3.weight(.semibold)
+    static let metadata = Font.title3.weight(.semibold)
     #else
     static let h2 = Font.title.weight(.semibold)
     static let h3 = Font.title2.weight(.semibold)
     static let body = Font.body
     static let label = Font.caption
-        static let metadata = Font.subheadline.weight(.semibold)
+    static let metadata = Font.subheadline.weight(.semibold)
     #endif
 }
 

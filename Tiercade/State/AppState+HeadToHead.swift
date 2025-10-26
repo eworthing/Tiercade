@@ -80,13 +80,13 @@ extension AppState {
         guard h2hActive, let pair = h2hPair else { return }
         let a = pair.0
         let b = pair.1
-#if DEBUG
+        #if DEBUG
         let poolIds = Set(h2hPool.map(\.id))
         assert(
             poolIds.contains(a.id) && poolIds.contains(b.id),
             "Voting on items that are no longer in the head-to-head pool"
         )
-#endif
+        #endif
         HeadToHeadLogic.vote(a, b, winner: winner, records: &h2hRecords)
         if h2hPhase == .refinement {
             h2hRefinementCompletedComparisons = min(

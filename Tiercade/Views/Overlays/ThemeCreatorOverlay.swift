@@ -75,9 +75,9 @@ struct ThemeCreatorOverlay: View {
             #if os(tvOS)
             .onExitCommand { dismiss(returnToPicker: true) }
             #endif
-#if os(tvOS)
+            #if os(tvOS)
             .onMoveCommand(perform: handleMoveCommand)
-#else
+            #else
             .focusable()
             .focused($overlayHasFocus)
             .onKeyPress(.upArrow) { handleDirectionalMove(.up); return .handled }
@@ -86,7 +86,7 @@ struct ThemeCreatorOverlay: View {
             .onKeyPress(.rightArrow) { handleDirectionalMove(.right); return .handled }
             .onKeyPress(.space) { handlePrimaryAction(); return .handled }
             .onKeyPress(.return) { handlePrimaryAction(); return .handled }
-#endif
+            #endif
             .onChange(of: focusedElement) { _, newValue in
                 guard !suppressFocusReset else { return }
                 if let newValue {
@@ -169,7 +169,7 @@ private extension ThemeCreatorOverlay {
                 .accessibilityIdentifier("ThemeCreator_NameField")
                 #if os(tvOS)
                 .focusEffectDisabled(false)
-                #endif
+            #endif
 
             TextField("Short description", text: descriptionBinding)
                 .padding(.vertical, 14)
@@ -188,7 +188,7 @@ private extension ThemeCreatorOverlay {
                 .foregroundStyle(.secondary)
                 #if os(tvOS)
                 .focusEffectDisabled(false)
-                #endif
+            #endif
         }
     }
 
@@ -339,9 +339,9 @@ private extension ThemeCreatorOverlay {
             .controlSize(.large)
             .focused($focusedElement, equals: .cancel)
             .accessibilityIdentifier("ThemeCreator_FooterCancel")
-#if !os(tvOS)
+            #if !os(tvOS)
             .keyboardShortcut(.cancelAction)
-#endif
+            #endif
 
             Spacer()
 
@@ -353,9 +353,9 @@ private extension ThemeCreatorOverlay {
             .focused($focusedElement, equals: .save)
             .disabled(nameBinding.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .accessibilityIdentifier("ThemeCreator_Save")
-#if !os(tvOS)
+            #if !os(tvOS)
             .keyboardShortcut(.defaultAction)
-#endif
+            #endif
         }
         .padding(platformOverlayPadding)
         .tvGlassRounded(0)
@@ -374,12 +374,12 @@ private extension ThemeCreatorOverlay {
         setFocus(.tier(tierID))
     }
 
-#if os(tvOS)
+    #if os(tvOS)
     func handleMoveCommand(_ direction: MoveCommandDirection) {
         guard let move = directionalMove(from: direction) else { return }
         handleDirectionalMove(move)
     }
-#endif
+    #endif
 
     func handleDirectionalMove(_ move: DirectionalMove) {
         #if !os(tvOS)

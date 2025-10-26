@@ -112,7 +112,7 @@ struct ThemeDraft: Identifiable, Hashable, Sendable {
             }
         }
 
-    if let unranked = baseTheme.tiers.first(where: { $0.isUnranked }) {
+        if let unranked = baseTheme.tiers.first(where: { $0.isUnranked }) {
             drafts.append(
                 ThemeTierDraft(
                     id: UUID(),
@@ -225,7 +225,7 @@ extension AppState {
     }
 
     func completeThemeCreation() {
-    guard var draft = themeDraft else { return }
+        guard var draft = themeDraft else { return }
 
         let cleanedName = draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanedName.isEmpty else {
