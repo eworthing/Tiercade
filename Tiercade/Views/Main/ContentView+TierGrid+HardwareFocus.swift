@@ -3,7 +3,7 @@ import Foundation
 import TiercadeCore
 
 #if !os(tvOS)
-private extension TierGridView {
+extension TierGridView {
     struct TierSnapshot {
         let tier: String
         let items: [Item]

@@ -81,9 +81,7 @@ final class FMClient {
                     attempt: attempt,
                     attemptStart: attemptStart,
                     params: params,
-                    currentOptions: &retryState.options,
-                    currentSeed: &retryState.seed,
-                    sessionRecreated: &sessionRecreated,
+                    retryState: &retryState,
                     telemetry: &telemetry
                 ) {
                     continue

@@ -4,14 +4,14 @@ import TiercadeCore
 
 // MARK: - Tier grid
 struct TierGridView: View {
-    @Environment(AppState.self) private var app: AppState
+    @Environment(AppState.self) var app: AppState
     let tierOrder: [String]
     @Environment(\.editMode) private var editMode
     #if !os(tvOS)
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @FocusState private var hardwareFocus: CardFocus?
-    @State private var lastHardwareFocus: CardFocus?
-    @FocusState private var gridHasFocus: Bool
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @FocusState var hardwareFocus: CardFocus?
+    @State var lastHardwareFocus: CardFocus?
+    @FocusState var gridHasFocus: Bool
     #endif
 
     var body: some View {
