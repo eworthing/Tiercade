@@ -48,7 +48,7 @@ final class FMClient {
 
         for attempt in 0..<params.maxRetries {
             let attemptStart = Date()
-            var sessionRecreated = false
+            retryState.sessionRecreated = false
 
             logAttemptDetails(attempt: attempt, maxRetries: params.maxRetries, options: retryState.options)
 
@@ -65,7 +65,7 @@ final class FMClient {
                         attemptStart: attemptStart,
                         totalStart: start,
                         currentSeed: retryState.seed,
-                        sessionRecreated: sessionRecreated,
+                        sessionRecreated: retryState.sessionRecreated,
                         params: params
                     ),
                     telemetry: &telemetry
