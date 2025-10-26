@@ -1,30 +1,30 @@
 import SwiftUI
 
 #if !os(tvOS)
-struct PlatformCardLayout {
-    let density: CardDensityPreference
-    let cardWidth: CGFloat
-    let contentPadding: CGFloat
-    let interItemSpacing: CGFloat
-    let rowSpacing: CGFloat
-    let verticalContentSpacing: CGFloat
-    let titleFont: Font
-    let metadataFont: Font
-    let cornerRadius: CGFloat
-    let thumbnailHeight: CGFloat
+internal struct PlatformCardLayout {
+    internal let density: CardDensityPreference
+    internal let cardWidth: CGFloat
+    internal let contentPadding: CGFloat
+    internal let interItemSpacing: CGFloat
+    internal let rowSpacing: CGFloat
+    internal let verticalContentSpacing: CGFloat
+    internal let titleFont: Font
+    internal let metadataFont: Font
+    internal let cornerRadius: CGFloat
+    internal let thumbnailHeight: CGFloat
 
-    var showsText: Bool { density.showsOnCardText }
+    internal var showsText: Bool { density.showsOnCardText }
 
-    var thumbnailSize: CGSize {
+    internal var thumbnailSize: CGSize {
         let width = max(cardWidth - (contentPadding * 2), 60)
         return CGSize(width: width, height: thumbnailHeight)
     }
 
-    var thumbnailCornerRadius: CGFloat {
+    internal var thumbnailCornerRadius: CGFloat {
         max(cornerRadius - 4, 6)
     }
 
-    var gridColumns: [GridItem] {
+    internal var gridColumns: [GridItem] {
         [
             GridItem(
                 .adaptive(
@@ -38,8 +38,8 @@ struct PlatformCardLayout {
     }
 }
 
-enum PlatformCardLayoutProvider {
-    static func layout(
+internal enum PlatformCardLayoutProvider {
+    internal static func layout(
         for itemCount: Int,
         preference: CardDensityPreference,
         horizontalSizeClass: UserInterfaceSizeClass?

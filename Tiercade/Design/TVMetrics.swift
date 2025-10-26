@@ -1,29 +1,29 @@
 import SwiftUI
 
 #if os(tvOS)
-enum TVMetrics {
-    static let minSafeAreaVertical: CGFloat = 60
-    static let minSafeAreaHorizontal: CGFloat = 80
+internal enum TVMetrics {
+    internal static let minSafeAreaVertical: CGFloat = 60
+    internal static let minSafeAreaHorizontal: CGFloat = 80
 
-    static let topBarHeight: CGFloat = 60
-    static let bottomBarHeight: CGFloat = 60
-    static let barHorizontalPadding: CGFloat = minSafeAreaHorizontal
-    static let barVerticalPadding: CGFloat = 8
-    static let toolbarContentGap: CGFloat = 12
-    static let toolbarClusterSpacing: CGFloat = 12
-    static let contentTopInset: CGFloat = max(topBarHeight, minSafeAreaVertical) + toolbarContentGap
-    static let contentBottomInset: CGFloat = max(bottomBarHeight, minSafeAreaVertical)
-    static let contentHorizontalPadding: CGFloat = minSafeAreaHorizontal
+    internal static let topBarHeight: CGFloat = 60
+    internal static let bottomBarHeight: CGFloat = 60
+    internal static let barHorizontalPadding: CGFloat = minSafeAreaHorizontal
+    internal static let barVerticalPadding: CGFloat = 8
+    internal static let toolbarContentGap: CGFloat = 12
+    internal static let toolbarClusterSpacing: CGFloat = 12
+    internal static let contentTopInset: CGFloat = max(topBarHeight, minSafeAreaVertical) + toolbarContentGap
+    internal static let contentBottomInset: CGFloat = max(bottomBarHeight, minSafeAreaVertical)
+    internal static let contentHorizontalPadding: CGFloat = minSafeAreaHorizontal
 
     // Overlay metrics
-    static let overlayPadding: CGFloat = 60
-    static let overlayCornerRadius: CGFloat = 24
-    static let cardSpacing: CGFloat = 32
-    static let buttonSpacing: CGFloat = 24
+    internal static let overlayPadding: CGFloat = 60
+    internal static let overlayCornerRadius: CGFloat = 24
+    internal static let cardSpacing: CGFloat = 32
+    internal static let buttonSpacing: CGFloat = 24
     // Grid density tuning
-    static let denseThreshold: Int = 18
+    internal static let denseThreshold: Int = 18
 
-    static func cardLayout(
+    internal static func cardLayout(
         for itemCount: Int,
         preference: CardDensityPreference
     ) -> TVCardLayout {
@@ -57,19 +57,19 @@ enum TVMetrics {
     }
 }
 
-struct TVCardLayout {
-    let density: CardDensityPreference
-    let thumbnailSize: CGSize
-    let contentPadding: CGFloat
-    let interItemSpacing: CGFloat
-    let verticalContentSpacing: CGFloat
-    let titleFont: Font
-    let metadataFont: Font
-    let cornerRadius: CGFloat
+internal struct TVCardLayout {
+    internal let density: CardDensityPreference
+    internal let thumbnailSize: CGSize
+    internal let contentPadding: CGFloat
+    internal let interItemSpacing: CGFloat
+    internal let verticalContentSpacing: CGFloat
+    internal let titleFont: Font
+    internal let metadataFont: Font
+    internal let cornerRadius: CGFloat
 
-    var cardWidth: CGFloat { thumbnailSize.width + (contentPadding * 2) }
+    internal var cardWidth: CGFloat { thumbnailSize.width + (contentPadding * 2) }
 
-    static let ultraMicro = TVCardLayout(
+    internal static let ultraMicro = TVCardLayout(
         density: .ultraMicro,
         thumbnailSize: CGSize(width: 110, height: 165),
         contentPadding: 6,
@@ -80,7 +80,7 @@ struct TVCardLayout {
         cornerRadius: 6
     )
 
-    static let micro = TVCardLayout(
+    internal static let micro = TVCardLayout(
         density: .micro,
         thumbnailSize: CGSize(width: 140, height: 186),
         contentPadding: 14,
@@ -91,7 +91,7 @@ struct TVCardLayout {
         cornerRadius: 10
     )
 
-    static let tight = TVCardLayout(
+    internal static let tight = TVCardLayout(
         density: .tight,
         thumbnailSize: CGSize(width: 170, height: 226),
         contentPadding: 15,
@@ -102,7 +102,7 @@ struct TVCardLayout {
         cornerRadius: 12
     )
 
-    static let compact = TVCardLayout(
+    internal static let compact = TVCardLayout(
         density: .compact,
         thumbnailSize: CGSize(width: 200, height: 266),
         contentPadding: 17,
@@ -113,7 +113,7 @@ struct TVCardLayout {
         cornerRadius: 14
     )
 
-    static let standard = TVCardLayout(
+    internal static let standard = TVCardLayout(
         density: .standard,
         thumbnailSize: CGSize(width: 236, height: 316),
         contentPadding: 22,
@@ -124,7 +124,7 @@ struct TVCardLayout {
         cornerRadius: 17
     )
 
-    static let expanded = TVCardLayout(
+    internal static let expanded = TVCardLayout(
         density: .expanded,
         thumbnailSize: CGSize(width: 264, height: 354),
         contentPadding: 26,

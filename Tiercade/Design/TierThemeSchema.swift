@@ -2,15 +2,15 @@ import Foundation
 import SwiftData
 
 @Model
-final class TierColorEntity {
-    var tierID: UUID
-    var index: Int
-    var name: String
-    var colorHex: String
-    var isUnranked: Bool
-    @Relationship(inverse: \TierThemeEntity.tiers) var theme: TierThemeEntity?
+internal final class TierColorEntity {
+    internal var tierID: UUID
+    internal var index: Int
+    internal var name: String
+    internal var colorHex: String
+    internal var isUnranked: Bool
+    @Relationship(inverse: \TierThemeEntity.tiers) internal var theme: TierThemeEntity?
 
-    init(
+    internal init(
         tierID: UUID = UUID(),
         index: Int,
         name: String,
@@ -28,14 +28,14 @@ final class TierColorEntity {
 }
 
 @Model
-final class TierThemeEntity {
-    var themeID: UUID
-    var slug: String
-    var displayName: String
-    var shortDescription: String
-    @Relationship(deleteRule: .cascade) var tiers: [TierColorEntity]
+internal final class TierThemeEntity {
+    internal var themeID: UUID
+    internal var slug: String
+    internal var displayName: String
+    internal var shortDescription: String
+    @Relationship(deleteRule: .cascade) internal var tiers: [TierColorEntity]
 
-    init(
+    internal init(
         themeID: UUID = UUID(),
         slug: String,
         displayName: String,
@@ -61,7 +61,7 @@ final class TierThemeEntity {
 }
 
 private extension TierThemeEntity {
-    static func normalizeTiers(_ tiers: [TierColorEntity]) -> [TierColorEntity] {
+    internal static func normalizeTiers(_ tiers: [TierColorEntity]) -> [TierColorEntity] {
         var rankedKeys = Set<String>()
         var hasUnranked = false
 
@@ -79,18 +79,18 @@ private extension TierThemeEntity {
         }
     }
 
-    static func normalizedKey(for tier: TierColorEntity) -> String {
+    internal static func normalizedKey(for tier: TierColorEntity) -> String {
         "\(tier.index)|\(normalizeName(tier.name))"
     }
 
-    static func normalizeName(_ raw: String) -> String {
+    internal static func normalizeName(_ raw: String) -> String {
         raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
 
 @MainActor
-enum TierThemeSeeds {
-    static let defaults: [TierThemeEntity] = seedDefinitions
+internal enum TierThemeSeeds {
+    internal static let defaults: [TierThemeEntity] = seedDefinitions
 
     private static let seedDefinitions: [TierThemeEntity] = [
         TierThemeEntity(

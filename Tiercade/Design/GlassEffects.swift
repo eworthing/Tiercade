@@ -4,10 +4,10 @@ import SwiftUI
 
 private struct TVGlassRoundedModifier: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    let radius: CGFloat
+    internal let radius: CGFloat
 
     @ViewBuilder
-    func body(content: Content) -> some View {
+    internal func body(content: Content) -> some View {
         if reduceTransparency {
             content.background(.thickMaterial, in: shape)
         } else {
@@ -28,7 +28,7 @@ private struct TVGlassCapsuleModifier: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     @ViewBuilder
-    func body(content: Content) -> some View {
+    internal func body(content: Content) -> some View {
         if reduceTransparency {
             content.background(.thickMaterial, in: Capsule())
         } else {
@@ -42,17 +42,17 @@ private struct TVGlassCapsuleModifier: ViewModifier {
 }
 
 extension View {
-    func tvGlassRounded(_ radius: CGFloat = 24) -> some View {
+    internal func tvGlassRounded(_ radius: CGFloat = 24) -> some View {
         modifier(TVGlassRoundedModifier(radius: radius))
     }
 
-    func tvGlassCapsule() -> some View {
+    internal func tvGlassCapsule() -> some View {
         modifier(TVGlassCapsuleModifier())
     }
 }
 
 @MainActor @ViewBuilder
-func tvGlassContainer<Content: View>(spacing: CGFloat? = nil, @ViewBuilder content: () -> Content) -> some View {
+internal func tvGlassContainer<Content: View>(spacing: CGFloat? = nil, @ViewBuilder content: () -> Content) -> some View {
     if let spacing {
         GlassEffectContainer(spacing: spacing, content: content)
     } else {

@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-struct CardStyle: ViewModifier {
-    func body(content: Content) -> some View {
+internal struct CardStyle: ViewModifier {
+    internal func body(content: Content) -> some View {
         content
             .padding(Metrics.grid * 1.5)
             .background(Palette.surface)
@@ -16,10 +16,10 @@ struct CardStyle: ViewModifier {
     }
 }
 
-extension View { func card() -> some View { modifier(CardStyle()) } }
+internal extension View { internal func card() -> some View { modifier(CardStyle()) } }
 
-struct PanelStyle: ViewModifier {
-    func body(content: Content) -> some View {
+internal struct PanelStyle: ViewModifier {
+    internal func body(content: Content) -> some View {
         content
             .padding(Metrics.grid * 2)
             .background(Palette.surface)
@@ -28,12 +28,12 @@ struct PanelStyle: ViewModifier {
     }
 }
 
-extension View { func panel() -> some View { modifier(PanelStyle()) } }
+internal extension View { internal func panel() -> some View { modifier(PanelStyle()) } }
 
-struct PrimaryButtonStyle: ButtonStyle {
+internal struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    func makeBody(configuration: Configuration) -> some View {
+    internal func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(TypeScale.label)
             .padding(.horizontal, Metrics.grid * 2).padding(.vertical, Metrics.grid * 1.25)
@@ -45,11 +45,11 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
-struct GhostButtonStyle: ButtonStyle {
-    @Environment(\.isFocused) var isFocused: Bool
+internal struct GhostButtonStyle: ButtonStyle {
+    @Environment(\.isFocused) internal var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    func makeBody(configuration: Configuration) -> some View {
+    internal func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(TypeScale.label)
             .padding(.horizontal, Metrics.grid * 2).padding(.vertical, Metrics.grid * 1.25)
@@ -65,11 +65,11 @@ struct GhostButtonStyle: ButtonStyle {
     }
 }
 
-struct CardButtonStyle: ButtonStyle {
-    @Environment(\.isFocused) var isFocused: Bool
+internal struct CardButtonStyle: ButtonStyle {
+    @Environment(\.isFocused) internal var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    func makeBody(configuration: Configuration) -> some View {
+    internal func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect((configuration.isPressed || isFocused) ? 1.15 : 1.0)
             .shadow(
@@ -90,18 +90,18 @@ private func get(_ isPressed: Bool) -> Color {
     #endif
 }
 
-struct TVRemoteButtonStyle: ButtonStyle {
-    enum Role {
+internal struct TVRemoteButtonStyle: ButtonStyle {
+    internal enum Role {
         case primary
         case secondary
         case list
     }
 
-    var role: Role = .primary
+    internal var role: Role = .primary
     @Environment(\.isFocused) private var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion: Bool
 
-    func makeBody(configuration: Configuration) -> some View {
+    internal func makeBody(configuration: Configuration) -> some View {
         let palette = palette(for: role, isPressed: configuration.isPressed, isFocused: isFocused)
         let scale = scale(for: configuration.isPressed, isFocused: isFocused)
         let borderWidth = isFocused ? palette.focusedBorderWidth : palette.baseBorderWidth
@@ -206,8 +206,8 @@ struct TVRemoteButtonStyle: ButtonStyle {
     }
 }
 
-extension ButtonStyle where Self == TVRemoteButtonStyle {
-    static func tvRemote(_ role: TVRemoteButtonStyle.Role = .primary) -> TVRemoteButtonStyle {
+internal extension ButtonStyle where Self == TVRemoteButtonStyle {
+    internal static func tvRemote(_ role: TVRemoteButtonStyle.Role = .primary) -> TVRemoteButtonStyle {
         TVRemoteButtonStyle(role: role)
     }
 }
