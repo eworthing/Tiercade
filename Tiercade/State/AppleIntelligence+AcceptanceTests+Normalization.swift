@@ -52,7 +52,7 @@ static func buildNormalizationTestCases() -> [NormalizationTestCase] {
     ]
 }
 
-struct NormalizationTestResult: Sendable {
+internal struct NormalizationTestResult: Sendable {
     let passed: Int
     let failed: Int
     let failures: [String]

@@ -19,7 +19,7 @@ class SystemPromptTester {
         let normalizedItems: [String]
     }
 
-    static func testPrompts(onProgress: @MainActor @escaping (String) -> Void) async -> [TestResult] {
+    internal static func testPrompts(onProgress: @MainActor @escaping (String) -> Void) async -> [TestResult] {
         let testQuery = "What are the top 25 most popular animated series"
         var results: [TestResult] = []
 

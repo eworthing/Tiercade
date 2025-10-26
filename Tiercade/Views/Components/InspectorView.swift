@@ -1,9 +1,9 @@
 import SwiftUI
 
-struct InspectorView: View {
+internal struct InspectorView: View {
     @Environment(AppState.self) private var app: AppState
     @State private var locked = false
-    var body: some View {
+    internal var body: some View {
         VStack(alignment: .leading, spacing: Metrics.grid) {
             HStack { Text("Inspector").font(TypeScale.h3); Spacer() }
 

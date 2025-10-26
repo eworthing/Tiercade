@@ -5,7 +5,7 @@ import os
 import TiercadeCore
 
 @MainActor
-extension AppState {
+internal extension AppState {
     enum TierListWizardContext: Equatable, Sendable {
         case create
         case edit(TierListHandle)
@@ -18,7 +18,7 @@ extension AppState {
 
     // MARK: - Presentation
 
-    func presentTierListCreator() {
+    internal func presentTierListCreator() {
         tierListWizardContext = .create
         tierListCreatorDraft = TierProjectDraft.makeDefault()
         tierListCreatorIssues.removeAll()
@@ -26,7 +26,7 @@ extension AppState {
         tierListCreatorActive = true
     }
 
-    func dismissTierListCreator(resetDraft: Bool = false) {
+    internal func dismissTierListCreator(resetDraft: Bool = false) {
         tierListCreatorActive = false
         showTierListCreator = false
         tierListWizardContext = .create
@@ -35,11 +35,11 @@ extension AppState {
         }
     }
 
-    func cancelTierListCreator() {
+    internal func cancelTierListCreator() {
         dismissTierListCreator(resetDraft: false)
     }
 
-    func presentTierListEditor(for handle: TierListHandle) async {
+    internal func presentTierListEditor(for handle: TierListHandle) async {
         await selectTierList(handle)
 
         guard let project = projectForEditor(from: handle) else {
@@ -82,7 +82,7 @@ extension AppState {
     // MARK: - Draft Editing Helpers
 
     @discardableResult
-    func addTier(to draft: TierProjectDraft) -> TierDraftTier {
+    internal func addTier(to draft: TierProjectDraft) -> TierDraftTier {
         let nextIndex = (draft.tiers.map(\.order).max() ?? -1) + 1
         let tierId = "custom-tier-\(UUID().uuidString)"
         let tier = TierDraftTier(
@@ -97,7 +97,7 @@ extension AppState {
         return tier
     }
 
-    func delete(_ tier: TierDraftTier, from draft: TierProjectDraft) {
+    internal func delete(_ tier: TierDraftTier, from draft: TierProjectDraft) {
         guard let index = draft.tiers.firstIndex(where: { $0.identifier == tier.identifier }) else { return }
         draft.tiers.remove(at: index)
         for item in draft.items where item.tier?.identifier == tier.identifier {
@@ -107,7 +107,7 @@ extension AppState {
         markDraftEdited(draft)
     }
 
-    func moveTier(_ tier: TierDraftTier, direction: Int, in draft: TierProjectDraft) {
+    internal func moveTier(_ tier: TierDraftTier, direction: Int, in draft: TierProjectDraft) {
         guard let currentIndex = orderedTiers(for: draft).firstIndex(where: { $0.identifier == tier.identifier }) else {
             return
         }
@@ -122,17 +122,17 @@ extension AppState {
         markDraftEdited(draft)
     }
 
-    func toggleLock(_ tier: TierDraftTier, in draft: TierProjectDraft) {
+    internal func toggleLock(_ tier: TierDraftTier, in draft: TierProjectDraft) {
         tier.locked.toggle()
         markDraftEdited(draft)
     }
 
-    func toggleCollapse(_ tier: TierDraftTier, in draft: TierProjectDraft) {
+    internal func toggleCollapse(_ tier: TierDraftTier, in draft: TierProjectDraft) {
         tier.collapsed.toggle()
         markDraftEdited(draft)
     }
 
-    func addItem(to draft: TierProjectDraft) -> TierDraftItem {
+    internal func addItem(to draft: TierProjectDraft) -> TierDraftItem {
         let identifier = "item-\(UUID().uuidString.lowercased())"
         let item = TierDraftItem(
             itemId: identifier,
@@ -145,13 +145,13 @@ extension AppState {
         return item
     }
 
-    func delete(_ item: TierDraftItem, from draft: TierProjectDraft) {
+    internal func delete(_ item: TierDraftItem, from draft: TierProjectDraft) {
         guard let index = draft.items.firstIndex(where: { $0.identifier == item.identifier }) else { return }
         draft.items.remove(at: index)
         markDraftEdited(draft)
     }
 
-    func assign(_ item: TierDraftItem, to tier: TierDraftTier?, in draft: TierProjectDraft) {
+    internal func assign(_ item: TierDraftItem, to tier: TierDraftTier?, in draft: TierProjectDraft) {
         if let previous = item.tier,
            let previousIndex = previous.items.firstIndex(where: { $0.identifier == item.identifier }) {
             previous.items.remove(at: previousIndex)
@@ -164,7 +164,7 @@ extension AppState {
         markDraftEdited(draft)
     }
 
-    func reorderItems(in tier: TierDraftTier, from source: IndexSet, to destination: Int) {
+    internal func reorderItems(in tier: TierDraftTier, from source: IndexSet, to destination: Int) {
         var current = tier.items.sorted(by: { $0.ordinal < $1.ordinal })
         current.move(fromOffsets: source, toOffset: destination)
         for (index, item) in current.enumerated() {
@@ -175,7 +175,7 @@ extension AppState {
         }
     }
 
-    func updateTag(_ tag: String, for item: TierDraftItem, isAdding: Bool) {
+    internal func updateTag(_ tag: String, for item: TierDraftItem, isAdding: Bool) {
         if isAdding {
             guard item.tags.contains(tag) == false else { return }
             item.tags.append(tag)
@@ -187,7 +187,7 @@ extension AppState {
         }
     }
 
-    func markDraftEdited(_ draft: TierProjectDraft, timestamp: Date = Date()) {
+    internal func markDraftEdited(_ draft: TierProjectDraft, timestamp: Date = Date()) {
         draft.updatedAt = timestamp
         if let audit = draft.audit {
             audit.updatedAt = timestamp
@@ -202,7 +202,7 @@ extension AppState {
         return "local-user"
     }
 
-    func orderedTiers(for draft: TierProjectDraft) -> [TierDraftTier] {
+    internal func orderedTiers(for draft: TierProjectDraft) -> [TierDraftTier] {
         draft.tiers.sorted { lhs, rhs in
             if lhs.order == rhs.order {
                 return lhs.label.localizedCompare(rhs.label) == .orderedAscending
@@ -211,7 +211,7 @@ extension AppState {
         }
     }
 
-    func orderedItems(for tier: TierDraftTier) -> [TierDraftItem] {
+    internal func orderedItems(for tier: TierDraftTier) -> [TierDraftItem] {
         tier.items.sorted { lhs, rhs in
             if lhs.ordinal == rhs.ordinal {
                 return lhs.title.localizedCompare(rhs.title) == .orderedAscending
@@ -220,7 +220,7 @@ extension AppState {
         }
     }
 
-    func unassignedItems(for draft: TierProjectDraft) -> [TierDraftItem] {
+    internal func unassignedItems(for draft: TierProjectDraft) -> [TierDraftItem] {
         draft.items.filter { $0.tier == nil }
     }
 

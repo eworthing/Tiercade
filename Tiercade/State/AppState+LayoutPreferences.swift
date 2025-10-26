@@ -2,8 +2,8 @@ import Foundation
 import SwiftUI
 
 @MainActor
-extension AppState {
-    func setCardDensityPreference(_ preference: CardDensityPreference, quietly: Bool = false) {
+internal extension AppState {
+    internal func setCardDensityPreference(_ preference: CardDensityPreference, quietly: Bool = false) {
         guard cardDensityPreference != preference else { return }
         let snapshot = captureTierSnapshot()
         cardDensityPreference = preference
@@ -14,12 +14,12 @@ extension AppState {
         announce(preference.toastMessage)
     }
 
-    func cycleCardDensityPreference() {
+    internal func cycleCardDensityPreference() {
         let nextPreference = cardDensityPreference.next()
         setCardDensityPreference(nextPreference)
     }
 
-    func restoreCardDensityPreference(rawValue: String?) {
+    internal func restoreCardDensityPreference(rawValue: String?) {
         guard
             let rawValue,
             let preference = CardDensityPreference(rawValue: rawValue)

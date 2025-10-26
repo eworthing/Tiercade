@@ -2,9 +2,9 @@ import Foundation
 import TiercadeCore
 
 @MainActor
-extension AppState {
+internal extension AppState {
     // MARK: - Search & Filter
-    func filteredItems(for tier: String) -> [Item] {
+    internal func filteredItems(for tier: String) -> [Item] {
         var items = tiers[tier] ?? []
 
         switch activeFilter {
@@ -20,7 +20,7 @@ extension AppState {
         return items
     }
 
-    func allItems() -> [Item] {
+    internal func allItems() -> [Item] {
         switch activeFilter {
         case .all:
             let all = tierOrder.flatMap { tiers[$0] ?? [] } + (tiers["unranked"] ?? [])
@@ -34,12 +34,12 @@ extension AppState {
         }
     }
 
-    func tierCount(_ tier: String) -> Int { tiers[tier]?.count ?? 0 }
-    func rankedCount() -> Int { tierOrder.flatMap { tiers[$0] ?? [] }.count }
-    func unrankedCount() -> Int { tiers["unranked"]?.count ?? 0 }
-    func items(for tier: String) -> [Item] { tiers[tier] ?? [] }
+    internal func tierCount(_ tier: String) -> Int { tiers[tier]?.count ?? 0 }
+    internal func rankedCount() -> Int { tierOrder.flatMap { tiers[$0] ?? [] }.count }
+    internal func unrankedCount() -> Int { tiers["unranked"]?.count ?? 0 }
+    internal func items(for tier: String) -> [Item] { tiers[tier] ?? [] }
 
-    func applySearchFilter(to items: [Item]) -> [Item] {
+    internal func applySearchFilter(to items: [Item]) -> [Item] {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !query.isEmpty else { return items }
 

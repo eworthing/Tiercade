@@ -1,15 +1,15 @@
 import SwiftUI
 import TiercadeCore
 
-struct MatchupProgressDial: View {
-    let progress: Double
-    let label: String
+internal struct MatchupProgressDial: View {
+    internal let progress: Double
+    internal let label: String
 
     private var clampedProgress: Double {
         min(max(progress, 0), 1)
     }
 
-    var body: some View {
+    internal var body: some View {
         ZStack {
             Circle()
                 .stroke(Color.white.opacity(0.12), lineWidth: 14)
@@ -51,15 +51,15 @@ struct MatchupProgressDial: View {
     }
 }
 
-struct MatchupCandidateCard: View {
+internal struct MatchupCandidateCard: View {
     enum AlignmentHint { case leading, trailing }
 
-    let item: Item
-    let accentColor: Color
-    let alignment: AlignmentHint
-    let action: () -> Void
+    internal let item: Item
+    internal let accentColor: Color
+    internal let alignment: AlignmentHint
+    internal let action: () -> Void
 
-    var body: some View {
+    internal var body: some View {
         Button(action: action) {
             VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: 18) {
                 header
@@ -149,10 +149,10 @@ struct MatchupCandidateCard: View {
     }
 }
 
-struct MatchupPassTile: View {
-    let action: () -> Void
+internal struct MatchupPassTile: View {
+    internal let action: () -> Void
 
-    var body: some View {
+    internal var body: some View {
         Button(action: action) {
             VStack(spacing: 16) {
                 Image(systemName: "arrow.uturn.left.circle")
@@ -182,8 +182,8 @@ struct MatchupPassTile: View {
     }
 }
 
-struct MatchupCompletionPanel: View {
-    var body: some View {
+internal struct MatchupCompletionPanel: View {
+    internal var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "crown.fill")
                 .font(.system(size: 64, weight: .bold))

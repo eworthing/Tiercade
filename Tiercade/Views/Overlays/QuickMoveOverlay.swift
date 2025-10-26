@@ -2,7 +2,7 @@ import SwiftUI
 import TiercadeCore
 
 #if os(tvOS)
-struct QuickMoveOverlay: View {
+internal struct QuickMoveOverlay: View {
     @Bindable var app: AppState
     @Environment(\.editMode) private var editMode
     @FocusState private var focusedElement: FocusElement?
@@ -14,7 +14,7 @@ struct QuickMoveOverlay: View {
         case cancel
     }
 
-    var body: some View {
+    internal var body: some View {
         if let item = app.quickMoveTarget {
             let isBatchMode = app.batchQuickMoveActive
             let title = isBatchMode
@@ -167,14 +167,14 @@ struct QuickMoveOverlay: View {
 
 // Simplified tier button component - relies on SwiftUI default focus behavior
 private struct TierButton: View {
-    let tierName: String
-    let displayLabel: String
-    let tierColor: Color
-    let itemCount: Int
-    let isCurrentTier: Bool
-    let action: () -> Void
+    internal let tierName: String
+    internal let displayLabel: String
+    internal let tierColor: Color
+    internal let itemCount: Int
+    internal let isCurrentTier: Bool
+    internal let action: () -> Void
 
-    var body: some View {
+    internal var body: some View {
         Button(
             action: { if !isCurrentTier { action() } },
             label: {

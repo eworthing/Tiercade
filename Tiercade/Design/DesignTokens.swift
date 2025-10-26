@@ -8,49 +8,49 @@
 import SwiftUI
 
 private struct DynamicDesignColor: ShapeStyle, Hashable {
-    typealias Resolved = Color.Resolved
+    fileprivate typealias Resolved = Color.Resolved
 
-    let lightHex: String
-    let darkHex: String
+    fileprivate let lightHex: String
+    fileprivate let darkHex: String
 
-    func resolve(in environment: EnvironmentValues) -> Color.Resolved {
+    fileprivate func resolve(in environment: EnvironmentValues) -> Color.Resolved {
         let preferredHex = environment.colorScheme == .dark ? darkHex : lightHex
         return ColorUtilities.color(hex: preferredHex).resolve(in: environment)
     }
 }
 
 extension Color {
-    init(designHex: String) {
+    internal init(designHex: String) {
         self = ColorUtilities.color(hex: designHex)
     }
 
     /// Create a dynamic color that adapts to appearance changes using SwiftUI's shape style system.
-    static func dynamic(light: String, dark: String) -> Color {
+    internal static func dynamic(light: String, dark: String) -> Color {
         Color(DynamicDesignColor(lightHex: light, darkHex: dark))
     }
 }
 
 // Design tokens
-enum Palette {
+internal enum Palette {
     // Use dynamic tokens so ThemePreference / ColorScheme toggles map correctly
-    static let bg      = Color.dynamic(light: "#FFFFFF", dark: "#0B0F14")
-    static let surface = Color.dynamic(light: "#F8FAFC", dark: "#0F141A")
-    static let surfHi  = Color.dynamic(light: "#00000008", dark: "#FFFFFF14")
-    static let appBackground = Color.dynamic(light: "#F5F7FA", dark: "#0E1114")
-    static let cardBackground = Color.dynamic(light: "#FFFFFF", dark: "#192028")
-    static let stroke = Color.dynamic(light: "#00000010", dark: "#FFFFFF14")
-    static let text    = Color.dynamic(light: "#111827", dark: "#E8EDF2")
-    static let textDim = Color.dynamic(light: "#6B7280", dark: "#FFFFFFB8")
-    static let cardText = Color.dynamic(light: "#0E1114", dark: "#FFFFFFE6")
-    static let cardTextDim = Color.dynamic(light: "#4B5563", dark: "#FFFFFFA6")
-    static let textDisabled = Color.dynamic(light: "#9CA3AF", dark: "#FFFFFF66")
-    static let textOnAccent = Color.dynamic(light: "#FFFFFF", dark: "#FFFFFFD6")
-    static let brand   = Color(designHex: "#3B82F6")
+    internal static let bg      = Color.dynamic(light: "#FFFFFF", dark: "#0B0F14")
+    internal static let surface = Color.dynamic(light: "#F8FAFC", dark: "#0F141A")
+    internal static let surfHi  = Color.dynamic(light: "#00000008", dark: "#FFFFFF14")
+    internal static let appBackground = Color.dynamic(light: "#F5F7FA", dark: "#0E1114")
+    internal static let cardBackground = Color.dynamic(light: "#FFFFFF", dark: "#192028")
+    internal static let stroke = Color.dynamic(light: "#00000010", dark: "#FFFFFF14")
+    internal static let text    = Color.dynamic(light: "#111827", dark: "#E8EDF2")
+    internal static let textDim = Color.dynamic(light: "#6B7280", dark: "#FFFFFFB8")
+    internal static let cardText = Color.dynamic(light: "#0E1114", dark: "#FFFFFFE6")
+    internal static let cardTextDim = Color.dynamic(light: "#4B5563", dark: "#FFFFFFA6")
+    internal static let textDisabled = Color.dynamic(light: "#9CA3AF", dark: "#FFFFFF66")
+    internal static let textOnAccent = Color.dynamic(light: "#FFFFFF", dark: "#FFFFFFD6")
+    internal static let brand   = Color(designHex: "#3B82F6")
     private static let defaultTierColor = Color(designHex: "#6B7280")
     private static let unrankedTierColor = Color(designHex: "#94A3B8")
 
     // Tier accents as Colors
-    static let tierColors: [String: Color] = [
+    internal static let tierColors: [String: Color] = [
         "S": Color(designHex: "#E11D48"),
         "A": Color(designHex: "#F59E0B"),
         "B": Color(designHex: "#22C55E"),
@@ -60,53 +60,53 @@ enum Palette {
         "UNRANKED": unrankedTierColor
     ]
 
-    static func tierColor(_ tier: String) -> Color {
+    internal static func tierColor(_ tier: String) -> Color {
         let normalized = tier.lowercased()
         if normalized == "unranked" { return unrankedTierColor }
         return tierColors[tier.uppercased()] ?? defaultTierColor
     }
 }
 
-enum Metrics {
-    static let grid: CGFloat = 8
-    static let rSm: CGFloat = 8
-    static let rMd: CGFloat = 12
-    static let rLg: CGFloat = 16
-    static let cardMin = CGSize(width: 140, height: 180)
-    static let paneLeft: CGFloat = 280
-    static let paneRight: CGFloat = 320
-    static let toolbarH: CGFloat = 56
+internal enum Metrics {
+    internal static let grid: CGFloat = 8
+    internal static let rSm: CGFloat = 8
+    internal static let rMd: CGFloat = 12
+    internal static let rLg: CGFloat = 16
+    internal static let cardMin = CGSize(width: 140, height: 180)
+    internal static let paneLeft: CGFloat = 280
+    internal static let paneRight: CGFloat = 320
+    internal static let toolbarH: CGFloat = 56
 
     // Toolbar button & icon sizing
     #if os(tvOS)
-    static let toolbarButtonSize: CGFloat = 48
-    static let toolbarIconSize: CGFloat = 36
+    internal static let toolbarButtonSize: CGFloat = 48
+    internal static let toolbarIconSize: CGFloat = 36
     #else
-    static let toolbarButtonSize: CGFloat = 44
-    static let toolbarIconSize: CGFloat = 24
+    internal static let toolbarButtonSize: CGFloat = 44
+    internal static let toolbarIconSize: CGFloat = 24
     #endif
 }
 
-enum TypeScale {
+internal enum TypeScale {
     // Use dynamic, semantic text styles so SwiftUI can scale them for Accessibility / Dynamic Type
     #if os(tvOS)
-    static let h2 = Font.largeTitle.weight(.bold)
-    static let h3 = Font.title.weight(.semibold)
-    static let body = Font.title3
-    static let label = Font.body
-    static let metadata = Font.title3.weight(.semibold)
+    internal static let h2 = Font.largeTitle.weight(.bold)
+    internal static let h3 = Font.title.weight(.semibold)
+    internal static let body = Font.title3
+    internal static let label = Font.body
+    internal static let metadata = Font.title3.weight(.semibold)
     #else
-    static let h2 = Font.title.weight(.semibold)
-    static let h3 = Font.title2.weight(.semibold)
-    static let body = Font.body
-    static let label = Font.caption
-    static let metadata = Font.subheadline.weight(.semibold)
+    internal static let h2 = Font.title.weight(.semibold)
+    internal static let h3 = Font.title2.weight(.semibold)
+    internal static let body = Font.body
+    internal static let label = Font.caption
+    internal static let metadata = Font.subheadline.weight(.semibold)
     #endif
 }
 
-enum Motion {
-    static let fast = Animation.easeOut(duration: 0.12)
-    static let focus = Animation.easeOut(duration: 0.15)
-    static let emphasis = Animation.easeOut(duration: 0.20)
-    static let spring = Animation.spring(response: 0.30, dampingFraction: 0.8)
+internal enum Motion {
+    internal static let fast = Animation.easeOut(duration: 0.12)
+    internal static let focus = Animation.easeOut(duration: 0.15)
+    internal static let emphasis = Animation.easeOut(duration: 0.20)
+    internal static let spring = Animation.spring(response: 0.30, dampingFraction: 0.8)
 }

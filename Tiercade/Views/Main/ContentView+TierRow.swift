@@ -2,29 +2,29 @@ import SwiftUI
 import TiercadeCore
 
 #if !os(tvOS)
-struct CardFocus: Hashable {
-    let tier: String
-    let itemID: String
+internal struct CardFocus: Hashable {
+    internal let tier: String
+    internal let itemID: String
 }
 #endif
 
-struct TierRowWrapper: View {
+internal struct TierRowWrapper: View {
     @Environment(AppState.self) private var app: AppState
-    let tier: String
+    internal let tier: String
     #if os(tvOS)
     @FocusState private var focusedItemId: String?
     @State private var showMenu = false
     #else
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let hardwareFocus: FocusState<CardFocus?>.Binding
+    internal let hardwareFocus: FocusState<CardFocus?>.Binding
     #endif
 
     private var filteredCards: [Item] {
         app.filteredItems(for: tier)
     }
 
-    var body: some View {
+    internal var body: some View {
         if !filteredCards.isEmpty {
             let accent = tierAccentColor()
 
@@ -211,7 +211,7 @@ private func dynamicTextOn(hex: String) -> Color {
 // MARK: - Color Extension
 
 extension Color {
-    func toHex() -> String? {
+    internal func toHex() -> String? {
         #if os(tvOS) || os(iOS)
         guard let components = UIColor(self).cgColor.components else { return nil }
         #else
@@ -229,10 +229,10 @@ extension Color {
 // MARK: - Vertical Tier Components
 
 private struct VerticalTierText: View {
-    let label: String
-    let textColor: Color
+    internal let label: String
+    internal let textColor: Color
 
-    var body: some View {
+    internal var body: some View {
         GeometryReader { geometry in
             let availableHeight = geometry.size.height
             let charCount = CGFloat(label.count)
@@ -260,13 +260,13 @@ private struct VerticalTierText: View {
 
 #if os(tvOS)
 private struct TierControlButtons: View {
-    let tier: String
-    let isLocked: Bool
-    let textColor: Color
-    let onToggleLock: () -> Void
-    let onShowMenu: () -> Void
+    internal let tier: String
+    internal let isLocked: Bool
+    internal let textColor: Color
+    internal let onToggleLock: () -> Void
+    internal let onShowMenu: () -> Void
 
-    var body: some View {
+    internal var body: some View {
         Button(action: onShowMenu, label: {
             Image(systemName: "ellipsis.circle")
                 .font(.system(size: 24))
@@ -281,7 +281,7 @@ private struct TierControlButtons: View {
 
 private struct TierLabelEditor: View {
     @Bindable var app: AppState
-    let tierId: String
+    internal let tierId: String
     @Binding var showMenu: Bool
     @State private var label: String = ""
     @State private var colorHex: String = ""
@@ -312,7 +312,7 @@ private struct TierLabelEditor: View {
         ("Gray", "#808080")
     ]
 
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 20) {
             Text("Tier \(tierId)").font(.title2)
 

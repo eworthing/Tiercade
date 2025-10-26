@@ -210,6 +210,7 @@ Cmd+R (or Product → Run)
 
 - After every successful build, boot the tvOS simulator with the latest app build, keep it open for visual review, and exercise the relevant surfaces with a Siri Remote (or keyboard arrow) pass to confirm focus, animations, and gestures.
 - Preferred flow: run the "Build tvOS Tiercade (Debug)" task (or `Cmd+R` in Xcode), then leave the simulator running while iterating on focus tweaks, visual polish, and final sign-off.
+- **Cross-platform validation (required after UI refactors or access-level changes):** Build both tvOS and Mac Catalyst to catch visibility issues and platform-specific bugs. Use `./build_install_launch.sh` for tvOS and `./build_install_launch.sh catalyst` for Mac Catalyst. Catalyst often surfaces visibility issues (like [f662d34](https://github.com/eworthing/Tiercade/commit/f662d34)) that tvOS builds don't catch.
 
 ### **Project Structure**
 

@@ -5,10 +5,10 @@ import os
 import TiercadeCore
 
 @MainActor
-extension AppState {
+internal extension AppState {
     // MARK: - Persistence Helpers
 
-    func persistProjectDraft(_ draft: TierProjectDraft) throws -> TierListEntity {
+    internal func persistProjectDraft(_ draft: TierProjectDraft) throws -> TierListEntity {
         let now = Date()
         draft.audit?.updatedAt = now
         draft.updatedAt = now
@@ -185,7 +185,7 @@ extension AppState {
         return trimmed
     }
 
-    func buildProject(from draft: TierProjectDraft) throws -> Project {
+    internal func buildProject(from draft: TierProjectDraft) throws -> Project {
         let tiers = buildTiersFromDraft(draft)
         let items = buildItemsFromDraft(draft)
         let overrides = buildOverridesFromDraft(draft)
@@ -266,13 +266,13 @@ extension AppState {
         return overrides
     }
 
-    func normalizeTierOrdering(for draft: TierProjectDraft) {
+    internal func normalizeTierOrdering(for draft: TierProjectDraft) {
         for (index, tier) in orderedTiers(for: draft).enumerated() {
             tier.order = index
         }
     }
 
-    func project(from entity: TierListEntity, source: TierListSource) -> Project {
+    internal func project(from entity: TierListEntity, source: TierListSource) -> Project {
         let sortedTiers = entity.tiers.sorted { $0.order < $1.order }
         let (itemMap, projectTiers) = buildProjectComponents(sortedTiers: sortedTiers)
         let settings = buildProjectSettingsFromEntity(entity, projectTiers: projectTiers)
@@ -399,7 +399,7 @@ extension AppState {
         )
     }
 
-    func projectFromInMemoryState(source: TierListSource) -> Project {
+    internal func projectFromInMemoryState(source: TierListSource) -> Project {
         let orderedTiers = buildOrderedTiersIncludingUnranked()
         let (projectTiers, projectItems) = buildProjectTiersAndItems(orderedTiers: orderedTiers)
         let settings = buildInMemoryProjectSettings()
@@ -543,13 +543,13 @@ extension AppState {
     }
 }
 
-enum TierListCreatorPalette {
+internal enum TierListCreatorPalette {
     private static let colors: [String] = [
         "#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#007AFF", "#AF52DE",
         "#FF2D55", "#5AC8FA", "#FF9F0A", "#FFD60A"
     ]
 
-    static func color(for index: Int) -> String {
+    internal static func color(for index: Int) -> String {
         guard index >= 0 else { return colors.first ?? "#FF3B30" }
         return colors[index % colors.count]
     }

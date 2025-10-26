@@ -1,7 +1,7 @@
 import Foundation
 
 extension HeadToHeadLogic {
-    struct HeadToHeadMetrics: Sendable {
+    internal struct HeadToHeadMetrics: Sendable {
         let wins: Int
         let comparisons: Int
         let winRate: Double
@@ -11,16 +11,16 @@ extension HeadToHeadLogic {
         let id: String
     }
 
-    struct Prior: Sendable {
+    internal struct Prior: Sendable {
         let alpha: Double
         let beta: Double
     }
 
-    struct PairKey: Hashable {
+    internal struct PairKey: Hashable {
         let lhs: String
         let rhs: String
 
-        init(_ a: Item, _ b: Item) {
+        internal init(_ a: Item, _ b: Item) {
             if a.id <= b.id {
                 lhs = a.id
                 rhs = b.id
@@ -31,35 +31,35 @@ extension HeadToHeadLogic {
         }
     }
 
-    enum Tun {
-        static let maximumTierCount = 20
-        static let minimumComparisonsPerItem = 2
-        static let frontierWidth = 2
-        static let zQuick: Double = 1.0
-        static let zStd: Double = 1.28
-        static let zRefineEarly: Double = 1.0
-        static let softOverlapEps: Double = 0.010
-        static let confBonusBeta: Double = 0.10
-        static let maxSuggestedPairs = 6
-        static let hysteresisMaxChurnSoft: Double = 0.12
-        static let hysteresisMaxChurnHard: Double = 0.25
-        static let hysteresisRampBoost: Double = 0.50
-        static let minWilsonRangeForSplit: Double = 0.015
-        static let epsTieTop: Double = 0.012
-        static let epsTieBottom: Double = 0.010
-        static let maxBottomTieWidth: Int = 4
-        static let ubBottomCeil: Double = 0.20
+    internal enum Tun {
+        internal static let maximumTierCount = 20
+        internal static let minimumComparisonsPerItem = 2
+        internal static let frontierWidth = 2
+        internal static let zQuick: Double = 1.0
+        internal static let zStd: Double = 1.28
+        internal static let zRefineEarly: Double = 1.0
+        internal static let softOverlapEps: Double = 0.010
+        internal static let confBonusBeta: Double = 0.10
+        internal static let maxSuggestedPairs = 6
+        internal static let hysteresisMaxChurnSoft: Double = 0.12
+        internal static let hysteresisMaxChurnHard: Double = 0.25
+        internal static let hysteresisRampBoost: Double = 0.50
+        internal static let minWilsonRangeForSplit: Double = 0.015
+        internal static let epsTieTop: Double = 0.012
+        internal static let epsTieBottom: Double = 0.010
+        internal static let maxBottomTieWidth: Int = 4
+        internal static let ubBottomCeil: Double = 0.20
     }
 
-    enum TieringGuard {
-        static let minSegmentSizeToSplit: Int = 3
+    internal enum TieringGuard {
+        internal static let minSegmentSizeToSplit: Int = 3
     }
 
-    static func warmUpComparisons(rankableCount n: Int, tierCount k: Int) -> Int {
+    internal static func warmUpComparisons(rankableCount n: Int, tierCount k: Int) -> Int {
         max(Int(ceil(1.5 * Double(n))), 2 * k)
     }
 
-    static func partitionByComparisons(
+    internal static func partitionByComparisons(
         _ pool: [Item],
         records: [String: H2HRecord],
         minimumComparisons: Int
@@ -76,13 +76,13 @@ extension HeadToHeadLogic {
         return (rankable, undersampled)
     }
 
-    static func normalizedTierNames(from tierOrder: [String]) -> [String] {
+    internal static func normalizedTierNames(from tierOrder: [String]) -> [String] {
         tierOrder
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
     }
 
-    static func clearedTiers(_ base: Items, removing pool: [Item], tierNames: [String]) -> Items {
+    internal static func clearedTiers(_ base: Items, removing pool: [Item], tierNames: [String]) -> Items {
         var updated = base
         let poolIds = Set(pool.map(\.id))
 
@@ -99,12 +99,12 @@ extension HeadToHeadLogic {
         return updated
     }
 
-    static func operativeTierNames(from tierNames: [String]) -> [String] {
+    internal static func operativeTierNames(from tierNames: [String]) -> [String] {
         guard tierNames.count >= 2 else { return tierNames }
         return Array(tierNames.prefix(Tun.maximumTierCount))
     }
 
-    static func metricsDictionary(
+    internal static func metricsDictionary(
         for items: [Item],
         records: [String: H2HRecord],
         z: Double,
@@ -133,7 +133,7 @@ extension HeadToHeadLogic {
         })
     }
 
-    static func metricsDictionary(
+    internal static func metricsDictionary(
         for items: [Item],
         records: [String: H2HRecord],
         z: Double
@@ -157,7 +157,7 @@ extension HeadToHeadLogic {
         })
     }
 
-    static func orderedItems(_ items: [Item], metrics: [String: HeadToHeadMetrics]) -> [Item] {
+    internal static func orderedItems(_ items: [Item], metrics: [String: HeadToHeadMetrics]) -> [Item] {
         items.sorted { lhs, rhs in
             guard let leftMetrics = metrics[lhs.id],
                   let rightMetrics = metrics[rhs.id] else { return lhs.id < rhs.id }
@@ -177,7 +177,7 @@ extension HeadToHeadLogic {
         }
     }
 
-    static func quantileCuts(count n: Int, tierCount k: Int) -> [Int] {
+    internal static func quantileCuts(count n: Int, tierCount k: Int) -> [Int] {
         guard k > 1, n > 1 else { return [] }
         var cuts: [Int] = []
         for i in 1..<k {
@@ -189,7 +189,7 @@ extension HeadToHeadLogic {
         return Array(Set(cuts)).sorted()
     }
 
-    static func buildAudits(orderedCount n: Int, cuts: [Int], width w: Int) -> [H2HFrontier] {
+    internal static func buildAudits(orderedCount n: Int, cuts: [Int], width w: Int) -> [H2HFrontier] {
         cuts.map { cut in
             let upper = max(0, cut - w)..<cut
             let lower = cut..<min(n, cut + w)
@@ -197,7 +197,7 @@ extension HeadToHeadLogic {
         }
     }
 
-    static func slice<T>(_ array: [T], _ range: Range<Int>) -> [T] {
+    internal static func slice<T>(_ array: [T], _ range: Range<Int>) -> [T] {
         guard !array.isEmpty else { return [] }
         let lower = max(0, range.lowerBound)
         let upper = min(array.count, range.upperBound)
@@ -205,7 +205,7 @@ extension HeadToHeadLogic {
         return Array(array[lower..<upper])
     }
 
-    static func assignByCuts(
+    internal static func assignByCuts(
         ordered: [Item],
         cuts: [Int],
         tierNames: [String],
@@ -223,7 +223,7 @@ extension HeadToHeadLogic {
         }
     }
 
-    static func sortTierMembers(
+    internal static func sortTierMembers(
         _ tiers: inout Items,
         metrics: [String: HeadToHeadMetrics],
         tierNames: [String]
@@ -235,7 +235,7 @@ extension HeadToHeadLogic {
         }
     }
 
-    static func dropCuts(
+    internal static func dropCuts(
         for ordered: [Item],
         metrics: [String: HeadToHeadMetrics],
         tierCount: Int,
@@ -262,7 +262,7 @@ extension HeadToHeadLogic {
         return Array(sorted.prefix(tierCount - 1)).map { $0.0 }.sorted()
     }
 
-    static func wilsonRange(
+    internal static func wilsonRange(
         ordered: [Item],
         range: Range<Int>,
         metrics: [String: HeadToHeadMetrics]
@@ -282,7 +282,7 @@ extension HeadToHeadLogic {
         return maxValue - minValue
     }
 
-    static func fillMissingCutsWithGuards(
+    internal static func fillMissingCutsWithGuards(
         primary: [Int],
         tierCount: Int,
         itemCount: Int,
@@ -310,7 +310,7 @@ extension HeadToHeadLogic {
         return Array(picks).sorted()
     }
 
-    static func mergeCutsPreferRefined(
+    internal static func mergeCutsPreferRefined(
         primary: [Int],
         tierCount: Int,
         itemCount: Int,
@@ -326,7 +326,7 @@ extension HeadToHeadLogic {
         )
     }
 
-    static func bottomClusterStart(
+    internal static func bottomClusterStart(
         ordered: [Item],
         metrics: [String: HeadToHeadMetrics]
     ) -> Int? {
@@ -351,7 +351,7 @@ extension HeadToHeadLogic {
         return start == ordered.count - 1 ? nil : start
     }
 
-    static func contiguousSegments(n: Int, cuts: [Int]) -> [Range<Int>] {
+    internal static func contiguousSegments(n: Int, cuts: [Int]) -> [Range<Int>] {
         guard n > 0 else { return [] }
         let sortedCuts = cuts.sorted()
         var segments: [Range<Int>] = []
@@ -365,7 +365,7 @@ extension HeadToHeadLogic {
         return segments
     }
 
-    static func topBoundaryComparisons(
+    internal static func topBoundaryComparisons(
         ordered: [Item],
         metrics: [String: HeadToHeadMetrics],
         epsilon: Double
@@ -389,7 +389,7 @@ extension HeadToHeadLogic {
         return results
     }
 
-    static func bottomBoundaryComparisons(
+    internal static func bottomBoundaryComparisons(
         ordered: [Item],
         metrics: [String: HeadToHeadMetrics],
         epsilon: Double
@@ -415,7 +415,7 @@ extension HeadToHeadLogic {
         return results
     }
 
-    static func tierMapForCuts(
+    internal static func tierMapForCuts(
         ordered: [Item],
         cuts: [Int],
         tierCount: Int
@@ -434,7 +434,7 @@ extension HeadToHeadLogic {
         return map
     }
 
-    static func churnFraction(
+    internal static func churnFraction(
         old: [String: Int],
         new: [String: Int],
         universe: [Item]
@@ -447,7 +447,7 @@ extension HeadToHeadLogic {
         return Double(moved) / Double(universe.count)
     }
 
-    static func priorMeanForTier(_ name: String, index: Int, total: Int) -> Double {
+    internal static func priorMeanForTier(_ name: String, index: Int, total: Int) -> Double {
         let defaults: [String: Double] = [
             "S": 0.85,
             "A": 0.75,
@@ -464,7 +464,7 @@ extension HeadToHeadLogic {
         return top - (top - bottom) * (Double(index) / Double(denom))
     }
 
-    static func buildPriors(
+    internal static func buildPriors(
         from currentTiers: Items,
         tierOrder: [String],
         strength: Double = 6.0
@@ -482,7 +482,7 @@ extension HeadToHeadLogic {
         return output
     }
 
-    static func wilsonLowerBound(wins: Int, total: Int, z: Double) -> Double {
+    internal static func wilsonLowerBound(wins: Int, total: Int, z: Double) -> Double {
         guard total > 0 else { return 0 }
         let p = Double(wins) / Double(total)
         let z2 = z * z
@@ -492,7 +492,7 @@ extension HeadToHeadLogic {
         return max(0, (center - margin) / denominator)
     }
 
-    static func wilsonUpperBound(wins: Int, total: Int, z: Double) -> Double {
+    internal static func wilsonUpperBound(wins: Int, total: Int, z: Double) -> Double {
         guard total > 0 else { return 0 }
         let p = Double(wins) / Double(total)
         let z2 = z * z
@@ -502,7 +502,7 @@ extension HeadToHeadLogic {
         return min(1, (center + margin) / denominator)
     }
 
-    static func wilsonLowerBoundD(wins: Double, total: Double, z: Double) -> Double {
+    internal static func wilsonLowerBoundD(wins: Double, total: Double, z: Double) -> Double {
         guard total > 0 else { return 0 }
         let p = wins / total
         let z2 = z * z
@@ -512,7 +512,7 @@ extension HeadToHeadLogic {
         return max(0, (center - margin) / denominator)
     }
 
-    static func wilsonUpperBoundD(wins: Double, total: Double, z: Double) -> Double {
+    internal static func wilsonUpperBoundD(wins: Double, total: Double, z: Double) -> Double {
         guard total > 0 else { return 0 }
         let p = wins / total
         let z2 = z * z

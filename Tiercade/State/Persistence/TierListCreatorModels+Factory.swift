@@ -3,7 +3,7 @@ import SwiftData
 import TiercadeCore
 
 extension TierProjectDraft {
-    static func makeDefault(now: Date = Date()) -> TierProjectDraft {
+    internal static func makeDefault(now: Date = Date()) -> TierProjectDraft {
         let audit = TierDraftAudit(createdAt: now, updatedAt: now)
         let draft = TierProjectDraft(
             projectId: UUID(),
@@ -43,7 +43,7 @@ extension TierProjectDraft {
         return draft
     }
 
-    static func make(from project: Project) -> TierProjectDraft {
+    internal static func make(from project: Project) -> TierProjectDraft {
         let projectUUID = UUID(uuidString: project.projectId) ?? UUID()
         let auditSource = project.audit
         let settings = project.settings

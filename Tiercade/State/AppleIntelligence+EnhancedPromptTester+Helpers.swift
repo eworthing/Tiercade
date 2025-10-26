@@ -139,7 +139,7 @@ static func logTestCompletion(
     logToFile("🎉 Pilot test complete")
 }
 
-    static func saveAllResults(_ aggregateResults: [AggregateResult]) async {
+    internal static func saveAllResults(_ aggregateResults: [AggregateResult]) async {
         await saveFinalResults(aggregateResults, to: "tiercade_pilot_results.json")
         await saveStratifiedReport(aggregateResults, to: "tiercade_pilot_report.txt")
         await saveRecommendations(aggregateResults, to: "tiercade_pilot_recommendations.txt")

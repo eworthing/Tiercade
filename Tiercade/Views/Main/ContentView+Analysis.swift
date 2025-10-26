@@ -3,11 +3,11 @@ import TiercadeCore
 
 // MARK: - Analysis & Statistics Views
 
-struct AnalysisView: View {
+internal struct AnalysisView: View {
     @Bindable var app: AppState
     @Environment(\.dismiss) private var dismiss
 
-    var body: some View {
+    internal var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
@@ -69,10 +69,10 @@ struct AnalysisView: View {
     }
 }
 
-struct AnalysisContentView: View {
-    let analysis: TierAnalysisData
+internal struct AnalysisContentView: View {
+    internal let analysis: TierAnalysisData
 
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 24) {
             // Overall Statistics
             OverallStatsView(analysis: analysis)
@@ -89,10 +89,10 @@ struct AnalysisContentView: View {
     }
 }
 
-struct OverallStatsView: View {
-    let analysis: TierAnalysisData
+internal struct OverallStatsView: View {
+    internal let analysis: TierAnalysisData
 
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 16) {
             Text("Overall Statistics")
                 .font(.title2)
@@ -127,12 +127,12 @@ struct OverallStatsView: View {
     }
 }
 
-struct StatCardView: View {
-    let title: String
-    let value: String
-    let icon: String
+internal struct StatCardView: View {
+    internal let title: String
+    internal let value: String
+    internal let icon: String
 
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.title2)
@@ -153,10 +153,10 @@ struct StatCardView: View {
     }
 }
 
-struct TierDistributionChartView: View {
-    let distribution: [TierDistributionData]
+internal struct TierDistributionChartView: View {
+    internal let distribution: [TierDistributionData]
 
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 16) {
             Text("Tier Distribution")
                 .font(.title2)
@@ -173,11 +173,11 @@ struct TierDistributionChartView: View {
     }
 }
 
-struct TierBarView: View {
-    let tierData: TierDistributionData
+internal struct TierBarView: View {
+    internal let tierData: TierDistributionData
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 4) {
             header
             bar
@@ -232,11 +232,11 @@ struct TierBarView: View {
     }
 }
 
-struct BalanceScoreView: View {
-    let score: Double
+internal struct BalanceScoreView: View {
+    internal let score: Double
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 16) {
             Text("Balance Score")
                 .font(.title2)
@@ -309,10 +309,10 @@ struct BalanceScoreView: View {
     }
 }
 
-struct InsightsView: View {
-    let insights: [String]
+internal struct InsightsView: View {
+    internal let insights: [String]
 
-    var body: some View {
+    internal var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Insights & Recommendations")
                 .font(.title2)

@@ -2,14 +2,14 @@ import SwiftUI
 
 import TiercadeCore
 
-struct ItemTrayView: View {
+internal struct ItemTrayView: View {
     @Bindable private var app: AppState
     @State private var showingAdd = false
 
-    init(app: AppState) {
+    internal init(app: AppState) {
         self.app = app
     }
-    var body: some View {
+    internal var body: some View {
         VStack(alignment: .leading, spacing: Metrics.grid) {
             HStack {
                 Text("Items").font(TypeScale.h3).foregroundColor(Palette.text)
@@ -90,14 +90,14 @@ struct ItemTrayView: View {
 }
 
 // Simple modal for adding items
-struct AddItemsView: View {
+internal struct AddItemsView: View {
     @Environment(AppState.self) private var app: AppState
     @Binding var isPresented: Bool
     @State private var name: String = ""
     @State private var id: String = ""
     @State private var season: String = ""
 
-    var body: some View {
+    internal var body: some View {
         NavigationStack {
             Form {
                 Section(header: Text("New Item")) {

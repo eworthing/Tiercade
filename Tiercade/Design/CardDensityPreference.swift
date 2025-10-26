@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-enum CardDensityPreference: String, CaseIterable, Identifiable, Codable, Sendable {
+internal enum CardDensityPreference: String, CaseIterable, Identifiable, Codable, Sendable {
     case ultraMicro
     case micro
     case tight
@@ -9,9 +9,9 @@ enum CardDensityPreference: String, CaseIterable, Identifiable, Codable, Sendabl
     case standard
     case expanded
 
-    var id: String { rawValue }
+    internal var id: String { rawValue }
 
-    var displayName: String {
+    internal var displayName: String {
         switch self {
         case .ultraMicro:
             return "Ultra Micro"
@@ -28,7 +28,7 @@ enum CardDensityPreference: String, CaseIterable, Identifiable, Codable, Sendabl
         }
     }
 
-    var detailDescription: String {
+    internal var detailDescription: String {
         switch self {
         case .ultraMicro:
             return "Image-only posters"
@@ -45,7 +45,7 @@ enum CardDensityPreference: String, CaseIterable, Identifiable, Codable, Sendabl
         }
     }
 
-    var symbolName: String {
+    internal var symbolName: String {
         switch self {
         case .ultraMicro:
             return "square.grid.4x3.fill"
@@ -62,7 +62,7 @@ enum CardDensityPreference: String, CaseIterable, Identifiable, Codable, Sendabl
         }
     }
 
-    var focusTooltip: String {
+    internal var focusTooltip: String {
         switch self {
         case .ultraMicro:
             return "Ultra Micro Cards"
@@ -79,7 +79,7 @@ enum CardDensityPreference: String, CaseIterable, Identifiable, Codable, Sendabl
         }
     }
 
-    var toastMessage: String {
+    internal var toastMessage: String {
         switch self {
         case .ultraMicro:
             return "Ultra Micro card layout enabled"
@@ -96,14 +96,14 @@ enum CardDensityPreference: String, CaseIterable, Identifiable, Codable, Sendabl
         }
     }
 
-    func next() -> CardDensityPreference {
+    internal func next() -> CardDensityPreference {
         let all = CardDensityPreference.allCases
         guard let currentIndex = all.firstIndex(of: self) else { return .ultraMicro }
         let nextIndex = all.index(after: currentIndex)
         return nextIndex < all.endIndex ? all[nextIndex] : all.first ?? .ultraMicro
     }
 
-    var sizeRank: Int {
+    internal var sizeRank: Int {
         switch self {
         case .ultraMicro: return 0
         case .micro: return 1
@@ -114,7 +114,7 @@ enum CardDensityPreference: String, CaseIterable, Identifiable, Codable, Sendabl
         }
     }
 
-    var showsOnCardText: Bool {
+    internal var showsOnCardText: Bool {
         switch self {
         case .ultraMicro:
             return false

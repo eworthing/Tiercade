@@ -15,7 +15,7 @@ static func median(_ xs: [Double]) -> Double {
     return n % 2 == 1 ? s[n/2] : 0.5 * (s[n/2 - 1] + s[n/2])
 }
 
-struct SeedRunResults {
+internal struct SeedRunResults {
     let passAtN: Double
     let medianIPS: Double
     let runs: [SeedRun]

@@ -7,7 +7,7 @@ import FoundationModels
 
 @available(iOS 26.0, macOS 26.0, *)
 extension UniqueListCoordinator {
-    func executePass1(
+    internal func executePass1(
         query: String,
         targetCount: Int,
         seed: UInt64?,
@@ -38,7 +38,7 @@ extension UniqueListCoordinator {
         logger("  Result: \(state.ordered.count)/\(targetCount) unique, \(state.duplicatesFound) duplicates filtered")
     }
 
-    func calculatePass1Budget(query: String, targetCount: Int) -> (overGenCount: Int, maxTok: Int) {
+    internal func calculatePass1Budget(query: String, targetCount: Int) -> (overGenCount: Int, maxTok: Int) {
         let budget = 3500
         let prompt1Base = """
         Return ONLY a JSON object matching the schema.
@@ -53,19 +53,19 @@ extension UniqueListCoordinator {
         return (overGenCount, maxTok1)
     }
 
-    func buildPass1Prompt(query: String, overGenCount: Int) -> String {
+    internal func buildPass1Prompt(query: String, overGenCount: Int) -> String {
         return """
         Return ONLY a JSON object matching the schema.
         Task: \(query). Produce \(overGenCount) distinct items.
         """
     }
 
-    func finalizeSuccess(state: GenerationState, startTime: Date) {
+    internal func finalizeSuccess(state: GenerationState, startTime: Date) {
         let elapsed = Date().timeIntervalSince(startTime)
         logger("✅ Success in \(state.passCount) pass (\(String(format: "%.2f", elapsed))s)")
     }
 
-    func executeBackfill(
+    internal func executeBackfill(
         query: String,
         targetCount: Int,
         state: inout GenerationState
@@ -79,7 +79,7 @@ extension UniqueListCoordinator {
 
     // MARK: - Guided Backfill
 
-    func executeGuidedBackfill(
+    internal func executeGuidedBackfill(
         query: String,
         targetCount: Int,
         state: inout GenerationState
@@ -118,7 +118,7 @@ extension UniqueListCoordinator {
         }
     }
 
-    func executeGuidedBackfillRound(
+    internal func executeGuidedBackfillRound(
         query: String,
         targetCount: Int,
         backfillRound: Int,
@@ -181,7 +181,7 @@ extension UniqueListCoordinator {
         logger("  Result: \(state.ordered.count)/\(targetCount) unique (filtered \(state.duplicatesFound) duplicates)")
     }
 
-    func calculateGuidedBackfillDelta(deltaNeed: Int, targetCount: Int) -> Int {
+    internal func calculateGuidedBackfillDelta(deltaNeed: Int, targetCount: Int) -> Int {
         let deltaA = Int(ceil(Double(deltaNeed) * 1.5))
         let deltaB = Int(ceil(Defaults.minBackfillFrac * Double(targetCount)))
         return max(deltaA, deltaB)
@@ -233,7 +233,7 @@ extension UniqueListCoordinator {
         )
     }
 
-    func buildGuidedBackfillPrompt(
+    internal func buildGuidedBackfillPrompt(
         query: String,
         delta: Int,
         avoidSample: String,
@@ -251,7 +251,7 @@ extension UniqueListCoordinator {
         """
     }
 
-    func retryGuidedBackfill(
+    internal func retryGuidedBackfill(
         query: String,
         targetCount: Int,
         deltaNeed: Int,
@@ -298,7 +298,7 @@ extension UniqueListCoordinator {
 
     // MARK: - Unguided Backfill
 
-    func executeUnguidedBackfill(
+    internal func executeUnguidedBackfill(
         query: String,
         targetCount: Int,
         state: inout GenerationState
@@ -336,7 +336,7 @@ extension UniqueListCoordinator {
         }
     }
 
-    func executeUnguidedBackfillRound(
+    internal func executeUnguidedBackfillRound(
         query: String,
         targetCount: Int,
         state: inout GenerationState
@@ -411,7 +411,7 @@ extension UniqueListCoordinator {
         return UnguidedBackfillParams(delta: delta, maxTok: maxTok, deltaByBudget: deltaByBudget)
     }
 
-    func buildUnguidedBackfillPrompt(query: String, delta: Int, avoidJSON: String) -> String {
+    internal func buildUnguidedBackfillPrompt(query: String, delta: Int, avoidJSON: String) -> String {
         return """
         Generate EXACTLY \(delta) NEW unique items for: \(query).
         Do NOT include any with norm_keys in:
@@ -423,7 +423,7 @@ extension UniqueListCoordinator {
         """
     }
 
-    func retryUnguidedBackfill(
+    internal func retryUnguidedBackfill(
         query: String,
         targetCount: Int,
         deltaByBudget: Int,
@@ -459,7 +459,7 @@ extension UniqueListCoordinator {
 
     // MARK: - Shared Backfill Helpers
 
-    func handleCircuitBreaker(
+    internal func handleCircuitBreaker(
         before: Int,
         current: Int,
         consecutiveNoProgress: inout Int,
@@ -476,7 +476,7 @@ extension UniqueListCoordinator {
         }
     }
 
-    func executeGreedyLastMileIfNeeded(
+    internal func executeGreedyLastMileIfNeeded(
         query: String,
         targetCount: Int,
         state: inout GenerationState,
@@ -532,7 +532,7 @@ extension UniqueListCoordinator {
         }
     }
 
-    func captureFailureReason(_ reason: String) {
+    internal func captureFailureReason(_ reason: String) {
         if lastRunFailureReason == nil {
             lastRunFailureReason = reason
         }

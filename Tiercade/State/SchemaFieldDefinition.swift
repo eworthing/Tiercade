@@ -1,6 +1,6 @@
 import Foundation
 
-struct SchemaFieldDefinition: Identifiable, Codable, Hashable, Sendable {
+internal struct SchemaFieldDefinition: Identifiable, Codable, Hashable, Sendable {
     var id = UUID()
     var name: String
     var fieldType: FieldType

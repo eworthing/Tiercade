@@ -4,14 +4,14 @@ import os
 
 // MARK: - Wizard Page Protocol
 
-protocol WizardPage {
+internal protocol WizardPage {
     var pageTitle: String { get }
     var pageDescription: String { get }
 }
 
 #if os(tvOS)
-extension View {
-    func wizardFieldDecoration() -> some View {
+internal extension View {
+    internal func wizardFieldDecoration() -> some View {
         self
             .padding(.vertical, Metrics.grid * 1.5)
             .padding(.horizontal, Metrics.grid * 2)
@@ -25,7 +25,7 @@ extension View {
             )
     }
 
-    func wizardTogglePadding() -> some View {
+    internal func wizardTogglePadding() -> some View {
         self.padding(.vertical, Metrics.grid)
     }
 }

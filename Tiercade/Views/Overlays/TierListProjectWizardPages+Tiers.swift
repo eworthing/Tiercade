@@ -4,20 +4,20 @@ import os
 
 // MARK: - Tiers Wizard Page
 
-struct TiersWizardPage: View, WizardPage {
+internal struct TiersWizardPage: View, WizardPage {
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
     @State private var selectedTierID: UUID?
     @State private var showingTierDetailsSheet = false
 
-    let pageTitle = "Tier Assignment"
-    let pageDescription = "Review and manage item assignments to tiers"
+    internal let pageTitle = "Tier Assignment"
+    internal let pageDescription = "Review and manage item assignments to tiers"
 
     #if os(tvOS)
     @Namespace private var defaultFocusNamespace
     #endif
 
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: Metrics.grid * 3) {

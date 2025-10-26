@@ -11,8 +11,8 @@ import TiercadeCore
 
 // MARK: - Toast View
 
-struct ToastView: View {
-    let toast: ToastMessage
+internal struct ToastView: View {
+    internal let toast: ToastMessage
     @State private var isVisible = false
     @Environment(AppState.self) private var app
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -26,7 +26,7 @@ struct ToastView: View {
         "{warning}": "exclamationmark.triangle.fill"
     ]
 
-    var body: some View {
+    internal var body: some View {
         HStack(spacing: 12) {
             Image(systemName: toast.type.icon)
                 .foregroundColor(toast.type.color)
@@ -148,12 +148,12 @@ struct ToastView: View {
 
 // MARK: - Progress Indicator View
 
-struct ProgressIndicatorView: View {
-    let isLoading: Bool
-    let message: String
-    let progress: Double
+internal struct ProgressIndicatorView: View {
+    internal let isLoading: Bool
+    internal let message: String
+    internal let progress: Double
 
-    var body: some View {
+    internal var body: some View {
         if isLoading {
             VStack(spacing: 16) {
                 HStack(spacing: 12) {
@@ -182,12 +182,12 @@ struct ProgressIndicatorView: View {
 
 // MARK: - Drag Target Highlight
 
-struct DragTargetHighlight: View {
-    let isTarget: Bool
-    let color: Color
+internal struct DragTargetHighlight: View {
+    internal let isTarget: Bool
+    internal let color: Color
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    var body: some View {
+    internal var body: some View {
         if isTarget {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(color, lineWidth: 3)
@@ -204,7 +204,7 @@ struct DragTargetHighlight: View {
 
 // MARK: - Quick Rank overlay
 
-struct QuickRankOverlay: View {
+internal struct QuickRankOverlay: View {
     @Bindable var app: AppState
     @FocusState private var focused: FocusField?
     private enum FocusField: Hashable {
@@ -214,7 +214,7 @@ struct QuickRankOverlay: View {
     #if !os(tvOS)
     @FocusState private var overlayHasFocus: Bool
     #endif
-    var body: some View {
+    internal var body: some View {
         if let item = app.quickRankTarget {
             let isUITest = ProcessInfo.processInfo.arguments.contains("-uiTest")
             ZStack {

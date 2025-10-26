@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct TierListBrowserScene: View {
+internal struct TierListBrowserScene: View {
     @Bindable var app: AppState
     @FocusState private var focus: FocusTarget?
     @State private var lastFocus: FocusTarget?
@@ -14,7 +14,7 @@ struct TierListBrowserScene: View {
         GridItem(.flexible(), spacing: 32)
     ]
 
-    var body: some View {
+    internal var body: some View {
         ZStack {
             // Background dimming (non-interactive)
             Color.black.opacity(0.65)
@@ -199,13 +199,13 @@ struct TierListBrowserScene: View {
 }
 
 private struct TierListCard: View {
-    let handle: AppState.TierListHandle
-    let isActive: Bool
-    let focusBinding: FocusState<TierListBrowserScene.FocusTarget?>.Binding
-    let openAction: () -> Void
-    let editAction: () -> Void
+    internal let handle: AppState.TierListHandle
+    internal let isActive: Bool
+    internal let focusBinding: FocusState<TierListBrowserScene.FocusTarget?>.Binding
+    internal let openAction: () -> Void
+    internal let editAction: () -> Void
 
-    var body: some View {
+    internal var body: some View {
         tvGlassContainer(spacing: 18) {
             VStack(alignment: .leading, spacing: 16) {
                 headerRow

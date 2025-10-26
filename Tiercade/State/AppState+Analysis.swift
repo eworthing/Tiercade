@@ -2,9 +2,9 @@ import Foundation
 import TiercadeCore
 
 @MainActor
-extension AppState {
+internal extension AppState {
     // MARK: - Analysis
-    func generateAnalysis() async {
+    internal func generateAnalysis() async {
         analysisData = await withLoadingIndicator(message: "Generating analysis...") {
             updateProgress(0.1)
             let result = await buildAnalysis()
@@ -13,7 +13,7 @@ extension AppState {
         }
     }
 
-    func toggleAnalysis() {
+    internal func toggleAnalysis() {
         #if os(tvOS)
         toggleAnalyticsSidebar()
         #else
@@ -34,7 +34,7 @@ extension AppState {
         #endif
     }
 
-    func toggleAnalyticsSidebar() {
+    internal func toggleAnalyticsSidebar() {
         if showAnalyticsSidebar {
             showAnalyticsSidebar = false
             return
@@ -52,7 +52,7 @@ extension AppState {
         }
     }
 
-    func closeAnalyticsSidebar() {
+    internal func closeAnalyticsSidebar() {
         showAnalyticsSidebar = false
         showingAnalysis = false
     }

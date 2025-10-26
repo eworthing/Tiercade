@@ -4,7 +4,7 @@ import os
 
 // MARK: - Schema Wizard Page (Item Fields Definition)
 
-struct ItemsWizardPage: View, WizardPage {
+internal struct ItemsWizardPage: View, WizardPage {
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
     @State private var searchQuery: String = ""
@@ -14,8 +14,8 @@ struct ItemsWizardPage: View, WizardPage {
     @State private var selectedItemID: UUID?
     @State private var showingItemEditor = false
 
-    let pageTitle = "Items"
-    let pageDescription = "Add and configure items for your tier list"
+    internal let pageTitle = "Items"
+    internal let pageDescription = "Add and configure items for your tier list"
 
     #if os(tvOS)
     @Namespace private var defaultFocusNamespace
@@ -41,7 +41,7 @@ struct ItemsWizardPage: View, WizardPage {
         }
     }
 
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 0) {
             searchControls
 

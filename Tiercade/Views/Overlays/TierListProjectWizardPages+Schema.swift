@@ -4,21 +4,21 @@ import os
 
 // MARK: - Schema Wizard Page
 
-struct SchemaWizardPage: View, WizardPage {
+internal struct SchemaWizardPage: View, WizardPage {
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
     @State private var schemaFields: [SchemaFieldDefinition] = []
     @State private var showingAddField = false
     private let schemaAdditionalKey = "itemSchema"
 
-    let pageTitle = "Item Schema"
-    let pageDescription = "Define custom fields for your items"
+    internal let pageTitle = "Item Schema"
+    internal let pageDescription = "Define custom fields for your items"
 
     #if os(tvOS)
     @Namespace private var defaultFocusNamespace
     #endif
 
-    var body: some View {
+    internal var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Metrics.grid * 3) {
                 headerSection

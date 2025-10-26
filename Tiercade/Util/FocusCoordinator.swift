@@ -1,4 +1,4 @@
-enum FocusRegion: Hashable {
+internal enum FocusRegion: Hashable {
     case grid
     case toolbar
     case actionBar
@@ -13,7 +13,7 @@ enum FocusRegion: Hashable {
 }
 
 extension FocusRegion {
-    var isOverlay: Bool {
+    internal var isOverlay: Bool {
         switch self {
         case .grid, .toolbar, .actionBar:
             return false

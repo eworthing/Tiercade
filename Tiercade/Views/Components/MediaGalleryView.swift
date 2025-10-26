@@ -6,15 +6,15 @@ import Accessibility
 /// SwiftUI-native gallery view that replaces the previous UIPageViewController bridge.
 /// Displays remote images in a paged carousel with accessibility identifiers that
 /// match legacy UI tests ("Gallery_Page_<uri>").
-struct MediaGalleryView: View {
-    let uris: [String]
+internal struct MediaGalleryView: View {
+    internal let uris: [String]
     @State private var selection: Int = 0
 
     private var pages: [(index: Int, uri: String)] {
         uris.enumerated().map { (index: $0.offset, uri: $0.element) }
     }
 
-    var body: some View {
+    internal var body: some View {
         TabView(selection: $selection) {
             ForEach(pages, id: \.index) { page in
                 GalleryPage(uri: page.uri)
@@ -39,9 +39,9 @@ struct MediaGalleryView: View {
 }
 
 private struct GalleryPage: View {
-    let uri: String
+    internal let uri: String
 
-    var body: some View {
+    internal var body: some View {
         ZStack {
             AsyncImage(url: URL(string: uri)) { phase in
                 switch phase {

@@ -3,9 +3,9 @@ import Foundation
 import TiercadeCore
 
 // MARK: - Tier grid
-struct TierGridView: View {
+internal struct TierGridView: View {
     @Environment(AppState.self) var app: AppState
-    let tierOrder: [String]
+    internal let tierOrder: [String]
     @Environment(\.editMode) private var editMode
     #if !os(tvOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
@@ -14,7 +14,7 @@ struct TierGridView: View {
     @FocusState var gridHasFocus: Bool
     #endif
 
-    var body: some View {
+    internal var body: some View {
         #if !os(tvOS)
         ZStack {
             ScrollView {
@@ -61,21 +61,21 @@ struct TierGridView: View {
     }
 }
 
-struct UnrankedView: View {
+internal struct UnrankedView: View {
     @Environment(AppState.self) private var app: AppState
     #if os(tvOS)
     @FocusState private var focusedItemId: String?
     #else
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    let hardwareFocus: FocusState<CardFocus?>.Binding
+    internal let hardwareFocus: FocusState<CardFocus?>.Binding
     #endif
 
     private var filteredItems: [Item] {
         app.filteredItems(for: "unranked")
     }
 
-    var body: some View {
+    internal var body: some View {
         if !filteredItems.isEmpty {
             VStack(alignment: .leading, spacing: Metrics.grid) {
                 header
@@ -177,16 +177,16 @@ struct UnrankedView: View {
     }
 }
 
-struct CardView: View {
-    let item: Item
+internal struct CardView: View {
+    internal let item: Item
     @Environment(AppState.self) var app
     @Environment(\.isFocused) var isFocused: Bool
     @Environment(\.editMode) private var editMode
     #if os(tvOS)
-    let layout: TVCardLayout
+    internal let layout: TVCardLayout
     #else
-    let layout: PlatformCardLayout
-    var onTapFocus: (() -> Void)?  // Called when card is tapped to update focus
+    internal let layout: PlatformCardLayout
+    internal var onTapFocus: (() -> Void)?  // Called when card is tapped to update focus
     #endif
 
     private var isMultiSelectActive: Bool {
@@ -215,7 +215,7 @@ struct CardView: View {
         #endif
     }
 
-    var body: some View {
+    internal var body: some View {
         Button(action: handleTap) {
             cardBody
         }
@@ -415,14 +415,14 @@ struct CardView: View {
 }
 
 private struct ThumbnailView: View {
-    let item: Item
+    internal let item: Item
     #if os(tvOS)
-    let layout: TVCardLayout
+    internal let layout: TVCardLayout
     #else
-    let layout: PlatformCardLayout
+    internal let layout: PlatformCardLayout
     #endif
 
-    var body: some View {
+    internal var body: some View {
         #if os(tvOS)
         RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous)
             .fill(Color.clear)

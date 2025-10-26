@@ -13,7 +13,7 @@ import UIKit
 #endif
 
 @MainActor
-struct AIChatOverlay: View {
+internal struct AIChatOverlay: View {
     @Environment(AppState.self) var app: AppState
     @State var aiService = AppleIntelligenceService()
     @State var inputText = ""
@@ -22,7 +22,7 @@ struct AIChatOverlay: View {
     @State var generatedImage: Image?
     @State var isGeneratingImage = false
 
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 0) {
             header
             messagesSection
@@ -305,7 +305,7 @@ struct AIChatOverlay: View {
         #endif
     }
 
-    func runAcceptanceTests() {
+    internal func runAcceptanceTests() {
         #if DEBUG && canImport(FoundationModels)
         print("🧪 [AcceptanceTest] Checkmark button clicked!")
 
@@ -317,14 +317,14 @@ struct AIChatOverlay: View {
         #endif
     }
 
-    func showAcceptanceTestsUnavailable() {
+    internal func showAcceptanceTestsUnavailable() {
         aiService.messages.append(AIChatMessage(
             content: "⚠️ Acceptance tests require iOS 26.0+ or macOS 26.0+",
             isUser: false
         ))
     }
 
-    func runPilotTests() {
+    internal func runPilotTests() {
         #if DEBUG && canImport(FoundationModels)
         print("🧪 [PilotTest] Chart button clicked!")
 
@@ -336,14 +336,14 @@ struct AIChatOverlay: View {
         #endif
     }
 
-    func showPilotTestsUnavailable() {
+    internal func showPilotTestsUnavailable() {
         aiService.messages.append(AIChatMessage(
             content: "⚠️ Pilot tests require iOS 26.0+ or macOS 26.0+",
             isUser: false
         ))
     }
 
-    func runPromptTests() {
+    internal func runPromptTests() {
         #if DEBUG
         print("🧪 [Test] Flask button clicked!")
 

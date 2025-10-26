@@ -3,10 +3,10 @@ import SwiftUI
 import TiercadeCore
 
 @MainActor
-extension AppState {
+internal extension AppState {
     // MARK: - Import System (JSON/CSV)
 
-    func importFromJSON(_ jsonString: String) async throws(ImportError) {
+    internal func importFromJSON(_ jsonString: String) async throws(ImportError) {
         do {
             try await withLoadingIndicator(message: "Importing JSON data...") {
                 updateProgress(0.2)
@@ -26,7 +26,7 @@ extension AppState {
         }
     }
 
-    func importFromCSV(_ csvString: String) async throws(ImportError) {
+    internal func importFromCSV(_ csvString: String) async throws(ImportError) {
         do {
             try await withLoadingIndicator(message: "Importing CSV data...") {
                 updateProgress(0.2)
@@ -102,7 +102,7 @@ extension AppState {
         }
     }
 
-    func importFromJSON(url: URL) async throws(ImportError) {
+    internal func importFromJSON(url: URL) async throws(ImportError) {
         do {
             // File I/O and parsing on background thread pool
             let project = try await loadProjectFromFile(url)
@@ -140,7 +140,7 @@ extension AppState {
         }
     }
 
-    func importFromCSV(url: URL) async throws(ImportError) {
+    internal func importFromCSV(url: URL) async throws(ImportError) {
         // File I/O on background thread pool
         let content = try await loadCSVFromFile(url)
 
@@ -188,7 +188,7 @@ extension AppState {
 
     // MARK: - Canonical project helpers
 
-    func applyImportedProject(
+    internal func applyImportedProject(
         _ project: Project,
         action: String,
         fileName: String?,

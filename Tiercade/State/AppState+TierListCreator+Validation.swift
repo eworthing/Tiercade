@@ -5,10 +5,10 @@ import os
 import TiercadeCore
 
 @MainActor
-extension AppState {
+internal extension AppState {
     // MARK: - Validation & Export
 
-    func validateTierListDraft() -> [TierListDraftValidationIssue] {
+    internal func validateTierListDraft() -> [TierListDraftValidationIssue] {
         guard let draft = tierListCreatorDraft else { return [] }
         var issues: [TierListDraftValidationIssue] = []
 
@@ -101,7 +101,7 @@ extension AppState {
         return issues
     }
 
-    func exportTierListDraftPayload() -> String? {
+    internal func exportTierListDraftPayload() -> String? {
         guard let draft = tierListCreatorDraft else { return nil }
         do {
             let project = try buildProject(from: draft)
@@ -117,7 +117,7 @@ extension AppState {
         }
     }
 
-    func saveTierListDraft(action: TierListDraftCommitAction) async {
+    internal func saveTierListDraft(action: TierListDraftCommitAction) async {
         guard let draft = tierListCreatorDraft else { return }
         let context = tierListWizardContext
         let issues = validateTierListDraft()

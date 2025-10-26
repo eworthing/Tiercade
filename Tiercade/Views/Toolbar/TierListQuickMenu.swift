@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct TierListQuickMenu: View {
+internal struct TierListQuickMenu: View {
     private typealias TierListHandle = AppState.TierListHandle
     @Bindable var app: AppState
 
@@ -11,7 +11,7 @@ struct TierListQuickMenu: View {
     }
     #endif
 
-    var body: some View {
+    internal var body: some View {
         #if os(tvOS)
         // tvOS doesn't support Menu dropdowns; use direct button to browser
         Button(action: {

@@ -288,7 +288,7 @@ public struct H2HArtifacts: Sendable {
     public let mode: Mode
     fileprivate let metrics: [String: HeadToHeadLogic.HeadToHeadMetrics]
 
-    init(
+    internal init(
         tierNames: [String],
         rankable: [Item],
         undersampled: [Item],

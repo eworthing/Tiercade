@@ -3,10 +3,10 @@ import SwiftUI
 import TiercadeCore
 
 @MainActor
-extension AppState {
+internal extension AppState {
     // MARK: - Toast System
 
-    func showToast(type: ToastType, title: String, message: String? = nil, duration: TimeInterval = 3.0) {
+    internal func showToast(type: ToastType, title: String, message: String? = nil, duration: TimeInterval = 3.0) {
         let toast = ToastMessage(type: type, title: title, message: message, duration: duration)
         currentToast = toast
         logEvent("showToast: type=\(type) title=\(title) message=\(message ?? "") duration=\(duration)")
@@ -20,28 +20,28 @@ extension AppState {
         }
     }
 
-    func dismissToast() {
+    internal func dismissToast() {
         currentToast = nil
         logEvent("dismissToast")
     }
 
-    func showSuccessToast(_ title: String, message: String? = nil) {
+    internal func showSuccessToast(_ title: String, message: String? = nil) {
         showToast(type: .success, title: title, message: message)
     }
 
-    func showErrorToast(_ title: String, message: String? = nil) {
+    internal func showErrorToast(_ title: String, message: String? = nil) {
         showToast(type: .error, title: title, message: message)
     }
 
-    func showInfoToast(_ title: String, message: String? = nil) {
+    internal func showInfoToast(_ title: String, message: String? = nil) {
         showToast(type: .info, title: title, message: message)
     }
 
-    func showWarningToast(_ title: String, message: String? = nil) {
+    internal func showWarningToast(_ title: String, message: String? = nil) {
         showToast(type: .warning, title: title, message: message)
     }
 
-    func showToast(type: ToastType, title: String, message: String?) {
+    internal func showToast(type: ToastType, title: String, message: String?) {
         showToast(type: type, title: title, message: message, duration: 3.0)
     }
 }

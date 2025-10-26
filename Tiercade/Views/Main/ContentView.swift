@@ -12,13 +12,13 @@ import UniformTypeIdentifiers
 
 import TiercadeCore
 
-struct AppTier: Identifiable, Hashable { let id: String; var name: String }
+internal struct AppTier: Identifiable, Hashable { let id: String; var name: String }
 // (Several view components — ToastView, ProgressIndicatorView, DragTargetHighlight,
 // QuickRank / H2H overlays, toolbar, sidebar and grid subviews — were moved to
 // smaller files under `Tiercade/Views/ContentView+*.swift` to reduce compile
 // specialization cost and keep this file focused. See those files for implementations.)
 
-struct ContentView: View {
+internal struct ContentView: View {
     @Environment(AppState.self) private var app
     @Environment(\.undoManager) private var undoManager
     @State private var showingAddItems = false
@@ -28,7 +28,7 @@ struct ContentView: View {
     }
     #endif
 
-    var body: some View {
+    internal var body: some View {
         MainAppView()
             .task {
                 app.updateUndoManager(undoManager)

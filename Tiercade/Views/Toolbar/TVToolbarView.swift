@@ -1,11 +1,11 @@
 import SwiftUI
 
 #if os(tvOS)
-struct TVToolbarView: View {
+internal struct TVToolbarView: View {
     @Bindable var app: AppState
-    var modalActive: Bool = false
+    internal var modalActive: Bool = false
     @Binding var editMode: EditMode
-    var glassNamespace: Namespace.ID
+    internal var glassNamespace: Namespace.ID
     // Seed and manage initial focus for tvOS toolbar controls
     @FocusState private var focusedControl: Control?
 
@@ -13,7 +13,7 @@ struct TVToolbarView: View {
         case undo, redo, randomize, reset, library, newTierList, multiSelect, h2h, analytics, density, theme, aiChat
     }
 
-    var body: some View {
+    internal var body: some View {
         let randomizeEnabled = app.canRandomizeItems
         let headToHeadEnabled = app.canStartHeadToHead
         let analyticsActive = app.showAnalyticsSidebar

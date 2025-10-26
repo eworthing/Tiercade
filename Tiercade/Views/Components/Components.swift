@@ -1,8 +1,8 @@
 import SwiftUI
 
-struct TagChip: View {
-    let text: String
-    var body: some View {
+internal struct TagChip: View {
+    internal let text: String
+    internal var body: some View {
         Text(text)
             .font(TypeScale.label)
             .foregroundColor(Palette.text)
@@ -14,10 +14,10 @@ struct TagChip: View {
     }
 }
 
-struct ColorSwatch: View {
-    let color: Color
-    let action: (() -> Void)?
-    var body: some View {
+internal struct ColorSwatch: View {
+    internal let color: Color
+    internal let action: (() -> Void)?
+    internal var body: some View {
         Button(action: { action?() }, label: {
             Circle()
                 .fill(color)

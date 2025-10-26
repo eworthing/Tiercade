@@ -2,11 +2,11 @@ import SwiftUI
 
 // MARK: - Image Preview Sheet
 
-struct ImagePreviewSheet: View {
-    let image: Image
-    let onDismiss: () -> Void
+internal struct ImagePreviewSheet: View {
+    internal let image: Image
+    internal let onDismiss: () -> Void
 
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 16) {
             HStack {
                 Text("Generated Image")

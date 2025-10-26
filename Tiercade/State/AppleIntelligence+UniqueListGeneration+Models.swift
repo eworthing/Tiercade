@@ -7,7 +7,7 @@ import FoundationModels
 // MARK: - Feature Flags
 
 /// Feature flags for unique list generation (POC)
-enum UniqueListGenerationFlags {
+internal enum UniqueListGenerationFlags {
     /// EXPERIMENTAL: Enable the Generate → Dedup → Fill architecture for list requests
     /// When false, falls back to simple client-side deduplication
     ///
@@ -36,7 +36,7 @@ enum UniqueListGenerationFlags {
 
 // MARK: - Configuration Defaults
 
-enum Defaults {
+internal enum Defaults {
     nonisolated(unsafe) static let maxPasses = 3
     nonisolated(unsafe) static let pass1OverGen = 1.6      // M = ceil(1.6 * N)
     nonisolated(unsafe) static let minBackfillFrac = 0.4    // backfill delta floor
@@ -47,8 +47,8 @@ enum Defaults {
 
 // MARK: - Normalization Configuration
 
-struct NormConfig {
-    static let pluralExceptions: Set<String> = [
+internal struct NormConfig {
+    internal static let pluralExceptions: Set<String> = [
         // Words ending in "ss"
         "bass", "glass", "chess", "success", "process", "class", "mass", "news",
         "dress", "stress", "mess", "loss", "boss", "cross", "pass", "grass",
@@ -60,35 +60,35 @@ struct NormConfig {
     ]
 
     // Precompiled regex patterns
-    static let reMarks: NSRegularExpression = {
+    internal static let reMarks: NSRegularExpression = {
         do {
             return try NSRegularExpression(pattern: "[™®©]")
         } catch {
             fatalError("Invalid regex pattern for trademark symbols: \(error)")
         }
     }()
-    static let reBrackets: NSRegularExpression = {
+    internal static let reBrackets: NSRegularExpression = {
         do {
             return try NSRegularExpression(pattern: #"\s*[\(\[][^\)\]]*[\)\]]"#)
         } catch {
             fatalError("Invalid regex pattern for brackets: \(error)")
         }
     }()
-    static let reLeadArticles: NSRegularExpression = {
+    internal static let reLeadArticles: NSRegularExpression = {
         do {
             return try NSRegularExpression(pattern: #"^(the|a|an)\s+"#, options: [.caseInsensitive])
         } catch {
             fatalError("Invalid regex pattern for leading articles: \(error)")
         }
     }()
-    static let rePunct: NSRegularExpression = {
+    internal static let rePunct: NSRegularExpression = {
         do {
             return try NSRegularExpression(pattern: #"[[:punct:]]+"#)
         } catch {
             fatalError("Invalid regex pattern for punctuation: \(error)")
         }
     }()
-    static let reWs: NSRegularExpression = {
+    internal static let reWs: NSRegularExpression = {
         do {
             return try NSRegularExpression(pattern: #"\s+"#)
         } catch {
@@ -183,7 +183,7 @@ extension String {
 
 extension Array where Element == String {
     /// Chunk array by token budget for avoid-list management
-    func chunkedByTokenBudget(
+    internal func chunkedByTokenBudget(
         maxTokens: Int,
         estimate: (String) -> Int = { ($0.count + 3) / 4 }
     ) -> [[String]] {
@@ -264,20 +264,20 @@ extension GenerationOptions {
 #if canImport(FoundationModels)
 @available(iOS 26.0, macOS 26.0, *)
 @Generable
-struct UniqueListResponse: Decodable {
+internal struct UniqueListResponse: Decodable {
     var items: [String]
 }
 #endif
 
 // MARK: - Telemetry Structures
 
-struct RunEnv: Codable {
+internal struct RunEnv: Codable {
     let osVersionString: String
     let osVersion: String
     let hasTopP: Bool
     let deploymentTag: String?
 
-    init(deploymentTag: String? = nil) {
+    internal init(deploymentTag: String? = nil) {
         self.osVersionString = ProcessInfo.processInfo.operatingSystemVersionString
 
         let v = ProcessInfo.processInfo.operatingSystemVersion
@@ -293,7 +293,7 @@ struct RunEnv: Codable {
     }
 }
 
-struct RunMetrics: Codable {
+internal struct RunMetrics: Codable {
     let passAtN: Bool
     let uniqueAtN: Int
     let jsonStrictSuccess: Bool
@@ -311,12 +311,12 @@ struct RunMetrics: Codable {
 #if canImport(FoundationModels)
 @available(iOS 26.0, macOS 26.0, *)
 /// Profile that preserves sampling strategy across retries
-enum DecoderProfile {
+internal enum DecoderProfile {
     case greedy
     case topK(Int)
     case topP(Double)
 
-    func options(seed: UInt64?, temp: Double?, maxTok: Int?) -> GenerationOptions {
+    internal func options(seed: UInt64?, temp: Double?, maxTok: Int?) -> GenerationOptions {
         switch self {
         case .greedy:
             return GenerationOptions(sampling: .greedy, temperature: temp, maximumResponseTokens: maxTok)
@@ -346,7 +346,7 @@ enum DecoderProfile {
 #endif
 
 /// Per-attempt telemetry for diagnostics
-struct AttemptMetrics: Codable {
+internal struct AttemptMetrics: Codable {
     let attemptIndex: Int
     let seed: UInt64?
     let sampling: String
@@ -357,7 +357,7 @@ struct AttemptMetrics: Codable {
 }
 
 /// Full run telemetry for export
-struct RunTelemetry: Codable {
+internal struct RunTelemetry: Codable {
     let testId: String
     let query: String
     let targetN: Int

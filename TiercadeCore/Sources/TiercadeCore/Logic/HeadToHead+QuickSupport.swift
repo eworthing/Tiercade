@@ -1,7 +1,7 @@
 import Foundation
 
 extension HeadToHeadLogic {
-    static func quickResultForUndersampled(
+    internal static func quickResultForUndersampled(
         tiers: Items,
         undersampled: [Item],
         baseTiers: Items,
@@ -19,7 +19,7 @@ extension HeadToHeadLogic {
         return H2HQuickResult(tiers: updatedTiers, artifacts: nil, suggestedPairs: [])
     }
 
-    static func appendUndersampled(
+    internal static func appendUndersampled(
         _ undersampled: [Item],
         to tiers: inout Items,
         records: [String: H2HRecord],
@@ -30,7 +30,7 @@ extension HeadToHeadLogic {
         tiers["unranked", default: []] = orderedItems(undersampled, metrics: metrics)
     }
 
-    static func makeQuickArtifacts(
+    internal static func makeQuickArtifacts(
         ordered: [Item],
         undersampled: [Item],
         operativeNames: [String],

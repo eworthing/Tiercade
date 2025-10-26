@@ -1,6 +1,6 @@
 import SwiftData
 
-extension AppState {
+internal extension AppState {
     /// Convenience initializer used by previews and tests to spin up an in-memory store.
     /// Default behaviour mirrors the production container but avoids disk persistence.
     @MainActor

@@ -3,7 +3,7 @@ import SwiftUI
 #if DEBUG && canImport(FoundationModels)
 @available(iOS 26.0, macOS 26.0, *)
 extension AIChatOverlay {
-    func startAcceptanceTests() {
+    internal func startAcceptanceTests() {
         aiService.messages.append(AIChatMessage(
             content: "🧪 Starting acceptance test suite...",
             isUser: false
@@ -22,7 +22,7 @@ extension AIChatOverlay {
         }
     }
 
-    func handleAcceptanceTestResults(_ report: AcceptanceTestSuite.TestReport) {
+    internal func handleAcceptanceTestResults(_ report: AcceptanceTestSuite.TestReport) {
         let summary = buildAcceptanceTestSummary(report)
         aiService.messages.append(AIChatMessage(content: summary, isUser: false))
 
@@ -30,7 +30,7 @@ extension AIChatOverlay {
         showAcceptanceTestToast(report)
     }
 
-    func buildAcceptanceTestSummary(_ report: AcceptanceTestSuite.TestReport) -> String {
+    internal func buildAcceptanceTestSummary(_ report: AcceptanceTestSuite.TestReport) -> String {
         let failedTests = report.results
             .filter { !$0.passed }
             .map { "• \($0.testName): \($0.message)" }
@@ -49,7 +49,7 @@ extension AIChatOverlay {
             """
     }
 
-    func saveAcceptanceTestReport(_ report: AcceptanceTestSuite.TestReport) {
+    internal func saveAcceptanceTestReport(_ report: AcceptanceTestSuite.TestReport) {
         let reportPath = "/tmp/tiercade_acceptance_test_report.json"
         do {
             try AcceptanceTestSuite.saveReport(report, to: reportPath)
@@ -62,7 +62,7 @@ extension AIChatOverlay {
         }
     }
 
-    func showAcceptanceTestToast(_ report: AcceptanceTestSuite.TestReport) {
+    internal func showAcceptanceTestToast(_ report: AcceptanceTestSuite.TestReport) {
         if report.passRate == 1.0 {
             app.showSuccessToast("All Tests Passed!", message: "\(report.totalTests)/\(report.totalTests)")
         } else {
@@ -70,7 +70,7 @@ extension AIChatOverlay {
         }
     }
 
-    func startPilotTests() {
+    internal func startPilotTests() {
         aiService.messages.append(AIChatMessage(
             content: "🧪 Starting pilot test grid (this will take several minutes)...",
             isUser: false
@@ -83,7 +83,7 @@ extension AIChatOverlay {
         }
     }
 
-    func handlePilotTestResults(_ report: PilotTestReport, runner: PilotTestRunner) {
+    internal func handlePilotTestResults(_ report: PilotTestReport, runner: PilotTestRunner) {
         let summary = buildPilotTestSummary(report)
         aiService.messages.append(AIChatMessage(content: summary, isUser: false))
 
@@ -91,7 +91,7 @@ extension AIChatOverlay {
         app.showSuccessToast("Pilot Tests Complete", message: "\(report.completedRuns) runs")
     }
 
-    func buildPilotTestSummary(_ report: PilotTestReport) -> String {
+    internal func buildPilotTestSummary(_ report: PilotTestReport) -> String {
         let passBySize = report.summary.passBySize
             .sorted { Int($0.key) ?? 0 < Int($1.key) ?? 0 }
             .map { "• N=\($0.key): \(String(format: "%.0f%%", $0.value * 100))" }
@@ -122,7 +122,7 @@ extension AIChatOverlay {
             """
     }
 
-    func savePilotTestReports(_ report: PilotTestReport, runner: PilotTestRunner) {
+    internal func savePilotTestReports(_ report: PilotTestReport, runner: PilotTestRunner) {
         let jsonPath = "/tmp/tiercade_pilot_test_report.json"
         let txtPath = "/tmp/tiercade_pilot_test_report.txt"
 

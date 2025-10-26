@@ -4,8 +4,8 @@ import os
 import TiercadeCore
 
 @MainActor
-extension AppState {
-    func applyBundledProject(_ bundled: BundledProject) {
+internal extension AppState {
+    internal func applyBundledProject(_ bundled: BundledProject) {
         let snapshot = captureTierSnapshot()
         let state = resolvedTierState(from: bundled.project)
         tierOrder = state.order
@@ -24,7 +24,7 @@ extension AppState {
     }
 }
 
-extension AppState {
+internal extension AppState {
     struct BundledTierState {
         var order: [String]
         var items: Items
@@ -33,7 +33,7 @@ extension AppState {
         var locked: Set<String>
     }
 
-    func resolvedTierState(from project: Project) -> BundledTierState {
+    internal func resolvedTierState(from project: Project) -> BundledTierState {
         var state = BundledTierState(
             order: [],
             items: [:],
@@ -51,11 +51,11 @@ extension AppState {
         return state
     }
 
-    func resolvedTierState(for bundled: BundledProject) -> BundledTierState {
+    internal func resolvedTierState(for bundled: BundledProject) -> BundledTierState {
         resolvedTierState(from: bundled.project)
     }
 
-    func populateState(
+    internal func populateState(
         with resolvedTiers: [ResolvedTier],
         metadata: [String: Project.Tier],
         state: inout BundledTierState
@@ -68,7 +68,7 @@ extension AppState {
         }
     }
 
-    func appendMissingTiers(from tiers: [Project.Tier], state: inout BundledTierState) {
+    internal func appendMissingTiers(from tiers: [Project.Tier], state: inout BundledTierState) {
         for tier in tiers {
             let normalizedLabel = normalizeTierName(tier.label)
             guard state.items[normalizedLabel] == nil else { continue }
@@ -80,14 +80,14 @@ extension AppState {
         }
     }
 
-    func appendTierToOrderIfNeeded(_ normalizedLabel: String, order: inout [String]) {
+    internal func appendTierToOrderIfNeeded(_ normalizedLabel: String, order: inout [String]) {
         guard normalizedLabel != "unranked" else { return }
         if !order.contains(normalizedLabel) {
             order.append(normalizedLabel)
         }
     }
 
-    func applyTierMetadata(
+    internal func applyTierMetadata(
         _ tier: Project.Tier?,
         normalizedLabel: String,
         state: inout BundledTierState
@@ -98,7 +98,7 @@ extension AppState {
         if tier.locked == true { state.locked.insert(normalizedLabel) }
     }
 
-    func makeItem(from entry: ResolvedItem) -> Item {
+    internal func makeItem(from entry: ResolvedItem) -> Item {
         Item(
             id: entry.id,
             name: entry.title,
@@ -110,7 +110,7 @@ extension AppState {
 
     /// Normalize tier names to lowercase for consistency
     /// "Unranked" -> "unranked", "UNRANKED" -> "unranked", etc.
-    func normalizeTierName(_ name: String) -> String {
+    internal func normalizeTierName(_ name: String) -> String {
         // Special case: normalize any variant of "unranked" to lowercase
         if name.lowercased() == "unranked" {
             return "unranked"
@@ -119,7 +119,7 @@ extension AppState {
         return name
     }
 
-    func prefillBundledProjectsIfNeeded() {
+    internal func prefillBundledProjectsIfNeeded() {
         do {
             let bundledSource = TierListSource.bundled.rawValue
             let descriptor = FetchDescriptor<TierListEntity>(

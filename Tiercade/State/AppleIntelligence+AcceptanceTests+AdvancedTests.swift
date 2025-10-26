@@ -116,7 +116,7 @@ static func testReproducibility(logger: @escaping (String) -> Void) async -> Tes
 
 // MARK: - Test 7: Normalization Edge Cases
 
-struct NormalizationTestCase {
+internal struct NormalizationTestCase {
     let input: String
     let expected: String
     let description: String

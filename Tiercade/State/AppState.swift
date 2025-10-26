@@ -39,14 +39,14 @@ nonisolated enum ExportFormat: CaseIterable {
 
 // MARK: - Analysis & Statistics Types
 
-struct TierDistributionData: Identifiable, Sendable {
+internal struct TierDistributionData: Identifiable, Sendable {
     let id = UUID()
     let tier: String
     let count: Int
     let percentage: Double
 }
 
-struct TierAnalysisData: Sendable {
+internal struct TierAnalysisData: Sendable {
     let totalItems: Int
     let tierDistribution: [TierDistributionData]
     let mostPopulatedTier: String?
@@ -55,7 +55,7 @@ struct TierAnalysisData: Sendable {
     let insights: [String]
     let unrankedCount: Int
 
-    static let empty = TierAnalysisData(
+    internal static let empty = TierAnalysisData(
         totalItems: 0,
         tierDistribution: [],
         mostPopulatedTier: nil,
@@ -241,7 +241,7 @@ final class AppState {
 
     var activeTierListEntity: TierListEntity?
 
-    init(modelContext: ModelContext) {
+    internal init(modelContext: ModelContext) {
         self.modelContext = modelContext
         let didLoad = load()
         if !didLoad {
@@ -297,11 +297,11 @@ final class AppState {
         }
     }
 
-    func updateUndoManager(_ manager: UndoManager?) {
+    internal func updateUndoManager(_ manager: UndoManager?) {
         undoManager = manager
     }
 
-    func captureTierSnapshot() -> TierStateSnapshot {
+    internal func captureTierSnapshot() -> TierStateSnapshot {
         TierStateSnapshot(
             tiers: tiers,
             tierOrder: tierOrder,
@@ -311,7 +311,7 @@ final class AppState {
         )
     }
 
-    func restore(from snapshot: TierStateSnapshot) {
+    internal func restore(from snapshot: TierStateSnapshot) {
         tiers = snapshot.tiers
         tierOrder = snapshot.tierOrder
         tierLabels = snapshot.tierLabels
@@ -319,7 +319,7 @@ final class AppState {
         lockedTiers = snapshot.lockedTiers
     }
 
-    func finalizeChange(action: String, undoSnapshot: TierStateSnapshot) {
+    internal func finalizeChange(action: String, undoSnapshot: TierStateSnapshot) {
         if !isPerformingUndoRedo {
             let redoSnapshot = captureTierSnapshot()
             registerUndo(action: action, undoSnapshot: undoSnapshot, redoSnapshot: redoSnapshot, isRedo: false)
@@ -370,16 +370,16 @@ final class AppState {
         undoManager?.setActionName(action)
     }
 
-    func markAsChanged() {
+    internal func markAsChanged() {
         hasUnsavedChanges = true
     }
 
     /// Log a general app state event using unified logging
-    func logEvent(_ message: String) {
+    internal func logEvent(_ message: String) {
         Logger.appState.info("\(message)")
     }
 
-    func seed() {
+    internal func seed() {
         // Load the first bundled project as default instead of placeholder items
         guard let defaultProject = bundledProjects.first else {
             // Fallback to empty state if no bundled projects available
@@ -414,14 +414,14 @@ final class AppState {
         return itemIDs == placeholderIDs
     }
 
-    func undo() {
+    internal func undo() {
         if let manager = undoManager, manager.canUndo {
             manager.undo()
             return
         }
     }
 
-    func redo() {
+    internal func redo() {
         if let manager = undoManager, manager.canRedo {
             manager.redo()
             return
@@ -452,7 +452,7 @@ final class AppState {
     var analysisData: TierAnalysisData?
 
     // MARK: - Accessibility
-    func announce(_ message: String) {
+    internal func announce(_ message: String) {
         AccessibilityNotification.Announcement(message).post()
     }
 }

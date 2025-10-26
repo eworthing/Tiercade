@@ -20,7 +20,7 @@ import FoundationModels
 class EnhancedPromptTester {
     // MARK: - Testing
 
-    static func testPrompts(
+    internal static func testPrompts(
         config: TestConfig = TestConfig(),
         onProgress: @MainActor @escaping (String) -> Void
     ) async -> [AggregateResult] {
@@ -81,7 +81,7 @@ class EnhancedPromptTester {
         let useGuidedSchema: Bool
     }
 
-    static func testSingleRun(_ params: SingleRunParameters) async -> SingleRunResult {
+    internal static func testSingleRun(_ params: SingleRunParameters) async -> SingleRunResult {
         let startTime = Date()
 
         let effectiveTarget = params.targetCount ?? 40
@@ -135,7 +135,7 @@ class EnhancedPromptTester {
         }
     }
 
-    static func logRunStart(params: SingleRunParameters, effectiveTarget: Int, maxTokens: Int) {
+    internal static func logRunStart(params: SingleRunParameters, effectiveTarget: Int, maxTokens: Int) {
         logToFile(
             "🔵 RUN #\(params.runNumber): prompt=\(params.promptName), query='\(params.query)', N=\(effectiveTarget), " +
             "domain=\(params.domain), decoder=\(params.decodingConfig.name), seed=\(params.seed), " +
@@ -179,7 +179,7 @@ class EnhancedPromptTester {
         let totalRuns: Int
     }
 
-    static func executeLanguageModelRequest(
+    internal static func executeLanguageModelRequest(
         params: SingleRunParameters,
         maxTokens: Int
     ) async throws -> LanguageModelResponse {
@@ -213,7 +213,7 @@ class EnhancedPromptTester {
         }
     }
 
-    static func logRunSuccess(
+    internal static func logRunSuccess(
         analysis: ResponseAnalysis,
         surplusAtN: Int,
         timePerUnique: Double,
@@ -229,7 +229,7 @@ class EnhancedPromptTester {
         )
     }
 
-    static func buildSuccessResult(context: SuccessResultContext) -> SingleRunResult {
+    internal static func buildSuccessResult(context: SuccessResultContext) -> SingleRunResult {
         SingleRunResult(
             promptNumber: context.params.promptNumber,
             promptName: context.params.promptName,
@@ -262,7 +262,7 @@ class EnhancedPromptTester {
         )
     }
 
-    static func buildErrorResult(context: ErrorResultContext) -> SingleRunResult {
+    internal static func buildErrorResult(context: ErrorResultContext) -> SingleRunResult {
         SingleRunResult(
             promptNumber: context.params.promptNumber,
             promptName: context.params.promptName,

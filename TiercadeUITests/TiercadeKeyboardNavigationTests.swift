@@ -1,10 +1,10 @@
 @preconcurrency import XCTest
 
 /// Convenience abstraction for the hardware keys we need to exercise in Mac Catalyst UI tests.
-enum HardwareKey {
+internal enum HardwareKey {
     case left, right, up, down, enter, returnKey, escape, space, tab
 
-    var xcuiKey: XCUIKeyboardKey {
+    internal var xcuiKey: XCUIKeyboardKey {
         switch self {
         case .left: return .leftArrow
         case .right: return .rightArrow
@@ -21,7 +21,7 @@ enum HardwareKey {
 
 extension XCUIElement {
     /// Types a single hardware key using the strongly typed helper.
-    func typeKey(_ key: HardwareKey, modifiers: XCUIElement.KeyModifierFlags = []) {
+    internal func typeKey(_ key: HardwareKey, modifiers: XCUIElement.KeyModifierFlags = []) {
         typeKey(key.xcuiKey, modifierFlags: modifiers)
     }
 }
@@ -29,7 +29,7 @@ extension XCUIElement {
 extension XCTestCase {
     /// Boot the Catalyst build with the standard UI-test arguments.
     @discardableResult
-    func launchTiercade(arguments extraArguments: [String] = []) -> XCUIApplication {
+    internal func launchTiercade(arguments extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
         var arguments = app.launchArguments
         let baseArguments = ["-uiTest"]
@@ -56,17 +56,17 @@ extension XCTestCase {
         return app
     }
 
-    func primaryWindow(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
+    internal func primaryWindow(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 5), "Expected Tiercade window to exist", file: file, line: line)
         return window
     }
 
-    func sendKey(_ key: HardwareKey, to window: XCUIElement, modifiers: XCUIElement.KeyModifierFlags = []) {
+    internal func sendKey(_ key: HardwareKey, to window: XCUIElement, modifiers: XCUIElement.KeyModifierFlags = []) {
         window.typeKey(key, modifiers: modifiers)
     }
 
-    func openQuickRankOverlay(in app: XCUIApplication, window: XCUIElement) {
+    internal func openQuickRankOverlay(in app: XCUIApplication, window: XCUIElement) {
         sendKey(.space, to: window)
         // First wait for any Quick Rank static text to appear
         let quickRankPredicate = NSPredicate(format: "label BEGINSWITH %@", "Quick Rank:")
@@ -76,7 +76,7 @@ extension XCTestCase {
         waitForElement(app.otherElements["QuickRank_Overlay"], in: app, timeout: 10.0)
     }
 
-    func dismissQuickRankOverlayIfNeeded(in app: XCUIApplication, window: XCUIElement) {
+    internal func dismissQuickRankOverlayIfNeeded(in app: XCUIApplication, window: XCUIElement) {
         guard app.otherElements["QuickRank_Overlay"].exists else { return }
         sendKey(.escape, to: window)
         let predicate = NSPredicate(format: "exists == false")
@@ -84,7 +84,7 @@ extension XCTestCase {
         wait(for: [dismissalExpectation], timeout: 3)
     }
 
-    func waitForElement(
+    internal func waitForElement(
         _ element: XCUIElement,
         in app: XCUIApplication,
         timeout: TimeInterval = 10,
@@ -97,7 +97,7 @@ extension XCTestCase {
         XCTFail("Failed waiting for element \(identifier)", file: file, line: line)
     }
 
-    func attachDebugHierarchy(of app: XCUIApplication, named name: String = "UI Hierarchy") {
+    internal func attachDebugHierarchy(of app: XCUIApplication, named name: String = "UI Hierarchy") {
         XCTContext.runActivity(named: name) { _ in
             let attachment = XCTAttachment(string: app.debugDescription)
             attachment.lifetime = .keepAlways
@@ -105,11 +105,11 @@ extension XCTestCase {
         }
     }
 
-    func elementHasKeyboardFocus(_ element: XCUIElement) -> Bool {
+    internal func elementHasKeyboardFocus(_ element: XCUIElement) -> Bool {
         (element.value(forKey: "hasKeyboardFocus") as? Bool) ?? false
     }
 
-    func waitForKeyboardFocus(
+    internal func waitForKeyboardFocus(
         on element: XCUIElement,
         using window: XCUIElement,
         in app: XCUIApplication,
@@ -126,7 +126,7 @@ extension XCTestCase {
         XCTFail("Keyboard focus never reached \(element.identifier)", file: file, line: line)
     }
 
-    func focusElementWithTab(
+    internal func focusElementWithTab(
         _ element: XCUIElement,
         in app: XCUIApplication,
         window: XCUIElement,
@@ -141,7 +141,7 @@ extension XCTestCase {
         waitForKeyboardFocus(on: element, using: window, in: app, timeout: 1.5, file: file, line: line)
     }
 
-    func waitForElementToDisappear(
+    internal func waitForElementToDisappear(
         _ element: XCUIElement,
         in app: XCUIApplication,
         timeout: TimeInterval = 5,
@@ -160,13 +160,13 @@ extension XCTestCase {
 }
 
 /// Keyboard navigation smoke tests for the Catalyst build.
-final class TiercadeKeyboardNavigationTests: XCTestCase {
-    override func tearDownWithError() throws {
+internal final class TiercadeKeyboardNavigationTests: XCTestCase {
+    internal override func tearDownWithError() throws {
         XCUIApplication().terminate()
         try super.tearDownWithError()
     }
 
-    @MainActor func testPressingSpaceOpensQuickRankForDefaultFocusedCard() throws {
+    @MainActor internal func testPressingSpaceOpensQuickRankForDefaultFocusedCard() throws {
         let app = launchTiercade()
         let window = primaryWindow(in: app)
         attachDebugHierarchy(of: app, named: "Post-launch hierarchy")
@@ -188,7 +188,7 @@ final class TiercadeKeyboardNavigationTests: XCTestCase {
 
     /// Validates that arrow keys can navigate between cards without requiring mouse clicks,
     /// matching tvOS spatial navigation behavior on Mac Catalyst.
-    @MainActor func testArrowKeyNavigationBetweenCards() throws {
+    @MainActor internal func testArrowKeyNavigationBetweenCards() throws {
         let app = launchTiercade()
         let window = primaryWindow(in: app)
         attachDebugHierarchy(of: app, named: "Post-launch hierarchy")
@@ -249,7 +249,7 @@ final class TiercadeKeyboardNavigationTests: XCTestCase {
         }
     }
 
-    @MainActor func testEscapeDismissesQuickRankOverlay() throws {
+    @MainActor internal func testEscapeDismissesQuickRankOverlay() throws {
         let app = launchTiercade()
         let window = primaryWindow(in: app)
         attachDebugHierarchy(of: app, named: "Post-launch hierarchy")
@@ -270,7 +270,7 @@ final class TiercadeKeyboardNavigationTests: XCTestCase {
         XCTAssertFalse(app.otherElements["QuickRank_Overlay"].exists)
     }
 
-    @MainActor func testToolbarNavigationAndShortcuts() throws {
+    @MainActor internal func testToolbarNavigationAndShortcuts() throws {
         let app = launchTiercade()
         let window = primaryWindow(in: app)
         attachDebugHierarchy(of: app, named: "Post-launch hierarchy")

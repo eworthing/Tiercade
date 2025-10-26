@@ -4,12 +4,12 @@ import os
 
 // MARK: - Settings Wizard Page
 
-struct SettingsWizardPage: View, WizardPage {
+internal struct SettingsWizardPage: View, WizardPage {
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
 
-    let pageTitle = "Project Settings"
-    let pageDescription = "Configure basic project information and options"
+    internal let pageTitle = "Project Settings"
+    internal let pageDescription = "Configure basic project information and options"
 
     #if os(tvOS)
     @Namespace private var defaultFocusNamespace
@@ -17,7 +17,7 @@ struct SettingsWizardPage: View, WizardPage {
     private enum Field: Hashable { case title, description }
     #endif
 
-    var body: some View {
+    internal var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
                 projectInfoSection

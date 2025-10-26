@@ -5,15 +5,15 @@ import Observation
 import TiercadeCore
 
 @MainActor
-protocol ToolbarExportCoordinating: AnyObject, Observable {
+internal protocol ToolbarExportCoordinating: AnyObject, Observable {
     var isLoading: Bool { get }
     func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String)
     func showToast(type: ToastType, title: String, message: String?)
 }
 
-struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
+internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
     @Bindable var coordinator: Coordinator
-    let exportFormat: ExportFormat
+    internal let exportFormat: ExportFormat
     @Binding var isPresented: Bool
     @State private var isExporting = false
     @State private var exportedData: Data?
@@ -21,7 +21,7 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
     @State private var showingFileExporter = false
     @State private var shareFileURL: URL?
 
-    var body: some View {
+    internal var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
                 informationSection
@@ -189,23 +189,23 @@ struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
     }
 }
 
-struct ExportDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.data] }
+internal struct ExportDocument: FileDocument {
+    internal static var readableContentTypes: [UTType] { [.data] }
 
-    let data: Data
-    let filename: String
+    internal let data: Data
+    internal let filename: String
 
-    init(data: Data, filename: String) {
+    internal init(data: Data, filename: String) {
         self.data = data
         self.filename = filename
     }
 
-    init(configuration: ReadConfiguration) throws {
+    internal init(configuration: ReadConfiguration) throws {
         self.data = configuration.file.regularFileContents ?? Data()
         self.filename = "export"
     }
 
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+    internal func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         FileWrapper(regularFileWithContents: data)
     }
 }

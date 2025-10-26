@@ -18,15 +18,15 @@ import FoundationModels
 #if canImport(FoundationModels) && DEBUG
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
-struct ModelDiagnostics {
+internal struct ModelDiagnostics {
     private let logger: (String) -> Void
 
-    init(logger: @escaping (String) -> Void = { print($0) }) {
+    internal init(logger: @escaping (String) -> Void = { print($0) }) {
         self.logger = logger
     }
 
     /// Run comprehensive diagnostics
-    func runAll() async -> DiagnosticReport {
+    internal func runAll() async -> DiagnosticReport {
         logger("🔬 ========================================")
         logger("🔬 MODEL OUTPUT DIAGNOSTICS")
         logger("🔬 ========================================")
@@ -494,7 +494,7 @@ struct ModelDiagnostics {
 // MARK: - Diagnostic Data Structures
 
 @available(iOS 26.0, macOS 26.0, *)
-struct DiagnosticResult: Codable {
+internal struct DiagnosticResult: Codable {
     let testName: String
     let success: Bool
     let message: String
@@ -503,7 +503,7 @@ struct DiagnosticResult: Codable {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-struct DiagnosticReport: Codable {
+internal struct DiagnosticReport: Codable {
     let timestamp: Date
     let results: [DiagnosticResult]
     let environment: RunEnv

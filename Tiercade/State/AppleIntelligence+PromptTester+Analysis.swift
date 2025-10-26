@@ -46,7 +46,7 @@ static func normalize(_ text: String) -> String {
     return normalized.trimmingCharacters(in: .whitespacesAndNewlines)
 }
 
-struct DuplicateAnalysisResult {
+internal struct DuplicateAnalysisResult {
     let hasDuplicates: Bool
     let duplicateCount: Int
     let uniqueItems: Int
@@ -57,18 +57,18 @@ struct DuplicateAnalysisResult {
     let normalizedItems: [String]
 }
 
-struct ParsedItems {
+internal struct ParsedItems {
     let items: [String]
     let wasJsonParsed: Bool
 }
 
-struct DuplicateDetectionResult {
+internal struct DuplicateDetectionResult {
     let seenNormalized: Set<String>
     let normalizedList: [String]
     let duplicateCount: Int
 }
 
-struct AnalysisMetrics {
+internal struct AnalysisMetrics {
     let totalItems: Int
     let uniqueItems: Int
     let insufficient: Bool

@@ -8,35 +8,35 @@ import UniformTypeIdentifiers
 // A simple, deterministic renderer for exporting a static image or PDF
 // of the current tier list. It intentionally avoids live focus/overlay
 // elements and lays out a compact grid: header per tier + row of item thumbnails.
-struct ExportRenderer {
-    struct Config {
-        var maxSize: CGSize = CGSize(width: 4096, height: 4096)
-        var rowHeight: CGFloat = 220
-        var itemSize: CGSize = CGSize(width: 180, height: 180)
-        var itemSpacing: CGFloat = 16
-        var sectionSpacing: CGFloat = 24
-        var contentInsets: EdgeInsets = EdgeInsets(top: 24, leading: 24, bottom: 24, trailing: 24)
-        var background: Color = Color.black
-        var headerFont: Font = .system(size: 48, weight: .bold)
-        var subtitleFont: Font = .system(size: 18, weight: .regular)
-        var titleColor: Color = .white
-        var subtitleColor: Color = .white.opacity(0.7)
-        var headerHeight: CGFloat = 64
-        var cornerRadius: CGFloat = 12
-        var strokeColor: Color = .white.opacity(0.1)
-        var strokeLineWidth: CGFloat = 1
+internal struct ExportRenderer {
+    internal struct Config {
+        internal var maxSize: CGSize = CGSize(width: 4096, height: 4096)
+        internal var rowHeight: CGFloat = 220
+        internal var itemSize: CGSize = CGSize(width: 180, height: 180)
+        internal var itemSpacing: CGFloat = 16
+        internal var sectionSpacing: CGFloat = 24
+        internal var contentInsets: EdgeInsets = EdgeInsets(top: 24, leading: 24, bottom: 24, trailing: 24)
+        internal var background: Color = Color.black
+        internal var headerFont: Font = .system(size: 48, weight: .bold)
+        internal var subtitleFont: Font = .system(size: 18, weight: .regular)
+        internal var titleColor: Color = .white
+        internal var subtitleColor: Color = .white.opacity(0.7)
+        internal var headerHeight: CGFloat = 64
+        internal var cornerRadius: CGFloat = 12
+        internal var strokeColor: Color = .white.opacity(0.1)
+        internal var strokeLineWidth: CGFloat = 1
     }
 
-    struct Context {
-        let tiers: [String: [Item]]
-        let order: [String]
-        let labels: [String: String]
-        let colors: [String: String]
-        let group: String
-        let themeName: String
+    internal struct Context {
+        internal let tiers: [String: [Item]]
+        internal let order: [String]
+        internal let labels: [String: String]
+        internal let colors: [String: String]
+        internal let group: String
+        internal let themeName: String
     }
 
-    static func makeView(context: Context, cfg: Config = Config()) -> some View {
+    internal static func makeView(context: Context, cfg: Config = Config()) -> some View {
         VStack(alignment: .leading, spacing: cfg.sectionSpacing) {
             headerView(context: context, cfg: cfg)
             ForEach(context.order, id: \.self) { tier in
@@ -125,7 +125,7 @@ struct ExportRenderer {
 
     // Render to PNG data, clamped to max size by scaling the container view.
     @MainActor
-    static func renderPNG(context: Context,
+    internal static func renderPNG(context: Context,
                           targetSize: CGSize? = nil,
                           cfg: Config = Config()) -> Data? {
         let renderer = makeRenderer(context: context, cfg: cfg)
@@ -146,7 +146,7 @@ struct ExportRenderer {
 
     // Render to vector PDF on iOS/macOS; tvOS doesn't support PDF context.
     @MainActor
-    static func renderPDF(context: Context,
+    internal static func renderPDF(context: Context,
                           targetSize: CGSize? = nil,
                           cfg: Config = Config()) -> Data? {
         #if os(tvOS)

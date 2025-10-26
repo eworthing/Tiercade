@@ -10,7 +10,7 @@ public struct Item: Codable, Identifiable, Sendable, Hashable {
     public var imageUrl: String?
     public var videoUrl: String?
 
-    enum CodingKeys: String, CodingKey {
+    public enum CodingKeys: String, CodingKey {
         case id, name, season, status, description, imageUrl, videoUrl
     }
 

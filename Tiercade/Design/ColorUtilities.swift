@@ -10,13 +10,13 @@ import SwiftUI
 import CoreGraphics
 
 /// Centralized color utilities for hex parsing, luminance calculations, and contrast ratios
-nonisolated enum ColorUtilities {
+internal nonisolated enum ColorUtilities {
     /// RGBA color components
-    struct RGBAComponents: Sendable {
-        let red: CGFloat
-        let green: CGFloat
-        let blue: CGFloat
-        let alpha: CGFloat
+    internal struct RGBAComponents: Sendable {
+        internal let red: CGFloat
+        internal let green: CGFloat
+        internal let blue: CGFloat
+        internal let alpha: CGFloat
     }
 
     /// Parse hex color string supporting #RGB, #RRGGBB, #RRGGBBAA formats
@@ -24,7 +24,7 @@ nonisolated enum ColorUtilities {
     ///   - hex: Hex color string with optional # prefix
     ///   - defaultAlpha: Alpha value to use if not specified in hex (0.0-1.0)
     /// - Returns: Normalized RGBA components (0.0-1.0 range)
-    static func parseHex(_ hex: String, defaultAlpha: CGFloat = 1.0) -> RGBAComponents {
+    internal static func parseHex(_ hex: String, defaultAlpha: CGFloat = 1.0) -> RGBAComponents {
         let sanitized = hex.trimmingCharacters(in: .alphanumerics.inverted)
         var value: UInt64 = 0
         Scanner(string: sanitized).scanHexInt64(&value)
@@ -68,7 +68,7 @@ nonisolated enum ColorUtilities {
     /// Calculate WCAG 2.1 relative luminance
     /// - Parameter components: RGBA color components
     /// - Returns: Relative luminance value (0.0-1.0)
-    static func luminance(_ components: RGBAComponents) -> CGFloat {
+    internal static func luminance(_ components: RGBAComponents) -> CGFloat {
         func linearize(_ c: CGFloat) -> CGFloat {
             c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
         }
@@ -82,7 +82,7 @@ nonisolated enum ColorUtilities {
     ///   - lum1: First luminance value
     ///   - lum2: Second luminance value
     /// - Returns: Contrast ratio (1.0-21.0, where 21 is maximum contrast)
-    static func contrastRatio(lum1: CGFloat, lum2: CGFloat) -> CGFloat {
+    internal static func contrastRatio(lum1: CGFloat, lum2: CGFloat) -> CGFloat {
         let lighter = max(lum1, lum2)
         let darker = min(lum1, lum2)
         return (lighter + 0.05) / (darker + 0.05)
@@ -91,7 +91,7 @@ nonisolated enum ColorUtilities {
     /// Choose white or black text color for optimal contrast on given background
     /// - Parameter backgroundHex: Background color as hex string
     /// - Returns: White or black color with 90% opacity for optimal readability
-    static func accessibleTextColor(onBackground backgroundHex: String) -> Color {
+    internal static func accessibleTextColor(onBackground backgroundHex: String) -> Color {
         let bg = parseHex(backgroundHex)
         let bgLum = luminance(bg)
         let whiteContrast = contrastRatio(lum1: 1.0, lum2: bgLum)
@@ -108,7 +108,7 @@ nonisolated enum ColorUtilities {
     ///   - hex: Hex color string (#RRGGBB or #RRGGBBAA)
     ///   - alpha: Optional alpha override (0.0-1.0)
     /// - Returns: SwiftUI Color with Display P3 support on capable devices
-    static func color(hex: String, alpha: CGFloat = 1.0) -> Color {
+    internal static func color(hex: String, alpha: CGFloat = 1.0) -> Color {
         let components = parseHex(hex, defaultAlpha: alpha)
         let colorComponents: [CGFloat] = [components.red, components.green, components.blue, components.alpha]
 

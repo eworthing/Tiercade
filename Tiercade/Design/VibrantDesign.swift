@@ -15,7 +15,7 @@ import SwiftUI
 extension Color {
     /// Wide-gamut aware color from hex string in RGBA format (#RRGGBB or #RRGGBBAA).
     /// This is a convenience wrapper around ColorUtilities for backward compatibility.
-    static func wideGamut(_ rgbaHex: String) -> Color {
+    internal static func wideGamut(_ rgbaHex: String) -> Color {
         ColorUtilities.color(hex: rgbaHex)
     }
 }
@@ -29,12 +29,12 @@ private func chipTextColor(forHex hex: String) -> Color {
 
 // MARK: - Tier enum
 
-enum Tier: String, CaseIterable, Identifiable {
+internal enum Tier: String, CaseIterable, Identifiable {
     case s, a, b, c, d, f, unranked
 
-    var id: String { rawValue }
-    var letter: String { rawValue.uppercased() }
-    var hex: String {
+    internal var id: String { rawValue }
+    internal var letter: String { rawValue.uppercased() }
+    internal var hex: String {
         switch self {
         case .s: return "#FF0037"
         case .a: return "#FFA000"
@@ -45,16 +45,16 @@ enum Tier: String, CaseIterable, Identifiable {
         case .unranked: return "#6B7280"
         }
     }
-    var color: Color {
+    internal var color: Color {
         Color.wideGamut(hex)
     }
 }
 
 // MARK: - Tier Badge View
 
-struct TierBadgeView: View {
-    let tier: Tier
-    var body: some View {
+internal struct TierBadgeView: View {
+    internal let tier: Tier
+    internal var body: some View {
         Text(tier.letter)
             .font(.headline.weight(.bold))
             .foregroundStyle(chipTextColor(forHex: tier.hex))
@@ -74,13 +74,13 @@ struct TierBadgeView: View {
 
 // MARK: - Punchy Focus Effect
 
-struct PunchyFocusStyle: ViewModifier {
-    let tier: Tier
-    var cornerRadius: CGFloat = 12
+internal struct PunchyFocusStyle: ViewModifier {
+    internal let tier: Tier
+    internal var cornerRadius: CGFloat = 12
     @Environment(\.isFocused) private var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    func body(content: Content) -> some View {
+    internal func body(content: Content) -> some View {
         #if os(tvOS)
         // Strong, TV-friendly focus treatment: larger scale, bright dual ring, and accent glow
         let outerRing = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -111,18 +111,18 @@ struct PunchyFocusStyle: ViewModifier {
     }
 }
 
-extension View {
-    func punchyFocus(tier: Tier, cornerRadius: CGFloat = 12) -> some View {
+internal extension View {
+    internal func punchyFocus(tier: Tier, cornerRadius: CGFloat = 12) -> some View {
         modifier(PunchyFocusStyle(tier: tier, cornerRadius: cornerRadius))
     }
 }
 
 // MARK: - Example Card (for previews and adoption reference)
 
-struct VibrantCardView: View {
-    var tier: Tier = .s
+internal struct VibrantCardView: View {
+    internal var tier: Tier = .s
 
-    var body: some View {
+    internal var body: some View {
         Button(action: {}, label: {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
