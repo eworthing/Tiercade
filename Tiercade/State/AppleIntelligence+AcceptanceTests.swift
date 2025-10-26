@@ -19,7 +19,7 @@ import FoundationModels
 enum AcceptanceTestSuite {
 
     // Seed ring for reproducible retries across tests
-    private static let SEED_RING: [UInt64] = [42, 1337, 9999, 123456, 987654]
+    private static let seedRing: [UInt64] = [42, 1337, 9999, 123456, 987654]
 
     struct SeedRun {
         let seed: UInt64
@@ -65,6 +65,12 @@ enum AcceptanceTestSuite {
         return n % 2 == 1 ? s[n/2] : 0.5 * (s[n/2 - 1] + s[n/2])
     }
 
+    struct SeedRunResults {
+        let passAtN: Double
+        let medianIPS: Double
+        let runs: [SeedRun]
+    }
+
     /// Run test across seed ring with telemetry export
     private static func runAcrossSeeds(
         testId: String,
@@ -72,14 +78,14 @@ enum AcceptanceTestSuite {
         targetN: Int,
         logger: @escaping (String) -> Void,
         makeCoordinator: () async throws -> UniqueListCoordinator
-    ) async -> (passAtN: Double, medianIPS: Double, runs: [SeedRun]) {
+    ) async -> SeedRunResults {
         var runs: [SeedRun] = []
 
-        for seed in SEED_RING {
+        for seed in seedRing {
             do {
                 let coordinator = try await makeCoordinator()
                 let t0 = Date()
-                let items = (try? await coordinator.uniqueList(query: query, N: targetN, seed: seed)) ?? []
+                let items = (try? await coordinator.uniqueList(query: query, targetCount: targetN, seed: seed)) ?? []
                 let elapsed = Date().timeIntervalSince(t0)
                 let ips = Double(items.count) / max(elapsed, 0.001)
                 let ok = items.count >= targetN
@@ -117,12 +123,16 @@ enum AcceptanceTestSuite {
             }
         }
 
-        let passAtN = Double(runs.filter { $0.ok }.count) / Double(SEED_RING.count)
+        let passAtN = Double(runs.filter { $0.ok }.count) / Double(seedRing.count)
         let medianIPS = median(runs.map { $0.ips })
 
-        logger("🔎 \(testId): pass@N=\(String(format: "%.2f", passAtN))  per-seed=\(runs.map { $0.ok })  median ips=\(String(format: "%.2f", medianIPS))")
+        let seedResults = runs.map { $0.ok }
+        logger(
+            "🔎 \(testId): pass@N=\(String(format: "%.2f", passAtN))  " +
+            "per-seed=\(seedResults)  median ips=\(String(format: "%.2f", medianIPS))"
+        )
 
-        return (passAtN, medianIPS, runs)
+        return SeedRunResults(passAtN: passAtN, medianIPS: medianIPS, runs: runs)
     }
 
     /// Run all acceptance tests
@@ -195,7 +205,11 @@ enum AcceptanceTestSuite {
             logger: logger
         ) {
             guard let session = try? await createTestSession() else {
-                throw NSError(domain: "AcceptanceTests", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create session"])
+                throw NSError(
+                    domain: "AcceptanceTests",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to create session"]
+                )
             }
             let fm = FMClient(session: session, logger: logger)
             return UniqueListCoordinator(fm: fm, logger: logger)
@@ -205,8 +219,9 @@ enum AcceptanceTestSuite {
         let success = result.passAtN >= 0.6  // 60% pass rate threshold
 
         let message = success
-            ? "JSON decoding successful: \(passedCount)/\(SEED_RING.count) seeds passed, median ips=\(String(format: "%.2f", result.medianIPS))"
-            : "JSON decoding inconsistent: only \(passedCount)/\(SEED_RING.count) seeds passed"
+            ? "JSON decoding successful: \(passedCount)/\(seedRing.count) seeds passed, " +
+              "median ips=\(String(format: "%.2f", result.medianIPS))"
+            : "JSON decoding inconsistent: only \(passedCount)/\(seedRing.count) seeds passed"
 
         logger(success ? "  ✓ \(message)" : "  ⚠️ \(message)")
 
@@ -217,7 +232,7 @@ enum AcceptanceTestSuite {
             details: [
                 "passAtN": String(format: "%.2f", result.passAtN),
                 "medianIPS": String(format: "%.2f", result.medianIPS),
-                "seedsPassed": "\(passedCount)/\(SEED_RING.count)"
+                "seedsPassed": "\(passedCount)/\(seedRing.count)"
             ]
         )
     }
@@ -234,7 +249,11 @@ enum AcceptanceTestSuite {
             logger: logger
         ) {
             guard let session = try? await createTestSession() else {
-                throw NSError(domain: "AcceptanceTests", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create session"])
+                throw NSError(
+                    domain: "AcceptanceTests",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to create session"]
+                )
             }
             let fm = FMClient(session: session, logger: logger)
             return UniqueListCoordinator(fm: fm, logger: logger)
@@ -244,8 +263,9 @@ enum AcceptanceTestSuite {
         let success = result.passAtN >= 0.6  // 60% pass rate threshold
 
         let message = success
-            ? "Uniqueness validated: \(passedCount)/\(SEED_RING.count) seeds passed, median ips=\(String(format: "%.2f", result.medianIPS))"
-            : "Uniqueness inconsistent: only \(passedCount)/\(SEED_RING.count) seeds passed"
+            ? "Uniqueness validated: \(passedCount)/\(seedRing.count) seeds passed, " +
+              "median ips=\(String(format: "%.2f", result.medianIPS))"
+            : "Uniqueness inconsistent: only \(passedCount)/\(seedRing.count) seeds passed"
 
         logger(success ? "  ✓ \(message)" : "  ⚠️ \(message)")
 
@@ -256,7 +276,7 @@ enum AcceptanceTestSuite {
             details: [
                 "passAtN": String(format: "%.2f", result.passAtN),
                 "medianIPS": String(format: "%.2f", result.medianIPS),
-                "seedsPassed": "\(passedCount)/\(SEED_RING.count)"
+                "seedsPassed": "\(passedCount)/\(seedRing.count)"
             ]
         )
     }
@@ -273,7 +293,11 @@ enum AcceptanceTestSuite {
             logger: logger
         ) {
             guard let session = try? await createTestSession() else {
-                throw NSError(domain: "AcceptanceTests", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create session"])
+                throw NSError(
+                    domain: "AcceptanceTests",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to create session"]
+                )
             }
             let fm = FMClient(session: session, logger: logger)
             return UniqueListCoordinator(fm: fm, logger: logger)
@@ -283,8 +307,9 @@ enum AcceptanceTestSuite {
         let success = result.passAtN >= 0.6  // 60% pass rate threshold
 
         let message = success
-            ? "Backfill validated: \(passedCount)/\(SEED_RING.count) seeds passed, median ips=\(String(format: "%.2f", result.medianIPS))"
-            : "Backfill unreliable: only \(passedCount)/\(SEED_RING.count) seeds passed"
+            ? "Backfill validated: \(passedCount)/\(seedRing.count) seeds passed, " +
+              "median ips=\(String(format: "%.2f", result.medianIPS))"
+            : "Backfill unreliable: only \(passedCount)/\(seedRing.count) seeds passed"
 
         logger(success ? "  ✓ \(message)" : "  ⚠️ \(message)")
 
@@ -295,7 +320,7 @@ enum AcceptanceTestSuite {
             details: [
                 "passAtN": String(format: "%.2f", result.passAtN),
                 "medianIPS": String(format: "%.2f", result.medianIPS),
-                "seedsPassed": "\(passedCount)/\(SEED_RING.count)"
+                "seedsPassed": "\(passedCount)/\(seedRing.count)"
             ]
         )
     }
@@ -312,7 +337,11 @@ enum AcceptanceTestSuite {
             logger: logger
         ) {
             guard let session = try? await createTestSession() else {
-                throw NSError(domain: "AcceptanceTests", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to create session"])
+                throw NSError(
+                    domain: "AcceptanceTests",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "Failed to create session"]
+                )
             }
             let fm = FMClient(session: session, logger: logger)
             return UniqueListCoordinator(fm: fm, logger: logger, useGuidedBackfill: true)
@@ -322,8 +351,9 @@ enum AcceptanceTestSuite {
         let success = result.passAtN >= 0.6  // 60% pass rate threshold
 
         let message = success
-            ? "Guided backfill validated: \(passedCount)/\(SEED_RING.count) seeds passed, median ips=\(String(format: "%.2f", result.medianIPS))"
-            : "Guided backfill unreliable: only \(passedCount)/\(SEED_RING.count) seeds passed"
+            ? "Guided backfill validated: \(passedCount)/\(seedRing.count) seeds passed, " +
+              "median ips=\(String(format: "%.2f", result.medianIPS))"
+            : "Guided backfill unreliable: only \(passedCount)/\(seedRing.count) seeds passed"
 
         logger(success ? "  ✓ \(message)" : "  ⚠️ \(message)")
 
@@ -334,7 +364,7 @@ enum AcceptanceTestSuite {
             details: [
                 "passAtN": String(format: "%.2f", result.passAtN),
                 "medianIPS": String(format: "%.2f", result.medianIPS),
-                "seedsPassed": "\(passedCount)/\(SEED_RING.count)"
+                "seedsPassed": "\(passedCount)/\(seedRing.count)"
             ]
         )
     }
@@ -402,10 +432,10 @@ enum AcceptanceTestSuite {
 
             let fixedSeed: UInt64 = 999
             let query = "classic video game characters"
-            let N = 15
+            let targetCount = 15
 
-            let items1 = try await coordinator1.uniqueList(query: query, N: N, seed: fixedSeed)
-            let items2 = try await coordinator2.uniqueList(query: query, N: N, seed: fixedSeed)
+            let items1 = try await coordinator1.uniqueList(query: query, targetCount: targetCount, seed: fixedSeed)
+            let items2 = try await coordinator2.uniqueList(query: query, targetCount: targetCount, seed: fixedSeed)
 
             // Check normKey stability
             let keys1 = items1.map { $0.normKey }
@@ -421,7 +451,8 @@ enum AcceptanceTestSuite {
             let threshold = 60.0 // 60% overlap is reasonable
             let success = overlapPercent >= threshold
 
-            let message = "Overlap: \(overlap)/\(max(keys1.count, keys2.count)) (\(String(format: "%.1f", overlapPercent))%)"
+            let maxCount = max(keys1.count, keys2.count)
+            let message = "Overlap: \(overlap)/\(maxCount) (\(String(format: "%.1f", overlapPercent))%)"
             logger(success ? "  ✓ \(message)" : "  ⚠️ \(message)")
 
             return TestResult(
@@ -448,25 +479,42 @@ enum AcceptanceTestSuite {
 
     // MARK: - Test 7: Normalization Edge Cases
 
+    struct NormalizationTestCase {
+        let input: String
+        let expected: String
+        let description: String
+    }
+
     private static func testNormalization(logger: @escaping (String) -> Void) -> TestResult {
         logger("\n[Test 7/8] Normalization - edge case handling...")
 
-        let testCases: [(input: String, expected: String, description: String)] = [
-            ("The Matrix", "matrix", "leading article"),
-            ("Star Trek™", "star trek", "trademark symbol"),
-            ("Star Trek: The Next Generation", "star trek next generation", "colon and article"),
-            ("Star Trek (2009)", "star trek", "year in parentheses"),
-            ("Doctor Who & Torchwood", "doctor who and torchwood", "ampersand"),
-            ("Pokémon", "pokemon", "diacritic"),
-            ("Heroes", "hero", "plural trim"),
-            ("The A-Team", "team", "leading article + hyphen"),
+        let testCases: [NormalizationTestCase] = [
+            NormalizationTestCase(input: "The Matrix", expected: "matrix", description: "leading article"),
+            NormalizationTestCase(input: "Star Trek™", expected: "star trek", description: "trademark symbol"),
+            NormalizationTestCase(
+                input: "Star Trek: The Next Generation",
+                expected: "star trek next generation",
+                description: "colon and article"
+            ),
+            NormalizationTestCase(input: "Star Trek (2009)", expected: "star trek", description: "year in parentheses"),
+            NormalizationTestCase(
+                input: "Doctor Who & Torchwood",
+                expected: "doctor who and torchwood",
+                description: "ampersand"
+            ),
+            NormalizationTestCase(input: "Pokémon", expected: "pokemon", description: "diacritic"),
+            NormalizationTestCase(input: "Heroes", expected: "hero", description: "plural trim"),
+            NormalizationTestCase(input: "The A-Team", expected: "team", description: "leading article + hyphen")
         ]
 
         var passed = 0
         var failed = 0
         var failures: [String] = []
 
-        for (input, expected, description) in testCases {
+        for testCase in testCases {
+            let input = testCase.input
+            let expected = testCase.expected
+            let description = testCase.description
             let result = input.normKey
             if result == expected {
                 passed += 1
@@ -562,7 +610,11 @@ enum AcceptanceTestSuite {
 
     // MARK: - Export
 
-    static func saveReport(_ report: TestReport, to path: String, logger: @escaping (String) -> Void = { print($0) }) throws {
+    static func saveReport(
+        _ report: TestReport,
+        to path: String,
+        logger: @escaping (String) -> Void = { print($0) }
+    ) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(report)

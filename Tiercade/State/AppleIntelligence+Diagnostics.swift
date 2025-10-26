@@ -166,9 +166,15 @@ struct ModelDiagnostics {
 
     // MARK: - Test 2: @Generable with Token Variations
 
-    private func testGenerableWithTokens(itemCount: Int, tokensPerItem: Int, seed: UInt64 = 42) async -> DiagnosticResult {
+    private func testGenerableWithTokens(
+        itemCount: Int,
+        tokensPerItem: Int,
+        seed: UInt64 = 42
+    ) async -> DiagnosticResult {
         let maxTokens = itemCount * tokensPerItem
-        logger("🔬 [Test] @Generable - \(itemCount) items, \(tokensPerItem) tokens/item = \(maxTokens) total, seed=\(seed)")
+        logger(
+            "🔬 [Test] @Generable - \(itemCount) items, \(tokensPerItem) tokens/item = \(maxTokens) total, seed=\(seed)"
+        )
 
         do {
             guard let session = try? await createTestSession() else {
@@ -288,12 +294,12 @@ struct ModelDiagnostics {
             let fm = FMClient(session: session, logger: logger)
             let coordinator = UniqueListCoordinator(fm: fm, logger: logger)
 
-            logger("  🎯 Calling coordinator.uniqueList(query:N:seed:)...")
+            logger("  🎯 Calling coordinator.uniqueList(query:targetCount:seed:)...")
             let start = Date()
 
             let items = try await coordinator.uniqueList(
                 query: "famous scientists throughout history",
-                N: itemCount,
+                targetCount: itemCount,
                 seed: 123
             )
 

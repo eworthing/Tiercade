@@ -14,9 +14,9 @@ struct SchemaWizardPage: View, WizardPage {
     let pageTitle = "Item Schema"
     let pageDescription = "Define custom fields for your items"
 
-#if os(tvOS)
+    #if os(tvOS)
     @Namespace private var defaultFocusNamespace
-#endif
+    #endif
 
     var body: some View {
         ScrollView {
@@ -110,11 +110,11 @@ struct SchemaWizardPage: View, WizardPage {
         }
         #else
         .sheet(isPresented: $showingAddField) {
-            AddSchemaFieldSheet(onAdd: { field in
-                schemaFields.append(field)
-                persistSchemaChange()
-            })
-            .presentationDetents([.large])
+        AddSchemaFieldSheet(onAdd: { field in
+        schemaFields.append(field)
+        persistSchemaChange()
+        })
+        .presentationDetents([.large])
         }
         #endif
         .onAppear {
@@ -129,7 +129,10 @@ struct SchemaWizardPage: View, WizardPage {
                 .foregroundStyle(Palette.text)
 
             Text(
-                "Define what information each item should have. Examples include Year, Genre, Platform, Developer, or Publisher."
+                """
+                Define what information each item should have. Examples include Year, Genre, Platform, \
+                Developer, or Publisher.
+                """
             )
             .font(TypeScale.body)
             .foregroundStyle(Palette.textDim)
@@ -470,7 +473,7 @@ struct AddSchemaFieldSheet: View {
                 .font(.headline.weight(.semibold))
 
             TextField("Field Name", text: $fieldName, prompt: Text("e.g., Genre, Platform, Developer"))
-            #if os(tvOS)
+                #if os(tvOS)
                 .padding(12)
                 .background {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -481,9 +484,9 @@ struct AddSchemaFieldSheet: View {
                         .stroke(Color.white.opacity(0.3), lineWidth: 2)
                 }
                 .focusEffectDisabled(false)
-            #else
+                #else
                 .textFieldStyle(.roundedBorder)
-            #endif
+                #endif
                 .accessibilityIdentifier("Schema_FieldName")
 
             Text("Give the field a clear label so editors know what to enter.")
@@ -600,7 +603,7 @@ struct AddSchemaFieldSheet: View {
 
             HStack(spacing: 12) {
                 TextField("New Option", text: $newOption)
-                #if os(tvOS)
+                    #if os(tvOS)
                     .padding(12)
                     .background {
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -612,7 +615,7 @@ struct AddSchemaFieldSheet: View {
                     }
                     .focusEffectDisabled(false)
                 #else
-                    .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.roundedBorder)
                 #endif
 
                 Button {
@@ -693,7 +696,10 @@ private struct FieldTypeCard: View {
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(isSelected ? Color.accentColor : Color.white.opacity(0.2), lineWidth: isSelected ? 3 : 1)
+                    .strokeBorder(
+                        isSelected ? Color.accentColor : Color.white.opacity(0.2),
+                        lineWidth: isSelected ? 3 : 1
+                    )
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))

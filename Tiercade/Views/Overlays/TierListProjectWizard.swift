@@ -10,10 +10,10 @@ struct TierListProjectWizard: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedTab = 0
-#if os(tvOS)
+    #if os(tvOS)
     @Namespace private var toolbarFocusNamespace
     @Namespace private var tabFocusNamespace
-#endif
+    #endif
 
     // Sheet presentations for item/tier editing
     @State private var showingTierDetailsSheet = false
@@ -46,15 +46,15 @@ struct TierListProjectWizard: View {
 
     private var toolbarSection: some View {
         Group {
-#if os(tvOS)
+            #if os(tvOS)
             tvGlassContainer(spacing: 0) {
                 toolbarContent
             }
             .focusSection()
-#else
+            #else
             toolbarContent
                 .background(.ultraThinMaterial)
-#endif
+            #endif
         }
     }
 
@@ -62,33 +62,33 @@ struct TierListProjectWizard: View {
         TabView(selection: $selectedTab) {
             SettingsWizardPage(appState: appState, draft: draft)
                 .tag(0)
-#if os(tvOS)
+                #if os(tvOS)
                 .focusSection()
-#endif
+            #endif
 
             SchemaWizardPage(appState: appState, draft: draft)
                 .tag(1)
-#if os(tvOS)
+                #if os(tvOS)
                 .focusSection()
-#endif
+            #endif
 
             ItemsWizardPage(appState: appState, draft: draft)
                 .tag(2)
-#if os(tvOS)
+                #if os(tvOS)
                 .focusSection()
-#endif
+            #endif
 
             TiersWizardPage(appState: appState, draft: draft)
                 .tag(3)
-#if os(tvOS)
+                #if os(tvOS)
                 .focusSection()
-#endif
+            #endif
         }
-#if os(tvOS)
+        #if os(tvOS)
         .tabViewStyle(.page)
-#else
+        #else
         .tabViewStyle(.page(indexDisplayMode: .never))
-#endif
+        #endif
     }
 
     // MARK: - Toolbar Content
@@ -109,10 +109,10 @@ struct TierListProjectWizard: View {
                         Task { await appState.saveTierListDraft(action: .save) }
                     } label: {
                         Label(primaryActionTitle, systemImage: primaryActionSymbol)
-                        #if os(tvOS)
+                            #if os(tvOS)
                             .labelStyle(.iconOnly)
                         #else
-                            .labelStyle(.titleAndIcon)
+                        .labelStyle(.titleAndIcon)
                         #endif
                     }
                     #if os(tvOS)
@@ -127,10 +127,10 @@ struct TierListProjectWizard: View {
                         Task { await appState.saveTierListDraft(action: .publish) }
                     } label: {
                         Label(secondaryActionTitle, systemImage: secondaryActionSymbol)
-                        #if os(tvOS)
+                            #if os(tvOS)
                             .labelStyle(.iconOnly)
                         #else
-                            .labelStyle(.titleAndIcon)
+                        .labelStyle(.titleAndIcon)
                         #endif
                     }
                     #if os(tvOS)
@@ -145,10 +145,10 @@ struct TierListProjectWizard: View {
                         dismiss()
                     } label: {
                         Label("Close", systemImage: "xmark.circle.fill")
-                        #if os(tvOS)
+                            #if os(tvOS)
                             .labelStyle(.iconOnly)
                         #else
-                            .labelStyle(.titleAndIcon)
+                        .labelStyle(.titleAndIcon)
                         #endif
                     }
                     #if os(tvOS)
@@ -194,15 +194,15 @@ struct TierListProjectWizard: View {
             .padding(.vertical, 8)
             .background(
                 selectedTab == index
-                ? Palette.brand.opacity(0.25)
-                : Palette.surface.opacity(0.35)
+                    ? Palette.brand.opacity(0.25)
+                    : Palette.surface.opacity(0.35)
             )
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
-#if os(tvOS)
+        #if os(tvOS)
         .prefersDefaultFocus(index == selectedTab, in: tabFocusNamespace)
-#endif
+        #endif
         .accessibilityIdentifier("Tab_\(title)")
     }
 

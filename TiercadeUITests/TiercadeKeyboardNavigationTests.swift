@@ -84,7 +84,13 @@ extension XCTestCase {
         wait(for: [dismissalExpectation], timeout: 3)
     }
 
-    func waitForElement(_ element: XCUIElement, in app: XCUIApplication, timeout: TimeInterval = 10, file: StaticString = #filePath, line: UInt = #line) {
+    func waitForElement(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        timeout: TimeInterval = 10,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
         if element.waitForExistence(timeout: timeout) { return }
         let identifier = element.identifier.isEmpty ? String(describing: element) : element.identifier
         attachDebugHierarchy(of: app, named: "Hierarchy after waiting for \(identifier)")
@@ -103,7 +109,14 @@ extension XCTestCase {
         (element.value(forKey: "hasKeyboardFocus") as? Bool) ?? false
     }
 
-    func waitForKeyboardFocus(on element: XCUIElement, using window: XCUIElement, in app: XCUIApplication, timeout: TimeInterval = 3, file: StaticString = #filePath, line: UInt = #line) {
+    func waitForKeyboardFocus(
+        on element: XCUIElement,
+        using window: XCUIElement,
+        in app: XCUIApplication,
+        timeout: TimeInterval = 3,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             if elementHasKeyboardFocus(element) { return }
@@ -113,7 +126,14 @@ extension XCTestCase {
         XCTFail("Keyboard focus never reached \(element.identifier)", file: file, line: line)
     }
 
-    func focusElementWithTab(_ element: XCUIElement, in app: XCUIApplication, window: XCUIElement, maxAttempts: Int = 12, file: StaticString = #filePath, line: UInt = #line) {
+    func focusElementWithTab(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        window: XCUIElement,
+        maxAttempts: Int = 12,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
         for _ in 0..<maxAttempts where !elementHasKeyboardFocus(element) {
             sendKey(.tab, to: window)
             RunLoop.current.run(until: Date().addingTimeInterval(0.1))
@@ -121,7 +141,13 @@ extension XCTestCase {
         waitForKeyboardFocus(on: element, using: window, in: app, timeout: 1.5, file: file, line: line)
     }
 
-    func waitForElementToDisappear(_ element: XCUIElement, in app: XCUIApplication, timeout: TimeInterval = 5, file: StaticString = #filePath, line: UInt = #line) {
+    func waitForElementToDisappear(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        timeout: TimeInterval = 5,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
         guard element.exists else { return }
         let predicate = NSPredicate(format: "exists == false")
         let exp = expectation(for: predicate, evaluatedWith: element)
@@ -193,7 +219,7 @@ final class TiercadeKeyboardNavigationTests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.3))
 
             XCTAssertTrue(quickRankOverlay.exists,
-                         "Arrow key navigation should work after initial focus")
+                          "Arrow key navigation should work after initial focus")
             dismissQuickRankOverlayIfNeeded(in: app, window: window)
         } else {
             // FALLBACK: Focus wasn't auto-seeded, click to establish it
@@ -205,7 +231,7 @@ final class TiercadeKeyboardNavigationTests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.3))
 
             XCTAssertTrue(quickRankOverlay.exists,
-                         "Space should open Quick Rank after establishing focus")
+                          "Space should open Quick Rank after establishing focus")
             dismissQuickRankOverlayIfNeeded(in: app, window: window)
             RunLoop.current.run(until: Date().addingTimeInterval(0.2))
 
@@ -218,7 +244,7 @@ final class TiercadeKeyboardNavigationTests: XCTestCase {
             RunLoop.current.run(until: Date().addingTimeInterval(0.3))
 
             XCTAssertTrue(quickRankOverlay.exists,
-                         "Arrow key navigation should work from first card")
+                          "Arrow key navigation should work from first card")
             dismissQuickRankOverlayIfNeeded(in: app, window: window)
         }
     }

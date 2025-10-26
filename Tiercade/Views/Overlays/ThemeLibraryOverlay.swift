@@ -65,7 +65,7 @@ private extension ThemeLibraryOverlay {
         .defaultFocus($focusedThemeID, defaultFocusID)
         .onExitCommand { appState.dismissThemePicker() }
         .onMoveCommand(perform: handleMoveCommand)
-#else
+        #else
         .focusable()
         .focused($overlayHasFocus)
         .onKeyPress(.upArrow) { handleDirectionalInput(.up); return .handled }
@@ -75,15 +75,15 @@ private extension ThemeLibraryOverlay {
         .onKeyPress(.space) { activateFocusedTheme(); return .handled }
         .onKeyPress(.return) { activateFocusedTheme(); return .handled }
         .onChange(of: overlayHasFocus) { _, newValue in
-            guard !newValue, appState.themePickerActive else { return }
-            Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(50))
-                if appState.themePickerActive {
-                    overlayHasFocus = true
-                }
-            }
+        guard !newValue, appState.themePickerActive else { return }
+        Task { @MainActor in
+        try? await Task.sleep(for: .milliseconds(50))
+        if appState.themePickerActive {
+        overlayHasFocus = true
         }
-#endif
+        }
+        }
+        #endif
         .onChange(of: appState.availableThemes) { ensureValidFocus() }
         .onChange(of: appState.selectedTheme.id) { assignFocusToSelectedTheme() }
     }
@@ -142,9 +142,9 @@ private extension ThemeLibraryOverlay {
                 appState.dismissThemePicker()
             }
             .accessibilityIdentifier("ThemePicker_Close")
-#if !os(tvOS)
+            #if !os(tvOS)
             .keyboardShortcut(.cancelAction)
-#endif
+            #endif
             #if swift(>=6.0)
             .buttonStyle(.glass)
             #else
@@ -218,12 +218,12 @@ private extension ThemeLibraryOverlay {
 
 private extension ThemeLibraryOverlay {
 
-#if os(tvOS)
+    #if os(tvOS)
     func handleMoveCommand(_ direction: MoveCommandDirection) {
         guard let mapped = DirectionalMove(moveCommand: direction) else { return }
         handleDirectionalInput(mapped)
     }
-#endif
+    #endif
 
     func handleDirectionalInput(_ move: DirectionalMove) {
         #if !os(tvOS)
@@ -397,8 +397,8 @@ private struct ThemeLibraryTile: View {
         .glassEffectID(theme.id, in: namespace)
         #else
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.ultraThinMaterial)
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+        .fill(.ultraThinMaterial)
         )
         #endif
         .overlay(alignment: .topTrailing) {

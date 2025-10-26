@@ -26,12 +26,12 @@ struct ToolbarView: ToolbarContent {
 
     var body: some ToolbarContent {
         #if os(iOS) || targetEnvironment(macCatalyst)
-#if targetEnvironment(macCatalyst)
+        #if targetEnvironment(macCatalyst)
         ToolbarItem(placement: .principal) {
             TierListQuickMenu(app: app)
                 .frame(minWidth: 220, idealWidth: 280, maxWidth: 360)
         }
-#else
+        #else
         ToolbarItemGroup(placement: .topBarLeading) {
             TierListQuickMenu(app: app)
                 .frame(minWidth: 200)
@@ -45,9 +45,9 @@ struct ToolbarView: ToolbarContent {
                 Label("New Tier List…", systemImage: "square.and.pencil")
             }
             .accessibilityIdentifier("Toolbar_NewTierList")
-#if targetEnvironment(macCatalyst)
+            #if targetEnvironment(macCatalyst)
             .help("Create a new tier list (⇧⌘N)")
-#endif
+            #endif
 
             Button {
                 app.toggleAnalysis()
@@ -57,9 +57,9 @@ struct ToolbarView: ToolbarContent {
             }
             .disabled(!app.canShowAnalysis && !app.showingAnalysis)
             .accessibilityIdentifier("Toolbar_Analysis")
-#if targetEnvironment(macCatalyst)
+            #if targetEnvironment(macCatalyst)
             .help(app.showingAnalysis ? "Close analysis (⌘A)" : "Open analysis (⌘A)")
-#endif
+            #endif
 
             Button {
                 app.toggleThemePicker()
@@ -68,9 +68,9 @@ struct ToolbarView: ToolbarContent {
                     .accessibilityLabel("Themes")
             }
             .accessibilityIdentifier("Toolbar_Themes")
-#if targetEnvironment(macCatalyst)
+            #if targetEnvironment(macCatalyst)
             .help("Browse themes (⌘T)")
-#endif
+            #endif
 
             if AppleIntelligenceService.isSupportedOnCurrentPlatform {
                 Button {
@@ -79,9 +79,9 @@ struct ToolbarView: ToolbarContent {
                     Label("Apple Intelligence", systemImage: "sparkles")
                 }
                 .accessibilityIdentifier("Toolbar_AIChat")
-#if targetEnvironment(macCatalyst)
+                #if targetEnvironment(macCatalyst)
                 .help("Chat with Apple Intelligence")
-#endif
+                #endif
             }
 
             Button {
@@ -92,9 +92,9 @@ struct ToolbarView: ToolbarContent {
             }
             .disabled(!app.canStartHeadToHead)
             .accessibilityIdentifier("Toolbar_H2H")
-#if targetEnvironment(macCatalyst)
+            #if targetEnvironment(macCatalyst)
             .help("Start head-to-head (⌘H)")
-#endif
+            #endif
 
             let multiSelectActive = editMode?.wrappedValue == .active
             Button {

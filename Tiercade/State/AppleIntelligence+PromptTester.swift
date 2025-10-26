@@ -381,19 +381,21 @@ class SystemPromptTester {
         return normalized.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    struct DuplicateAnalysisResult {
+        let hasDuplicates: Bool
+        let duplicateCount: Int
+        let uniqueItems: Int
+        let totalItems: Int
+        let insufficient: Bool
+        let wasJsonParsed: Bool
+        let parsedItems: [String]
+        let normalizedItems: [String]
+    }
+
     private static func analyzeDuplicates(
         _ text: String,
         expectedCount: Int = 25
-    ) -> (
-        hasDuplicates: Bool,
-        duplicateCount: Int,
-        uniqueItems: Int,
-        totalItems: Int,
-        insufficient: Bool,
-        wasJsonParsed: Bool,
-        parsedItems: [String],
-        normalizedItems: [String]
-    ) {
+    ) -> DuplicateAnalysisResult {
         var items: [String] = []
         var wasJsonParsed = false
 
@@ -461,7 +463,7 @@ class SystemPromptTester {
         let insufficient = totalItems < minimumRequired
         let hasDuplicates = duplicateCount > 0
 
-        return (
+        return DuplicateAnalysisResult(
             hasDuplicates: hasDuplicates,
             duplicateCount: duplicateCount,
             uniqueItems: uniqueItems,
@@ -651,14 +653,16 @@ class SystemPromptTester {
 
         CRITICAL RULE: It is better to stop early and provide a shorter list than to provide a single duplicate item.
 
-        If you are asked for 25 items, but you can only think of 20 unique items, your response MUST stop at 20. Do not add a 21st item if it is a repeat.
+        If you are asked for 25 items, but you can only think of 20 unique items, your response MUST stop at 20. \
+        Do not add a 21st item if it is a repeat.
 
         Repetition is a critical failure. Uniqueness is the highest priority.
         """,
 
         // 15. Architectural-Aware (Chunked Self-Correction)
         """
-        You are a language model. You have an architectural limitation: when generating long lists, you can "forget" items you wrote at the beginning. This can cause you to accidentally repeat items.
+        You are a language model. You have an architectural limitation: when generating long lists, you can "forget" \
+        items you wrote at the beginning. This can cause you to accidentally repeat items.
 
         To compensate for this, you MUST follow this strict, chunked generation algorithm:
 

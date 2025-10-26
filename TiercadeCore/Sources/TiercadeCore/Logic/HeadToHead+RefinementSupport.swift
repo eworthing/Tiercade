@@ -239,13 +239,13 @@ extension HeadToHeadLogic {
     }
 
     static func logRefinementDetails(_ context: RefinementLogContext) {
-#if DEBUG
+        #if DEBUG
         guard HeadToHeadLogic.loggingEnabled else { return }
         logRefinementSummary(context)
         logOrderedMetrics(context)
         logGapMetrics(context)
         logCutComparison(context)
-#endif
+        #endif
     }
 
     static func makeRefinedArtifacts(
@@ -266,7 +266,7 @@ extension HeadToHeadLogic {
         )
     }
 
-#if DEBUG
+    #if DEBUG
     private static func logRefinementSummary(_ context: RefinementLogContext) {
         if !context.primaryCuts.isEmpty && context.refinedCuts == context.quantCuts {
             NSLog(
@@ -331,15 +331,15 @@ extension HeadToHeadLogic {
             String(describing: context.refinedCuts)
         )
     }
-#endif
+    #endif
 }
 
 extension HeadToHeadLogic.CandidatePair: Equatable {
     static func == (lhs: HeadToHeadLogic.CandidatePair, rhs: HeadToHeadLogic.CandidatePair) -> Bool {
         lhs.pair.0.id == rhs.pair.0.id &&
-        lhs.pair.1.id == rhs.pair.1.id &&
-        lhs.closeness == rhs.closeness &&
-        lhs.minComparisons == rhs.minComparisons
+            lhs.pair.1.id == rhs.pair.1.id &&
+            lhs.closeness == rhs.closeness &&
+            lhs.minComparisons == rhs.minComparisons
     }
 }
 

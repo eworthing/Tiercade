@@ -14,21 +14,21 @@ import FoundationModels
 #endif
 
 // Boot logging for acceptance test diagnostics
-private let ACCEPT_FLAG = "-runAcceptanceTests"
-private let BOOT_LOG = "/tmp/tiercade_acceptance_boot.log"
+private let acceptanceTestFlag = "-runAcceptanceTests"
+private let bootLogPath = "/tmp/tiercade_acceptance_boot.log"
 
 @discardableResult
-private func bootLog(_ s: String) -> Void {
+private func bootLog(_ s: String) {
     let line = "[\(ISO8601DateFormatter().string(from: Date()))] \(s)\n"
     if let d = line.data(using: .utf8) {
-        if FileManager.default.fileExists(atPath: BOOT_LOG) {
-            if let h = try? FileHandle(forWritingTo: URL(fileURLWithPath: BOOT_LOG)) {
+        if FileManager.default.fileExists(atPath: bootLogPath) {
+            if let h = try? FileHandle(forWritingTo: URL(fileURLWithPath: bootLogPath)) {
                 try? h.seekToEnd()
                 try? h.write(contentsOf: d)
                 try? h.close()
             }
         } else {
-            FileManager.default.createFile(atPath: BOOT_LOG, contents: d)
+            FileManager.default.createFile(atPath: bootLogPath, contents: d)
         }
     }
     print(s)
@@ -48,7 +48,7 @@ struct TiercadeApp: App {
         let container: ModelContainer
         do {
             container = try ModelContainer(
-            for: TierListEntity.self,
+                for: TierListEntity.self,
                 TierEntity.self,
                 TierItemEntity.self,
                 TierThemeEntity.self,
@@ -98,12 +98,12 @@ struct TiercadeApp: App {
         let args = ProcessInfo.processInfo.arguments
         bootLog("🔎 body.task fired, args=\(args)")
 
-        guard args.contains(ACCEPT_FLAG) else {
-            bootLog("ℹ️  Flag '\(ACCEPT_FLAG)' not present; continuing with normal UI")
+        guard args.contains(acceptanceTestFlag) else {
+            bootLog("ℹ️  Flag '\(acceptanceTestFlag)' not present; continuing with normal UI")
             return
         }
 
-        bootLog("✅ Flag '\(ACCEPT_FLAG)' present → starting acceptance suite")
+        bootLog("✅ Flag '\(acceptanceTestFlag)' present → starting acceptance suite")
 
         // Acceptance tests require macOS/iOS - fail immediately on tvOS
         #if os(tvOS)
@@ -173,7 +173,12 @@ struct TiercadeApp: App {
                 print("\n🏆 TOP 3 PROMPTS:")
                 for (idx, result) in sorted.prefix(3).enumerated() {
                     print("  \(idx + 1). Prompt #\(result.promptNumber)")
-                    print("     DupRate: \(String(format: "%.1f±%.1f%%", result.meanDupRate * 100, result.stdevDupRate * 100))")
+                    let dupRate = String(
+                        format: "%.1f±%.1f%%",
+                        result.meanDupRate * 100,
+                        result.stdevDupRate * 100
+                    )
+                    print("     DupRate: \(dupRate)")
                     print("     Insufficient: \(String(format: "%.1f%%", result.insufficientRate * 100))")
                 }
 

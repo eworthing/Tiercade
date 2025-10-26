@@ -54,13 +54,13 @@ struct MatchupArenaOverlay: View {
             }
             .padding(.vertical, verticalPadding)
             .padding(.horizontal, horizontalPadding)
-        .frame(maxWidth: maxWidth)
+            .frame(maxWidth: maxWidth)
         }
         .tvGlassRounded(40)
-#if swift(>=6.0)
+        #if swift(>=6.0)
         .glassEffectID("matchupOverlay", in: glassNamespace)
         .glassEffectTransition(.matchedGeometry)
-#endif
+        #endif
         .overlay(
             RoundedRectangle(cornerRadius: 36, style: .continuous)
                 .stroke(Color.white.opacity(0.18), lineWidth: 1.2)
@@ -69,9 +69,9 @@ struct MatchupArenaOverlay: View {
         .padding(.horizontal, Metrics.grid * 2)
         .accessibilityIdentifier("MatchupOverlay_Root")
         .accessibilityElement(children: .contain)
-#if os(tvOS)
+        #if os(tvOS)
         .focusSection()
-#endif
+        #endif
         .defaultFocus($focusAnchor, defaultFocus)
         .onAppear { handleAppear() }
         .onChange(of: app.h2hPair?.0.id) { _, _ in synchronizeFocus() }
@@ -81,14 +81,14 @@ struct MatchupArenaOverlay: View {
             guard !suppressFocusReset else { return }
             if let newValue { lastFocus = newValue } else { focusAnchor = lastFocus }
         }
-#if os(tvOS)
+        #if os(tvOS)
         .onExitCommand { app.cancelH2H(fromExitCommand: true) }
         .onDisappear { suppressFocusReset = true }
-#endif
-#if os(tvOS)
+        #endif
+        #if os(tvOS)
         .onMoveCommand(perform: handleMoveCommand)
-#endif
-#if !os(tvOS)
+        #endif
+        #if !os(tvOS)
         .onDisappear { overlayHasFocus = false }
         .focusable()
         .focused($overlayHasFocus)
@@ -108,7 +108,7 @@ struct MatchupArenaOverlay: View {
             }
         }
         .accessibilityAddTraits(.isModal)
-#endif
+        #endif
     }
 
     private var defaultFocus: MatchupFocusAnchor {
@@ -116,42 +116,42 @@ struct MatchupArenaOverlay: View {
     }
 
     private func overlayMaxWidth(for proxy: GeometryProxy) -> CGFloat {
-#if os(tvOS)
+        #if os(tvOS)
         let safeArea = proxy.safeAreaInsets
         let available = max(proxy.size.width - safeArea.leading - safeArea.trailing, 0)
         let horizontalMargin = Metrics.grid * 4
         let desired = max(available - horizontalMargin, minOverlayWidth)
         return min(desired, available)
-#else
+        #else
         let available = proxy.size.width
         let horizontalMargin = Metrics.grid * 4
         let desired = max(available - horizontalMargin, 860)
         return min(desired, available)
-#endif
+        #endif
     }
 
     private var verticalPadding: CGFloat {
-#if os(tvOS)
+        #if os(tvOS)
         return TVMetrics.overlayPadding * 1.25
-#else
+        #else
         return Metrics.grid * 5
-#endif
+        #endif
     }
 
     private var horizontalPadding: CGFloat {
-#if os(tvOS)
+        #if os(tvOS)
         return TVMetrics.overlayPadding * 1.1
-#else
+        #else
         return Metrics.grid * 4.5
-#endif
+        #endif
     }
 
     private var sectionSpacing: CGFloat {
-#if os(tvOS)
+        #if os(tvOS)
         return TVMetrics.cardSpacing * 1.15
-#else
+        #else
         return Metrics.grid * 3.5
-#endif
+        #endif
     }
 
     private var headerSection: some View {
@@ -271,11 +271,11 @@ struct MatchupArenaOverlay: View {
     }
 
     private var pairSpacing: CGFloat {
-#if os(tvOS)
+        #if os(tvOS)
         return TVMetrics.cardSpacing * 1.3
-#else
+        #else
         return Metrics.grid * 4
-#endif
+        #endif
     }
 
     private var progressLabel: String {
@@ -323,12 +323,12 @@ struct MatchupArenaOverlay: View {
         }
     }
 
-#if os(tvOS)
+    #if os(tvOS)
     private func handleMoveCommand(_ direction: MoveCommandDirection) {
         guard let mapped = DirectionalMove(moveCommand: direction) else { return }
         handleDirectionalInput(mapped)
     }
-#endif
+    #endif
 
     private func handleDirectionalInput(_ move: DirectionalMove) {
         guard !suppressFocusReset else { return }

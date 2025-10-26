@@ -60,16 +60,41 @@ struct NormConfig {
     ]
 
     // Precompiled regex patterns
-    static let reMarks = try! NSRegularExpression(pattern: "[™®©]")
-    static let reBrackets = try! NSRegularExpression(
-        pattern: #"\s*[\(\[][^\)\]]*[\)\]]"#
-    )
-    static let reLeadArticles = try! NSRegularExpression(
-        pattern: #"^(the|a|an)\s+"#,
-        options: [.caseInsensitive]
-    )
-    static let rePunct = try! NSRegularExpression(pattern: #"[[:punct:]]+"#)
-    static let reWs = try! NSRegularExpression(pattern: #"\s+"#)
+    static let reMarks: NSRegularExpression = {
+        do {
+            return try NSRegularExpression(pattern: "[™®©]")
+        } catch {
+            fatalError("Invalid regex pattern for trademark symbols: \(error)")
+        }
+    }()
+    static let reBrackets: NSRegularExpression = {
+        do {
+            return try NSRegularExpression(pattern: #"\s*[\(\[][^\)\]]*[\)\]]"#)
+        } catch {
+            fatalError("Invalid regex pattern for brackets: \(error)")
+        }
+    }()
+    static let reLeadArticles: NSRegularExpression = {
+        do {
+            return try NSRegularExpression(pattern: #"^(the|a|an)\s+"#, options: [.caseInsensitive])
+        } catch {
+            fatalError("Invalid regex pattern for leading articles: \(error)")
+        }
+    }()
+    static let rePunct: NSRegularExpression = {
+        do {
+            return try NSRegularExpression(pattern: #"[[:punct:]]+"#)
+        } catch {
+            fatalError("Invalid regex pattern for punctuation: \(error)")
+        }
+    }()
+    static let reWs: NSRegularExpression = {
+        do {
+            return try NSRegularExpression(pattern: #"\s+"#)
+        } catch {
+            fatalError("Invalid regex pattern for whitespace: \(error)")
+        }
+    }()
 }
 
 // MARK: - String Normalization Extension
@@ -296,9 +321,17 @@ enum DecoderProfile {
         case .greedy:
             return GenerationOptions(sampling: .greedy, temperature: temp, maximumResponseTokens: maxTok)
         case .topK(let k):
-            return GenerationOptions(sampling: .random(top: k, seed: seed), temperature: temp, maximumResponseTokens: maxTok)
+            return GenerationOptions(
+                sampling: .random(top: k, seed: seed),
+                temperature: temp,
+                maximumResponseTokens: maxTok
+            )
         case .topP(let p):
-            return GenerationOptions(sampling: .random(probabilityThreshold: p, seed: seed), temperature: temp, maximumResponseTokens: maxTok)
+            return GenerationOptions(
+                sampling: .random(probabilityThreshold: p, seed: seed),
+                temperature: temp,
+                maximumResponseTokens: maxTok
+            )
         }
     }
 
@@ -394,7 +427,7 @@ func exportTelemetryToJSONL(_ records: [RunTelemetry], to path: String? = nil) {
         for record in records {
             let data = try encoder.encode(record)
             fileHandle.write(data)
-            fileHandle.write("\n".data(using: .utf8)!)
+            fileHandle.write(Data("\n".utf8))
         }
     } catch {
         print("⚠️ Failed to export telemetry: \(error)")
@@ -414,45 +447,58 @@ final class FMClient {
     // Deterministic seed ring for reproducible retries
     static let seedRing: [UInt64] = [42, 1337, 9999, 123456, 987654]
 
-    init(session: LanguageModelSession, logger: @escaping (String) -> Void, sessionFactory: (() async throws -> LanguageModelSession)? = nil) {
+    init(
+        session: LanguageModelSession,
+        logger: @escaping (String) -> Void,
+        sessionFactory: (() async throws -> LanguageModelSession)? = nil
+    ) {
         self.session = session
         self.logger = logger
         self.sessionFactory = sessionFactory
     }
 
+    struct GenerateParameters {
+        let prompt: String
+        let profile: DecoderProfile
+        let initialSeed: UInt64?
+        let temperature: Double?
+        let maxTokens: Int?
+        let maxRetries: Int
+    }
+
     /// Generate using guided schema with automatic retry on seed-dependent failures
     func generate(
-        _ prompt: String,
-        profile: DecoderProfile,
-        initialSeed: UInt64?,
-        temperature: Double?,
-        maxTokens: Int?,
-        maxRetries: Int = 5,
+        _ params: GenerateParameters,
         telemetry: inout [AttemptMetrics]
     ) async throws -> [String] {
         let start = Date()
-        var currentOptions = profile.options(seed: initialSeed, temp: temperature, maxTok: maxTokens)
-        var currentSeed = initialSeed
+        var currentOptions = params.profile.options(
+            seed: params.initialSeed,
+            temp: params.temperature,
+            maxTok: params.maxTokens
+        )
+        var currentSeed = params.initialSeed
         var lastError: Error?
 
         // Debug logging
-        logger("🔍 [DEBUG] Starting generation (maxRetries=\(maxRetries))...")
-        logger("🔍 [DEBUG] Prompt length: \(prompt.count) chars")
-        logger("🔍 [DEBUG] Full prompt: \"\(prompt)\"")
+        logger("🔍 [DEBUG] Starting generation (maxRetries=\(params.maxRetries))...")
+        logger("🔍 [DEBUG] Prompt length: \(params.prompt.count) chars")
+        logger("🔍 [DEBUG] Full prompt: \"\(params.prompt)\"")
 
-        for attempt in 0..<maxRetries {
+        for attempt in 0..<params.maxRetries {
             let attemptStart = Date()
             var sessionRecreated = false
 
-            logger("🔍 [DEBUG] Attempt \(attempt + 1)/\(maxRetries)")
-            logger("🔍 [DEBUG] Options.maximumResponseTokens: \(String(describing: currentOptions.maximumResponseTokens))")
+            logger("🔍 [DEBUG] Attempt \(attempt + 1)/\(params.maxRetries)")
+            let maxTokens = currentOptions.maximumResponseTokens
+            logger("🔍 [DEBUG] Options.maximumResponseTokens: \(String(describing: maxTokens))")
             logger("🔍 [DEBUG] Options.temperature: \(String(describing: currentOptions.temperature))")
             logger("🔍 [DEBUG] Options.sampling: \(String(describing: currentOptions.sampling))")
             logger("🔍 [DEBUG] Schema: UniqueListResponse (includeSchemaInPrompt=true)")
 
             do {
                 let response = try await session.respond(
-                    to: Prompt(prompt),
+                    to: Prompt(params.prompt),
                     generating: UniqueListResponse.self,
                     includeSchemaInPrompt: true,
                     options: currentOptions
@@ -466,14 +512,14 @@ final class FMClient {
                 if response.content.items.isEmpty {
                     logger("⚠️ [CRITICAL] Schema parsing succeeded but returned EMPTY ARRAY")
                     logger("⚠️ [CRITICAL] This means the model generated { \"items\": [] } - not a parsing error")
-                    logger("⚠️ [CRITICAL] Prompt was: \"\(prompt.prefix(200))...\"")
+                    logger("⚠️ [CRITICAL] Prompt was: \"\(params.prompt.prefix(200))...\"")
                 }
 
                 // Record successful attempt telemetry
                 telemetry.append(AttemptMetrics(
                     attemptIndex: attempt,
                     seed: currentSeed,
-                    sampling: profile.description,
+                    sampling: params.profile.description,
                     temperature: currentOptions.temperature,
                     sessionRecreated: sessionRecreated,
                     itemsReturned: response.content.items.count,
@@ -481,9 +527,17 @@ final class FMClient {
                 ))
 
                 if attempt > 0 {
-                    logger("✓ Generated \(response.content.items.count) items in \(String(format: "%.2f", totalElapsed))s (\(String(format: "%.1f", ips)) items/sec) [succeeded on attempt \(attempt + 1)]")
+                    logger(
+                        "✓ Generated \(response.content.items.count) items in " +
+                        "\(String(format: "%.2f", totalElapsed))s " +
+                        "(\(String(format: "%.1f", ips)) items/sec) [succeeded on attempt \(attempt + 1)]"
+                    )
                 } else {
-                    logger("✓ Generated \(response.content.items.count) items in \(String(format: "%.2f", totalElapsed))s (\(String(format: "%.1f", ips)) items/sec)")
+                    logger(
+                        "✓ Generated \(response.content.items.count) items in " +
+                        "\(String(format: "%.2f", totalElapsed))s " +
+                        "(\(String(format: "%.1f", ips)) items/sec)"
+                    )
                 }
                 logger("🔍 [DEBUG] First item: \(response.content.items.first ?? "none")")
                 logger("🔍 [DEBUG] Last item: \(response.content.items.last ?? "none")")
@@ -500,7 +554,7 @@ final class FMClient {
                 telemetry.append(AttemptMetrics(
                     attemptIndex: attempt,
                     seed: currentSeed,
-                    sampling: profile.description,
+                    sampling: params.profile.description,
                     temperature: currentOptions.temperature,
                     sessionRecreated: sessionRecreated,
                     itemsReturned: nil,
@@ -508,7 +562,7 @@ final class FMClient {
                 ))
 
                 if case .decodingFailure(let context) = e {
-                    if attempt < maxRetries - 1 {
+                    if attempt < params.maxRetries - 1 {
                         logger("⚠️ [Attempt \(attempt + 1)] decodingFailure: \(context.debugDescription)")
 
                         // ADAPTIVE RETRY: Boost tokens before seed rotation on first failure
@@ -517,12 +571,13 @@ final class FMClient {
                             let boosted = min(512, Int(Double(currentMax) * 1.8))
                             if boosted > currentMax {
                                 logger("🔁 Boosting maxTokens → \(boosted) with same seed/profile")
-                                currentOptions = profile.options(
+                                currentOptions = params.profile.options(
                                     seed: currentSeed,
                                     temp: currentOptions.temperature,
                                     maxTok: boosted
                                 )
-                                logger("🔁 Retrying with seed=\(currentSeed.map { String($0) } ?? "nil"), profile=\(profile.description)")
+                                let seedStr = currentSeed.map { String($0) } ?? "nil"
+                                logger("🔁 Retrying with seed=\(seedStr), profile=\(params.profile.description)")
                                 continue
                             }
                         }
@@ -543,10 +598,10 @@ final class FMClient {
                         currentSeed = newSeed
 
                         // Lower temperature after 2 failures
-                        let temp = attempt >= 2 ? 0.7 : temperature
-                        currentOptions = profile.options(seed: currentSeed, temp: temp, maxTok: maxTokens)
+                        let temp = attempt >= 2 ? 0.7 : params.temperature
+                        currentOptions = params.profile.options(seed: currentSeed, temp: temp, maxTok: params.maxTokens)
 
-                        logger("🔁 Retrying with seed=\(newSeed), profile=\(profile.description)")
+                        logger("🔁 Retrying with seed=\(newSeed), profile=\(params.profile.description)")
                         continue
                     } else {
                         logger("❌ [Attempt \(attempt + 1)] decodingFailure: \(context.debugDescription)")
@@ -574,28 +629,36 @@ final class FMClient {
         }
     }
 
+    struct GenerateTextArrayParameters {
+        let prompt: String
+        let profile: DecoderProfile
+        let initialSeed: UInt64?
+        let temperature: Double?
+        let maxTokens: Int?
+        let maxRetries: Int
+    }
+
     /// Unguided generation that returns [String] by parsing JSON text array.
     /// Used for backfill where semantic constraints (avoid-list) must be respected.
     func generateTextArray(
-        _ prompt: String,
-        profile: DecoderProfile,
-        initialSeed: UInt64?,
-        temperature: Double?,
-        maxTokens: Int?,
-        maxRetries: Int = 3,
+        _ params: GenerateTextArrayParameters,
         telemetry: inout [AttemptMetrics]
     ) async throws -> [String] {
         let start = Date()
-        var currentOptions = profile.options(seed: initialSeed, temp: temperature, maxTok: maxTokens)
+        var currentOptions = params.profile.options(
+            seed: params.initialSeed,
+            temp: params.temperature,
+            maxTok: params.maxTokens
+        )
         var lastError: Error?
 
-        for attempt in 0..<maxRetries {
+        for attempt in 0..<params.maxRetries {
             let attemptStart = Date()
             var sessionRecreated = false
 
             do {
                 let response = try await session.respond(
-                    to: Prompt(prompt),
+                    to: Prompt(params.prompt),
                     options: currentOptions
                 )
 
@@ -607,7 +670,10 @@ final class FMClient {
 
                 // Write debug data to file
                 let fileManager = FileManager.default
-                let debugDir = fileManager.temporaryDirectory.appendingPathComponent("unguided_debug", isDirectory: true)
+                let debugDir = fileManager.temporaryDirectory.appendingPathComponent(
+                    "unguided_debug",
+                    isDirectory: true
+                )
                 do {
                     try fileManager.createDirectory(at: debugDir, withIntermediateDirectories: true)
                 } catch {
@@ -618,13 +684,13 @@ final class FMClient {
                 let debugData: [String: Any] = [
                     "timestamp": Date().timeIntervalSince1970,
                     "attempt": attempt,
-                    "seed": initialSeed ?? 0,
+                    "seed": params.initialSeed ?? 0,
                     "temperature": currentOptions.temperature,
                     "maxTokens": currentOptions.maximumResponseTokens ?? 0,
-                    "promptLength": prompt.count,
+                    "promptLength": params.prompt.count,
                     "responseLength": response.content.count,
                     "elapsedSec": attemptElapsed,
-                    "promptSnippet": String(prompt.prefix(200)),
+                    "promptSnippet": String(params.prompt.prefix(200)),
                     "fullResponse": response.content
                 ]
 
@@ -657,8 +723,8 @@ final class FMClient {
                     // Record successful telemetry
                     telemetry.append(AttemptMetrics(
                         attemptIndex: attempt,
-                        seed: initialSeed,
-                        sampling: "unguided:\(profile.description)",
+                        seed: params.initialSeed,
+                        sampling: "unguided:\(params.profile.description)",
                         temperature: currentOptions.temperature,
                         sessionRecreated: sessionRecreated,
                         itemsReturned: arr.count,
@@ -692,13 +758,16 @@ final class FMClient {
             } catch {
                 lastError = error
                 let attemptElapsed = Date().timeIntervalSince(attemptStart)
-                logger("❌ [DEBUG] Unguided generation failed after \(String(format: "%.2f", attemptElapsed))s: \(error)")
+                logger(
+                    "❌ [DEBUG] Unguided generation failed after " +
+                    "\(String(format: "%.2f", attemptElapsed))s: \(error)"
+                )
 
                 // Record failed telemetry
                 telemetry.append(AttemptMetrics(
                     attemptIndex: attempt,
-                    seed: initialSeed,
-                    sampling: "unguided:\(profile.description)",
+                    seed: params.initialSeed,
+                    sampling: "unguided:\(params.profile.description)",
                     temperature: currentOptions.temperature,
                     sessionRecreated: sessionRecreated,
                     itemsReturned: 0,
@@ -711,9 +780,9 @@ final class FMClient {
                     let boosted = min(512, Int(Double(currentMax) * 1.8))
                     if boosted > currentMax {
                         logger("🔁 Boosting maxTokens → \(boosted) for unguided parse retry")
-                        currentOptions = profile.options(
-                            seed: initialSeed,
-                            temp: max(0.0, (temperature ?? 0.7) * 0.9),
+                        currentOptions = params.profile.options(
+                            seed: params.initialSeed,
+                            temp: max(0.0, (params.temperature ?? 0.7) * 0.9),
                             maxTok: boosted
                         )
                         continue
@@ -931,7 +1000,7 @@ final class UniqueListCoordinator {
     }
 
     /// Generate N unique items using Generate → Dedup → Fill architecture
-    func uniqueList(query: String, N: Int, seed: UInt64? = nil) async throws -> [String] {
+    func uniqueList(query: String, targetCount: Int, seed: UInt64? = nil) async throws -> [String] {
         let startTime = Date()
         var ordered: [String] = []
         var seen = Set<String>()
@@ -956,14 +1025,14 @@ final class UniqueListCoordinator {
                     dupFrequency[k, default: 0] += 1
                     logger("  [Dedup] Filtered: \(s) → \(k)")
                 }
-                if ordered.count >= N { return }
+                if ordered.count >= targetCount { return }
             }
         }
 
         // PASS 1: Over-generate with diverse sampling
-        logger("🎯 [Pass 1] Target: \(N) unique items")
+        logger("🎯 [Pass 1] Target: \(targetCount) unique items")
 
-        // Token budgeting: compute M1 from budget instead of hard cap
+        // Token budgeting: compute overGenCount from budget instead of hard cap
         let budget = 3500
         let prompt1Base = """
         Return ONLY a JSON object matching the schema.
@@ -973,35 +1042,39 @@ final class UniqueListCoordinator {
         let respBudget = max(0, budget - promptTok)
         let avgTPI = 7
         let mByBudget = respBudget / avgTPI
-        let M1 = min(Int(ceil(Double(N) * Defaults.pass1OverGen)), mByBudget)
-        let maxTok1 = Int(ceil(7.0 * Double(M1)))
+        let overGenCount = min(Int(ceil(Double(targetCount) * Defaults.pass1OverGen)), mByBudget)
+        let maxTok1 = Int(ceil(7.0 * Double(overGenCount)))
 
         let prompt1 = """
         Return ONLY a JSON object matching the schema.
-        Task: \(query). Produce \(M1) distinct items.
+        Task: \(query). Produce \(overGenCount) distinct items.
         """
 
-        logger("  Requesting \(M1) items (over-gen: \(String(format: "%.1f", Defaults.pass1OverGen))x, budget: \(maxTok1) tokens)")
+        let overGenFormatted = String(format: "%.1f", Defaults.pass1OverGen)
+        logger("  Requesting \(overGenCount) items (over-gen: \(overGenFormatted)x, budget: \(maxTok1) tokens)")
 
         // Use top-p profile for diverse sampling
         let profile1 = DecoderProfile.topP(0.92)
         let items1 = try await fm.generate(
-            prompt1,
-            profile: profile1,
-            initialSeed: seed,
-            temperature: Defaults.tempDiverse,
-            maxTokens: maxTok1,
+            FMClient.GenerateParameters(
+                prompt: prompt1,
+                profile: profile1,
+                initialSeed: seed,
+                temperature: Defaults.tempDiverse,
+                maxTokens: maxTok1,
+                maxRetries: 5
+            ),
             telemetry: &localTelemetry
         )
         absorb(items1)
         passCount = 1
 
-        logger("  Result: \(ordered.count)/\(N) unique, \(duplicatesFound) duplicates filtered")
+        logger("  Result: \(ordered.count)/\(targetCount) unique, \(duplicatesFound) duplicates filtered")
 
-        if ordered.count >= N {
+        if ordered.count >= targetCount {
             let elapsed = Date().timeIntervalSince(startTime)
             logger("✅ Success in \(passCount) pass (\(String(format: "%.2f", elapsed))s)")
-            return Array(ordered.prefix(N))
+            return Array(ordered.prefix(targetCount))
         }
 
         // BACKFILL: Use guided or unguided based on flag
@@ -1010,19 +1083,24 @@ final class UniqueListCoordinator {
             var backfillRound = 0
             var consecutiveNoProgress = 0
 
-            while ordered.count < N && backfillRound < Defaults.maxPasses {
+            while ordered.count < targetCount && backfillRound < Defaults.maxPasses {
                 backfillRound += 1
                 backfillRoundsTotal += 1
                 passCount += 1
 
-                let deltaNeed = N - ordered.count
+                let deltaNeed = targetCount - ordered.count
                 // Request more than needed to account for potential duplicates
-                let delta = max(Int(ceil(Double(deltaNeed) * 1.5)), Int(ceil(Defaults.minBackfillFrac * Double(N))))
+                let deltaA = Int(ceil(Double(deltaNeed) * 1.5))
+                let deltaB = Int(ceil(Defaults.minBackfillFrac * Double(targetCount)))
+                let delta = max(deltaA, deltaB)
                 // More generous token budget: match unguided approach
                 let maxTok = max(1024, delta * 20)
 
                 let avoid = Array(seen)
-                logger("🔄 [Pass \(passCount)] Guided Backfill: need \(deltaNeed), requesting \(delta), avoiding \(avoid.count) items")
+                logger(
+                    "🔄 [Pass \(passCount)] Guided Backfill: need \(deltaNeed), " +
+                    "requesting \(delta), avoiding \(avoid.count) items"
+                )
 
                 // Rotating avoid-list sample: show different items each pass for better coverage
                 // Pass 1: items 0-40, Pass 2: items 20-60, Pass 3: items 40-80, etc.
@@ -1049,8 +1127,10 @@ final class UniqueListCoordinator {
                     .joined(separator: ", ")
 
                 let avoidSample = avoidSampleKeys.map { "\"\($0)\"" }.joined(separator: ", ")
-                let coverageNote = avoid.count > sampleSize ?
-                    "\n  Showing \(avoidSampleKeys.count) of \(avoid.count) forbidden items (rotating sample, pass \(backfillRound))" : ""
+                let coverageNote = avoid.count > sampleSize
+                    ? "\n  Showing \(avoidSampleKeys.count) of \(avoid.count) forbidden items " +
+                      "(rotating sample, pass \(backfillRound))"
+                    : ""
                 let offenderNote = !topOffenders.isEmpty ?
                     "\n  Most repeated: [\(topOffenders)]" : ""
 
@@ -1068,11 +1148,14 @@ final class UniqueListCoordinator {
 
                 do {
                     let itemsFill = try await fm.generate(
-                        promptFill,
-                        profile: .topP(0.92),
-                        initialSeed: UInt64.random(in: 0...UInt64.max),
-                        temperature: Defaults.tempDiverse,
-                        maxTokens: maxTok,
+                        FMClient.GenerateParameters(
+                            prompt: promptFill,
+                            profile: .topP(0.92),
+                            initialSeed: UInt64.random(in: 0...UInt64.max),
+                            temperature: Defaults.tempDiverse,
+                            maxTokens: maxTok,
+                            maxRetries: 5
+                        ),
                         telemetry: &localTelemetry
                     )
                     absorb(itemsFill)
@@ -1088,7 +1171,7 @@ final class UniqueListCoordinator {
                 // Adaptive retry if no progress
                 if ordered.count == before {
                     do {
-                        let retryDelta = min(deltaNeed * 2, Int(ceil(Double(N) * 0.5)))
+                        let retryDelta = min(deltaNeed * 2, Int(ceil(Double(targetCount) * 0.5)))
                         logger("  ⟳ Retry: requesting \(retryDelta) items with higher temperature")
 
                         // Emphasize top offenders in retry
@@ -1109,11 +1192,14 @@ final class UniqueListCoordinator {
                         """
 
                         let itemsRetry = try await fm.generate(
-                            promptRetry,
-                            profile: .topK(50),
-                            initialSeed: UInt64.random(in: 0...UInt64.max),
-                            temperature: 0.9,
-                            maxTokens: max(1536, retryDelta * 25),
+                            FMClient.GenerateParameters(
+                                prompt: promptRetry,
+                                profile: .topK(50),
+                                initialSeed: UInt64.random(in: 0...UInt64.max),
+                                temperature: 0.9,
+                                maxTokens: max(1536, retryDelta * 25),
+                                maxRetries: 5
+                            ),
                             telemetry: &localTelemetry
                         )
                         absorb(itemsRetry)
@@ -1127,7 +1213,7 @@ final class UniqueListCoordinator {
                     }
                 }
 
-                logger("  Result: \(ordered.count)/\(N) unique (filtered \(duplicatesFound) duplicates)")
+                logger("  Result: \(ordered.count)/\(targetCount) unique (filtered \(duplicatesFound) duplicates)")
 
                 // Circuit breaker
                 if ordered.count == before {
@@ -1142,9 +1228,9 @@ final class UniqueListCoordinator {
                 }
 
                 // Greedy last-mile for final 1-2 items
-                if (1...2).contains(N - ordered.count) {
+                if (1...2).contains(targetCount - ordered.count) {
                     do {
-                        let remaining = N - ordered.count
+                        let remaining = targetCount - ordered.count
                         logger("  🎯 Greedy last-mile: requesting \(remaining) item(s)")
 
                         let greedyPrompt = """
@@ -1153,11 +1239,14 @@ final class UniqueListCoordinator {
                         """
 
                         let greedyItems = try await fm.generate(
-                            greedyPrompt,
-                            profile: .greedy,
-                            initialSeed: nil,
-                            temperature: 0.0,
-                            maxTokens: 512,
+                            FMClient.GenerateParameters(
+                                prompt: greedyPrompt,
+                                profile: .greedy,
+                                initialSeed: nil,
+                                temperature: 0.0,
+                                maxTokens: 512,
+                                maxRetries: 5
+                            ),
                             telemetry: &localTelemetry
                         )
                         absorb(greedyItems)
@@ -1175,12 +1264,12 @@ final class UniqueListCoordinator {
             // UNGUIDED BACKFILL: Semantic constraints in prompt
             var backfillRound = 0
             var consecutiveNoProgress = 0  // Circuit breaker: exit early if no progress
-            while ordered.count < N && backfillRound < Defaults.maxPasses {
+            while ordered.count < targetCount && backfillRound < Defaults.maxPasses {
                 backfillRound += 1
                 backfillRoundsTotal += 1
                 passCount += 1
 
-                let deltaNeed = N - ordered.count
+                let deltaNeed = targetCount - ordered.count
 
                 // Token budgeting - INCREASED for better results
                 let backfillAvgTPI = 20  // Increased from 16 for more room per item
@@ -1190,7 +1279,8 @@ final class UniqueListCoordinator {
                 let deltaByBudget = respBudget / backfillAvgTPI
                 // Request 4x items to account for high duplicate rate (~50%) in unguided generation
                 let deltaWithDupBuffer = Int(ceil(Double(deltaNeed) * 4.0))
-                let delta = min(max(deltaWithDupBuffer, Int(ceil(Defaults.minBackfillFrac * Double(N)))), deltaByBudget)
+                let deltaMin = Int(ceil(Defaults.minBackfillFrac * Double(targetCount)))
+                let delta = min(max(deltaWithDupBuffer, deltaMin), deltaByBudget)
                 // Significantly increased minimum and multiplier for better generation
                 let maxTok = max(1024, delta * backfillAvgTPI * 2)  // 2x multiplier and 1024 min
 
@@ -1213,11 +1303,14 @@ final class UniqueListCoordinator {
 
                 do {
                     let itemsFill = try await fm.generateTextArray(
-                        promptFill,
-                        profile: .topK(40),
-                        initialSeed: UInt64.random(in: 0...UInt64.max),
-                        temperature: 0.6,
-                        maxTokens: maxTok,
+                        FMClient.GenerateTextArrayParameters(
+                            prompt: promptFill,
+                            profile: .topK(40),
+                            initialSeed: UInt64.random(in: 0...UInt64.max),
+                            temperature: 0.6,
+                            maxTokens: maxTok,
+                            maxRetries: 3
+                        ),
                         telemetry: &localTelemetry
                     )
                     absorb(itemsFill)
@@ -1234,7 +1327,7 @@ final class UniqueListCoordinator {
                 if ordered.count == before {
                     do {
                         // Request 5x items in retry to maximize chance of getting enough unique items
-                        let retryCount = min((N - ordered.count) * 5, deltaByBudget)
+                        let retryCount = min((targetCount - ordered.count) * 5, deltaByBudget)
                         let promptRetry = """
                         Generate EXACTLY \(retryCount) NEW unique items for: \(query).
                         Do NOT include any with norm_keys in: [\(avoidJSON)]
@@ -1243,11 +1336,14 @@ final class UniqueListCoordinator {
                         Format: ["item1", "item2", "item3", ...]
                         """
                         let itemsRetry = try await fm.generateTextArray(
-                            promptRetry,
-                            profile: .topK(40),
-                            initialSeed: UInt64.random(in: 0...UInt64.max),
-                            temperature: 0.55,
-                            maxTokens: max(1536, retryCount * 30),  // More generous tokens
+                            FMClient.GenerateTextArrayParameters(
+                                prompt: promptRetry,
+                                profile: .topK(40),
+                                initialSeed: UInt64.random(in: 0...UInt64.max),
+                                temperature: 0.55,
+                                maxTokens: max(1536, retryCount * 30),  // More generous tokens
+                                maxRetries: 3
+                            ),
                             telemetry: &localTelemetry
                         )
                         absorb(itemsRetry)
@@ -1261,7 +1357,7 @@ final class UniqueListCoordinator {
                     }
                 }
 
-                logger("  Result: \(ordered.count)/\(N) unique")
+                logger("  Result: \(ordered.count)/\(targetCount) unique")
 
                 // Circuit breaker: track consecutive rounds with no progress
                 if ordered.count == before {
@@ -1276,9 +1372,9 @@ final class UniqueListCoordinator {
                 }
 
                 // Greedy last-mile for final 1-2 items
-                if (1...2).contains(N - ordered.count) {
+                if (1...2).contains(targetCount - ordered.count) {
                     do {
-                        let remaining = N - ordered.count
+                        let remaining = targetCount - ordered.count
                         let greedyPrompt = """
                         Generate EXACTLY \(remaining) NEW unique item\(remaining > 1 ? "s" : "") for: \(query).
 
@@ -1286,11 +1382,14 @@ final class UniqueListCoordinator {
                         Format: \(remaining == 1 ? "[\"item\"]" : "[\"item1\", \"item2\"]")
                         """
                         let greedyItems = try await fm.generateTextArray(
-                            greedyPrompt,
-                            profile: .greedy,
-                            initialSeed: nil,
-                            temperature: 0.0,
-                            maxTokens: 512,  // Increased from 200
+                            FMClient.GenerateTextArrayParameters(
+                                prompt: greedyPrompt,
+                                profile: .greedy,
+                                initialSeed: nil,
+                                temperature: 0.0,
+                                maxTokens: 512,  // Increased from 200
+                                maxRetries: 3
+                            ),
                             telemetry: &localTelemetry
                         )
                         absorb(greedyItems)
@@ -1307,7 +1406,7 @@ final class UniqueListCoordinator {
         }
 
         let elapsed = Date().timeIntervalSince(startTime)
-        let success = ordered.count >= N
+        let success = ordered.count >= targetCount
 
         // Store telemetry
         telemetry = localTelemetry
@@ -1315,10 +1414,14 @@ final class UniqueListCoordinator {
         if success {
             logger("✅ Success in \(passCount) passes (\(String(format: "%.2f", elapsed))s)")
         } else {
-            logger("⚠️ Incomplete: \(ordered.count)/\(N) after \(passCount) passes")
+            logger("⚠️ Incomplete: \(ordered.count)/\(targetCount) after \(passCount) passes")
         }
 
-        logger("📊 Stats: \(totalGeneratedCount) total generated, \(duplicatesFound) filtered (\(String(format: "%.1f", Double(duplicatesFound) / Double(totalGeneratedCount) * 100))% dup rate)")
+        let dupRatePercent = Double(duplicatesFound) / Double(totalGeneratedCount) * 100
+        logger(
+            "📊 Stats: \(totalGeneratedCount) total generated, \(duplicatesFound) filtered " +
+            "(\(String(format: "%.1f", dupRatePercent))% dup rate)"
+        )
 
         // Store diagnostics for telemetry export
         lastRunTotalGenerated = totalGeneratedCount
@@ -1335,30 +1438,31 @@ final class UniqueListCoordinator {
         // Failure reason (if incomplete)
         if !success {
             if circuitBreakerTriggered {
-                lastRunFailureReason = "Circuit breaker: 2 consecutive rounds with no progress at \(ordered.count)/\(N)"
+                lastRunFailureReason =
+                    "Circuit breaker: 2 consecutive rounds with no progress at \(ordered.count)/\(targetCount)"
             } else {
-                lastRunFailureReason = "Incomplete: \(ordered.count)/\(N) items after \(passCount) passes"
+                lastRunFailureReason = "Incomplete: \(ordered.count)/\(targetCount) items after \(passCount) passes"
             }
         } else {
             lastRunFailureReason = nil
         }
 
-        return Array(ordered.prefix(N))
+        return Array(ordered.prefix(targetCount))
     }
 
     /// Generate unique list with full telemetry
     func uniqueListWithMetrics(
         query: String,
-        N: Int,
+        targetCount: Int,
         seed: UInt64? = nil,
         decoderProfile: String = "diverse"
     ) async throws -> (items: [String], metrics: RunMetrics) {
         let startTime = Date()
-        let items = try await uniqueList(query: query, N: N, seed: seed)
+        let items = try await uniqueList(query: query, targetCount: targetCount, seed: seed)
         let elapsed = Date().timeIntervalSince(startTime)
 
         let metrics = RunMetrics(
-            passAtN: items.count >= N,
+            passAtN: items.count >= targetCount,
             uniqueAtN: items.count,
             jsonStrictSuccess: true,
             itemsPerSecond: Double(items.count) / max(0.001, elapsed),
@@ -1379,5 +1483,5 @@ final class UniqueListCoordinator {
 
 func looksLikeJSON5(_ s: String) -> Bool {
     s.range(of: #"//|/\*|\*/"#, options: .regularExpression) != nil ||
-    s.range(of: #",\s*[}\]]"#, options: .regularExpression) != nil
+        s.range(of: #",\s*[}\]]"#, options: .regularExpression) != nil
 }

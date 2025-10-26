@@ -398,7 +398,9 @@ extension AppState {
         do {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         } catch {
-            throw PersistenceError.fileSystemError("Could not create directory at \(url.path): \(error.localizedDescription)")
+            throw PersistenceError.fileSystemError(
+                "Could not create directory at \(url.path): \(error.localizedDescription)"
+            )
         }
     }
 
@@ -411,7 +413,9 @@ extension AppState {
         do {
             try fileManager.copyItem(at: source, to: destination)
         } catch {
-            throw PersistenceError.fileSystemError("Failed to copy asset to \(destination.path): \(error.localizedDescription)")
+            throw PersistenceError.fileSystemError(
+                "Failed to copy asset to \(destination.path): \(error.localizedDescription)"
+            )
         }
     }
 

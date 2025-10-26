@@ -411,7 +411,12 @@ extension AppState {
             let thumbFileName = "\(hash)_256.\(thumbExtension)"
             let thumbRelativePath = "Thumbs/\(thumbFileName)"
             thumbURI = "file://\(thumbRelativePath)"
-            files.append(ProjectExportArtifacts.ProjectExportFile(sourceURL: resolvedURL, relativePath: thumbRelativePath))
+            files.append(
+                ProjectExportArtifacts.ProjectExportFile(
+                    sourceURL: resolvedURL,
+                    relativePath: thumbRelativePath
+                )
+            )
         }
 
         let media = Project.Media(

@@ -192,7 +192,7 @@ final class AppleIntelligenceService {
         switch model.availability {
         case .available:
             print("🤖 [AI] Model is available ✓")
-            break // proceed
+             // proceed
         case .unavailable(let reason):
             print("🤖 [AI] ❌ Model unavailable: \(reason)")
             messages.append(AIChatMessage(content: availabilityExplanation(for: reason), isUser: false))
@@ -280,16 +280,24 @@ final class AppleIntelligenceService {
             switch error {
             case .refusal(let refusal, _):
                 print("🤖 [AI] Refusal error: \(refusal)")
-                messages.append(AIChatMessage(content: "Request refused: \(String(describing: refusal))", isUser: false))
+                messages.append(
+                    AIChatMessage(content: "Request refused: \(String(describing: refusal))", isUser: false)
+                )
             case .rateLimited:
                 print("🤖 [AI] Rate limited!")
-                messages.append(AIChatMessage(content: "Rate limited. Please wait a moment and try again.", isUser: false))
+                messages.append(
+                    AIChatMessage(content: "Rate limited. Please wait a moment and try again.", isUser: false)
+                )
             case .concurrentRequests:
                 print("🤖 [AI] Concurrent requests error")
-                messages.append(AIChatMessage(content: "Please wait for the current request to complete.", isUser: false))
+                messages.append(
+                    AIChatMessage(content: "Please wait for the current request to complete.", isUser: false)
+                )
             default:
                 print("🤖 [AI] Other generation error")
-                messages.append(AIChatMessage(content: "Generation failed: \(error.localizedDescription)", isUser: false))
+                messages.append(
+                    AIChatMessage(content: "Generation failed: \(error.localizedDescription)", isUser: false)
+                )
             }
             updateTokenEstimate()
         } catch {
@@ -365,7 +373,7 @@ final class AppleIntelligenceService {
     private func generateUniqueList(query: String, count: Int) async throws -> String {
         guard let session else {
             throw NSError(domain: "AppleIntelligenceService", code: -1,
-                         userInfo: [NSLocalizedDescriptionKey: "No active session"])
+                          userInfo: [NSLocalizedDescriptionKey: "No active session"])
         }
 
         let fm = FMClient(session: session) { message in
@@ -380,7 +388,7 @@ final class AppleIntelligenceService {
             }
         }
 
-        let items = try await coordinator.uniqueList(query: query, N: count, seed: nil)
+        let items = try await coordinator.uniqueList(query: query, targetCount: count, seed: nil)
 
         // Format as numbered list for chat display
         let formatted = items.enumerated()
@@ -398,7 +406,7 @@ final class AppleIntelligenceService {
         let listPatterns = [
             #"(?:give|tell|show|list|name)\s+(?:me\s+)?(\d+)"#,
             #"(\d+)\s+(?:examples?|items?|things?|names?)"#,
-            #"top\s+(\d+)"#,
+            #"top\s+(\d+)"#
         ]
 
         for pattern in listPatterns {

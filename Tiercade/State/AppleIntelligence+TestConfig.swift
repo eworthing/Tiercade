@@ -9,62 +9,65 @@ import Foundation
 
 #if canImport(FoundationModels) && (os(iOS) || os(macOS))
 @available(iOS 26.0, macOS 26.0, *)
+
+// MARK: - Test Configuration Types
+
+struct TestConfiguration: Codable {
+    let name: String
+    let description: String
+    let tokenPerItem: Int
+    let minTokens: Int
+    let tokenMultiplier: Double
+    let maxChunkSize: Int?
+    let promptTemplate: String
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case description
+        case tokenPerItem = "token_per_item"
+        case minTokens = "min_tokens"
+        case tokenMultiplier = "token_multiplier"
+        case maxChunkSize = "max_chunk_size"
+        case promptTemplate = "prompt_template"
+    }
+}
+
+struct SamplingProfile: Codable {
+    let name: String
+    let type: String
+    let value: Double?
+    let temperature: Double
+}
+
+struct TestScenario: Codable {
+    let name: String
+    let config: String
+    let sampling: String
+    let targetCount: Int
+    let query: String
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case config
+        case sampling
+        case targetCount = "target_count"
+        case query
+    }
+}
+
+struct TestConfigFile: Codable {
+    let configurations: [TestConfiguration]
+    let samplingProfiles: [SamplingProfile]
+    let testScenarios: [TestScenario]
+
+    enum CodingKeys: String, CodingKey {
+        case configurations
+        case samplingProfiles = "sampling_profiles"
+        case testScenarios = "test_scenarios"
+    }
+}
+
 extension UniqueListCoordinator {
-
-    struct TestConfiguration: Codable {
-        let name: String
-        let description: String
-        let tokenPerItem: Int
-        let minTokens: Int
-        let tokenMultiplier: Double
-        let maxChunkSize: Int?
-        let promptTemplate: String
-
-        enum CodingKeys: String, CodingKey {
-            case name
-            case description
-            case tokenPerItem = "token_per_item"
-            case minTokens = "min_tokens"
-            case tokenMultiplier = "token_multiplier"
-            case maxChunkSize = "max_chunk_size"
-            case promptTemplate = "prompt_template"
-        }
-    }
-
-    struct SamplingProfile: Codable {
-        let name: String
-        let type: String
-        let value: Double?
-        let temperature: Double
-    }
-
-    struct TestScenario: Codable {
-        let name: String
-        let config: String
-        let sampling: String
-        let targetCount: Int
-        let query: String
-
-        enum CodingKeys: String, CodingKey {
-            case name
-            case config
-            case sampling
-            case targetCount = "target_count"
-            case query
-        }
-    }
-
-    struct TestConfigFile: Codable {
-        let configurations: [TestConfiguration]
-        let samplingProfiles: [SamplingProfile]
-        let testScenarios: [TestScenario]
-
-        enum CodingKeys: String, CodingKey {
-            case configurations
-            case samplingProfiles = "sampling_profiles"
-            case testScenarios = "test_scenarios"
-        }
-    }
 
     /// Load test configurations from file
     static func loadTestConfigurations() -> TestConfigFile? {
@@ -108,22 +111,30 @@ extension UniqueListCoordinator {
         defaults.synchronize()
     }
 
+    struct ConfigOverrides {
+        let tokenPerItem: Int?
+        let minTokens: Int?
+        let tokenMultiplier: Double?
+        let maxChunkSize: Int?
+        let promptTemplate: String?
+    }
+
     /// Get current configuration overrides
-    static func getCurrentConfigOverrides() -> (
-        tokenPerItem: Int?,
-        minTokens: Int?,
-        tokenMultiplier: Double?,
-        maxChunkSize: Int?,
-        promptTemplate: String?
-    ) {
+    static func getCurrentConfigOverrides() -> ConfigOverrides {
         let defaults = UserDefaults.standard
 
         // Clean up old values if test is not active
         if !CommandLine.arguments.contains("-testConfig") {
-            return (nil, nil, nil, nil, nil)
+            return ConfigOverrides(
+                tokenPerItem: nil,
+                minTokens: nil,
+                tokenMultiplier: nil,
+                maxChunkSize: nil,
+                promptTemplate: nil
+            )
         }
 
-        return (
+        return ConfigOverrides(
             tokenPerItem: defaults.object(forKey: "test_config_token_per_item") as? Int,
             minTokens: defaults.object(forKey: "test_config_min_tokens") as? Int,
             tokenMultiplier: defaults.object(forKey: "test_config_token_multiplier") as? Double,
@@ -149,97 +160,104 @@ extension UniqueListCoordinator {
 
     // TODO: Implement runTestScenario when generate method is available
     /*
-    /// Run a specific test scenario
-    func runTestScenario(_ scenario: TestScenario) async throws {
-        guard let configs = Self.loadTestConfigurations() else {
-            throw NSError(domain: "TestConfig", code: -1, userInfo: [
-                NSLocalizedDescriptionKey: "Failed to load test configurations"
-            ])
-        }
+     /// Run a specific test scenario
+     func runTestScenario(_ scenario: TestScenario) async throws {
+     guard let configs = Self.loadTestConfigurations() else {
+     throw NSError(domain: "TestConfig", code: -1, userInfo: [
+     NSLocalizedDescriptionKey: "Failed to load test configurations"
+     ])
+     }
 
-        guard let config = configs.configurations.first(where: { $0.name == scenario.config }) else {
-            throw NSError(domain: "TestConfig", code: -2, userInfo: [
-                NSLocalizedDescriptionKey: "Configuration '\(scenario.config)' not found"
-            ])
-        }
+     guard let config = configs.configurations.first(where: { $0.name == scenario.config }) else {
+     throw NSError(domain: "TestConfig", code: -2, userInfo: [
+     NSLocalizedDescriptionKey: "Configuration '\(scenario.config)' not found"
+     ])
+     }
 
-        guard let sampling = configs.samplingProfiles.first(where: { $0.name == scenario.sampling }) else {
-            throw NSError(domain: "TestConfig", code: -3, userInfo: [
-                NSLocalizedDescriptionKey: "Sampling profile '\(scenario.sampling)' not found"
-            ])
-        }
+     guard let sampling = configs.samplingProfiles.first(where: { $0.name == scenario.sampling }) else {
+     throw NSError(domain: "TestConfig", code: -3, userInfo: [
+     NSLocalizedDescriptionKey: "Sampling profile '\(scenario.sampling)' not found"
+     ])
+     }
 
-        print("🧪 Running test scenario: \(scenario.name)")
-        print("   Config: \(config.name)")
-        print("   Sampling: \(sampling.name)")
-        print("   Target: \(scenario.targetCount) items")
-        print("   Query: \(scenario.query)")
+     print("🧪 Running test scenario: \(scenario.name)")
+     print("   Config: \(config.name)")
+     print("   Sampling: \(sampling.name)")
+     print("   Target: \(scenario.targetCount) items")
+     print("   Query: \(scenario.query)")
 
-        // Apply the configuration
-        applyConfiguration(config)
+     // Apply the configuration
+     applyConfiguration(config)
 
-        // Create appropriate DecoderProfile
-        let profile: DecoderProfile
-        switch sampling.type {
-        case "topK":
-            profile = .topK(Int(sampling.value ?? 40))
-        case "topP":
-            profile = .topP(sampling.value ?? 0.92)
-        case "greedy":
-            profile = .greedy
-        default:
-            profile = .topK(40)
-        }
+     // Create appropriate DecoderProfile
+     let profile: DecoderProfile
+     switch sampling.type {
+     case "topK":
+     profile = .topK(Int(sampling.value ?? 40))
+     case "topP":
+     profile = .topP(sampling.value ?? 0.92)
+     case "greedy":
+     profile = .greedy
+     default:
+     profile = .topK(40)
+     }
 
-        // Run the generation
-        let result = try await self.generate(
-            N: scenario.targetCount,
-            query: scenario.query,
-            budget: 3600,  // Max tokens
-            seeds: [42],   // Single seed for testing
-            decoders: [profile]
-        )
+     // Run the generation
+     let result = try await self.generate(
+     N: scenario.targetCount,
+     query: scenario.query,
+     budget: 3600,  // Max tokens
+     seeds: [42],   // Single seed for testing
+     decoders: [profile]
+     )
 
-        print("✅ Scenario complete: \(result.ordered.count)/\(scenario.targetCount) unique items")
-    }
-    */
+     print("✅ Scenario complete: \(result.ordered.count)/\(scenario.targetCount) unique items")
+     }
+     */
 }
 
 // Extension to use configuration in generation
 @available(iOS 26.0, macOS 26.0, *)
 extension FMClient {
 
+    struct GenerateWithConfigParameters {
+        let prompt: String
+        let profile: DecoderProfile
+        let initialSeed: UInt64?
+        let temperature: Double?
+        let maxTokens: Int?
+    }
+
     /// Generate with configuration overrides
     func generateWithConfig(
-        prompt: String,
-        profile: DecoderProfile,
-        initialSeed: UInt64?,
-        temperature: Double?,
-        maxTokens: Int?,
+        _ params: GenerateWithConfigParameters,
         telemetry: inout [AttemptMetrics]
     ) async throws -> [String] {
         // Check for configuration overrides
         let overrides = UniqueListCoordinator.getCurrentConfigOverrides()
 
         // Use overridden values if available
-        let actualMaxTokens = overrides.minTokens ?? maxTokens
+        let actualMaxTokens = overrides.minTokens ?? params.maxTokens
         let actualPrompt: String
 
         if overrides.promptTemplate != nil {
             // Parse the prompt to extract count, query, and avoid list
             // This is a simplified extraction - in production would need better parsing
-            actualPrompt = prompt  // For now, use original until we implement full parsing
+            actualPrompt = params.prompt  // For now, use original until we implement full parsing
         } else {
-            actualPrompt = prompt
+            actualPrompt = params.prompt
         }
 
         // Call the actual generation method
         return try await generateTextArray(
-            actualPrompt,
-            profile: profile,
-            initialSeed: initialSeed,
-            temperature: temperature,
-            maxTokens: actualMaxTokens,
+            GenerateTextArrayParameters(
+                prompt: actualPrompt,
+                profile: params.profile,
+                initialSeed: params.initialSeed,
+                temperature: params.temperature,
+                maxTokens: actualMaxTokens,
+                maxRetries: 3
+            ),
             telemetry: &telemetry
         )
     }

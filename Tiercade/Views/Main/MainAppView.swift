@@ -23,30 +23,30 @@ struct MainAppView: View {
     #endif
 
     var body: some View {
-    @Bindable var app = app
-    let detailPresented = app.detailItem != nil
-    let headToHeadPresented = app.h2hActive
-    let themeCreatorPresented = app.showThemeCreator
-    let tierCreatorPresented = app.showTierListCreator
-    let quickMovePresented = app.quickMoveTarget != nil
-    let aiChatPresented = app.showAIChat && AppleIntelligenceService.isSupportedOnCurrentPlatform
-    // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
-    // which provides automatic focus containment via separate presentation context
-    #if os(tvOS)
-    let modalBlockingFocus = headToHeadPresented
-        || detailPresented
-        || themeCreatorPresented
-        || quickMovePresented
-        || app.showThemePicker
-        || tierCreatorPresented
-        || aiChatPresented
-    #else
-    let modalBlockingFocus = detailPresented
-        || headToHeadPresented
-        || themeCreatorPresented
-        || tierCreatorPresented
-        || aiChatPresented
-    #endif
+        @Bindable var app = app
+        let detailPresented = app.detailItem != nil
+        let headToHeadPresented = app.h2hActive
+        let themeCreatorPresented = app.showThemeCreator
+        let tierCreatorPresented = app.showTierListCreator
+        let quickMovePresented = app.quickMoveTarget != nil
+        let aiChatPresented = app.showAIChat && AppleIntelligenceService.isSupportedOnCurrentPlatform
+        // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
+        // which provides automatic focus containment via separate presentation context
+        #if os(tvOS)
+        let modalBlockingFocus = headToHeadPresented
+            || detailPresented
+            || themeCreatorPresented
+            || quickMovePresented
+            || app.showThemePicker
+            || tierCreatorPresented
+            || aiChatPresented
+        #else
+        let modalBlockingFocus = detailPresented
+            || headToHeadPresented
+            || themeCreatorPresented
+            || tierCreatorPresented
+            || aiChatPresented
+        #endif
 
         return Group {
             #if os(tvOS)
@@ -74,16 +74,16 @@ struct MainAppView: View {
             // Compose overlays here so they appear on all platforms (including tvOS)
             ZStack { overlayStack }
         }
-#if !os(tvOS)
+        #if !os(tvOS)
         .overlay(alignment: .topLeading) {
-            Button(action: { handleBackCommand() }) {
+            Button(action: { handleBackCommand() }, label: {
                 EmptyView()
-            }
+            })
             .keyboardShortcut(.cancelAction)
             .frame(width: 0, height: 0)
             .accessibilityHidden(true)
         }
-#endif
+        #endif
         #if !os(tvOS)
         .sheet(item: Binding(
             get: { app.detailItem },
@@ -386,15 +386,15 @@ struct MainAppView: View {
                 .accessibilityElement(children: .contain)
             #endif
         }
-            #if DEBUG
-            .overlay(alignment: .bottomTrailing) {
-                BuildInfoView()
-                    .padding(.trailing, TVMetrics.barHorizontalPadding)
-                    .padding(.bottom, TVMetrics.barVerticalPadding + 4)
-                    .allowsHitTesting(false)
-                    .accessibilityHidden(true)
-            }
-            #endif
+        #if DEBUG
+        .overlay(alignment: .bottomTrailing) {
+            BuildInfoView()
+                .padding(.trailing, TVMetrics.barHorizontalPadding)
+                .padding(.bottom, TVMetrics.barVerticalPadding + 4)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+        #endif
     }
     #else
     @ViewBuilder

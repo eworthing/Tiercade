@@ -5,9 +5,9 @@ struct TierListBrowserScene: View {
     @FocusState private var focus: FocusTarget?
     @State private var lastFocus: FocusTarget?
     @State private var suppressFocusReset = false
-#if swift(>=6.0)
+    #if swift(>=6.0)
     @Namespace private var glassNamespace
-#endif
+    #endif
 
     private let columns: [GridItem] = [
         GridItem(.flexible(), spacing: 32),
@@ -49,9 +49,9 @@ struct TierListBrowserScene: View {
             }
             .frame(maxWidth: 1680, maxHeight: 920)
             .tvGlassRounded(44)
-#if swift(>=6.0)
+            #if swift(>=6.0)
             .glassEffectID("tierListBrowser", in: glassNamespace)
-#endif
+            #endif
             .overlay(
                 RoundedRectangle(cornerRadius: 40, style: .continuous)
                     .stroke(Color.white.opacity(0.14), lineWidth: 1.1)
@@ -269,11 +269,11 @@ private struct TierListCard: View {
         HStack(spacing: 12) {
             Button(action: openAction) {
                 Label("Open", systemImage: "list.bullet.rectangle")
-                #if os(tvOS)
+                    #if os(tvOS)
                     .labelStyle(.iconOnly)
-                #else
+                    #else
                     .labelStyle(.titleAndIcon)
-                #endif
+                    #endif
                     .font(.callout.weight(.semibold))
             }
             .focused(focusBinding, equals: .card(handle.id))
@@ -286,11 +286,11 @@ private struct TierListCard: View {
 
             Button(action: editAction) {
                 Label("Edit", systemImage: "square.and.pencil")
-                #if os(tvOS)
+                    #if os(tvOS)
                     .labelStyle(.iconOnly)
-                #else
+                    #else
                     .labelStyle(.titleAndIcon)
-                #endif
+                    #endif
                     .font(.callout)
             }
             .focused(focusBinding, equals: .edit(handle.id))

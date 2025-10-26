@@ -18,11 +18,11 @@ struct SettingsWizardPage: View, WizardPage {
     let pageTitle = "Project Settings"
     let pageDescription = "Configure basic project information and options"
 
-#if os(tvOS)
+    #if os(tvOS)
     @Namespace private var defaultFocusNamespace
     @FocusState private var focusedField: Field?
     private enum Field: Hashable { case title, description }
-#endif
+    #endif
 
     var body: some View {
         ScrollView {
@@ -37,9 +37,9 @@ struct SettingsWizardPage: View, WizardPage {
             .padding(.vertical, Metrics.grid * 5)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-#if os(tvOS)
+        #if os(tvOS)
         .onAppear { focusedField = .title }
-#endif
+        #endif
     }
 
     // MARK: - Sections
@@ -48,41 +48,41 @@ struct SettingsWizardPage: View, WizardPage {
         sectionContainer(title: "Project Information") {
             TextField("Project Title", text: $draft.title, prompt: Text("Enter a descriptive title"))
                 .font(.title3)
-#if os(tvOS)
+                #if os(tvOS)
                 .wizardFieldDecoration()
-#else
+                #else
                 .textFieldStyle(.roundedBorder)
-#endif
+                #endif
                 .accessibilityIdentifier("Settings_TitleField")
                 .onChange(of: draft.title) { appState.markDraftEdited(draft) }
-#if os(tvOS)
+                #if os(tvOS)
                 .focused($focusedField, equals: .title)
                 .prefersDefaultFocus(true, in: defaultFocusNamespace)
-#endif
+            #endif
 
             TextField("Description", text: $draft.summary, prompt: Text("Short description"), axis: .vertical)
                 .lineLimit(3...6)
-#if os(tvOS)
+                #if os(tvOS)
                 .wizardFieldDecoration()
-#else
+                #else
                 .textFieldStyle(.roundedBorder)
-#endif
+                #endif
                 .accessibilityIdentifier("Settings_DescriptionField")
                 .onChange(of: draft.summary) { appState.markDraftEdited(draft) }
-#if os(tvOS)
+                #if os(tvOS)
                 .focused($focusedField, equals: .description)
-#endif
+            #endif
         }
     }
 
     private var displayOptionsSection: some View {
         sectionContainer(title: "Display Options") {
-#if !os(tvOS)
+            #if !os(tvOS)
             Stepper(value: $draft.schemaVersion, in: 1...9) {
                 Text("Schema Version: \(draft.schemaVersion)")
             }
             .onChange(of: draft.schemaVersion) { appState.markDraftEdited(draft) }
-#else
+            #else
             HStack {
                 Text("Schema Version")
                 Spacer()
@@ -90,21 +90,21 @@ struct SettingsWizardPage: View, WizardPage {
                     .foregroundStyle(Palette.textDim)
             }
             .font(.title3)
-#endif
+            #endif
 
             Toggle("Show Unranked Tier", isOn: $draft.showUnranked)
                 .accessibilityIdentifier("Settings_ShowUnrankedToggle")
                 .onChange(of: draft.showUnranked) { appState.markDraftEdited(draft) }
-#if os(tvOS)
+                #if os(tvOS)
                 .wizardTogglePadding()
-#endif
+            #endif
 
             Toggle("Enable Grid Snap", isOn: $draft.gridSnap)
                 .accessibilityIdentifier("Settings_GridSnapToggle")
                 .onChange(of: draft.gridSnap) { appState.markDraftEdited(draft) }
-#if os(tvOS)
+                #if os(tvOS)
                 .wizardTogglePadding()
-#endif
+            #endif
         }
     }
 
@@ -113,16 +113,16 @@ struct SettingsWizardPage: View, WizardPage {
             Toggle("VoiceOver Hints", isOn: $draft.accessibilityVoiceOver)
                 .accessibilityIdentifier("Settings_VoiceOverToggle")
                 .onChange(of: draft.accessibilityVoiceOver) { appState.markDraftEdited(draft) }
-#if os(tvOS)
+                #if os(tvOS)
                 .wizardTogglePadding()
-#endif
+            #endif
 
             Toggle("High Contrast Mode", isOn: $draft.accessibilityHighContrast)
                 .accessibilityIdentifier("Settings_HighContrastToggle")
                 .onChange(of: draft.accessibilityHighContrast) { appState.markDraftEdited(draft) }
-#if os(tvOS)
+                #if os(tvOS)
                 .wizardTogglePadding()
-#endif
+            #endif
         }
     }
 
@@ -254,11 +254,11 @@ struct ItemsWizardPage: View, WizardPage {
     let pageTitle = "Items"
     let pageDescription = "Add and configure items for your tier list"
 
-#if os(tvOS)
+    #if os(tvOS)
     @Namespace private var defaultFocusNamespace
     @FocusState private var focusedField: Field?
     private enum Field: Hashable { case search }
-#endif
+    #endif
 
     private enum ItemFilter: String, CaseIterable, Identifiable {
         case all
@@ -304,22 +304,22 @@ struct ItemsWizardPage: View, WizardPage {
                 LargeItemEditorView(appState: appState, draft: draft, item: item)
             }
         }
-#if os(tvOS)
+        #if os(tvOS)
         .onAppear { focusedField = .search }
-#endif
+        #endif
     }
 
     private var searchControls: some View {
         VStack(spacing: Metrics.grid * 2) {
             TextField("Search items", text: $searchQuery)
                 .font(.title3)
-#if os(tvOS)
+                #if os(tvOS)
                 .wizardFieldDecoration()
                 .focused($focusedField, equals: .search)
                 .prefersDefaultFocus(true, in: defaultFocusNamespace)
-#else
+                #else
                 .textFieldStyle(.roundedBorder)
-#endif
+                #endif
                 .accessibilityIdentifier("Items_SearchField")
 
             Picker("Filter", selection: $itemFilter) {
@@ -345,11 +345,11 @@ struct ItemsWizardPage: View, WizardPage {
             } label: {
                 Label("Add New Item", systemImage: "plus.circle.fill")
             }
-#if os(tvOS)
+            #if os(tvOS)
             .buttonStyle(.glassProminent)
-#else
+            #else
             .buttonStyle(.borderedProminent)
-#endif
+            #endif
             .accessibilityIdentifier("Items_AddItem")
         }
         .padding(.horizontal, Metrics.grid * 6)
@@ -496,9 +496,9 @@ struct TiersWizardPage: View, WizardPage {
     let pageTitle = "Tier Assignment"
     let pageDescription = "Review and manage item assignments to tiers"
 
-#if os(tvOS)
+    #if os(tvOS)
     @Namespace private var defaultFocusNamespace
-#endif
+    #endif
 
     var body: some View {
         VStack(spacing: 0) {

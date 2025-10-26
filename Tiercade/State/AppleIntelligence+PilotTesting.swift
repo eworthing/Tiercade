@@ -22,7 +22,7 @@ struct PilotTestConfig {
         TestQuery(domain: "scientists", template: "famous scientists throughout history"),
         TestQuery(domain: "programming_languages", template: "programming languages"),
         TestQuery(domain: "sci_fi_shows", template: "science fiction TV series"),
-        TestQuery(domain: "video_games", template: "classic video game titles"),
+        TestQuery(domain: "video_games", template: "classic video game titles")
     ]
 
     struct TestQuery {
@@ -35,11 +35,23 @@ struct PilotTestConfig {
         let options: @Sendable (UInt64?, Int) -> GenerationOptions
 
         static let all: [DecoderConfig] = [
-            DecoderConfig(name: "Greedy", options: { _, maxTok in .greedy }),
-            DecoderConfig(name: "TopK40_T0.7", options: { seed, maxTok in .topK(40, temp: 0.7, seed: seed, maxTok: maxTok) }),
-            DecoderConfig(name: "TopK50_T0.8", options: { seed, maxTok in .topK(50, temp: 0.8, seed: seed, maxTok: maxTok) }),
-            DecoderConfig(name: "TopP92_T0.8", options: { seed, maxTok in .topP(0.92, temp: 0.8, seed: seed, maxTok: maxTok) }),
-            DecoderConfig(name: "TopP95_T0.9", options: { seed, maxTok in .topP(0.95, temp: 0.9, seed: seed, maxTok: maxTok) }),
+            DecoderConfig(name: "Greedy", options: { _, _ in .greedy }),
+            DecoderConfig(
+                name: "TopK40_T0.7",
+                options: { seed, maxTok in .topK(40, temp: 0.7, seed: seed, maxTok: maxTok) }
+            ),
+            DecoderConfig(
+                name: "TopK50_T0.8",
+                options: { seed, maxTok in .topK(50, temp: 0.8, seed: seed, maxTok: maxTok) }
+            ),
+            DecoderConfig(
+                name: "TopP92_T0.8",
+                options: { seed, maxTok in .topP(0.92, temp: 0.8, seed: seed, maxTok: maxTok) }
+            ),
+            DecoderConfig(
+                name: "TopP95_T0.9",
+                options: { seed, maxTok in .topP(0.95, temp: 0.9, seed: seed, maxTok: maxTok) }
+            )
         ]
     }
 
@@ -181,7 +193,10 @@ struct PilotTestRunner {
             for size in config.sizes {
                 for seed in config.seeds {
                     runIndex += 1
-                    onProgress("[\(runIndex)/\(config.totalRuns)] Testing: \(query.domain), N=\(size), seed=\(seed)")
+                    onProgress("""
+                        [\(runIndex)/\(config.totalRuns)] Testing: \
+                        \(query.domain), N=\(size), seed=\(seed)
+                        """)
 
                     // Test with the "diverse" decoder (representative)
                     if let result = await runSingleTest(
@@ -194,7 +209,11 @@ struct PilotTestRunner {
                         allResults.append(result)
 
                         let status = result.passAtN ? "✅" : "⚠️"
-                        onProgress("  \(status) Got \(result.receivedN)/\(size) unique (\(String(format: "%.1f", result.dupRatePreDedup * 100))% dup)")
+                        let dupPercent = String(format: "%.1f", result.dupRatePreDedup * 100)
+                        onProgress("""
+                              \(status) Got \(result.receivedN)/\(size) unique \
+                            (\(dupPercent)% dup)
+                            """)
                     }
                 }
             }
@@ -208,9 +227,13 @@ struct PilotTestRunner {
         onProgress("🧪 ========================================")
         onProgress("")
         onProgress("Summary:")
-        onProgress("  • Overall pass@N: \(String(format: "%.1f", report.summary.overallPassRate * 100))%")
-        onProgress("  • Mean dup rate: \(String(format: "%.1f±%.1f", report.summary.meanDupRate * 100, report.summary.stdevDupRate * 100))%")
-        onProgress("  • Mean throughput: \(String(format: "%.1f", report.summary.meanItemsPerSecond)) items/sec")
+        let passRate = String(format: "%.1f", report.summary.overallPassRate * 100)
+        onProgress("  • Overall pass@N: \(passRate)%")
+        let meanDup = String(format: "%.1f", report.summary.meanDupRate * 100)
+        let stdevDup = String(format: "%.1f", report.summary.stdevDupRate * 100)
+        onProgress("  • Mean dup rate: \(meanDup)±\(stdevDup)%")
+        let throughput = String(format: "%.1f", report.summary.meanItemsPerSecond)
+        onProgress("  • Mean throughput: \(throughput) items/sec")
         onProgress("")
         onProgress("Top performers:")
         for performer in report.summary.topPerformers {
@@ -238,7 +261,7 @@ struct PilotTestRunner {
             // (This is a simplification; real implementation would track internally)
             receivedItems = try await coordinator.uniqueList(
                 query: query.template,
-                N: size,
+                targetCount: size,
                 seed: seed
             )
 
@@ -248,7 +271,8 @@ struct PilotTestRunner {
 
             // Estimate pre-dedup count (simplified: assume over-gen factor)
             let estimatedPreDedup = Int(ceil(Double(size) * Defaults.pass1OverGen))
-            let dupRatePreDedup = max(0, Double(estimatedPreDedup - uniqueKeys.count)) / Double(max(1, estimatedPreDedup))
+            let dupCount = max(0, Double(estimatedPreDedup - uniqueKeys.count))
+            let dupRatePreDedup = dupCount / Double(max(1, estimatedPreDedup))
 
             return PilotTestResult(
                 runID: UUID(),
@@ -309,9 +333,13 @@ struct PilotTestRunner {
 
         lines.append("OVERALL METRICS")
         lines.append("---------------")
-        lines.append("Pass@N rate: \(String(format: "%.1f%%", report.summary.overallPassRate * 100))")
-        lines.append("Mean duplicate rate: \(String(format: "%.1f±%.1f%%", report.summary.meanDupRate * 100, report.summary.stdevDupRate * 100))")
-        lines.append("Mean throughput: \(String(format: "%.1f", report.summary.meanItemsPerSecond)) items/sec")
+        let passRate = String(format: "%.1f%%", report.summary.overallPassRate * 100)
+        lines.append("Pass@N rate: \(passRate)")
+        let meanDup = String(format: "%.1f", report.summary.meanDupRate * 100)
+        let stdevDup = String(format: "%.1f", report.summary.stdevDupRate * 100)
+        lines.append("Mean duplicate rate: \(meanDup)±\(stdevDup)%%")
+        let throughput = String(format: "%.1f", report.summary.meanItemsPerSecond)
+        lines.append("Mean throughput: \(throughput) items/sec")
         lines.append("")
 
         lines.append("PASS RATE BY SIZE")
@@ -339,7 +367,12 @@ struct PilotTestRunner {
         lines.append("----------------")
         for result in report.results.sorted(by: { $0.timestamp < $1.timestamp }) {
             let status = result.passAtN ? "PASS" : "FAIL"
-            lines.append("\(status) | \(result.domain) | N=\(result.requestedN) | seed=\(result.seed) | got=\(result.receivedN) | unique=\(result.uniqueN) | dup=\(String(format: "%.1f%%", result.dupRatePreDedup * 100))")
+            let dupPercent = String(format: "%.1f%%", result.dupRatePreDedup * 100)
+            lines.append("""
+                \(status) | \(result.domain) | N=\(result.requestedN) | \
+                seed=\(result.seed) | got=\(result.receivedN) | \
+                unique=\(result.uniqueN) | dup=\(dupPercent)
+                """)
         }
 
         return lines.joined(separator: "\n")

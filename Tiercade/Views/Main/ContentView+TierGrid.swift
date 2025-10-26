@@ -7,12 +7,12 @@ struct TierGridView: View {
     @Environment(AppState.self) private var app: AppState
     let tierOrder: [String]
     @Environment(\.editMode) private var editMode
-#if !os(tvOS)
+    #if !os(tvOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @FocusState private var hardwareFocus: CardFocus?
     @State private var lastHardwareFocus: CardFocus?
     @FocusState private var gridHasFocus: Bool
-#endif
+    #endif
 
     var body: some View {
         #if !os(tvOS)
@@ -80,20 +80,20 @@ struct UnrankedView: View {
             VStack(alignment: .leading, spacing: Metrics.grid) {
                 header
                 #if os(tvOS)
-                    let layout = TVMetrics.cardLayout(
-                        for: filteredItems.count,
-                        preference: app.cardDensityPreference
-                    )
-                    ScrollView(.horizontal) {
-                        LazyHStack(spacing: layout.interItemSpacing) {
-                            ForEach(filteredItems, id: \.id) { item in
-                                CardView(item: item, layout: layout)
-                                    .focused($focusedItemId, equals: item.id)
-                            }
+                let layout = TVMetrics.cardLayout(
+                    for: filteredItems.count,
+                    preference: app.cardDensityPreference
+                )
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: layout.interItemSpacing) {
+                        ForEach(filteredItems, id: \.id) { item in
+                            CardView(item: item, layout: layout)
+                                .focused($focusedItemId, equals: item.id)
                         }
-                        .padding(.horizontal, layout.contentPadding)
-                        .padding(.bottom, layout.interItemSpacing * 0.5)
                     }
+                    .padding(.horizontal, layout.contentPadding)
+                    .padding(.bottom, layout.interItemSpacing * 0.5)
+                }
                 .focusSection()
                 .defaultFocus($focusedItemId, filteredItems.first?.id)
                 #else
@@ -251,7 +251,7 @@ struct CardView: View {
         #if os(iOS) && !os(tvOS) || targetEnvironment(macCatalyst)
         .accessibilityAddTraits(.isButton)
         #endif
-#if !os(tvOS)
+        #if !os(tvOS)
         .onDrag {
             app.setDragging(item.id)
             return NSItemProvider(object: NSString(string: item.id))
@@ -410,7 +410,7 @@ struct CardView: View {
             )
             #if os(tvOS)
             .offset(x: layout.contentPadding * 0.2, y: -layout.contentPadding * 0.2)
-            #endif
+        #endif
     }
 }
 
@@ -437,7 +437,7 @@ private extension TierGridView {
         }
         if let existing = hardwareFocus,
            snapshot.contains(where: {
-               $0.tier == existing.tier && $0.items.contains(where: { $0.id == existing.itemID })
+            $0.tier == existing.tier && $0.items.contains(where: { $0.id == existing.itemID })
            }) {
             lastHardwareFocus = existing
             return
@@ -499,7 +499,7 @@ private extension TierGridView {
     func defaultHardwareFocus(for snapshot: [TierSnapshot]) -> CardFocus? {
         if let cached = lastHardwareFocus,
            snapshot.contains(where: {
-               $0.tier == cached.tier && $0.items.contains(where: { $0.id == cached.itemID })
+            $0.tier == cached.tier && $0.items.contains(where: { $0.id == cached.itemID })
            }) {
             return cached
         }

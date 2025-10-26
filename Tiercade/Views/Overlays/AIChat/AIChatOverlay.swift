@@ -154,7 +154,7 @@ struct AIChatOverlay: View {
                             .foregroundStyle(.primary)
                             #if !os(tvOS)
                             .textSelection(.enabled)
-                            #endif
+                        #endif
 
                         if !message.isUser {
                             Button {
@@ -171,8 +171,8 @@ struct AIChatOverlay: View {
                     .padding(12)
                     .background(
                         message.isUser
-                        ? Color.purple.opacity(0.25)
-                        : Color.white.opacity(0.08)
+                            ? Color.purple.opacity(0.25)
+                            : Color.white.opacity(0.08)
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                     if !message.isUser { Spacer(minLength: 0) }
@@ -318,14 +318,13 @@ struct AIChatOverlay: View {
             Task {
                 do {
                     let report = try await AcceptanceTestSuite.runAll { message in
-                    print("🧪 \(message)")
-                }
+                        print("🧪 \(message)")
+                    }
 
-
-
-                // Post summary to chat
-                let summary = """
-                ✅ Test Results: \(report.passed)/\(report.totalTests) passed (\(String(format: "%.1f", report.passRate * 100))%)
+                    // Post summary to chat
+                    let summary = """
+                ✅ Test Results: \(report.passed)/\(report.totalTests) passed \
+                (\(String(format: "%.1f", report.passRate * 100))%)
 
                 Environment:
                 • OS: \(report.environment.osVersion)
@@ -335,25 +334,25 @@ struct AIChatOverlay: View {
                 \(report.results.filter { !$0.passed }.map { "• \($0.testName): \($0.message)" }.joined(separator: "\n"))
                 """
 
-                aiService.messages.append(AIChatMessage(content: summary, isUser: false))
+                    aiService.messages.append(AIChatMessage(content: summary, isUser: false))
 
-                // Save report to file
-                let reportPath = "/tmp/tiercade_acceptance_test_report.json"
-                do {
-                    try AcceptanceTestSuite.saveReport(report, to: reportPath)
-                    aiService.messages.append(AIChatMessage(
-                        content: "📄 Detailed report saved to: \(reportPath)",
-                        isUser: false
-                    ))
-                } catch {
-                    print("❌ Failed to save report: \(error)")
-                }
+                    // Save report to file
+                    let reportPath = "/tmp/tiercade_acceptance_test_report.json"
+                    do {
+                        try AcceptanceTestSuite.saveReport(report, to: reportPath)
+                        aiService.messages.append(AIChatMessage(
+                            content: "📄 Detailed report saved to: \(reportPath)",
+                            isUser: false
+                        ))
+                    } catch {
+                        print("❌ Failed to save report: \(error)")
+                    }
 
-                if report.passRate == 1.0 {
-                    app.showSuccessToast("All Tests Passed!", message: "\(report.totalTests)/\(report.totalTests)")
-                } else {
-                    app.showInfoToast("Tests Complete", message: "\(report.passed)/\(report.totalTests) passed")
-                }
+                    if report.passRate == 1.0 {
+                        app.showSuccessToast("All Tests Passed!", message: "\(report.totalTests)/\(report.totalTests)")
+                    } else {
+                        app.showInfoToast("Tests Complete", message: "\(report.passed)/\(report.totalTests) passed")
+                    }
                 } catch {
                     aiService.messages.append(AIChatMessage(
                         content: "❌ Test suite error: \(error.localizedDescription)",
@@ -388,19 +387,34 @@ struct AIChatOverlay: View {
                 let report = await runner.runPilot()
 
                 // Post summary to chat
+                // Format pass by size breakdown
+                let passBySize = report.summary.passBySize
+                    .sorted { Int($0.key) ?? 0 < Int($1.key) ?? 0 }
+                    .map { "• N=\($0.key): \(String(format: "%.0f%%", $0.value * 100))" }
+                    .joined(separator: "\n")
+
+                let topPerformers = report.summary.topPerformers
+                    .map { "• \($0)" }
+                    .joined(separator: "\n")
+
+                let passRate = String(format: "%.1f%%", report.summary.overallPassRate * 100)
+                let meanDup = String(format: "%.1f", report.summary.meanDupRate * 100)
+                let stdevDup = String(format: "%.1f", report.summary.stdevDupRate * 100)
+                let throughput = String(format: "%.1f", report.summary.meanItemsPerSecond)
+
                 let summary = """
                 ✅ Pilot Test Complete
 
                 Overall Metrics:
-                • Pass@N rate: \(String(format: "%.1f%%", report.summary.overallPassRate * 100))
-                • Mean dup rate: \(String(format: "%.1f±%.1f%%", report.summary.meanDupRate * 100, report.summary.stdevDupRate * 100))
-                • Throughput: \(String(format: "%.1f", report.summary.meanItemsPerSecond)) items/sec
+                • Pass@N rate: \(passRate)
+                • Mean dup rate: \(meanDup)±\(stdevDup)%%
+                • Throughput: \(throughput) items/sec
 
                 Pass by Size:
-                \(report.summary.passBySize.sorted { Int($0.key) ?? 0 < Int($1.key) ?? 0 }.map { "• N=\($0.key): \(String(format: "%.0f%%", $0.value * 100))" }.joined(separator: "\n"))
+                \(passBySize)
 
                 Top Performers:
-                \(report.summary.topPerformers.map { "• \($0)" }.joined(separator: "\n"))
+                \(topPerformers)
                 """
 
                 aiService.messages.append(AIChatMessage(content: summary, isUser: false))
@@ -452,18 +466,32 @@ struct AIChatOverlay: View {
 
             if let best = successful.first {
                 aiService.messages.append(AIChatMessage(
-                    content: "🎉 SUCCESS! Prompt #\(best.promptNumber) eliminates duplicates.\n\nPrompt text:\n\(best.promptText)",
+                    content: """
+                    🎉 SUCCESS! Prompt #\(best.promptNumber) eliminates duplicates.
+
+                    Prompt text:
+                    \(best.promptText)
+                    """,
                     isUser: false
                 ))
-                app.showSuccessToast("Found Solution!", message: "Prompt #\(best.promptNumber) works!")
+                app.showSuccessToast(
+                    "Found Solution!",
+                    message: "Prompt #\(best.promptNumber) works!"
+                )
                 print("\n✅ BEST PROMPT:")
                 print(best.promptText)
             } else {
                 aiService.messages.append(AIChatMessage(
-                    content: "😔 All \(results.count) prompts failed - duplicates still occur with every variation tested.",
+                    content: """
+                    😔 All \(results.count) prompts failed - duplicates still occur \
+                    with every variation tested.
+                    """,
                     isUser: false
                 ))
-                app.showErrorToast("No Solution", message: "All prompts still produce duplicates")
+                app.showErrorToast(
+                    "No Solution",
+                    message: "All prompts still produce duplicates"
+                )
             }
         }
         #else
@@ -529,7 +557,9 @@ struct AIChatOverlay: View {
                 message = "Image generation is currently unavailable"
             case .unsupportedLanguage:
                 let locale = Locale.current
-                let localeInfo = "\(locale.language.languageCode?.identifier ?? "unknown")-\(locale.region?.identifier ?? "unknown")"
+                let languageCode = locale.language.languageCode?.identifier ?? "unknown"
+                let regionCode = locale.region?.identifier ?? "unknown"
+                let localeInfo = "\(languageCode)-\(regionCode)"
                 message = """
                 Unsupported locale: \(localeInfo)
 

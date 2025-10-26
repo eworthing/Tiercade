@@ -178,54 +178,54 @@ private struct TierButton: View {
         Button(
             action: { if !isCurrentTier { action() } },
             label: {
-            HStack(spacing: 16) {
-                // Tier label
-                Text(displayLabel)
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(.primary)
-                    .frame(minWidth: 60, alignment: .leading)
+                HStack(spacing: 16) {
+                    // Tier label
+                    Text(displayLabel)
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(.primary)
+                        .frame(minWidth: 60, alignment: .leading)
 
-                // Item count (with fixed space reservation)
-                Group {
-                    if itemCount > 0 {
-                        Text("\(itemCount)")
-                            .font(.title3.weight(.medium))
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("")
-                            .font(.title3.weight(.medium))
-                            .hidden()
+                    // Item count (with fixed space reservation)
+                    Group {
+                        if itemCount > 0 {
+                            Text("\(itemCount)")
+                                .font(.title3.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("")
+                                .font(.title3.weight(.medium))
+                                .hidden()
+                        }
                     }
-                }
-                .frame(minWidth: 40, alignment: .leading)
+                    .frame(minWidth: 40, alignment: .leading)
 
-                Spacer()
+                    Spacer()
 
-                // Current tier indicator (with fixed space reservation)
-                Group {
-                    if isCurrentTier {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(tierColor)
-                    } else {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.title2)
-                            .hidden()
+                    // Current tier indicator (with fixed space reservation)
+                    Group {
+                        if isCurrentTier {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(tierColor)
+                        } else {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.title2)
+                                .hidden()
+                        }
                     }
+                    .frame(width: 30)
                 }
-                .frame(width: 30)
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 18)
-            .frame(maxWidth: .infinity)
-            .frame(height: 74)
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .tvGlassRounded(16)
-            .tint(tierColor.opacity(isCurrentTier ? 0.36 : 0.24))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(tierColor.opacity(isCurrentTier ? 0.95 : 0.55), lineWidth: isCurrentTier ? 3 : 2)
-            )
+                .padding(.horizontal, 24)
+                .padding(.vertical, 18)
+                .frame(maxWidth: .infinity)
+                .frame(height: 74)
+                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .tvGlassRounded(16)
+                .tint(tierColor.opacity(isCurrentTier ? 0.36 : 0.24))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(tierColor.opacity(isCurrentTier ? 0.95 : 0.55), lineWidth: isCurrentTier ? 3 : 2)
+                )
             }
         )
         .buttonStyle(.plain)

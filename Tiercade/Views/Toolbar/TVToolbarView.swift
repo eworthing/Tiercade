@@ -158,9 +158,9 @@ struct TVToolbarView: View {
             .accessibilityLabel("Head to Head")
             .accessibilityHint(headToHeadHint)
             .focusTooltip(headToHeadTooltip)
-#if swift(>=6.0)
+            #if swift(>=6.0)
             .glassEffectID("h2hButton", in: glassNamespace)
-#endif
+            #endif
 
             Button(action: { app.toggleAnalyticsSidebar() }, label: {
                 Image(systemName: "chart.bar.fill")
@@ -202,9 +202,9 @@ struct TVToolbarView: View {
             .accessibilityLabel("Tier Themes")
             .accessibilityHint("Choose a color theme for your tiers")
             .focusTooltip("Tier Themes")
-#if swift(>=6.0)
+            #if swift(>=6.0)
             .glassEffectID("themePickerButton", in: glassNamespace)
-#endif
+            #endif
 
             if AppleIntelligenceService.isSupportedOnCurrentPlatform {
                 Button(action: { app.toggleAIChat() }, label: {
@@ -218,21 +218,21 @@ struct TVToolbarView: View {
                 .accessibilityLabel("Apple Intelligence")
                 .accessibilityHint("Chat with Apple Intelligence")
                 .focusTooltip("AI Chat")
-#if swift(>=6.0)
+                #if swift(>=6.0)
                 .glassEffectID("aiChatButton", in: glassNamespace)
-#endif
+                #endif
             }
         }
         .padding(.horizontal, TVMetrics.barHorizontalPadding)
         .padding(.vertical, TVMetrics.barVerticalPadding)
-    .tvGlassRounded(36)
-#if swift(>=6.0)
-    .glassEffectID("toolbar", in: glassNamespace)
-    .glassEffectUnion(id: "tiercade.controls", namespace: glassNamespace)
-#endif
-    .overlay(alignment: .bottom) {
-        Divider().opacity(0.12)
-    }
+        .tvGlassRounded(36)
+        #if swift(>=6.0)
+        .glassEffectID("toolbar", in: glassNamespace)
+        .glassEffectUnion(id: "tiercade.controls", namespace: glassNamespace)
+        #endif
+        .overlay(alignment: .bottom) {
+            Divider().opacity(0.12)
+        }
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: TVMetrics.topBarHeight)
         .fixedSize(horizontal: false, vertical: true)

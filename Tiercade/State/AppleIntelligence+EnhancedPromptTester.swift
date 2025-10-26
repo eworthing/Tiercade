@@ -56,15 +56,22 @@ class EnhancedPromptTester {
         }
     }
 
+    struct TestQuery {
+        let query: String
+        let target: Int?
+        let domain: String
+    }
+
     struct TestConfig {
         // PILOT CONFIGURATION: Reduced grid for speed validation
         let seeds: [UInt64] = [42, 1337]  // 2 seeds
 
-        let testQueries: [(query: String, target: Int?, domain: String)] = [
-            ("top 15 most popular fruits", 15, "food"),  // Small
-            ("best places to live in the United States", 50, "geography"),  // Medium
-            ("best video games released in 2020-2023", 150, "media"),  // Large
-            ("What are the most popular candy bars?", nil, "food")  // Open (treat as 40)
+        let testQueries: [TestQuery] = [
+            TestQuery(query: "top 15 most popular fruits", target: 15, domain: "food"),  // Small
+            TestQuery(query: "best places to live in the United States", target: 50, domain: "geography"),  // Medium
+            TestQuery(query: "best video games released in 2020-2023", target: 150, domain: "media"),  // Large
+            // Open (treat as 40)
+            TestQuery(query: "What are the most popular candy bars?", target: nil, domain: "food")
         ]
 
         let decodingConfigs: [DecodingConfig] = [
@@ -185,7 +192,8 @@ class EnhancedPromptTester {
         onProgress("🧪 PILOT TEST (pass@N primary, stratified reporting)")
         onProgress("🧪 ========================================")
 
-        let totalRuns = 4 * config.testQueries.count * config.decodingConfigs.count * config.seeds.count * config.guidedModes.count
+        let totalRuns = 4 * config.testQueries.count * config.decodingConfigs.count *
+                        config.seeds.count * config.guidedModes.count
         onProgress("  • Prompts: 4 (G0, G2, G3, G6 - pilot subset)")
         onProgress("  • Queries: \(config.testQueries.count) (small/medium/large/open)")
         onProgress("  • Decoders: \(config.decodingConfigs.count) (Greedy, TopK, TopP)")
@@ -203,7 +211,12 @@ class EnhancedPromptTester {
         var completedTests = 0
 
         // PILOT: Test only G0, G2, G3, G6
-        let pilotPrompts = [(0, enhancedPrompts[0]), (2, enhancedPrompts[2]), (3, enhancedPrompts[3]), (6, enhancedPrompts[6])]
+        let pilotPrompts = [
+            (0, enhancedPrompts[0]),
+            (2, enhancedPrompts[2]),
+            (3, enhancedPrompts[3]),
+            (6, enhancedPrompts[6])
+        ]
 
         for (promptIndex, (promptName, promptText)) in pilotPrompts {
             let promptNumber = promptIndex + 1
@@ -211,11 +224,14 @@ class EnhancedPromptTester {
 
             var runResults: [SingleRunResult] = []
 
-            for (query, target, domain) in config.testQueries {
+            for testQuery in config.testQueries {
+                let query = testQuery.query
+                let target = testQuery.target
+                let domain = testQuery.domain
                 for decodingConfig in config.decodingConfigs {
                     for seed in config.seeds {
                         for guided in config.guidedModes {
-                            let result = await testSingleRun(
+                            let result = await testSingleRun(SingleRunParameters(
                                 config: config,
                                 promptNumber: promptNumber,
                                 promptName: promptName,
@@ -227,14 +243,18 @@ class EnhancedPromptTester {
                                 decodingConfig: decodingConfig,
                                 seed: seed,
                                 useGuidedSchema: guided
-                            )
+                            ))
 
                             runResults.append(result)
                             completedTests += 1
 
                             if completedTests % 10 == 0 {
                                 let passIcon = result.passAtN ? "✅" : "❌"
-                                onProgress("   [\(completedTests)/\(totalRuns)] \(passIcon) \(result.nBucket)/\(domain), pass=\(result.passAtN), u=\(result.uniqueItems), js=\(result.jsonStrict)")
+                                onProgress(
+                                    "   [\(completedTests)/\(totalRuns)] \(passIcon) " +
+                                    "\(result.nBucket)/\(domain), pass=\(result.passAtN), " +
+                                    "u=\(result.uniqueItems), js=\(result.jsonStrict)"
+                                )
                             }
                         }
                     }
@@ -251,9 +271,16 @@ class EnhancedPromptTester {
 
             aggregateResults.append(aggregate)
 
-            onProgress("   📊 pass@N=\(String(format: "%.0f", aggregate.passAtNRate * 100))%, jsonS=\(String(format: "%.0f", aggregate.jsonStrictRate * 100))%, tpu=\(String(format: "%.2f", aggregate.meanTimePerUnique))s")
+            onProgress(
+                "   📊 pass@N=\(String(format: "%.0f", aggregate.passAtNRate * 100))%, " +
+                "jsonS=\(String(format: "%.0f", aggregate.jsonStrictRate * 100))%, " +
+                "tpu=\(String(format: "%.2f", aggregate.meanTimePerUnique))s"
+            )
 
-            logToFile("Prompt \(promptName) aggregate: pass@N=\(aggregate.passAtNRate), jsonStrict=\(aggregate.jsonStrictRate)")
+            logToFile(
+                "Prompt \(promptName) aggregate: pass@N=\(aggregate.passAtNRate), " +
+                "jsonStrict=\(aggregate.jsonStrictRate)"
+            )
         }
 
         onProgress("\n🎉 Pilot complete! \(completedTests) runs")
@@ -267,44 +294,50 @@ class EnhancedPromptTester {
         return aggregateResults
     }
 
-    private static func testSingleRun(
-        config: TestConfig,
-        promptNumber: Int,
-        promptName: String,
-        promptText: String,
-        runNumber: Int,
-        query: String,
-        targetCount: Int?,
-        domain: String,
-        decodingConfig: DecodingConfig,
-        seed: UInt64,
-        useGuidedSchema: Bool
-    ) async -> SingleRunResult {
+    struct SingleRunParameters {
+        let config: TestConfig
+        let promptNumber: Int
+        let promptName: String
+        let promptText: String
+        let runNumber: Int
+        let query: String
+        let targetCount: Int?
+        let domain: String
+        let decodingConfig: DecodingConfig
+        let seed: UInt64
+        let useGuidedSchema: Bool
+    }
+
+    private static func testSingleRun(_ params: SingleRunParameters) async -> SingleRunResult {
         let startTime = Date()
 
         // Determine effective target
-        let effectiveTarget = targetCount ?? 40  // Open-ended default
-        let nBucket = config.nBucket(for: targetCount)
-        let overgenFactor = config.overgenFactor(for: effectiveTarget)
-        let maxTokens = config.dynamicMaxTokens(targetCount: effectiveTarget, overgenFactor: overgenFactor)
+        let effectiveTarget = params.targetCount ?? 40  // Open-ended default
+        let nBucket = params.config.nBucket(for: params.targetCount)
+        let overgenFactor = params.config.overgenFactor(for: effectiveTarget)
+        let maxTokens = params.config.dynamicMaxTokens(targetCount: effectiveTarget, overgenFactor: overgenFactor)
 
-        logToFile("🔵 RUN #\(runNumber): prompt=\(promptName), query='\(query)', N=\(effectiveTarget), domain=\(domain), decoder=\(decodingConfig.name), seed=\(seed), guided=\(useGuidedSchema), maxTok=\(maxTokens)")
+        logToFile(
+            "🔵 RUN #\(params.runNumber): prompt=\(params.promptName), query='\(params.query)', N=\(effectiveTarget), " +
+            "domain=\(params.domain), decoder=\(params.decodingConfig.name), seed=\(params.seed), " +
+            "guided=\(params.useGuidedSchema), maxTok=\(maxTokens)"
+        )
 
         do {
             // FRESH SESSION PER RUN - no shared state
-            let finalPrompt = promptText.replacingOccurrences(of: "{QUERY}", with: query)
+            let finalPrompt = params.promptText.replacingOccurrences(of: "{QUERY}", with: params.query)
             let instructions = Instructions(finalPrompt)
             let session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
-            let opts = decodingConfig.generationOptions(seed: seed, maxTokens: maxTokens)
+            let opts = params.decodingConfig.generationOptions(seed: params.seed, maxTokens: maxTokens)
 
             let responseContent: String
-            var finishReason: String? = nil
+            var finishReason: String?
             var wasTruncated = false
 
-            if useGuidedSchema {
+            if params.useGuidedSchema {
                 let stringList: StringList = try await withTimeout(seconds: 60) {
                     try await session.respond(
-                        to: Prompt(query),
+                        to: Prompt(params.query),
                         generating: StringList.self,
                         includeSchemaInPrompt: true,
                         options: opts
@@ -316,7 +349,7 @@ class EnhancedPromptTester {
                 wasTruncated = false
             } else {
                 responseContent = try await withTimeout(seconds: 60) {
-                    try await session.respond(to: Prompt(query), options: opts).content
+                    try await session.respond(to: Prompt(params.query), options: opts).content
                 }
                 // Infer truncation
                 let charLimit = maxTokens * 4  // Rough estimate
@@ -335,19 +368,25 @@ class EnhancedPromptTester {
             let surplusAtN = max(0, analysis.uniqueItems - effectiveTarget)
             let timePerUnique = analysis.uniqueItems > 0 ? duration / Double(analysis.uniqueItems) : duration
 
-            logToFile("✅ SUCCESS: unique=\(analysis.uniqueItems), pass@N=\(analysis.passAtN), jsonStrict=\(analysis.wasJsonParsed), dup=\(String(format: "%.1f", analysis.dupRate * 100))%, surplus=\(surplusAtN), tpu=\(String(format: "%.3f", timePerUnique))s, dur=\(String(format: "%.2f", duration))s, finish=\(finishReason ?? "unknown")")
+            logToFile(
+                "✅ SUCCESS: unique=\(analysis.uniqueItems), pass@N=\(analysis.passAtN), " +
+                "jsonStrict=\(analysis.wasJsonParsed), " +
+                "dup=\(String(format: "%.1f", analysis.dupRate * 100))%, surplus=\(surplusAtN), " +
+                "tpu=\(String(format: "%.3f", timePerUnique))s, " +
+                "dur=\(String(format: "%.2f", duration))s, finish=\(finishReason ?? "unknown")"
+            )
 
             return SingleRunResult(
-                promptNumber: promptNumber,
-                promptName: promptName,
-                runNumber: runNumber,
-                seed: seed,
-                query: query,
-                targetCount: targetCount,
-                domain: domain,
+                promptNumber: params.promptNumber,
+                promptName: params.promptName,
+                runNumber: params.runNumber,
+                seed: params.seed,
+                query: params.query,
+                targetCount: params.targetCount,
+                domain: params.domain,
                 nBucket: nBucket,
-                decodingName: decodingConfig.name,
-                guidedSchema: useGuidedSchema,
+                decodingName: params.decodingConfig.name,
+                guidedSchema: params.useGuidedSchema,
                 response: responseContent,
                 parsedItems: analysis.parsedItems,
                 normalizedItems: analysis.normalizedItems,
@@ -372,16 +411,16 @@ class EnhancedPromptTester {
             logToFile("❌ ERROR: \(error.localizedDescription)")
 
             return SingleRunResult(
-                promptNumber: promptNumber,
-                promptName: promptName,
-                runNumber: runNumber,
-                seed: seed,
-                query: query,
-                targetCount: targetCount,
-                domain: domain,
+                promptNumber: params.promptNumber,
+                promptName: params.promptName,
+                runNumber: params.runNumber,
+                seed: params.seed,
+                query: params.query,
+                targetCount: params.targetCount,
+                domain: params.domain,
                 nBucket: nBucket,
-                decodingName: decodingConfig.name,
-                guidedSchema: useGuidedSchema,
+                decodingName: params.decodingConfig.name,
+                guidedSchema: params.useGuidedSchema,
                 response: "ERROR: \(error.localizedDescription)",
                 parsedItems: [],
                 normalizedItems: [],
@@ -445,7 +484,8 @@ class EnhancedPromptTester {
         // Seed variance
         let uniqueByRun = runs.map { $0.uniqueItems }
         let meanUnique = uniqueByRun.reduce(0, +) / uniqueByRun.count
-        let seedVarianceVal = uniqueByRun.map { pow(Double($0 - meanUnique), 2) }.reduce(0, +) / Double(uniqueByRun.count)
+        let varianceSum = uniqueByRun.map { pow(Double($0 - meanUnique), 2) }.reduce(0, +)
+        let seedVarianceVal = varianceSum / Double(uniqueByRun.count)
         let seedVariance = sqrt(seedVarianceVal)
 
         // Insufficient and format errors
@@ -587,15 +627,17 @@ class EnhancedPromptTester {
         normalized = normalized.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
 
         let articles = ["the ", "a ", "an "]
-        for article in articles {
-            if normalized.hasPrefix(article) {
-                normalized = String(normalized.dropFirst(article.count))
-            }
+        for article in articles where normalized.hasPrefix(article) {
+            normalized = String(normalized.dropFirst(article.count))
         }
 
         normalized = normalized.replacingOccurrences(of: "™", with: "")
         normalized = normalized.replacingOccurrences(of: "®", with: "")
-        normalized = normalized.replacingOccurrences(of: #"\s*[\(\[\{].*?[\)\]\}]"#, with: "", options: .regularExpression)
+        normalized = normalized.replacingOccurrences(
+            of: #"\s*[\(\[\{].*?[\)\]\}]"#,
+            with: "",
+            options: .regularExpression
+        )
         normalized = normalized.replacingOccurrences(of: "&", with: "and")
         normalized = normalized.components(separatedBy: CharacterSet.punctuationCharacters).joined()
         normalized = normalized.components(separatedBy: .whitespacesAndNewlines)
@@ -686,12 +728,15 @@ class EnhancedPromptTester {
 
             let sorted = bucketResults.sorted { lhs, rhs in
                 if abs(lhs.passAtNRate - rhs.passAtNRate) > 0.01 { return lhs.passAtNRate > rhs.passAtNRate }
-                if abs(lhs.jsonStrictRate - rhs.jsonStrictRate) > 0.01 { return lhs.jsonStrictRate > rhs.jsonStrictRate }
+                if abs(lhs.jsonStrictRate - rhs.jsonStrictRate) > 0.01 {
+                    return lhs.jsonStrictRate > rhs.jsonStrictRate
+                }
                 return lhs.meanTimePerUnique < rhs.meanTimePerUnique
             }
 
             for result in sorted {
-                report += String(format: "%-20s | pass@N=%5.1f%% | jsonS=%5.1f%% | unique=%5.1f | tpu=%4.2fs | dup=%4.1f%%\n",
+                report += String(
+                    format: "%-20s | pass@N=%5.1f%% | jsonS=%5.1f%% | unique=%5.1f | tpu=%4.2fs | dup=%4.1f%%\n",
                     result.promptName,
                     result.passAtNRate * 100,
                     result.jsonStrictRate * 100,
@@ -726,7 +771,8 @@ class EnhancedPromptTester {
 
         let avgJsonStrict = results.map { $0.jsonStrictRate }.reduce(0, +) / Double(results.count)
         if avgJsonStrict < 0.90 {
-            rec += "⚠️  FORCE GUIDED SCHEMA: Average jsonStrict is \(String(format: "%.1f", avgJsonStrict * 100))% (< 90%)\n\n"
+            rec += "⚠️  FORCE GUIDED SCHEMA: Average jsonStrict is " +
+                   "\(String(format: "%.1f", avgJsonStrict * 100))% (< 90%)\n\n"
         }
 
         try? rec.write(to: outputURL, atomically: true, encoding: .utf8)
@@ -781,7 +827,8 @@ class EnhancedPromptTester {
         ("G3-Diversity", """
         Return ONLY a JSON array of strings.
         Task: {QUERY}
-        Encourage variety across regions, time periods, and subtypes. Avoid near-identical variants in the same franchise or model line.
+        Encourage variety across regions, time periods, and subtypes. \
+        Avoid near-identical variants in the same franchise or model line.
         No commentary. Do not sort.
         """),
 
@@ -821,7 +868,8 @@ class EnhancedPromptTester {
         ("G9-NoNearVariants", """
         Return ONLY a JSON array of strings.
         Task: {QUERY}
-        Avoid near-variants of the same item (model year, size, flavor) when a single representative is reasonable.
+        Avoid near-variants of the same item (model year, size, flavor) when a single \
+        representative is reasonable.
         No commentary. Do not sort.
         """),
 
