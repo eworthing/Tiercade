@@ -122,7 +122,6 @@ struct NormalizationTestCase {
     let description: String
 }
 
-
 static func testTokenBudgeting(logger: @escaping (String) -> Void) -> TestResult {
     logger("\n[Test 8/8] Token Budgeting - chunking algorithm...")
 

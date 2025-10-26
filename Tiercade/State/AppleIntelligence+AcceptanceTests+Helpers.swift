@@ -85,7 +85,6 @@ static func runAcrossSeeds(
     return SeedRunResults(passAtN: passAtN, medianIPS: medianIPS, runs: runs)
 }
 
-
 static func createTestSession() async throws -> LanguageModelSession {
     let instructions = Instructions("""
     You are a helpful assistant that generates lists.

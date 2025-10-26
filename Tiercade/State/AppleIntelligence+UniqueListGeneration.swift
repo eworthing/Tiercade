@@ -533,6 +533,7 @@ final class FMClient {
         var options: GenerationOptions
         var seed: UInt64?
         var lastError: Error?
+        var sessionRecreated: Bool = false
     }
 
     public struct AttemptContext: Sendable {

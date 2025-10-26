@@ -65,9 +65,7 @@ extension FMClient {
         attempt: Int,
         attemptStart: Date,
         params: GenerateParameters,
-        currentOptions: inout GenerationOptions,
-        currentSeed: inout UInt64?,
-        sessionRecreated: inout Bool,
+        retryState: inout RetryState,
         telemetry: inout [AttemptMetrics]
     ) async throws -> Bool {
         let attemptElapsed = Date().timeIntervalSince(attemptStart)
@@ -75,10 +73,10 @@ extension FMClient {
         recordFailedAttempt(
             context: FMClient.AttemptContext(
                 attempt: attempt,
-                seed: currentSeed,
+                seed: retryState.seed,
                 profile: params.profile,
-                options: currentOptions,
-                sessionRecreated: sessionRecreated,
+                options: retryState.options,
+                sessionRecreated: retryState.sessionRecreated,
                 elapsed: attemptElapsed
             ),
             telemetry: &telemetry
@@ -88,9 +86,7 @@ extension FMClient {
             error: error,
             attempt: attempt,
             params: params,
-            currentOptions: &currentOptions,
-            currentSeed: &currentSeed,
-            sessionRecreated: &sessionRecreated
+            retryState: &retryState
         )
     }
 
@@ -181,9 +177,7 @@ extension FMClient {
         error: LanguageModelSession.GenerationError,
         attempt: Int,
         params: GenerateParameters,
-        currentOptions: inout GenerationOptions,
-        currentSeed: inout UInt64?,
-        sessionRecreated: inout Bool
+        retryState: inout RetryState
     ) async throws -> Bool {
         if case .decodingFailure(let context) = error {
             if attempt < params.maxRetries - 1 {
@@ -192,9 +186,7 @@ extension FMClient {
                 if try await handleAdaptiveRetry(
                     attempt: attempt,
                     params: params,
-                    currentOptions: &currentOptions,
-                    currentSeed: &currentSeed,
-                    sessionRecreated: &sessionRecreated
+                    retryState: &retryState
                 ) {
                     return true
                 }
@@ -218,22 +210,20 @@ extension FMClient {
     func handleAdaptiveRetry(
         attempt: Int,
         params: GenerateParameters,
-        currentOptions: inout GenerationOptions,
-        currentSeed: inout UInt64?,
-        sessionRecreated: inout Bool
+        retryState: inout RetryState
     ) async throws -> Bool {
         // ADAPTIVE RETRY: Boost tokens before seed rotation on first failure
         if attempt == 0 {
-            let currentMax = currentOptions.maximumResponseTokens ?? 0
+            let currentMax = retryState.options.maximumResponseTokens ?? 0
             let boosted = min(512, Int(Double(currentMax) * 1.8))
             if boosted > currentMax {
                 logger("🔁 Boosting maxTokens → \(boosted) with same seed/profile")
-                currentOptions = params.profile.options(
-                    seed: currentSeed,
-                    temp: currentOptions.temperature,
+                retryState.options = params.profile.options(
+                    seed: retryState.seed,
+                    temp: retryState.options.temperature,
                     maxTok: boosted
                 )
-                let seedStr = currentSeed.map { String($0) } ?? "nil"
+                let seedStr = retryState.seed.map { String($0) } ?? "nil"
                 logger("🔁 Retrying with seed=\(seedStr), profile=\(params.profile.description)")
                 return true
             }
@@ -243,7 +233,7 @@ extension FMClient {
         if attempt == 1, let factory = sessionFactory {
             do {
                 session = try await factory()
-                sessionRecreated = true
+                retryState.sessionRecreated = true
                 logger("♻️ Recreating session")
             } catch {
                 logger("⚠️ Failed to create fresh session: \(error)")
@@ -252,11 +242,11 @@ extension FMClient {
 
         // Use deterministic seed ring for reproducible retries
         let newSeed = Self.seedRing[(attempt + 1) % Self.seedRing.count]
-        currentSeed = newSeed
+        retryState.seed = newSeed
 
         // Lower temperature after 2 failures
         let temp = attempt >= 2 ? 0.7 : params.temperature
-        currentOptions = params.profile.options(seed: currentSeed, temp: temp, maxTok: params.maxTokens)
+        retryState.options = params.profile.options(seed: retryState.seed, temp: temp, maxTok: params.maxTokens)
 
         logger("🔁 Retrying with seed=\(newSeed), profile=\(params.profile.description)")
         return false
