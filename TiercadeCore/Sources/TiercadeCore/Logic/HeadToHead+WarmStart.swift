@@ -1,28 +1,28 @@
 import Foundation
 
 extension HeadToHeadLogic {
-    struct WarmStartPreparation {
-        let tiersByName: [String: [Item]]
-        let unranked: [Item]
-        let anchors: [Item]
+    internal struct WarmStartPreparation {
+        internal let tiersByName: [String: [Item]]
+        internal let unranked: [Item]
+        internal let anchors: [Item]
     }
 
-    struct WarmStartQueueBuilder {
-        let target: Int
-        private(set) var queue: [(Item, Item)] = []
+    internal struct WarmStartQueueBuilder {
+        internal let target: Int
+        internal private(set) var queue: [(Item, Item)] = []
         private var counts: [String: Int]
         private var seen: Set<PairKey> = []
 
-        init(pool: [Item], target: Int) {
+        internal init(pool: [Item], target: Int) {
             self.target = target
             counts = Dictionary(uniqueKeysWithValues: pool.map { ($0.id, 0) })
         }
 
-        var isSatisfied: Bool {
+        internal var isSatisfied: Bool {
             counts.values.allSatisfy { $0 >= target }
         }
 
-        mutating func enqueue(_ first: Item, _ second: Item) {
+        internal mutating func enqueue(_ first: Item, _ second: Item) {
             guard first.id != second.id else { return }
             let key = PairKey(first, second)
             guard !seen.contains(key) else { return }
@@ -34,7 +34,7 @@ extension HeadToHeadLogic {
             }
         }
 
-        mutating func enqueueBoundaryPairs(
+        internal mutating func enqueueBoundaryPairs(
             tierOrder: [String],
             tiersByName: [String: [Item]],
             frontierWidth: Int
@@ -57,7 +57,7 @@ extension HeadToHeadLogic {
             return isSatisfied
         }
 
-        mutating func enqueueUnranked(_ unranked: [Item], anchors: [Item]) -> Bool {
+        internal mutating func enqueueUnranked(_ unranked: [Item], anchors: [Item]) -> Bool {
             guard !anchors.isEmpty else { return isSatisfied }
             for item in unranked {
                 var added = 0
@@ -71,7 +71,7 @@ extension HeadToHeadLogic {
             return isSatisfied
         }
 
-        mutating func enqueueAdjacentPairs(in tiersByName: [String: [Item]]) -> Bool {
+        internal mutating func enqueueAdjacentPairs(in tiersByName: [String: [Item]]) -> Bool {
             for items in tiersByName.values where items.count >= 2 {
                 for index in 0..<(items.count - 1) {
                     enqueue(items[index], items[index + 1])
@@ -81,7 +81,7 @@ extension HeadToHeadLogic {
             return isSatisfied
         }
 
-        mutating func enqueueFallback(from pool: [Item]) {
+        internal mutating func enqueueFallback(from pool: [Item]) {
             guard !isSatisfied else { return }
             let fallbackPairs = HeadToHeadLogic.pairings(from: pool, rng: { Double.random(in: 0...1) })
             for pair in fallbackPairs {
@@ -95,7 +95,7 @@ extension HeadToHeadLogic {
         }
     }
 
-    static func prepareWarmStart(
+    internal static func prepareWarmStart(
         pool: [Item],
         tierOrder: [String],
         currentTiers: Items,

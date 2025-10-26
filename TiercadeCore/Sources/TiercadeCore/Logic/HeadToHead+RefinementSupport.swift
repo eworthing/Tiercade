@@ -1,13 +1,13 @@
 import Foundation
 
 extension HeadToHeadLogic {
-    struct CandidatePair: Sendable {
+    internal struct CandidatePair: Sendable {
         let pair: (Item, Item)
         let closeness: Double
         let minComparisons: Int
     }
 
-    struct RefinementCutContext {
+    internal struct RefinementCutContext {
         let quantCuts: [Int]
         let refinedCuts: [Int]
         let primaryCuts: [Int]
@@ -17,7 +17,7 @@ extension HeadToHeadLogic {
         let itemCount: Int
     }
 
-    struct RefinementLogContext {
+    internal struct RefinementLogContext {
         let ordered: [Item]
         let metrics: [String: HeadToHeadMetrics]
         let averageComparisons: Double
@@ -30,7 +30,7 @@ extension HeadToHeadLogic {
         let required: Int
     }
 
-    struct RefinementComputation {
+    internal struct RefinementComputation {
         let metrics: [String: HeadToHeadMetrics]
         let ordered: [Item]
         let totalComparisons: Int
@@ -69,7 +69,7 @@ extension HeadToHeadLogic {
         }
     }
 
-    static func forcedBoundaryPairs(
+    internal static func forcedBoundaryPairs(
         ordered: [Item],
         metrics: [String: HeadToHeadMetrics],
         limit: Int,
@@ -96,7 +96,7 @@ extension HeadToHeadLogic {
         return results
     }
 
-    static func frontierCandidatePairs(
+    internal static func frontierCandidatePairs(
         artifacts: H2HArtifacts,
         metrics: [String: HeadToHeadMetrics],
         seen: inout Set<PairKey>
@@ -130,7 +130,7 @@ extension HeadToHeadLogic {
         return candidates.sorted()
     }
 
-    static func averageComparisons(
+    internal static func averageComparisons(
         for artifacts: H2HArtifacts,
         records: [String: H2HRecord]
     ) -> Double {
@@ -141,7 +141,7 @@ extension HeadToHeadLogic {
         return Double(total) / Double(artifacts.rankable.count)
     }
 
-    static func totalComparisons(
+    internal static func totalComparisons(
         ordered: [Item],
         metrics: [String: HeadToHeadMetrics]
     ) -> Int {
@@ -150,7 +150,7 @@ extension HeadToHeadLogic {
         }
     }
 
-    static func adjustedRefinedCuts(
+    internal static func adjustedRefinedCuts(
         primaryCuts: [Int],
         quantCuts: [Int],
         tierCount: Int,
@@ -180,7 +180,7 @@ extension HeadToHeadLogic {
         return refined.isEmpty ? quantCuts : refined
     }
 
-    static func makeRefinementComputation(
+    internal static func makeRefinementComputation(
         artifacts: H2HArtifacts,
         records: [String: H2HRecord],
         tierCount: Int,
@@ -220,7 +220,7 @@ extension HeadToHeadLogic {
         )
     }
 
-    static func selectRefinedCuts(_ context: RefinementCutContext) -> [Int] {
+    internal static func selectRefinedCuts(_ context: RefinementCutContext) -> [Int] {
         let decisionsSoFar = Double(context.totalComparisons)
         let required = max(context.requiredComparisons, 1)
 
@@ -238,7 +238,7 @@ extension HeadToHeadLogic {
         return context.refinedCuts
     }
 
-    static func logRefinementDetails(_ context: RefinementLogContext) {
+    internal static func logRefinementDetails(_ context: RefinementLogContext) {
         #if DEBUG
         guard HeadToHeadLogic.loggingEnabled else { return }
         logRefinementSummary(context)
@@ -248,7 +248,7 @@ extension HeadToHeadLogic {
         #endif
     }
 
-    static func makeRefinedArtifacts(
+    internal static func makeRefinedArtifacts(
         artifacts: H2HArtifacts,
         ordered: [Item],
         cuts: [Int],
@@ -335,7 +335,7 @@ extension HeadToHeadLogic {
 }
 
 extension HeadToHeadLogic.CandidatePair: Equatable {
-    static func == (lhs: HeadToHeadLogic.CandidatePair, rhs: HeadToHeadLogic.CandidatePair) -> Bool {
+    internal static func == (lhs: HeadToHeadLogic.CandidatePair, rhs: HeadToHeadLogic.CandidatePair) -> Bool {
         lhs.pair.0.id == rhs.pair.0.id &&
             lhs.pair.1.id == rhs.pair.1.id &&
             lhs.closeness == rhs.closeness &&
@@ -344,7 +344,7 @@ extension HeadToHeadLogic.CandidatePair: Equatable {
 }
 
 extension HeadToHeadLogic.CandidatePair: Comparable {
-    static func < (lhs: HeadToHeadLogic.CandidatePair, rhs: HeadToHeadLogic.CandidatePair) -> Bool {
+    internal static func < (lhs: HeadToHeadLogic.CandidatePair, rhs: HeadToHeadLogic.CandidatePair) -> Bool {
         if lhs.closeness != rhs.closeness {
             return lhs.closeness < rhs.closeness
         }
