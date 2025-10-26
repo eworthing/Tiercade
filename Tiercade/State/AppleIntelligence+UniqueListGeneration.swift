@@ -489,13 +489,15 @@ final class FMClient {
                 )
 
                 handleSuccessResponse(
-                    response: response,
-                    attempt: attempt,
-                    attemptStart: attemptStart,
-                    totalStart: start,
-                    currentSeed: retryState.seed,
-                    sessionRecreated: sessionRecreated,
-                    params: params,
+                    context: ResponseContext(
+                        response: response,
+                        attempt: attempt,
+                        attemptStart: attemptStart,
+                        totalStart: start,
+                        currentSeed: retryState.seed,
+                        sessionRecreated: sessionRecreated,
+                        params: params
+                    ),
                     telemetry: &telemetry
                 )
 
@@ -531,6 +533,25 @@ final class FMClient {
         var options: GenerationOptions
         var seed: UInt64?
         var lastError: Error?
+    }
+
+    struct AttemptContext: Sendable {
+        let attempt: Int
+        let seed: UInt64?
+        let profile: DecoderProfile
+        let options: GenerationOptions
+        let sessionRecreated: Bool
+        let elapsed: Double
+    }
+
+    struct ResponseContext: Sendable {
+        let response: LanguageModelSession.Response<UniqueListResponse>
+        let attempt: Int
+        let attemptStart: Date
+        let totalStart: Date
+        let currentSeed: UInt64?
+        let sessionRecreated: Bool
+        let params: GenerateParameters
     }
 
     struct GenerateTextArrayParameters {

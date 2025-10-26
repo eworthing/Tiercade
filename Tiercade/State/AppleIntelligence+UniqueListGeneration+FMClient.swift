@@ -32,31 +32,31 @@ extension FMClient {
     }
 
     func handleSuccessResponse(
-        response: LanguageModelSession.Response<UniqueListResponse>,
-        attempt: Int,
-        attemptStart: Date,
-        totalStart: Date,
-        currentSeed: UInt64?,
-        sessionRecreated: Bool,
-        params: GenerateParameters,
+        context: UniqueListCoordinator.ResponseContext,
         telemetry: inout [AttemptMetrics]
     ) {
         logSuccessfulGeneration(
-            response: response,
-            attempt: attempt,
-            totalElapsed: Date().timeIntervalSince(totalStart),
-            params: params
+            response: context.response,
+            attempt: context.attempt,
+            totalElapsed: Date().timeIntervalSince(context.totalStart),
+            params: context.params
         )
 
         recordSuccessfulAttempt(
-            telemetry: &telemetry,
-            attempt: attempt,
-            seed: currentSeed,
-            profile: params.profile,
-            options: params.profile.options(seed: currentSeed, temp: params.temperature, maxTok: params.maxTokens),
-            sessionRecreated: sessionRecreated,
-            itemsReturned: response.content.items.count,
-            elapsed: Date().timeIntervalSince(attemptStart)
+            context: UniqueListCoordinator.AttemptContext(
+                attempt: context.attempt,
+                seed: context.currentSeed,
+                profile: context.params.profile,
+                options: context.params.profile.options(
+                    seed: context.currentSeed,
+                    temp: context.params.temperature,
+                    maxTok: context.params.maxTokens
+                ),
+                sessionRecreated: context.sessionRecreated,
+                elapsed: Date().timeIntervalSince(context.attemptStart)
+            ),
+            itemsReturned: context.response.content.items.count,
+            telemetry: &telemetry
         )
     }
 
@@ -73,13 +73,15 @@ extension FMClient {
         let attemptElapsed = Date().timeIntervalSince(attemptStart)
 
         recordFailedAttempt(
-            telemetry: &telemetry,
-            attempt: attempt,
-            seed: currentSeed,
-            profile: params.profile,
-            options: currentOptions,
-            sessionRecreated: sessionRecreated,
-            elapsed: attemptElapsed
+            context: UniqueListCoordinator.AttemptContext(
+                attempt: attempt,
+                seed: currentSeed,
+                profile: params.profile,
+                options: currentOptions,
+                sessionRecreated: sessionRecreated,
+                elapsed: attemptElapsed
+            ),
+            telemetry: &telemetry
         )
 
         return try await handleGenerationError(
@@ -145,43 +147,33 @@ extension FMClient {
     }
 
     func recordSuccessfulAttempt(
-        telemetry: inout [AttemptMetrics],
-        attempt: Int,
-        seed: UInt64?,
-        profile: DecoderProfile,
-        options: GenerationOptions,
-        sessionRecreated: Bool,
+        context: UniqueListCoordinator.AttemptContext,
         itemsReturned: Int,
-        elapsed: Double
+        telemetry: inout [AttemptMetrics]
     ) {
         telemetry.append(AttemptMetrics(
-            attemptIndex: attempt,
-            seed: seed,
-            sampling: profile.description,
-            temperature: options.temperature,
-            sessionRecreated: sessionRecreated,
+            attemptIndex: context.attempt,
+            seed: context.seed,
+            sampling: context.profile.description,
+            temperature: context.options.temperature,
+            sessionRecreated: context.sessionRecreated,
             itemsReturned: itemsReturned,
-            elapsedSec: elapsed
+            elapsedSec: context.elapsed
         ))
     }
 
     func recordFailedAttempt(
-        telemetry: inout [AttemptMetrics],
-        attempt: Int,
-        seed: UInt64?,
-        profile: DecoderProfile,
-        options: GenerationOptions,
-        sessionRecreated: Bool,
-        elapsed: Double
+        context: UniqueListCoordinator.AttemptContext,
+        telemetry: inout [AttemptMetrics]
     ) {
         telemetry.append(AttemptMetrics(
-            attemptIndex: attempt,
-            seed: seed,
-            sampling: profile.description,
-            temperature: options.temperature,
-            sessionRecreated: sessionRecreated,
+            attemptIndex: context.attempt,
+            seed: context.seed,
+            sampling: context.profile.description,
+            temperature: context.options.temperature,
+            sessionRecreated: context.sessionRecreated,
             itemsReturned: nil,
-            elapsedSec: elapsed
+            elapsedSec: context.elapsed
         ))
     }
 
