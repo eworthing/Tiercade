@@ -240,34 +240,57 @@ private extension ThemeLibraryOverlay {
             return
         }
 
-        var targetIndex = currentIndex
-
-        switch move {
-        case .left:
-            if currentIndex > 0 {
-                targetIndex = currentIndex - 1
-            }
-        case .right:
-            if currentIndex + 1 < themes.count {
-                targetIndex = currentIndex + 1
-            }
-        case .up:
-            let candidate = currentIndex - columnCount
-            if candidate >= 0 {
-                targetIndex = candidate
-            }
-        case .down:
-            let candidate = currentIndex + columnCount
-            if candidate < themes.count {
-                targetIndex = candidate
-            } else if currentIndex != themes.count - 1 {
-                targetIndex = themes.count - 1
-            }
-        }
+        let targetIndex = calculateTargetIndex(
+            move: move,
+            currentIndex: currentIndex,
+            themeCount: themes.count,
+            columnCount: columnCount
+        )
 
         if targetIndex != currentIndex, themes.indices.contains(targetIndex) {
             assignFocus(themes[targetIndex].id)
         }
+    }
+
+    private func calculateTargetIndex(
+        move: DirectionalMove,
+        currentIndex: Int,
+        themeCount: Int,
+        columnCount: Int
+    ) -> Int {
+        switch move {
+        case .left:
+            return handleLeftMove(currentIndex: currentIndex)
+        case .right:
+            return handleRightMove(currentIndex: currentIndex, themeCount: themeCount)
+        case .up:
+            return handleUpMove(currentIndex: currentIndex, columnCount: columnCount)
+        case .down:
+            return handleDownMove(currentIndex: currentIndex, themeCount: themeCount, columnCount: columnCount)
+        }
+    }
+
+    private func handleLeftMove(currentIndex: Int) -> Int {
+        return currentIndex > 0 ? currentIndex - 1 : currentIndex
+    }
+
+    private func handleRightMove(currentIndex: Int, themeCount: Int) -> Int {
+        return currentIndex + 1 < themeCount ? currentIndex + 1 : currentIndex
+    }
+
+    private func handleUpMove(currentIndex: Int, columnCount: Int) -> Int {
+        let candidate = currentIndex - columnCount
+        return candidate >= 0 ? candidate : currentIndex
+    }
+
+    private func handleDownMove(currentIndex: Int, themeCount: Int, columnCount: Int) -> Int {
+        let candidate = currentIndex + columnCount
+        if candidate < themeCount {
+            return candidate
+        } else if currentIndex != themeCount - 1 {
+            return themeCount - 1
+        }
+        return currentIndex
     }
 
     func activateFocusedTheme() {

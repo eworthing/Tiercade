@@ -411,28 +411,67 @@ struct MainAppView: View {
 
 private extension MainAppView {
     func handleBackCommand() {
+        if handleOverlayDismissals() { return }
+        if handleQuickActionDismissals() { return }
+        if handleCreatorDismissals() { return }
+        if handleModeDismissals() { return }
+    }
+
+    private func handleOverlayDismissals() -> Bool {
         if app.showAIChat {
             app.closeAIChat()
-        } else if app.quickRankTarget != nil {
-            app.cancelQuickRank()
-        } else if app.quickMoveTarget != nil {
-            app.cancelQuickMove()
-        } else if app.showThemeCreator {
-            app.cancelThemeCreation(returnToThemePicker: false)
-        } else if app.showTierListCreator {
-            app.cancelTierListCreator()
-        } else if app.showingTierListBrowser {
+            return true
+        }
+        if app.showingTierListBrowser {
             app.dismissTierListBrowser()
-        } else if app.showAnalyticsSidebar {
+            return true
+        }
+        if app.showAnalyticsSidebar {
             app.closeAnalyticsSidebar()
-        } else if app.h2hActive {
+            return true
+        }
+        return false
+    }
+
+    private func handleQuickActionDismissals() -> Bool {
+        if app.quickRankTarget != nil {
+            app.cancelQuickRank()
+            return true
+        }
+        if app.quickMoveTarget != nil {
+            app.cancelQuickMove()
+            return true
+        }
+        if app.h2hActive {
             app.cancelH2H(fromExitCommand: true)
-        } else if app.detailItem != nil {
+            return true
+        }
+        return false
+    }
+
+    private func handleCreatorDismissals() -> Bool {
+        if app.showThemeCreator {
+            app.cancelThemeCreation(returnToThemePicker: false)
+            return true
+        }
+        if app.showTierListCreator {
+            app.cancelTierListCreator()
+            return true
+        }
+        return false
+    }
+
+    private func handleModeDismissals() -> Bool {
+        if app.detailItem != nil {
             app.detailItem = nil
-        } else if editMode == .active {
+            return true
+        }
+        if editMode == .active {
             editMode = .inactive
             app.clearSelection()
+            return true
         }
+        return false
     }
 }
 
