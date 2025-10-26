@@ -4,7 +4,7 @@ import TiercadeCore
 
 // MARK: - Encoding Helpers
 
-enum TierListCreatorCodec {
+internal enum TierListCreatorCodec {
     nonisolated static func makeEncoder() -> JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -63,7 +63,7 @@ final class TierProjectDraft {
     ) var collaborators: [TierDraftCollabMember]
     @Relationship(deleteRule: .cascade, inverse: \TierDraftAudit.project) var audit: TierDraftAudit?
 
-    init(
+    internal init(
         identifier: UUID = UUID(),
         projectId: UUID = UUID(),
         schemaVersion: Int = 1,
@@ -167,7 +167,7 @@ final class TierDraftTier {
     @Relationship(deleteRule: .nullify, inverse: \TierDraftItem.tier) var items: [TierDraftItem]
     @Relationship var project: TierProjectDraft?
 
-    init(
+    internal init(
         identifier: UUID = UUID(),
         tierId: String,
         label: String,
@@ -224,7 +224,7 @@ final class TierDraftItem {
     @Relationship var tier: TierDraftTier?
     @Relationship var project: TierProjectDraft?
 
-    init(
+    internal init(
         identifier: UUID = UUID(),
         itemId: String,
         title: String,
@@ -296,7 +296,7 @@ final class TierDraftOverride {
     @Relationship var item: TierDraftItem?
     @Relationship var project: TierProjectDraft?
 
-    init(
+    internal init(
         identifier: UUID = UUID(),
         itemId: String,
         displayTitle: String = "",
@@ -345,7 +345,7 @@ final class TierDraftMedia {
     @Relationship var override: TierDraftOverride?
     @Relationship var project: TierProjectDraft?
 
-    init(
+    internal init(
         identifier: UUID = UUID(),
         mediaId: String,
         kindRaw: String,
@@ -387,7 +387,7 @@ extension TierDraftMedia {
         ProjectMediaKind(rawValue: kindRaw) ?? .image
     }
 
-    func toProjectMedia() -> Project.Media {
+    internal func toProjectMedia() -> Project.Media {
         Project.Media(
             id: mediaId,
             kind: kind,
@@ -415,7 +415,7 @@ final class TierDraftAudit {
     var updatedBy: String?
     @Relationship var project: TierProjectDraft?
 
-    init(
+    internal init(
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
         createdBy: String? = nil,
@@ -447,7 +447,7 @@ final class TierDraftCollabMember {
     var additionalData: Data?
     @Relationship var project: TierProjectDraft?
 
-    init(
+    internal init(
         identifier: UUID = UUID(),
         userId: String,
         role: String,

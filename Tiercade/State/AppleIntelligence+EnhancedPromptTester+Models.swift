@@ -9,18 +9,18 @@ import FoundationModels
 extension EnhancedPromptTester {
 // MARK: - Configuration
 
-enum SamplingMode {
+internal enum SamplingMode {
     case greedy
     case topP(Double)
     case topK(Int)
 }
 
-struct DecodingConfig {
+internal struct DecodingConfig {
     let name: String
     let sampling: SamplingMode
     let temperature: Double
 
-    func generationOptions(seed: UInt64, maxTokens: Int) -> GenerationOptions {
+    internal func generationOptions(seed: UInt64, maxTokens: Int) -> GenerationOptions {
         switch sampling {
         case .greedy:
             return GenerationOptions(
@@ -44,13 +44,13 @@ struct DecodingConfig {
     }
 }
 
-struct TestQuery {
+internal struct TestQuery {
     let query: String
     let target: Int?
     let domain: String
 }
 
-struct TestConfig {
+internal struct TestConfig {
     // PILOT CONFIGURATION: Reduced grid for speed validation
     let seeds: [UInt64] = [42, 1337]  // 2 seeds
 
@@ -75,19 +75,19 @@ struct TestConfig {
     // Full grid: 4 prompts × 4 queries × 3 decoders × 2 seeds × 2 guided = 192 runs (~15 min)
 
     // Dynamic token budget
-    func dynamicMaxTokens(targetCount: Int, overgenFactor: Double) -> Int {
+    internal func dynamicMaxTokens(targetCount: Int, overgenFactor: Double) -> Int {
         let tokensPerItem = 6
         let calculated = Int(ceil(Double(targetCount) * overgenFactor * Double(tokensPerItem) * 1.3))
         return min(3000, calculated)
     }
 
-    func overgenFactor(for targetCount: Int) -> Double {
+    internal func overgenFactor(for targetCount: Int) -> Double {
         if targetCount <= 50 { return 1.4 }
         if targetCount <= 150 { return 1.6 }
         return 2.0
     }
 
-    func nBucket(for targetCount: Int?) -> String {
+    internal func nBucket(for targetCount: Int?) -> String {
         guard let n = targetCount else { return "open" }
         if n <= 25 { return "small" }
         if n <= 50 { return "medium" }
@@ -96,7 +96,7 @@ struct TestConfig {
 }
 // MARK: - Results
 
-struct SingleRunResult: Sendable {
+internal struct SingleRunResult: Sendable {
     let promptNumber: Int
     let promptName: String
     let runNumber: Int
@@ -127,7 +127,7 @@ struct SingleRunResult: Sendable {
     let timePerUnique: Double  // duration / max(1, unique)
 }
 
-struct AggregateResult {
+internal struct AggregateResult {
     let promptNumber: Int
     let promptName: String
     let promptText: String
@@ -156,7 +156,7 @@ struct AggregateResult {
 // MARK: - Guided Schema
 
 @Generable
-struct StringList: Codable {
+internal struct StringList: Codable {
     let items: [String]
 }
 }

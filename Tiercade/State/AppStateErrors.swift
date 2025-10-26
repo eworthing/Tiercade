@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Typed Error Domains for Swift 6
 
 /// Errors that can occur during export operations
-enum ExportError: Error {
+internal enum ExportError: Error {
     case formatNotSupported(ExportFormat)
     case dataEncodingFailed(String)
     case insufficientData
@@ -27,7 +27,7 @@ enum ExportError: Error {
 }
 
 /// Errors that can occur during import operations
-enum ImportError: Error {
+internal enum ImportError: Error {
     case invalidFormat(String)
     case invalidData(String)
     case missingRequiredField(String)
@@ -54,7 +54,7 @@ enum ImportError: Error {
 }
 
 /// Errors that can occur during persistence operations
-enum PersistenceError: Error {
+internal enum PersistenceError: Error {
     case encodingFailed(String)
     case decodingFailed(String)
     case fileSystemError(String)

@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-struct ThemeTierDraft: Identifiable, Hashable, Sendable {
+internal struct ThemeTierDraft: Identifiable, Hashable, Sendable {
     let id: UUID
     let index: Int
     let name: String
@@ -9,7 +9,7 @@ struct ThemeTierDraft: Identifiable, Hashable, Sendable {
     let isUnranked: Bool
 }
 
-struct ThemeDraft: Identifiable, Hashable, Sendable {
+internal struct ThemeDraft: Identifiable, Hashable, Sendable {
     var id: UUID = UUID()
     var displayName: String
     var slug: String
@@ -18,7 +18,7 @@ struct ThemeDraft: Identifiable, Hashable, Sendable {
     var activeTierID: UUID
     var baseThemeID: UUID?
 
-    init(baseTheme: TierTheme, tierOrder: [String]) {
+    internal init(baseTheme: TierTheme, tierOrder: [String]) {
         displayName = "\(baseTheme.displayName) Variant"
         slug = ThemeDraft.slugify(displayName)
         shortDescription = "Inspired by \(baseTheme.displayName)"
@@ -61,7 +61,7 @@ struct ThemeDraft: Identifiable, Hashable, Sendable {
         assignColor(hex, to: activeTierID)
     }
 
-    func buildTheme(withSlug slugOverride: String? = nil) -> TierTheme {
+    internal func buildTheme(withSlug slugOverride: String? = nil) -> TierTheme {
         let finalSlug = slugOverride ?? slug
         let tierModels = tiers.map { tier in
             TierTheme.Tier(
@@ -81,7 +81,7 @@ struct ThemeDraft: Identifiable, Hashable, Sendable {
         )
     }
 
-    static func buildTierDrafts(baseTheme: TierTheme, tierOrder: [String]) -> [ThemeTierDraft] {
+    internal static func buildTierDrafts(baseTheme: TierTheme, tierOrder: [String]) -> [ThemeTierDraft] {
         var drafts: [ThemeTierDraft] = []
 
         for (index, tierName) in tierOrder.enumerated() {
@@ -137,7 +137,7 @@ struct ThemeDraft: Identifiable, Hashable, Sendable {
         return drafts
     }
 
-    static func slugify(_ value: String) -> String {
+    internal static func slugify(_ value: String) -> String {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return "custom-theme" }
         let lowercase = trimmed.lowercased()
@@ -152,7 +152,7 @@ struct ThemeDraft: Identifiable, Hashable, Sendable {
         return collapsed.isEmpty ? "custom-theme" : collapsed
     }
 
-    static func normalizeHex(_ value: String) -> String {
+    internal static func normalizeHex(_ value: String) -> String {
         let sanitized = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if sanitized.hasPrefix("#") { return sanitized.uppercased() }
         return "#" + sanitized.uppercased()
@@ -161,7 +161,7 @@ struct ThemeDraft: Identifiable, Hashable, Sendable {
 
 // MARK: - Theme Creation Workflow
 
-extension AppState {
+internal extension AppState {
     var availableThemes: [TierTheme] {
         let bundled = TierThemeCatalog.allThemes
         guard !customThemes.isEmpty else { return bundled }
@@ -172,16 +172,16 @@ extension AppState {
         }
     }
 
-    func isCustomTheme(_ theme: TierTheme) -> Bool {
+    internal func isCustomTheme(_ theme: TierTheme) -> Bool {
         customThemeIDs.contains(theme.id)
     }
 
-    func theme(with id: UUID) -> TierTheme? {
+    internal func theme(with id: UUID) -> TierTheme? {
         if let bundled = TierThemeCatalog.theme(id: id) { return bundled }
         return customThemes.first { $0.id == id }
     }
 
-    func beginThemeCreation(baseTheme: TierTheme? = nil) {
+    internal func beginThemeCreation(baseTheme: TierTheme? = nil) {
         let source = baseTheme ?? selectedTheme
         themeDraft = ThemeDraft(baseTheme: source, tierOrder: tierOrder)
         themePickerActive = false
@@ -189,32 +189,32 @@ extension AppState {
         themeCreatorActive = true
     }
 
-    func updateThemeDraftName(_ newName: String) {
+    internal func updateThemeDraftName(_ newName: String) {
         guard var draft = themeDraft else { return }
         draft.setName(newName)
         themeDraft = draft
     }
 
-    func updateThemeDraftDescription(_ newDescription: String) {
+    internal func updateThemeDraftDescription(_ newDescription: String) {
         guard var draft = themeDraft else { return }
         draft.setDescription(newDescription)
         themeDraft = draft
     }
 
-    func selectThemeDraftTier(_ tierID: UUID) {
+    internal func selectThemeDraftTier(_ tierID: UUID) {
         guard var draft = themeDraft else { return }
         draft.selectTier(tierID)
         themeDraft = draft
     }
 
-    func assignColorToActiveTier(_ hex: String) {
+    internal func assignColorToActiveTier(_ hex: String) {
         guard var draft = themeDraft else { return }
         draft.applyColorToActiveTier(hex)
         themeDraft = draft
         markAsChanged()
     }
 
-    func cancelThemeCreation(returnToThemePicker: Bool) {
+    internal func cancelThemeCreation(returnToThemePicker: Bool) {
         showThemeCreator = false
         themeCreatorActive = false
         themeDraft = nil
@@ -224,7 +224,7 @@ extension AppState {
         }
     }
 
-    func completeThemeCreation() {
+    internal func completeThemeCreation() {
         guard var draft = themeDraft else { return }
 
         let cleanedName = draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)

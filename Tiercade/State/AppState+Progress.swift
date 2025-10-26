@@ -3,9 +3,9 @@ import os
 import TiercadeCore
 
 @MainActor
-extension AppState {
+internal extension AppState {
     // MARK: - Loading & Progress
-    func setLoading(_ loading: Bool, message: String = "") {
+    internal func setLoading(_ loading: Bool, message: String = "") {
         isLoading = loading
         loadingMessage = message
         if loading {
@@ -14,25 +14,25 @@ extension AppState {
         logLoadingState(isLoading: loading, message: message)
     }
 
-    func updateProgress(_ progress: Double) {
+    internal func updateProgress(_ progress: Double) {
         operationProgress = min(max(progress, 0.0), 1.0)
     }
 
-    func setDragTarget(_ tierName: String?) {
+    internal func setDragTarget(_ tierName: String?) {
         dragTargetTier = tierName
         logDragTarget(tierName)
     }
 
-    func setDragging(_ id: String?) {
+    internal func setDragging(_ id: String?) {
         draggingId = id
         logDragging(id)
     }
 
-    func setSearchProcessing(_ processing: Bool) {
+    internal func setSearchProcessing(_ processing: Bool) {
         isProcessingSearch = processing
     }
 
-    func withLoadingIndicator<T: Sendable>(message: String, operation: () async throws -> T) async rethrows -> T {
+    internal func withLoadingIndicator<T: Sendable>(message: String, operation: () async throws -> T) async rethrows -> T {
         setLoading(true, message: message)
         defer { setLoading(false) }
         return try await operation()

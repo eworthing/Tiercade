@@ -7,7 +7,7 @@ import FoundationModels
 
 @available(iOS 26.0, macOS 26.0, *)
 extension EnhancedPromptTester {
-    static let enhancedPrompts: [(name: String, text: String)] = [
+    internal static let enhancedPrompts: [(name: String, text: String)] = [
         ("G0-Minimal", """
         Return ONLY a JSON array of strings.
         Task: {QUERY}

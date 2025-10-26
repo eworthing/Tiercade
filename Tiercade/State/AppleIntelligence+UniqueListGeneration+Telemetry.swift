@@ -8,7 +8,7 @@ import FoundationModels
 @available(iOS 26.0, macOS 26.0, *)
 extension UniqueListCoordinator {
     /// Export telemetry for a test run
-    func exportRunTelemetry(
+    internal func exportRunTelemetry(
         testId: String,
         query: String,
         targetN: Int,
@@ -73,7 +73,7 @@ extension UniqueListCoordinator {
     }
 
     /// Retrieve diagnostics from the last uniqueList() run
-    func getDiagnostics() -> RunDiagnostics {
+    internal func getDiagnostics() -> RunDiagnostics {
         return RunDiagnostics(
             totalGenerated: lastRunTotalGenerated,
             dupCount: lastRunDupCount,
@@ -86,7 +86,7 @@ extension UniqueListCoordinator {
         )
     }
 
-    func finalizeGeneration(state: GenerationState, targetCount: Int, startTime: Date) {
+    internal func finalizeGeneration(state: GenerationState, targetCount: Int, startTime: Date) {
         let elapsed = Date().timeIntervalSince(startTime)
         let success = state.ordered.count >= targetCount
 
@@ -107,7 +107,7 @@ extension UniqueListCoordinator {
         storeDiagnostics(state: state, targetCount: targetCount, success: success)
     }
 
-    func storeDiagnostics(state: GenerationState, targetCount: Int, success: Bool) {
+    internal func storeDiagnostics(state: GenerationState, targetCount: Int, success: Bool) {
         lastRunTotalGenerated = state.totalGeneratedCount
         lastRunDupCount = state.duplicatesFound
         lastRunDupRate = state.totalGeneratedCount > 0
@@ -134,7 +134,7 @@ extension UniqueListCoordinator {
         }
     }
 
-    func uniqueListWithMetrics(
+    internal func uniqueListWithMetrics(
         query: String,
         targetCount: Int,
         seed: UInt64? = nil,

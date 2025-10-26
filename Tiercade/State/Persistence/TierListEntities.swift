@@ -21,7 +21,7 @@ final class TierListEntity {
     @Relationship(deleteRule: .cascade, inverse: \TierEntity.list)
     var tiers: [TierEntity]
 
-    init(
+    internal init(
         identifier: UUID = UUID(),
         title: String,
         fileName: String? = nil,
@@ -70,7 +70,7 @@ final class TierEntity {
     var items: [TierItemEntity]
     @Relationship var list: TierListEntity?
 
-    init(
+    internal init(
         identifier: UUID = UUID(),
         key: String,
         displayName: String,
@@ -103,7 +103,7 @@ final class TierItemEntity {
     var position: Int
     @Relationship var tier: TierEntity?
 
-    init(
+    internal init(
         identifier: UUID = UUID(),
         itemID: String,
         name: String?,

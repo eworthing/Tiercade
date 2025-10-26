@@ -2,9 +2,9 @@ import Foundation
 import TiercadeCore
 
 @MainActor
-extension AppState {
+internal extension AppState {
     // MARK: - Theme Picker Overlay
-    func presentThemePicker() {
+    internal func presentThemePicker() {
         showThemePicker = true
         themePickerActive = true
     }
@@ -12,9 +12,9 @@ extension AppState {
     // MARK: - Selection / Multi-Select
     // Note: editMode is managed by view layer via environment
     // AppState only manages the selection Set
-    func isSelected(_ id: String) -> Bool { selection.contains(id) }
+    internal func isSelected(_ id: String) -> Bool { selection.contains(id) }
 
-    func toggleSelection(_ id: String) {
+    internal func toggleSelection(_ id: String) {
         if selection.contains(id) {
             selection.remove(id)
         } else {
@@ -22,9 +22,9 @@ extension AppState {
         }
     }
 
-    func clearSelection() { selection.removeAll() }
+    internal func clearSelection() { selection.removeAll() }
 
-    func move(_ id: String, to tier: String) {
+    internal func move(_ id: String, to tier: String) {
         if lockedTiers.contains(tier) {
             let displayTier = displayLabel(for: tier)
             showErrorToast("Tier Locked", message: "Cannot move into \(displayTier) {lock}")
@@ -50,7 +50,7 @@ extension AppState {
         logEvent("move: itemId=\(id) -> tier=\(tier) counts=\(counts)")
     }
 
-    func batchMove(_ ids: [String], to tier: String) {
+    internal func batchMove(_ ids: [String], to tier: String) {
         guard !ids.isEmpty else { return }
         let displayTier = displayLabel(for: tier)
         guard !lockedTiers.contains(tier) else {
@@ -73,18 +73,18 @@ extension AppState {
         announce(announcement)
     }
 
-    func currentTier(of id: String) -> String? {
+    internal func currentTier(of id: String) -> String? {
         for tierName in tierOrder + ["unranked"] where (tiers[tierName]?.contains(where: { $0.id == id }) ?? false) {
             return tierName
         }
         return nil
     }
 
-    func removeFromCurrentTier(_ id: String) {
+    internal func removeFromCurrentTier(_ id: String) {
         move(id, to: "unranked")
     }
 
-    func clearTier(_ tier: String) {
+    internal func clearTier(_ tier: String) {
         var next = tiers
         guard let moving = next[tier], !moving.isEmpty else { return }
         next[tier] = []
@@ -101,9 +101,9 @@ extension AppState {
     }
 
     // MARK: - Tier Locking
-    func isTierLocked(_ id: String) -> Bool { lockedTiers.contains(id) }
+    internal func isTierLocked(_ id: String) -> Bool { lockedTiers.contains(id) }
 
-    func toggleTierLocked(_ id: String) {
+    internal func toggleTierLocked(_ id: String) {
         let snapshot = captureTierSnapshot()
         if lockedTiers.contains(id) {
             lockedTiers.remove(id)
@@ -116,9 +116,9 @@ extension AppState {
     }
 
     // MARK: - Tier Presentation
-    func displayLabel(for tierId: String) -> String { tierLabels[tierId] ?? tierId }
+    internal func displayLabel(for tierId: String) -> String { tierLabels[tierId] ?? tierId }
 
-    func setDisplayLabel(_ label: String, for tierId: String) {
+    internal func setDisplayLabel(_ label: String, for tierId: String) {
         // Check for duplicate labels
         let existingTiersWithLabel = tierLabels.filter { $0.key != tierId && $0.value == label }
         if !existingTiersWithLabel.isEmpty {
@@ -131,9 +131,9 @@ extension AppState {
         finalizeChange(action: "Rename Tier", undoSnapshot: snapshot)
     }
 
-    func displayColorHex(for tierId: String) -> String? { tierColors[tierId] }
+    internal func displayColorHex(for tierId: String) -> String? { tierColors[tierId] }
 
-    func setDisplayColorHex(_ hex: String?, for tierId: String) {
+    internal func setDisplayColorHex(_ hex: String?, for tierId: String) {
         let snapshot = captureTierSnapshot()
         let previous = tierColors[tierId]
         guard previous != hex else { return }

@@ -16,10 +16,10 @@ import FoundationModels
 #if canImport(FoundationModels) && DEBUG
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
-enum AcceptanceTestSuite {
+internal enum AcceptanceTestSuite {
 
     // Seed ring for reproducible retries across tests
-    static let seedRing: [UInt64] = [42, 1337, 9999, 123456, 987654]
+    internal static let seedRing: [UInt64] = [42, 1337, 9999, 123456, 987654]
 
     struct SeedRun {
         let seed: UInt64
@@ -59,7 +59,7 @@ enum AcceptanceTestSuite {
 
     /// Compute median of array
     /// Run all acceptance tests
-    static func runAll(logger: @escaping (String) -> Void = { print($0) }) async throws -> TestReport {
+    internal static func runAll(logger: @escaping (String) -> Void = { print($0) }) async throws -> TestReport {
         logger("🧪 Starting Acceptance Test Suite")
         logger("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 

@@ -2,17 +2,17 @@ import Foundation
 import TiercadeCore
 
 @MainActor
-extension AppState {
+internal extension AppState {
     // MARK: - Quick Rank
-    func beginQuickRank(_ item: Item) {
+    internal func beginQuickRank(_ item: Item) {
         quickRankTarget = item
     }
 
-    func cancelQuickRank() {
+    internal func cancelQuickRank() {
         quickRankTarget = nil
     }
 
-    func commitQuickRank(to tier: String) {
+    internal func commitQuickRank(to tier: String) {
         guard let target = quickRankTarget else { return }
         let snapshot = captureTierSnapshot()
         let next = QuickRankLogic.assign(tiers, itemId: target.id, to: tier)
@@ -29,17 +29,17 @@ extension AppState {
     }
 
     // MARK: - Quick Move (tvOS Play/Pause)
-    func beginQuickMove(_ item: Item) {
+    internal func beginQuickMove(_ item: Item) {
         quickMoveTarget = item
         batchQuickMoveActive = false
     }
 
-    func cancelQuickMove() {
+    internal func cancelQuickMove() {
         quickMoveTarget = nil
         batchQuickMoveActive = false
     }
 
-    func commitQuickMove(to tier: String) {
+    internal func commitQuickMove(to tier: String) {
         // Handle batch move if in batch mode
         if batchQuickMoveActive {
             commitBatchQuickMove(to: tier)
@@ -65,14 +65,14 @@ extension AppState {
     }
 
     // MARK: - Batch Quick Move
-    func presentBatchQuickMove() {
+    internal func presentBatchQuickMove() {
         guard !selection.isEmpty else { return }
         batchQuickMoveActive = true
         // Use a dummy item to trigger the overlay
         quickMoveTarget = Item(id: "batch", attributes: ["name": "\(selection.count) Items"])
     }
 
-    func commitBatchQuickMove(to tier: String) {
+    internal func commitBatchQuickMove(to tier: String) {
         guard !selection.isEmpty else {
             cancelQuickMove()
             return

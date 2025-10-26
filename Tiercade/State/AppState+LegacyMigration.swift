@@ -11,7 +11,7 @@ import SwiftUI
 import TiercadeCore
 
 @MainActor
-extension AppState {
+internal extension AppState {
 
     /// Save file structure for migration
     private struct AppSaveFile: Codable {
@@ -22,7 +22,7 @@ extension AppState {
 
     /// One-time migration utility for pre-1.0 save files
     /// Converts legacy flat JSON format to modern Items structure
-    func migrateLegacySaveFile(at url: URL) async throws -> Items {
+    internal func migrateLegacySaveFile(at url: URL) async throws -> Items {
         let data = try Data(contentsOf: url)
 
         // Try modern format first
@@ -102,7 +102,7 @@ extension AppState {
     }
 
     /// Save migrated file in modern format with backup
-    func saveMigratedFile(_ tiers: Items, originalURL: URL) async throws {
+    internal func saveMigratedFile(_ tiers: Items, originalURL: URL) async throws {
         // Create backup of original file
         let backupURL = originalURL.deletingPathExtension()
             .appendingPathExtension("legacy.backup.json")
@@ -127,7 +127,7 @@ extension AppState {
     }
 
     /// Check if a file needs migration
-    func needsMigration(at url: URL) -> Bool {
+    internal func needsMigration(at url: URL) -> Bool {
         guard let data = try? Data(contentsOf: url) else { return false }
 
         // If it decodes as modern format, no migration needed
@@ -171,7 +171,7 @@ extension AppState {
 
 // MARK: - Migration Helper View
 
-struct LegacyMigrationView: View {
+internal struct LegacyMigrationView: View {
     @Bindable var app: AppState
     let fileURL: URL
     @Environment(\.dismiss) private var dismiss

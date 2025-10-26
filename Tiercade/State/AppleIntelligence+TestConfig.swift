@@ -12,7 +12,7 @@ import Foundation
 
 // MARK: - Test Configuration Types
 
-struct TestConfiguration: Codable {
+internal struct TestConfiguration: Codable {
     let name: String
     let description: String
     let tokenPerItem: Int
@@ -32,14 +32,14 @@ struct TestConfiguration: Codable {
     }
 }
 
-struct SamplingProfile: Codable {
+internal struct SamplingProfile: Codable {
     let name: String
     let type: String
     let value: Double?
     let temperature: Double
 }
 
-struct TestScenario: Codable {
+internal struct TestScenario: Codable {
     let name: String
     let config: String
     let sampling: String
@@ -55,7 +55,7 @@ struct TestScenario: Codable {
     }
 }
 
-struct TestConfigFile: Codable {
+internal struct TestConfigFile: Codable {
     let configurations: [TestConfiguration]
     let samplingProfiles: [SamplingProfile]
     let testScenarios: [TestScenario]
@@ -70,7 +70,7 @@ struct TestConfigFile: Codable {
 extension UniqueListCoordinator {
 
     /// Load test configurations from file
-    static func loadTestConfigurations() -> TestConfigFile? {
+    internal static func loadTestConfigurations() -> TestConfigFile? {
         // First try project directory
         let projectPath = URL(fileURLWithPath: #file)
             .deletingLastPathComponent()
@@ -98,7 +98,7 @@ extension UniqueListCoordinator {
     }
 
     /// Apply a test configuration to the current generation settings
-    func applyConfiguration(_ config: TestConfiguration) {
+    internal func applyConfiguration(_ config: TestConfiguration) {
         print("🔧 Applying configuration: \(config.name) - \(config.description)")
 
         // Store configuration in UserDefaults for the actual generation code to use
@@ -120,7 +120,7 @@ extension UniqueListCoordinator {
     }
 
     /// Get current configuration overrides
-    static func getCurrentConfigOverrides() -> ConfigOverrides {
+    internal static func getCurrentConfigOverrides() -> ConfigOverrides {
         let defaults = UserDefaults.standard
 
         // Clean up old values if test is not active
@@ -144,7 +144,7 @@ extension UniqueListCoordinator {
     }
 
     /// Build prompt with configuration template
-    static func buildPromptFromTemplate(
+    internal static func buildPromptFromTemplate(
         template: String,
         count: Int,
         query: String,
@@ -228,7 +228,7 @@ extension FMClient {
     }
 
     /// Generate with configuration overrides
-    func generateWithConfig(
+    internal func generateWithConfig(
         _ params: GenerateWithConfigParameters,
         telemetry: inout [AttemptMetrics]
     ) async throws -> [String] {

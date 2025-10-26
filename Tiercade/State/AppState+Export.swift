@@ -5,10 +5,10 @@ import CryptoKit
 import TiercadeCore
 
 @MainActor
-extension AppState {
+internal extension AppState {
     // MARK: - Export System
 
-    func exportToFormat(
+    internal func exportToFormat(
         _ format: ExportFormat,
         group: String = "All",
         themeName: String = "Default"
@@ -109,7 +109,7 @@ extension AppState {
         return (data, fileName)
     }
 
-    func exportText(group: String = "All", themeName: String = "Default") -> String {
+    internal func exportText(group: String = "All", themeName: String = "Default") -> String {
         let config: TierConfig = [
             "S": TierConfigEntry(name: "S", description: nil),
             "A": TierConfigEntry(name: "A", description: nil),
@@ -127,7 +127,7 @@ extension AppState {
         )
     }
 
-    func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String) {
+    internal func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String) {
         try await exportToFormat(format, group: "All", themeName: "Default")
     }
 
@@ -272,7 +272,7 @@ extension AppState {
         return try encoder.encode(project)
     }
 
-    func buildProjectExportArtifacts(group: String, themeName: String) throws -> ProjectExportArtifacts {
+    internal func buildProjectExportArtifacts(group: String, themeName: String) throws -> ProjectExportArtifacts {
         let now = Date()
         let projectId = exportProjectIdentifier()
         let orderedTiers = exportTierOrderIncludingUnranked()
@@ -584,7 +584,7 @@ extension AppState {
     }
 }
 
-struct ProjectExportArtifacts {
+internal struct ProjectExportArtifacts {
     struct ProjectExportFile {
         let sourceURL: URL
         let relativePath: String

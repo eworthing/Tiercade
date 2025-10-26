@@ -13,9 +13,9 @@ import AppIntents
 
 // MARK: - Apple Intelligence Chat State
 @MainActor
-extension AppState {
+internal extension AppState {
     /// Toggle AI chat overlay visibility
-    func toggleAIChat() {
+    internal func toggleAIChat() {
         guard AppleIntelligenceService.isSupportedOnCurrentPlatform else {
             if showAIChat { showAIChat = false }
             showToast(
@@ -43,18 +43,18 @@ extension AppState {
     }
 
     /// Close AI chat overlay
-    func closeAIChat() {
+    internal func closeAIChat() {
         showAIChat = false
         logEvent("🤖 Apple Intelligence chat closed")
     }
 }// MARK: - Chat Message Model
-struct AIChatMessage: Identifiable, Sendable {
+internal struct AIChatMessage: Identifiable, Sendable {
     let id = UUID()
     let content: String
     let isUser: Bool
     let timestamp: Date
 
-    init(content: String, isUser: Bool) {
+    internal init(content: String, isUser: Bool) {
         self.content = content
         self.isUser = isUser
         self.timestamp = Date()
@@ -69,10 +69,10 @@ final class AppleIntelligenceService {
     var isProcessing = false
     var estimatedTokenCount: Int = 0
 
-    static let maxContextTokens = 4096
-    static let instructionsTokenEstimate = 100 // Estimated tokens for our strong anti-duplicate instructions
+    internal static let maxContextTokens = 4096
+    internal static let instructionsTokenEstimate = 100 // Estimated tokens for our strong anti-duplicate instructions
 
-    static var isSupportedOnCurrentPlatform: Bool {
+    internal static var isSupportedOnCurrentPlatform: Bool {
         // Show button on platforms where Apple docs indicate FoundationModels should be available
         // even if framework isn't accessible at compile time (e.g., Catalyst SDK limitation)
         #if os(iOS) || os(iPadOS) || os(macOS) || targetEnvironment(macCatalyst) || os(visionOS)
@@ -170,7 +170,7 @@ final class AppleIntelligenceService {
     }
 
     /// Send a message to Apple Intelligence
-    func sendMessage(_ text: String) async {
+    internal func sendMessage(_ text: String) async {
         logSendMessageStart()
 
         // Append user message immediately
@@ -387,7 +387,7 @@ final class AppleIntelligenceService {
     #endif
 
     /// Clear all messages
-    func clearHistory() {
+    internal func clearHistory() {
         messages.removeAll()
         estimatedTokenCount = 0
         resetSession()

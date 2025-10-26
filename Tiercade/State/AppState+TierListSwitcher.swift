@@ -5,7 +5,7 @@ import os
 import TiercadeCore
 
 @MainActor
-extension AppState {
+internal extension AppState {
     enum TierListSource: String, Codable, Sendable {
         case bundled
         case file
@@ -56,7 +56,7 @@ extension AppState {
         return picks
     }
 
-    func selectTierList(_ handle: TierListHandle) async {
+    internal func selectTierList(_ handle: TierListHandle) async {
         switch handle.source {
         case .bundled:
             guard let project = bundledProjects.first(where: { $0.id == handle.identifier }) else { return }
@@ -84,7 +84,7 @@ extension AppState {
         }
     }
 
-    func registerTierListSelection(_ handle: TierListHandle) {
+    internal func registerTierListSelection(_ handle: TierListHandle) {
         activeTierList = handle
         do {
             try deactivateOtherLists(except: handle.entityID)
@@ -105,18 +105,18 @@ extension AppState {
         refreshRecentTierListsFromStore()
     }
 
-    func presentTierListBrowser() {
+    internal func presentTierListBrowser() {
         logEvent("presentTierListBrowser called")
         showingTierListBrowser = true
         logEvent("showingTierListBrowser set to \(showingTierListBrowser)")
     }
 
-    func dismissTierListBrowser() {
+    internal func dismissTierListBrowser() {
         logEvent("dismissTierListBrowser called")
         showingTierListBrowser = false
     }
 
-    func tierListHandle(forFileNamed fileName: String) -> TierListHandle {
+    internal func tierListHandle(forFileNamed fileName: String) -> TierListHandle {
         TierListHandle(
             source: .file,
             identifier: fileName,
@@ -127,7 +127,7 @@ extension AppState {
         )
     }
 
-    func restoreTierListState() {
+    internal func restoreTierListState() {
         do {
             if let entity = try fetchActiveTierListEntity() {
                 activeTierListEntity = entity
@@ -139,7 +139,7 @@ extension AppState {
         }
     }
 
-    func loadActiveTierListIfNeeded() {
+    internal func loadActiveTierListIfNeeded() {
         guard let handle = activeTierList else { return }
 
         switch handle.source {
@@ -224,7 +224,7 @@ extension AppState {
 }
 
 extension AppState.TierListHandle {
-    init(bundled project: BundledProject) {
+    internal init(bundled project: BundledProject) {
         self.init(
             source: .bundled,
             identifier: project.id,
@@ -235,7 +235,7 @@ extension AppState.TierListHandle {
         )
     }
 
-    init(entity: TierListEntity) {
+    internal init(entity: TierListEntity) {
         self.init(
             source: AppState.TierListSource(rawValue: entity.sourceRaw) ?? .bundled,
             identifier: entity.externalIdentifier ?? entity.identifier.uuidString,

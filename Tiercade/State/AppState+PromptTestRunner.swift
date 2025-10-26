@@ -4,9 +4,9 @@ import Foundation
 import FoundationModels
 
 @MainActor
-extension AppState {
+internal extension AppState {
     /// Run the enhanced prompt testing framework
-    func runEnhancedPromptTests() {
+    internal func runEnhancedPromptTests() {
         Task {
             do {
                 logEvent("🧪 Starting Enhanced Prompt Tests (Pilot)")

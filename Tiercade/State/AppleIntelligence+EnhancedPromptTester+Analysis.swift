@@ -9,7 +9,7 @@ import FoundationModels
 extension EnhancedPromptTester {
 // MARK: - Analysis
 
-struct ResponseAnalysis {
+internal struct ResponseAnalysis {
     let parsedItems: [String]
     let normalizedItems: [String]
     let totalItems: Int
@@ -272,7 +272,7 @@ static func saveRecommendations(_ results: [AggregateResult], to filename: Strin
 
 // MARK: - Timeout
 
-struct TimeoutError: Error, Sendable {}
+internal struct TimeoutError: Error, Sendable {}
 
 nonisolated static func withTimeout<T: Sendable>(
     seconds: TimeInterval,

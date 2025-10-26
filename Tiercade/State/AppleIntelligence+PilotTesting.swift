@@ -15,7 +15,7 @@ import FoundationModels
 #if canImport(FoundationModels) && DEBUG
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
-struct PilotTestConfig {
+internal struct PilotTestConfig {
     let sizes: [Int] = [15, 50, 150]
     let seeds: [UInt64] = [42, 123, 456, 789, 999]
     let testQueries: [TestQuery] = [
@@ -61,7 +61,7 @@ struct PilotTestConfig {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-struct PilotTestResult: Codable {
+internal struct PilotTestResult: Codable {
     let runID: UUID
     let timestamp: Date
     let domain: String
@@ -83,7 +83,7 @@ struct PilotTestResult: Codable {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-struct PilotTestReport: Codable {
+internal struct PilotTestReport: Codable {
     let timestamp: Date
     let totalRuns: Int
     let completedRuns: Int
@@ -103,7 +103,7 @@ struct PilotTestReport: Codable {
         let topPerformers: [String] // "TopP92_T0.8: 98% pass"
     }
 
-    static func generate(from results: [PilotTestResult]) -> PilotTestReport {
+    internal static func generate(from results: [PilotTestResult]) -> PilotTestReport {
         let totalPassed = results.filter { $0.passAtN }.count
         let overallPassRate = Double(totalPassed) / Double(max(1, results.count))
 
@@ -158,16 +158,16 @@ struct PilotTestReport: Codable {
 
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
-struct PilotTestRunner {
+internal struct PilotTestRunner {
     private let config = PilotTestConfig()
     private let onProgress: (String) -> Void
 
-    init(onProgress: @escaping (String) -> Void = { print($0) }) {
+    internal init(onProgress: @escaping (String) -> Void = { print($0) }) {
         self.onProgress = onProgress
     }
 
     /// Run comprehensive pilot test grid
-    func runPilot() async -> PilotTestReport {
+    internal func runPilot() async -> PilotTestReport {
         logPilotHeader()
 
         guard let session = try? await createTestSession() else {
@@ -326,7 +326,7 @@ struct PilotTestRunner {
     }
 
     /// Save pilot report to file
-    func saveReport(_ report: PilotTestReport, to path: String) throws {
+    internal func saveReport(_ report: PilotTestReport, to path: String) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
@@ -336,7 +336,7 @@ struct PilotTestRunner {
     }
 
     /// Generate human-readable report
-    func generateTextReport(_ report: PilotTestReport) -> String {
+    internal func generateTextReport(_ report: PilotTestReport) -> String {
         var lines: [String] = []
 
         lines.append("PILOT TEST REPORT")

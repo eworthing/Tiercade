@@ -44,7 +44,7 @@ static func computeAggregate(
     )
 }
 
-struct AggregateMetrics {
+internal struct AggregateMetrics {
     let passAtNRate: Double
     let jsonStrictRate: Double
     let meanUniqueItems: Double

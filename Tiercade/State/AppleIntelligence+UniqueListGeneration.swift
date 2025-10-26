@@ -15,9 +15,9 @@ final class FMClient {
     let sessionFactory: (() async throws -> LanguageModelSession)?
 
     // Deterministic seed ring for reproducible retries
-    static let seedRing: [UInt64] = [42, 1337, 9999, 123456, 987654]
+    internal static let seedRing: [UInt64] = [42, 1337, 9999, 123456, 987654]
 
-    init(
+    internal init(
         session: LanguageModelSession,
         logger: @escaping (String) -> Void,
         sessionFactory: (() async throws -> LanguageModelSession)? = nil
@@ -37,7 +37,7 @@ final class FMClient {
     }
 
     /// Generate using guided schema with automatic retry on seed-dependent failures
-    func generate(
+    internal func generate(
         _ params: GenerateParameters,
         telemetry: inout [AttemptMetrics]
     ) async throws -> [String] {
@@ -145,7 +145,7 @@ final class FMClient {
 
     /// Unguided generation that returns [String] by parsing JSON text array.
     /// Used for backfill where semantic constraints (avoid-list) must be respected.
-    func generateTextArray(
+    internal func generateTextArray(
         _ params: GenerateTextArrayParameters,
         telemetry: inout [AttemptMetrics]
     ) async throws -> [String] {
@@ -251,14 +251,14 @@ final class UniqueListCoordinator {
     var lastRunFailureReason: String?
     var lastRunTopDuplicates: [String: Int]?
 
-    init(fm: FMClient, logger: @escaping (String) -> Void = { print($0) }, useGuidedBackfill: Bool = false) {
+    internal init(fm: FMClient, logger: @escaping (String) -> Void = { print($0) }, useGuidedBackfill: Bool = false) {
         self.fm = fm
         self.logger = logger
         self.useGuidedBackfill = useGuidedBackfill
     }
 
     /// Generate N unique items using Generate → Dedup → Fill architecture
-    func uniqueList(query: String, targetCount: Int, seed: UInt64? = nil) async throws -> [String] {
+    internal func uniqueList(query: String, targetCount: Int, seed: UInt64? = nil) async throws -> [String] {
         let startTime = Date()
         var state = GenerationState(targetCount: targetCount)
 
