@@ -488,7 +488,28 @@ enum AcceptanceTestSuite {
     private static func testNormalization(logger: @escaping (String) -> Void) -> TestResult {
         logger("\n[Test 7/8] Normalization - edge case handling...")
 
-        let testCases: [NormalizationTestCase] = [
+        let testCases = buildNormalizationTestCases()
+        let (passed, failed, failures) = runNormalizationTests(testCases: testCases, logger: logger)
+
+        let success = failed == 0
+        let message = success
+            ? "All \(testCases.count) normalization tests passed"
+            : "\(failed)/\(testCases.count) normalization tests failed"
+
+        return TestResult(
+            testName: "Normalization",
+            passed: success,
+            message: message,
+            details: [
+                "passed": "\(passed)",
+                "failed": "\(failed)",
+                "failures": failures.joined(separator: "; ")
+            ]
+        )
+    }
+
+    private static func buildNormalizationTestCases() -> [NormalizationTestCase] {
+        [
             NormalizationTestCase(input: "The Matrix", expected: "matrix", description: "leading article"),
             NormalizationTestCase(input: "Star Trek™", expected: "star trek", description: "trademark symbol"),
             NormalizationTestCase(
@@ -506,42 +527,30 @@ enum AcceptanceTestSuite {
             NormalizationTestCase(input: "Heroes", expected: "hero", description: "plural trim"),
             NormalizationTestCase(input: "The A-Team", expected: "team", description: "leading article + hyphen")
         ]
+    }
 
+    private static func runNormalizationTests(
+        testCases: [NormalizationTestCase],
+        logger: @escaping (String) -> Void
+    ) -> (passed: Int, failed: Int, failures: [String]) {
         var passed = 0
         var failed = 0
         var failures: [String] = []
 
         for testCase in testCases {
-            let input = testCase.input
-            let expected = testCase.expected
-            let description = testCase.description
-            let result = input.normKey
-            if result == expected {
+            let result = testCase.input.normKey
+            if result == testCase.expected {
                 passed += 1
-                logger("  ✓ \(description): '\(input)' → '\(result)'")
+                logger("  ✓ \(testCase.description): '\(testCase.input)' → '\(result)'")
             } else {
                 failed += 1
-                let msg = "\(description): '\(input)' → '\(result)' (expected '\(expected)')"
+                let msg = "\(testCase.description): '\(testCase.input)' → '\(result)' (expected '\(testCase.expected)')"
                 failures.append(msg)
                 logger("  ✗ \(msg)")
             }
         }
 
-        let success = failed == 0
-        let message = success
-            ? "All \(testCases.count) normalization tests passed"
-            : "\(failed)/\(testCases.count) normalization tests failed"
-
-        return TestResult(
-            testName: "Normalization",
-            passed: success,
-            message: message,
-            details: [
-                "passed": "\(passed)",
-                "failed": "\(failed)",
-                "failures": failures.joined(separator: "; ")
-            ]
-        )
+        return (passed, failed, failures)
     }
 
     // MARK: - Test 8: Token Budgeting

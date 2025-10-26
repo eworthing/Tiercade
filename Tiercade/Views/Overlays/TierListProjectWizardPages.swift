@@ -389,58 +389,77 @@ struct ItemsWizardPage: View, WizardPage {
             selectedItemID = item.identifier
             showingItemEditor = true
         } label: {
-            HStack(spacing: 20) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(item.title)
-                        .font(.headline)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    if !item.subtitle.isEmpty {
-                        Text(item.subtitle)
-                            .font(.subheadline)
-                            .foregroundStyle(Palette.textDim)
-                            .lineLimit(1)
-                    }
-
-                    HStack(spacing: 12) {
-                        if let tier = item.tier {
-                            Label(tier.label, systemImage: "tag")
-                                .font(.caption)
-                                .foregroundStyle(Palette.brand)
-                        } else {
-                            Label("Unassigned", systemImage: "questionmark.circle")
-                                .font(.caption)
-                                .foregroundStyle(Palette.textDim)
-                        }
-
-                        if item.hidden {
-                            Label("Hidden", systemImage: "eye.slash")
-                                .font(.caption)
-                                .foregroundStyle(Palette.textDim)
-                        }
-                    }
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(Palette.textDim)
-                    .font(.title3)
-            }
-            .padding(24)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
-                    .fill(Palette.cardBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
-                            .stroke(Palette.stroke, lineWidth: 1)
-                    )
-            )
+            itemCardContent(item)
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("Items_Card_\(item.itemId)")
+    }
+
+    @ViewBuilder
+    private func itemCardContent(_ item: TierDraftItem) -> some View {
+        HStack(spacing: 20) {
+            itemCardDetails(item)
+            Spacer()
+            itemCardChevron
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(itemCardBackground)
+    }
+
+    @ViewBuilder
+    private func itemCardDetails(_ item: TierDraftItem) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(item.title)
+                .font(.headline)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !item.subtitle.isEmpty {
+                Text(item.subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(Palette.textDim)
+                    .lineLimit(1)
+            }
+
+            itemCardMetadata(item)
+        }
+    }
+
+    @ViewBuilder
+    private func itemCardMetadata(_ item: TierDraftItem) -> some View {
+        HStack(spacing: 12) {
+            if let tier = item.tier {
+                Label(tier.label, systemImage: "tag")
+                    .font(.caption)
+                    .foregroundStyle(Palette.brand)
+            } else {
+                Label("Unassigned", systemImage: "questionmark.circle")
+                    .font(.caption)
+                    .foregroundStyle(Palette.textDim)
+            }
+
+            if item.hidden {
+                Label("Hidden", systemImage: "eye.slash")
+                    .font(.caption)
+                    .foregroundStyle(Palette.textDim)
+            }
+        }
+    }
+
+    private var itemCardChevron: some View {
+        Image(systemName: "chevron.right")
+            .foregroundStyle(Palette.textDim)
+            .font(.title3)
+    }
+
+    private var itemCardBackground: some View {
+        RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
+            .fill(Palette.cardBackground)
+            .overlay(
+                RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
+                    .stroke(Palette.stroke, lineWidth: 1)
+            )
     }
 
     // MARK: - Helpers

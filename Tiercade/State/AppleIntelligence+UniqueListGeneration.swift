@@ -472,161 +472,328 @@ final class FMClient {
         telemetry: inout [AttemptMetrics]
     ) async throws -> [String] {
         let start = Date()
-        var currentOptions = params.profile.options(
-            seed: params.initialSeed,
-            temp: params.temperature,
-            maxTok: params.maxTokens
-        )
-        var currentSeed = params.initialSeed
-        var lastError: Error?
+        var retryState = initializeRetryState(params: params)
 
-        // Debug logging
-        logger("🔍 [DEBUG] Starting generation (maxRetries=\(params.maxRetries))...")
-        logger("🔍 [DEBUG] Prompt length: \(params.prompt.count) chars")
-        logger("🔍 [DEBUG] Full prompt: \"\(params.prompt)\"")
+        logGenerationStart(params: params)
 
         for attempt in 0..<params.maxRetries {
             let attemptStart = Date()
             var sessionRecreated = false
 
-            logger("🔍 [DEBUG] Attempt \(attempt + 1)/\(params.maxRetries)")
-            let maxTokens = currentOptions.maximumResponseTokens
-            logger("🔍 [DEBUG] Options.maximumResponseTokens: \(String(describing: maxTokens))")
-            logger("🔍 [DEBUG] Options.temperature: \(String(describing: currentOptions.temperature))")
-            logger("🔍 [DEBUG] Options.sampling: \(String(describing: currentOptions.sampling))")
-            logger("🔍 [DEBUG] Schema: UniqueListResponse (includeSchemaInPrompt=true)")
+            logAttemptDetails(attempt: attempt, maxRetries: params.maxRetries, options: retryState.options)
 
             do {
-                let response = try await session.respond(
-                    to: Prompt(params.prompt),
-                    generating: UniqueListResponse.self,
-                    includeSchemaInPrompt: true,
-                    options: currentOptions
+                let response = try await executeGuidedGeneration(
+                    prompt: params.prompt,
+                    options: retryState.options
                 )
 
-                let attemptElapsed = Date().timeIntervalSince(attemptStart)
-                let totalElapsed = Date().timeIntervalSince(start)
-                let ips = Double(response.content.items.count) / max(0.001, totalElapsed)
-
-                // CRITICAL: Log when we get 0 items to understand why
-                if response.content.items.isEmpty {
-                    logger("⚠️ [CRITICAL] Schema parsing succeeded but returned EMPTY ARRAY")
-                    logger("⚠️ [CRITICAL] This means the model generated { \"items\": [] } - not a parsing error")
-                    logger("⚠️ [CRITICAL] Prompt was: \"\(params.prompt.prefix(200))...\"")
-                }
-
-                // Record successful attempt telemetry
-                telemetry.append(AttemptMetrics(
-                    attemptIndex: attempt,
-                    seed: currentSeed,
-                    sampling: params.profile.description,
-                    temperature: currentOptions.temperature,
+                handleSuccessResponse(
+                    response: response,
+                    attempt: attempt,
+                    attemptStart: attemptStart,
+                    totalStart: start,
+                    currentSeed: retryState.seed,
                     sessionRecreated: sessionRecreated,
-                    itemsReturned: response.content.items.count,
-                    elapsedSec: attemptElapsed
-                ))
-
-                if attempt > 0 {
-                    logger(
-                        "✓ Generated \(response.content.items.count) items in " +
-                        "\(String(format: "%.2f", totalElapsed))s " +
-                        "(\(String(format: "%.1f", ips)) items/sec) [succeeded on attempt \(attempt + 1)]"
-                    )
-                } else {
-                    logger(
-                        "✓ Generated \(response.content.items.count) items in " +
-                        "\(String(format: "%.2f", totalElapsed))s " +
-                        "(\(String(format: "%.1f", ips)) items/sec)"
-                    )
-                }
-                logger("🔍 [DEBUG] First item: \(response.content.items.first ?? "none")")
-                logger("🔍 [DEBUG] Last item: \(response.content.items.last ?? "none")")
-                logger("🔍 [DEBUG] Item count breakdown: total=\(response.content.items.count)")
+                    params: params,
+                    telemetry: &telemetry
+                )
 
                 return response.content.items
 
             } catch let e as LanguageModelSession.GenerationError {
-                lastError = e
+                retryState.lastError = e
 
-                let attemptElapsed = Date().timeIntervalSince(attemptStart)
-
-                // Record failed attempt telemetry
-                telemetry.append(AttemptMetrics(
-                    attemptIndex: attempt,
-                    seed: currentSeed,
-                    sampling: params.profile.description,
-                    temperature: currentOptions.temperature,
-                    sessionRecreated: sessionRecreated,
-                    itemsReturned: nil,
-                    elapsedSec: attemptElapsed
-                ))
-
-                if case .decodingFailure(let context) = e {
-                    if attempt < params.maxRetries - 1 {
-                        logger("⚠️ [Attempt \(attempt + 1)] decodingFailure: \(context.debugDescription)")
-
-                        // ADAPTIVE RETRY: Boost tokens before seed rotation on first failure
-                        if attempt == 0 {
-                            let currentMax = currentOptions.maximumResponseTokens ?? 0
-                            let boosted = min(512, Int(Double(currentMax) * 1.8))
-                            if boosted > currentMax {
-                                logger("🔁 Boosting maxTokens → \(boosted) with same seed/profile")
-                                currentOptions = params.profile.options(
-                                    seed: currentSeed,
-                                    temp: currentOptions.temperature,
-                                    maxTok: boosted
-                                )
-                                let seedStr = currentSeed.map { String($0) } ?? "nil"
-                                logger("🔁 Retrying with seed=\(seedStr), profile=\(params.profile.description)")
-                                continue
-                            }
-                        }
-
-                        // Session hygiene: create fresh session after first failure
-                        if attempt == 1, let factory = sessionFactory {
-                            do {
-                                session = try await factory()
-                                sessionRecreated = true
-                                logger("♻️ Recreating session")
-                            } catch {
-                                logger("⚠️ Failed to create fresh session: \(error)")
-                            }
-                        }
-
-                        // Use deterministic seed ring for reproducible retries
-                        let newSeed = Self.seedRing[(attempt + 1) % Self.seedRing.count]
-                        currentSeed = newSeed
-
-                        // Lower temperature after 2 failures
-                        let temp = attempt >= 2 ? 0.7 : params.temperature
-                        currentOptions = params.profile.options(seed: currentSeed, temp: temp, maxTok: params.maxTokens)
-
-                        logger("🔁 Retrying with seed=\(newSeed), profile=\(params.profile.description)")
-                        continue
-                    } else {
-                        logger("❌ [Attempt \(attempt + 1)] decodingFailure: \(context.debugDescription)")
-                        logger("❌ Max retries exhausted, failing")
-                    }
-                } else if case .exceededContextWindowSize(let details) = e {
-                    logger("❌ Context window overflow: \(details)")
-                    throw e  // Non-recoverable
+                if try await handleAttemptFailure(
+                    error: e,
+                    attempt: attempt,
+                    attemptStart: attemptStart,
+                    params: params,
+                    currentOptions: &retryState.options,
+                    currentSeed: &retryState.seed,
+                    sessionRecreated: &sessionRecreated,
+                    telemetry: &telemetry
+                ) {
+                    continue
                 } else {
-                    logger("❌ [DEBUG] GenerationError: \(e)")
-                    throw e  // Non-recoverable
+                    break
                 }
+
             } catch {
-                logger("❌ [DEBUG] Unexpected error type: \(type(of: error))")
-                logger("❌ [DEBUG] Error: \(error)")
-                throw error
+                try handleUnexpectedError(error)
             }
         }
 
-        // If we get here, all retries failed
-        if let error = lastError {
+        throw buildRetryExhaustedError(lastError: retryState.lastError)
+    }
+
+    private struct RetryState {
+        var options: GenerationOptions
+        var seed: UInt64?
+        var lastError: Error?
+    }
+
+    private func initializeRetryState(params: GenerateParameters) -> RetryState {
+        return RetryState(
+            options: params.profile.options(
+                seed: params.initialSeed,
+                temp: params.temperature,
+                maxTok: params.maxTokens
+            ),
+            seed: params.initialSeed,
+            lastError: nil
+        )
+    }
+
+    private func handleUnexpectedError(_ error: Error) throws -> Never {
+        logger("❌ [DEBUG] Unexpected error type: \(type(of: error))")
+        logger("❌ [DEBUG] Error: \(error)")
+        throw error
+    }
+
+    private func buildRetryExhaustedError(lastError: Error?) -> Error {
+        return lastError ?? NSError(domain: "FMClient", code: -1, userInfo: [
+            NSLocalizedDescriptionKey: "All retries failed"
+        ])
+    }
+
+    private func handleSuccessResponse(
+        response: LanguageModelSession.Response<UniqueListResponse>,
+        attempt: Int,
+        attemptStart: Date,
+        totalStart: Date,
+        currentSeed: UInt64?,
+        sessionRecreated: Bool,
+        params: GenerateParameters,
+        telemetry: inout [AttemptMetrics]
+    ) {
+        logSuccessfulGeneration(
+            response: response,
+            attempt: attempt,
+            totalElapsed: Date().timeIntervalSince(totalStart),
+            params: params
+        )
+
+        recordSuccessfulAttempt(
+            telemetry: &telemetry,
+            attempt: attempt,
+            seed: currentSeed,
+            profile: params.profile,
+            options: params.profile.options(seed: currentSeed, temp: params.temperature, maxTok: params.maxTokens),
+            sessionRecreated: sessionRecreated,
+            itemsReturned: response.content.items.count,
+            elapsed: Date().timeIntervalSince(attemptStart)
+        )
+    }
+
+    private func handleAttemptFailure(
+        error: LanguageModelSession.GenerationError,
+        attempt: Int,
+        attemptStart: Date,
+        params: GenerateParameters,
+        currentOptions: inout GenerationOptions,
+        currentSeed: inout UInt64?,
+        sessionRecreated: inout Bool,
+        telemetry: inout [AttemptMetrics]
+    ) async throws -> Bool {
+        let attemptElapsed = Date().timeIntervalSince(attemptStart)
+
+        recordFailedAttempt(
+            telemetry: &telemetry,
+            attempt: attempt,
+            seed: currentSeed,
+            profile: params.profile,
+            options: currentOptions,
+            sessionRecreated: sessionRecreated,
+            elapsed: attemptElapsed
+        )
+
+        return try await handleGenerationError(
+            error: error,
+            attempt: attempt,
+            params: params,
+            currentOptions: &currentOptions,
+            currentSeed: &currentSeed,
+            sessionRecreated: &sessionRecreated
+        )
+    }
+
+    private func logGenerationStart(params: GenerateParameters) {
+        logger("🔍 [DEBUG] Starting generation (maxRetries=\(params.maxRetries))...")
+        logger("🔍 [DEBUG] Prompt length: \(params.prompt.count) chars")
+        logger("🔍 [DEBUG] Full prompt: \"\(params.prompt)\"")
+    }
+
+    private func logAttemptDetails(attempt: Int, maxRetries: Int, options: GenerationOptions) {
+        logger("🔍 [DEBUG] Attempt \(attempt + 1)/\(maxRetries)")
+        logger("🔍 [DEBUG] Options.maximumResponseTokens: \(String(describing: options.maximumResponseTokens))")
+        logger("🔍 [DEBUG] Options.temperature: \(String(describing: options.temperature))")
+        logger("🔍 [DEBUG] Options.sampling: \(String(describing: options.sampling))")
+        logger("🔍 [DEBUG] Schema: UniqueListResponse (includeSchemaInPrompt=true)")
+    }
+
+    private func executeGuidedGeneration(
+        prompt: String,
+        options: GenerationOptions
+    ) async throws -> LanguageModelSession.Response<UniqueListResponse> {
+        return try await session.respond(
+            to: Prompt(prompt),
+            generating: UniqueListResponse.self,
+            includeSchemaInPrompt: true,
+            options: options
+        )
+    }
+
+    private func logSuccessfulGeneration(
+        response: LanguageModelSession.Response<UniqueListResponse>,
+        attempt: Int,
+        totalElapsed: Double,
+        params: GenerateParameters
+    ) {
+        let ips = Double(response.content.items.count) / max(0.001, totalElapsed)
+
+        if response.content.items.isEmpty {
+            logger("⚠️ [CRITICAL] Schema parsing succeeded but returned EMPTY ARRAY")
+            logger("⚠️ [CRITICAL] This means the model generated { \"items\": [] } - not a parsing error")
+            logger("⚠️ [CRITICAL] Prompt was: \"\(params.prompt.prefix(200))...\"")
+        }
+
+        let attemptSuffix = attempt > 0 ? " [succeeded on attempt \(attempt + 1)]" : ""
+        logger(
+            "✓ Generated \(response.content.items.count) items in " +
+            "\(String(format: "%.2f", totalElapsed))s " +
+            "(\(String(format: "%.1f", ips)) items/sec)\(attemptSuffix)"
+        )
+
+        logger("🔍 [DEBUG] First item: \(response.content.items.first ?? "none")")
+        logger("🔍 [DEBUG] Last item: \(response.content.items.last ?? "none")")
+        logger("🔍 [DEBUG] Item count breakdown: total=\(response.content.items.count)")
+    }
+
+    private func recordSuccessfulAttempt(
+        telemetry: inout [AttemptMetrics],
+        attempt: Int,
+        seed: UInt64?,
+        profile: DecoderProfile,
+        options: GenerationOptions,
+        sessionRecreated: Bool,
+        itemsReturned: Int,
+        elapsed: Double
+    ) {
+        telemetry.append(AttemptMetrics(
+            attemptIndex: attempt,
+            seed: seed,
+            sampling: profile.description,
+            temperature: options.temperature,
+            sessionRecreated: sessionRecreated,
+            itemsReturned: itemsReturned,
+            elapsedSec: elapsed
+        ))
+    }
+
+    private func recordFailedAttempt(
+        telemetry: inout [AttemptMetrics],
+        attempt: Int,
+        seed: UInt64?,
+        profile: DecoderProfile,
+        options: GenerationOptions,
+        sessionRecreated: Bool,
+        elapsed: Double
+    ) {
+        telemetry.append(AttemptMetrics(
+            attemptIndex: attempt,
+            seed: seed,
+            sampling: profile.description,
+            temperature: options.temperature,
+            sessionRecreated: sessionRecreated,
+            itemsReturned: nil,
+            elapsedSec: elapsed
+        ))
+    }
+
+    private func handleGenerationError(
+        error: LanguageModelSession.GenerationError,
+        attempt: Int,
+        params: GenerateParameters,
+        currentOptions: inout GenerationOptions,
+        currentSeed: inout UInt64?,
+        sessionRecreated: inout Bool
+    ) async throws -> Bool {
+        if case .decodingFailure(let context) = error {
+            if attempt < params.maxRetries - 1 {
+                logger("⚠️ [Attempt \(attempt + 1)] decodingFailure: \(context.debugDescription)")
+
+                if try await handleAdaptiveRetry(
+                    attempt: attempt,
+                    params: params,
+                    currentOptions: &currentOptions,
+                    currentSeed: &currentSeed,
+                    sessionRecreated: &sessionRecreated
+                ) {
+                    return true
+                }
+
+                return true
+            } else {
+                logger("❌ [Attempt \(attempt + 1)] decodingFailure: \(context.debugDescription)")
+                logger("❌ Max retries exhausted, failing")
+            }
+        } else if case .exceededContextWindowSize(let details) = error {
+            logger("❌ Context window overflow: \(details)")
             throw error
         } else {
-            throw NSError(domain: "FMClient", code: -1, userInfo: [NSLocalizedDescriptionKey: "All retries failed"])
+            logger("❌ [DEBUG] GenerationError: \(error)")
+            throw error
         }
+
+        return false
+    }
+
+    private func handleAdaptiveRetry(
+        attempt: Int,
+        params: GenerateParameters,
+        currentOptions: inout GenerationOptions,
+        currentSeed: inout UInt64?,
+        sessionRecreated: inout Bool
+    ) async throws -> Bool {
+        // ADAPTIVE RETRY: Boost tokens before seed rotation on first failure
+        if attempt == 0 {
+            let currentMax = currentOptions.maximumResponseTokens ?? 0
+            let boosted = min(512, Int(Double(currentMax) * 1.8))
+            if boosted > currentMax {
+                logger("🔁 Boosting maxTokens → \(boosted) with same seed/profile")
+                currentOptions = params.profile.options(
+                    seed: currentSeed,
+                    temp: currentOptions.temperature,
+                    maxTok: boosted
+                )
+                let seedStr = currentSeed.map { String($0) } ?? "nil"
+                logger("🔁 Retrying with seed=\(seedStr), profile=\(params.profile.description)")
+                return true
+            }
+        }
+
+        // Session hygiene: create fresh session after first failure
+        if attempt == 1, let factory = sessionFactory {
+            do {
+                session = try await factory()
+                sessionRecreated = true
+                logger("♻️ Recreating session")
+            } catch {
+                logger("⚠️ Failed to create fresh session: \(error)")
+            }
+        }
+
+        // Use deterministic seed ring for reproducible retries
+        let newSeed = Self.seedRing[(attempt + 1) % Self.seedRing.count]
+        currentSeed = newSeed
+
+        // Lower temperature after 2 failures
+        let temp = attempt >= 2 ? 0.7 : params.temperature
+        currentOptions = params.profile.options(seed: currentSeed, temp: temp, maxTok: params.maxTokens)
+
+        logger("🔁 Retrying with seed=\(newSeed), profile=\(params.profile.description)")
+        return false
     }
 
     struct GenerateTextArrayParameters {
@@ -662,141 +829,33 @@ final class FMClient {
                     options: currentOptions
                 )
 
-                let attemptElapsed = Date().timeIntervalSince(attemptStart)
-
-                // DEBUG: Log what we actually got
-                let preview = String(response.content.prefix(200))
-                logger("🔍 [DEBUG] Unguided response preview: \(preview)")
-
-                // Write debug data to file
-                let fileManager = FileManager.default
-                let debugDir = fileManager.temporaryDirectory.appendingPathComponent(
-                    "unguided_debug",
-                    isDirectory: true
-                )
-                do {
-                    try fileManager.createDirectory(at: debugDir, withIntermediateDirectories: true)
-                } catch {
-                    logger("⚠️ Failed to prepare debug directory: \(error)")
-                }
-
-                let debugFile = debugDir.appendingPathComponent("unguided_\(Date().timeIntervalSince1970).json")
-                let debugData: [String: Any] = [
-                    "timestamp": Date().timeIntervalSince1970,
-                    "attempt": attempt,
-                    "seed": params.initialSeed ?? 0,
-                    "temperature": currentOptions.temperature,
-                    "maxTokens": currentOptions.maximumResponseTokens ?? 0,
-                    "promptLength": params.prompt.count,
-                    "responseLength": response.content.count,
-                    "elapsedSec": attemptElapsed,
-                    "promptSnippet": String(params.prompt.prefix(200)),
-                    "fullResponse": response.content
-                ]
-
-                do {
-                    let jsonData = try JSONSerialization.data(withJSONObject: debugData, options: .prettyPrinted)
-                    try jsonData.write(to: debugFile, options: .atomic)
-                    logger("📝 Debug data saved to: \(debugFile.path)")
-                } catch {
-                    logger("⚠️ Failed to save debug data: \(error)")
-                }
-
-                if let arr = parseJSONArray(response.content) {
-                    let totalElapsed = Date().timeIntervalSince(start)
-                    logger("✓ Parsed \(arr.count) items from text in \(String(format: "%.2f", totalElapsed))s")
-
-                    // Save parse success info
-                    let parseDebug: [String: Any] = [
-                        "parseSuccess": true,
-                        "itemsExtracted": arr.count,
-                        "items": arr
-                    ]
-                    do {
-                        let parseData = try JSONSerialization.data(withJSONObject: parseDebug, options: .prettyPrinted)
-                        let parseFile = debugDir.appendingPathComponent("parse_\(Date().timeIntervalSince1970).json")
-                        try parseData.write(to: parseFile, options: .atomic)
-                    } catch {
-                        logger("⚠️ Failed to save parse debug: \(error)")
-                    }
-
-                    // Record successful telemetry
-                    telemetry.append(AttemptMetrics(
-                        attemptIndex: attempt,
-                        seed: params.initialSeed,
-                        sampling: "unguided:\(params.profile.description)",
-                        temperature: currentOptions.temperature,
-                        sessionRecreated: sessionRecreated,
-                        itemsReturned: arr.count,
-                        elapsedSec: attemptElapsed
-                    ))
-
+                if let arr = try handleUnguidedResponse(
+                    response: response,
+                    attempt: attempt,
+                    attemptStart: attemptStart,
+                    totalStart: start,
+                    params: params,
+                    options: currentOptions,
+                    sessionRecreated: sessionRecreated,
+                    telemetry: &telemetry
+                ) {
                     return arr
                 }
 
-                // Parse failure - log the full response for debugging
-                logger("⚠️ Parse failed. Full response (\(response.content.count) chars): \(response.content)")
-
-                // Save parse failure info
-                let parseFailDebug: [String: Any] = [
-                    "parseSuccess": false,
-                    "response": response.content,
-                    "reason": "Could not extract JSON array"
-                ]
-                do {
-                    let failData = try JSONSerialization.data(withJSONObject: parseFailDebug, options: .prettyPrinted)
-                    let failFile = debugDir.appendingPathComponent("parsefail_\(Date().timeIntervalSince1970).json")
-                    try failData.write(to: failFile, options: .atomic)
-                } catch {
-                    logger("⚠️ Failed to save parse failure debug: \(error)")
-                }
-
-                throw NSError(domain: "UnguidedParse", code: -1, userInfo: [
-                    NSLocalizedDescriptionKey: "Failed to parse JSON array from response"
-                ])
-
             } catch {
                 lastError = error
-                let attemptElapsed = Date().timeIntervalSince(attemptStart)
-                logger(
-                    "❌ [DEBUG] Unguided generation failed after " +
-                    "\(String(format: "%.2f", attemptElapsed))s: \(error)"
-                )
 
-                // Record failed telemetry
-                telemetry.append(AttemptMetrics(
-                    attemptIndex: attempt,
-                    seed: params.initialSeed,
-                    sampling: "unguided:\(params.profile.description)",
-                    temperature: currentOptions.temperature,
-                    sessionRecreated: sessionRecreated,
-                    itemsReturned: 0,
-                    elapsedSec: attemptElapsed
-                ))
-
-                // Adaptive boost on first failure
-                if attempt == 0 {
-                    let currentMax = currentOptions.maximumResponseTokens ?? 256
-                    let boosted = min(512, Int(Double(currentMax) * 1.8))
-                    if boosted > currentMax {
-                        logger("🔁 Boosting maxTokens → \(boosted) for unguided parse retry")
-                        currentOptions = params.profile.options(
-                            seed: params.initialSeed,
-                            temp: max(0.0, (params.temperature ?? 0.7) * 0.9),
-                            maxTok: boosted
-                        )
-                        continue
-                    }
-                }
-
-                // Session refresh on second failure
-                if attempt == 1, let factory = sessionFactory {
-                    do {
-                        session = try await factory()
-                        logger("♻️ Recreating session for unguided retry")
-                    } catch {
-                        logger("⚠️ Failed to create fresh session: \(error)")
-                    }
+                if await handleUnguidedError(
+                    error: error,
+                    attempt: attempt,
+                    attemptStart: attemptStart,
+                    params: params,
+                    options: currentOptions,
+                    currentOptions: &currentOptions,
+                    sessionRecreated: &sessionRecreated,
+                    telemetry: &telemetry
+                ) {
+                    continue
                 }
             }
         }
@@ -804,6 +863,248 @@ final class FMClient {
         throw lastError ?? NSError(domain: "Unguided", code: -2, userInfo: [
             NSLocalizedDescriptionKey: "All unguided retries failed"
         ])
+    }
+
+    private func handleUnguidedResponse(
+        response: LanguageModelSession.Response<String>,
+        attempt: Int,
+        attemptStart: Date,
+        totalStart: Date,
+        params: GenerateTextArrayParameters,
+        options: GenerationOptions,
+        sessionRecreated: Bool,
+        telemetry: inout [AttemptMetrics]
+    ) throws -> [String]? {
+        let attemptElapsed = Date().timeIntervalSince(attemptStart)
+        let debugDir = prepareDebugDirectory()
+
+        saveUnguidedDebugData(
+            response: response,
+            attempt: attempt,
+            params: params,
+            options: options,
+            elapsed: attemptElapsed,
+            debugDir: debugDir
+        )
+
+        if let arr = parseJSONArray(response.content) {
+            logSuccessfulParse(arr: arr, elapsed: Date().timeIntervalSince(totalStart))
+            saveParseSuccessDebug(arr: arr, debugDir: debugDir)
+
+            recordUnguidedSuccess(
+                telemetry: &telemetry,
+                attempt: attempt,
+                params: params,
+                options: options,
+                sessionRecreated: sessionRecreated,
+                itemCount: arr.count,
+                elapsed: attemptElapsed
+            )
+
+            return arr
+        }
+
+        try handleParseFailure(response: response, debugDir: debugDir)
+        return nil
+    }
+
+    private func handleUnguidedError(
+        error: Error,
+        attempt: Int,
+        attemptStart: Date,
+        params: GenerateTextArrayParameters,
+        options: GenerationOptions,
+        currentOptions: inout GenerationOptions,
+        sessionRecreated: inout Bool,
+        telemetry: inout [AttemptMetrics]
+    ) async -> Bool {
+        let attemptElapsed = Date().timeIntervalSince(attemptStart)
+
+        logUnguidedFailure(error: error, elapsed: attemptElapsed)
+
+        recordUnguidedFailure(
+            telemetry: &telemetry,
+            attempt: attempt,
+            params: params,
+            options: options,
+            sessionRecreated: sessionRecreated,
+            elapsed: attemptElapsed
+        )
+
+        return await handleUnguidedRetry(
+            attempt: attempt,
+            params: params,
+            currentOptions: &currentOptions,
+            sessionRecreated: &sessionRecreated
+        )
+    }
+
+    private func prepareDebugDirectory() -> URL {
+        let fileManager = FileManager.default
+        let debugDir = fileManager.temporaryDirectory.appendingPathComponent(
+            "unguided_debug",
+            isDirectory: true
+        )
+        do {
+            try fileManager.createDirectory(at: debugDir, withIntermediateDirectories: true)
+        } catch {
+            logger("⚠️ Failed to prepare debug directory: \(error)")
+        }
+        return debugDir
+    }
+
+    private func saveUnguidedDebugData(
+        response: LanguageModelSession.Response<String>,
+        attempt: Int,
+        params: GenerateTextArrayParameters,
+        options: GenerationOptions,
+        elapsed: Double,
+        debugDir: URL
+    ) {
+        let preview = String(response.content.prefix(200))
+        logger("🔍 [DEBUG] Unguided response preview: \(preview)")
+
+        let debugFile = debugDir.appendingPathComponent("unguided_\(Date().timeIntervalSince1970).json")
+        let debugData: [String: Any] = [
+            "timestamp": Date().timeIntervalSince1970,
+            "attempt": attempt,
+            "seed": params.initialSeed ?? 0,
+            "temperature": options.temperature,
+            "maxTokens": options.maximumResponseTokens ?? 0,
+            "promptLength": params.prompt.count,
+            "responseLength": response.content.count,
+            "elapsedSec": elapsed,
+            "promptSnippet": String(params.prompt.prefix(200)),
+            "fullResponse": response.content
+        ]
+
+        do {
+            let jsonData = try JSONSerialization.data(withJSONObject: debugData, options: .prettyPrinted)
+            try jsonData.write(to: debugFile, options: .atomic)
+            logger("📝 Debug data saved to: \(debugFile.path)")
+        } catch {
+            logger("⚠️ Failed to save debug data: \(error)")
+        }
+    }
+
+    private func logSuccessfulParse(arr: [String], elapsed: Double) {
+        logger("✓ Parsed \(arr.count) items from text in \(String(format: "%.2f", elapsed))s")
+    }
+
+    private func saveParseSuccessDebug(arr: [String], debugDir: URL) {
+        let parseDebug: [String: Any] = [
+            "parseSuccess": true,
+            "itemsExtracted": arr.count,
+            "items": arr
+        ]
+        do {
+            let parseData = try JSONSerialization.data(withJSONObject: parseDebug, options: .prettyPrinted)
+            let parseFile = debugDir.appendingPathComponent("parse_\(Date().timeIntervalSince1970).json")
+            try parseData.write(to: parseFile, options: .atomic)
+        } catch {
+            logger("⚠️ Failed to save parse debug: \(error)")
+        }
+    }
+
+    private func handleParseFailure(response: LanguageModelSession.Response<String>, debugDir: URL) throws {
+        logger("⚠️ Parse failed. Full response (\(response.content.count) chars): \(response.content)")
+
+        let parseFailDebug: [String: Any] = [
+            "parseSuccess": false,
+            "response": response.content,
+            "reason": "Could not extract JSON array"
+        ]
+        do {
+            let failData = try JSONSerialization.data(withJSONObject: parseFailDebug, options: .prettyPrinted)
+            let failFile = debugDir.appendingPathComponent("parsefail_\(Date().timeIntervalSince1970).json")
+            try failData.write(to: failFile, options: .atomic)
+        } catch {
+            logger("⚠️ Failed to save parse failure debug: \(error)")
+        }
+
+        throw NSError(domain: "UnguidedParse", code: -1, userInfo: [
+            NSLocalizedDescriptionKey: "Failed to parse JSON array from response"
+        ])
+    }
+
+    private func recordUnguidedSuccess(
+        telemetry: inout [AttemptMetrics],
+        attempt: Int,
+        params: GenerateTextArrayParameters,
+        options: GenerationOptions,
+        sessionRecreated: Bool,
+        itemCount: Int,
+        elapsed: Double
+    ) {
+        telemetry.append(AttemptMetrics(
+            attemptIndex: attempt,
+            seed: params.initialSeed,
+            sampling: "unguided:\(params.profile.description)",
+            temperature: options.temperature,
+            sessionRecreated: sessionRecreated,
+            itemsReturned: itemCount,
+            elapsedSec: elapsed
+        ))
+    }
+
+    private func logUnguidedFailure(error: Error, elapsed: Double) {
+        logger(
+            "❌ [DEBUG] Unguided generation failed after " +
+            "\(String(format: "%.2f", elapsed))s: \(error)"
+        )
+    }
+
+    private func recordUnguidedFailure(
+        telemetry: inout [AttemptMetrics],
+        attempt: Int,
+        params: GenerateTextArrayParameters,
+        options: GenerationOptions,
+        sessionRecreated: Bool,
+        elapsed: Double
+    ) {
+        telemetry.append(AttemptMetrics(
+            attemptIndex: attempt,
+            seed: params.initialSeed,
+            sampling: "unguided:\(params.profile.description)",
+            temperature: options.temperature,
+            sessionRecreated: sessionRecreated,
+            itemsReturned: 0,
+            elapsedSec: elapsed
+        ))
+    }
+
+    private func handleUnguidedRetry(
+        attempt: Int,
+        params: GenerateTextArrayParameters,
+        currentOptions: inout GenerationOptions,
+        sessionRecreated: inout Bool
+    ) async -> Bool {
+        // Adaptive boost on first failure
+        if attempt == 0 {
+            let currentMax = currentOptions.maximumResponseTokens ?? 256
+            let boosted = min(512, Int(Double(currentMax) * 1.8))
+            if boosted > currentMax {
+                logger("🔁 Boosting maxTokens → \(boosted) for unguided parse retry")
+                currentOptions = params.profile.options(
+                    seed: params.initialSeed,
+                    temp: max(0.0, (params.temperature ?? 0.7) * 0.9),
+                    maxTok: boosted
+                )
+                return true
+            }
+        }
+
+        // Session refresh on second failure
+        if attempt == 1, let factory = sessionFactory {
+            do {
+                session = try await factory()
+                logger("♻️ Recreating session for unguided retry")
+            } catch {
+                logger("⚠️ Failed to create fresh session: \(error)")
+            }
+        }
+
+        return false
     }
 
     /// Tolerant JSON array parser - extracts first [...] and parses strings or objects with "name" field.
@@ -1002,19 +1303,38 @@ final class UniqueListCoordinator {
     /// Generate N unique items using Generate → Dedup → Fill architecture
     func uniqueList(query: String, targetCount: Int, seed: UInt64? = nil) async throws -> [String] {
         let startTime = Date()
+        var state = GenerationState(targetCount: targetCount)
+
+        try await executePass1(query: query, targetCount: targetCount, seed: seed, state: &state)
+
+        if state.ordered.count >= targetCount {
+            finalizeSuccess(state: state, startTime: startTime)
+            return Array(state.ordered.prefix(targetCount))
+        }
+
+        try await executeBackfill(query: query, targetCount: targetCount, state: &state)
+
+        finalizeGeneration(state: state, targetCount: targetCount, startTime: startTime)
+
+        return Array(state.ordered.prefix(targetCount))
+    }
+
+    private struct GenerationState {
         var ordered: [String] = []
         var seen = Set<String>()
         var totalGeneratedCount = 0
         var duplicatesFound = 0
         var passCount = 0
-        var localTelemetry: [AttemptMetrics] = []  // Local telemetry to avoid actor isolation issues
-        var dupFrequency: [String: Int] = [:]  // Track frequency for guided backfill
-
-        // Diagnostics tracking
+        var localTelemetry: [AttemptMetrics] = []
+        var dupFrequency: [String: Int] = [:]
         var backfillRoundsTotal = 0
         var circuitBreakerTriggered = false
+        let targetCount: Int
 
-        func absorb(_ items: [String]) {
+        mutating func absorb(
+            _ items: [String],
+            logger: (String) -> Void
+        ) {
             totalGeneratedCount += items.count
             for s in items {
                 let k = s.normKey
@@ -1028,429 +1348,563 @@ final class UniqueListCoordinator {
                 if ordered.count >= targetCount { return }
             }
         }
+    }
 
-        // PASS 1: Over-generate with diverse sampling
+    private func executePass1(
+        query: String,
+        targetCount: Int,
+        seed: UInt64?,
+        state: inout GenerationState
+    ) async throws {
         logger("🎯 [Pass 1] Target: \(targetCount) unique items")
 
-        // Token budgeting: compute overGenCount from budget instead of hard cap
-        let budget = 3500
-        let prompt1Base = """
-        Return ONLY a JSON object matching the schema.
-        Task: \(query). Produce
-        """
-        let promptTok = (prompt1Base.count + 20) / 4  // Rough estimate with margin
-        let respBudget = max(0, budget - promptTok)
-        let avgTPI = 7
-        let mByBudget = respBudget / avgTPI
-        let overGenCount = min(Int(ceil(Double(targetCount) * Defaults.pass1OverGen)), mByBudget)
-        let maxTok1 = Int(ceil(7.0 * Double(overGenCount)))
-
-        let prompt1 = """
-        Return ONLY a JSON object matching the schema.
-        Task: \(query). Produce \(overGenCount) distinct items.
-        """
-
+        let (overGenCount, maxTok1) = calculatePass1Budget(query: query, targetCount: targetCount)
         let overGenFormatted = String(format: "%.1f", Defaults.pass1OverGen)
         logger("  Requesting \(overGenCount) items (over-gen: \(overGenFormatted)x, budget: \(maxTok1) tokens)")
 
-        // Use top-p profile for diverse sampling
-        let profile1 = DecoderProfile.topP(0.92)
+        let prompt1 = buildPass1Prompt(query: query, overGenCount: overGenCount)
         let items1 = try await fm.generate(
             FMClient.GenerateParameters(
                 prompt: prompt1,
-                profile: profile1,
+                profile: .topP(0.92),
                 initialSeed: seed,
                 temperature: Defaults.tempDiverse,
                 maxTokens: maxTok1,
                 maxRetries: 5
             ),
-            telemetry: &localTelemetry
+            telemetry: &state.localTelemetry
         )
-        absorb(items1)
-        passCount = 1
 
-        logger("  Result: \(ordered.count)/\(targetCount) unique, \(duplicatesFound) duplicates filtered")
+        state.absorb(items1, logger: logger)
+        state.passCount = 1
 
-        if ordered.count >= targetCount {
-            let elapsed = Date().timeIntervalSince(startTime)
-            logger("✅ Success in \(passCount) pass (\(String(format: "%.2f", elapsed))s)")
-            return Array(ordered.prefix(targetCount))
+        logger("  Result: \(state.ordered.count)/\(targetCount) unique, \(state.duplicatesFound) duplicates filtered")
+    }
+
+    private func calculatePass1Budget(query: String, targetCount: Int) -> (overGenCount: Int, maxTok: Int) {
+        let budget = 3500
+        let prompt1Base = """
+        Return ONLY a JSON object matching the schema.
+        Task: \(query). Produce
+        """
+        let promptTok = (prompt1Base.count + 20) / 4
+        let respBudget = max(0, budget - promptTok)
+        let avgTPI = 7
+        let mByBudget = respBudget / avgTPI
+        let overGenCount = min(Int(ceil(Double(targetCount) * Defaults.pass1OverGen)), mByBudget)
+        let maxTok1 = Int(ceil(7.0 * Double(overGenCount)))
+        return (overGenCount, maxTok1)
+    }
+
+    private func buildPass1Prompt(query: String, overGenCount: Int) -> String {
+        return """
+        Return ONLY a JSON object matching the schema.
+        Task: \(query). Produce \(overGenCount) distinct items.
+        """
+    }
+
+    private func finalizeSuccess(state: GenerationState, startTime: Date) {
+        let elapsed = Date().timeIntervalSince(startTime)
+        logger("✅ Success in \(state.passCount) pass (\(String(format: "%.2f", elapsed))s)")
+    }
+
+    private func executeBackfill(
+        query: String,
+        targetCount: Int,
+        state: inout GenerationState
+    ) async throws {
+        if useGuidedBackfill {
+            try await executeGuidedBackfill(query: query, targetCount: targetCount, state: &state)
+        } else {
+            try await executeUnguidedBackfill(query: query, targetCount: targetCount, state: &state)
+        }
+    }
+
+    private func executeGuidedBackfill(
+        query: String,
+        targetCount: Int,
+        state: inout GenerationState
+    ) async throws {
+        var backfillRound = 0
+        var consecutiveNoProgress = 0
+
+        while state.ordered.count < targetCount && backfillRound < Defaults.maxPasses {
+            backfillRound += 1
+            state.backfillRoundsTotal += 1
+            state.passCount += 1
+
+            let before = state.ordered.count
+            try await executeGuidedBackfillRound(
+                query: query,
+                targetCount: targetCount,
+                backfillRound: backfillRound,
+                state: &state
+            )
+
+            handleCircuitBreaker(
+                before: before,
+                current: state.ordered.count,
+                consecutiveNoProgress: &consecutiveNoProgress,
+                circuitBreakerTriggered: &state.circuitBreakerTriggered
+            )
+
+            if state.circuitBreakerTriggered { break }
+
+            try await executeGreedyLastMileIfNeeded(
+                query: query,
+                targetCount: targetCount,
+                state: &state,
+                isGuided: true
+            )
+        }
+    }
+
+    private func executeGuidedBackfillRound(
+        query: String,
+        targetCount: Int,
+        backfillRound: Int,
+        state: inout GenerationState
+    ) async throws {
+        let deltaNeed = targetCount - state.ordered.count
+        let delta = calculateGuidedBackfillDelta(deltaNeed: deltaNeed, targetCount: targetCount)
+        let maxTok = max(1024, delta * 20)
+
+        let avoid = Array(state.seen)
+        logger(
+            "🔄 [Pass \(state.passCount)] Guided Backfill: need \(deltaNeed), " +
+            "requesting \(delta), avoiding \(avoid.count) items"
+        )
+
+        let (avoidSample, coverageNote, offenderNote) = buildGuidedAvoidList(
+            avoid: avoid,
+            dupFrequency: state.dupFrequency,
+            backfillRound: backfillRound
+        )
+
+        let promptFill = buildGuidedBackfillPrompt(
+            query: query,
+            delta: delta,
+            avoidSample: avoidSample,
+            coverageNote: coverageNote,
+            offenderNote: offenderNote
+        )
+
+        let before = state.ordered.count
+
+        do {
+            let itemsFill = try await fm.generate(
+                FMClient.GenerateParameters(
+                    prompt: promptFill,
+                    profile: .topP(0.92),
+                    initialSeed: UInt64.random(in: 0...UInt64.max),
+                    temperature: Defaults.tempDiverse,
+                    maxTokens: maxTok,
+                    maxRetries: 5
+                ),
+                telemetry: &state.localTelemetry
+            )
+            state.absorb(itemsFill, logger: logger)
+        } catch {
+            logger("⚠️ Guided backfill error: \(error)")
+            captureFailureReason("Guided backfill error: \(error.localizedDescription)")
         }
 
-        // BACKFILL: Use guided or unguided based on flag
-        if useGuidedBackfill {
-            // GUIDED BACKFILL: Use JSON schema enforcement with rotating avoid-list samples
-            var backfillRound = 0
-            var consecutiveNoProgress = 0
+        if state.ordered.count == before {
+            try await retryGuidedBackfill(
+                query: query,
+                targetCount: targetCount,
+                deltaNeed: deltaNeed,
+                avoidSample: avoidSample,
+                state: &state
+            )
+        }
 
-            while ordered.count < targetCount && backfillRound < Defaults.maxPasses {
-                backfillRound += 1
-                backfillRoundsTotal += 1
-                passCount += 1
+        logger("  Result: \(state.ordered.count)/\(targetCount) unique (filtered \(state.duplicatesFound) duplicates)")
+    }
 
-                let deltaNeed = targetCount - ordered.count
-                // Request more than needed to account for potential duplicates
-                let deltaA = Int(ceil(Double(deltaNeed) * 1.5))
-                let deltaB = Int(ceil(Defaults.minBackfillFrac * Double(targetCount)))
-                let delta = max(deltaA, deltaB)
-                // More generous token budget: match unguided approach
-                let maxTok = max(1024, delta * 20)
+    private func calculateGuidedBackfillDelta(deltaNeed: Int, targetCount: Int) -> Int {
+        let deltaA = Int(ceil(Double(deltaNeed) * 1.5))
+        let deltaB = Int(ceil(Defaults.minBackfillFrac * Double(targetCount)))
+        return max(deltaA, deltaB)
+    }
 
-                let avoid = Array(seen)
-                logger(
-                    "🔄 [Pass \(passCount)] Guided Backfill: need \(deltaNeed), " +
-                    "requesting \(delta), avoiding \(avoid.count) items"
-                )
+    private func buildGuidedAvoidList(
+        avoid: [String],
+        dupFrequency: [String: Int],
+        backfillRound: Int
+    ) -> (avoidSample: String, coverageNote: String, offenderNote: String) {
+        let sampleSize = 40
+        let offset = (backfillRound - 1) * 20
+        let startIdx = offset % max(1, avoid.count)
+        let endIdx = min(startIdx + sampleSize, avoid.count)
 
-                // Rotating avoid-list sample: show different items each pass for better coverage
-                // Pass 1: items 0-40, Pass 2: items 20-60, Pass 3: items 40-80, etc.
-                let sampleSize = 40
-                let offset = (backfillRound - 1) * 20  // 20-item overlap between passes
-                let startIdx = offset % max(1, avoid.count)
-                let endIdx = min(startIdx + sampleSize, avoid.count)
+        var avoidSampleKeys: [String] = []
+        if endIdx <= avoid.count {
+            avoidSampleKeys = Array(avoid[startIdx..<endIdx])
+        } else {
+            avoidSampleKeys = Array(avoid[startIdx..<avoid.count])
+            let remaining = sampleSize - avoidSampleKeys.count
+            avoidSampleKeys += Array(avoid.prefix(remaining))
+        }
 
-                // Build sample with wraparound if needed
-                var avoidSampleKeys: [String] = []
-                if endIdx <= avoid.count {
-                    avoidSampleKeys = Array(avoid[startIdx..<endIdx])
-                } else {
-                    avoidSampleKeys = Array(avoid[startIdx..<avoid.count])
-                    let remaining = sampleSize - avoidSampleKeys.count
-                    avoidSampleKeys += Array(avoid.prefix(remaining))
-                }
+        let topOffenders = dupFrequency
+            .sorted { $0.value > $1.value }
+            .prefix(5)
+            .map { "\"\($0.key)\" (filtered \($0.value)x)" }
+            .joined(separator: ", ")
 
-                // Add frequency hints for repeat offenders
-                let topOffenders = dupFrequency
-                    .sorted { $0.value > $1.value }
-                    .prefix(5)
-                    .map { "\"\($0.key)\" (filtered \($0.value)x)" }
-                    .joined(separator: ", ")
+        let avoidSample = avoidSampleKeys.map { "\"\($0)\"" }.joined(separator: ", ")
+        let coverageNote = avoid.count > sampleSize
+            ? "\n  Showing \(avoidSampleKeys.count) of \(avoid.count) forbidden items " +
+              "(rotating sample, pass \(backfillRound))"
+            : ""
+        let offenderNote = !topOffenders.isEmpty ?
+            "\n  Most repeated: [\(topOffenders)]" : ""
 
-                let avoidSample = avoidSampleKeys.map { "\"\($0)\"" }.joined(separator: ", ")
-                let coverageNote = avoid.count > sampleSize
-                    ? "\n  Showing \(avoidSampleKeys.count) of \(avoid.count) forbidden items " +
-                      "(rotating sample, pass \(backfillRound))"
-                    : ""
-                let offenderNote = !topOffenders.isEmpty ?
-                    "\n  Most repeated: [\(topOffenders)]" : ""
+        return (avoidSample, coverageNote, offenderNote)
+    }
 
-                let promptFill = """
-                Return ONLY a JSON object matching the schema.
-                Task: \(query). Produce \(delta) distinct items.
+    private func buildGuidedBackfillPrompt(
+        query: String,
+        delta: Int,
+        avoidSample: String,
+        coverageNote: String,
+        offenderNote: String
+    ) -> String {
+        return """
+        Return ONLY a JSON object matching the schema.
+        Task: \(query). Produce \(delta) distinct items.
 
-                CRITICAL: Do NOT include items with these normalized keys:
-                [\(avoidSample)]\(coverageNote)\(offenderNote)
+        CRITICAL: Do NOT include items with these normalized keys:
+        [\(avoidSample)]\(coverageNote)\(offenderNote)
 
-                Generate NEW items that are NOT in the forbidden list above.
-                """
+        Generate NEW items that are NOT in the forbidden list above.
+        """
+    }
 
-                let before = ordered.count
+    private func retryGuidedBackfill(
+        query: String,
+        targetCount: Int,
+        deltaNeed: Int,
+        avoidSample: String,
+        state: inout GenerationState
+    ) async throws {
+        do {
+            let retryDelta = min(deltaNeed * 2, Int(ceil(Double(targetCount) * 0.5)))
+            logger("  ⟳ Retry: requesting \(retryDelta) items with higher temperature")
 
-                do {
-                    let itemsFill = try await fm.generate(
-                        FMClient.GenerateParameters(
-                            prompt: promptFill,
-                            profile: .topP(0.92),
-                            initialSeed: UInt64.random(in: 0...UInt64.max),
-                            temperature: Defaults.tempDiverse,
-                            maxTokens: maxTok,
-                            maxRetries: 5
-                        ),
-                        telemetry: &localTelemetry
-                    )
-                    absorb(itemsFill)
-                } catch {
-                    logger("⚠️ Guided backfill error: \(error)")
+            let retryOffenders = state.dupFrequency
+                .sorted { $0.value > $1.value }
+                .prefix(10)
+                .map { "\"\($0.key)\" (\($0.value)x)" }
+                .joined(separator: ", ")
 
-                    // Capture failure reason if not already set
-                    if self.lastRunFailureReason == nil {
-                        self.lastRunFailureReason = "Guided backfill error: \(error.localizedDescription)"
-                    }
-                }
+            let promptRetry = """
+            Return ONLY a JSON object matching the schema.
+            Task: \(query). Produce \(retryDelta) distinct items.
 
-                // Adaptive retry if no progress
-                if ordered.count == before {
-                    do {
-                        let retryDelta = min(deltaNeed * 2, Int(ceil(Double(targetCount) * 0.5)))
-                        logger("  ⟳ Retry: requesting \(retryDelta) items with higher temperature")
+            CRITICAL: Avoid these items (most frequently repeated):
+            [\(retryOffenders)]
 
-                        // Emphasize top offenders in retry
-                        let retryOffenders = dupFrequency
-                            .sorted { $0.value > $1.value }
-                            .prefix(10)  // Show more in retry
-                            .map { "\"\($0.key)\" (\($0.value)x)" }
-                            .joined(separator: ", ")
+            Also avoid: [\(avoidSample)]
+            """
 
-                        let promptRetry = """
-                        Return ONLY a JSON object matching the schema.
-                        Task: \(query). Produce \(retryDelta) distinct items.
+            let itemsRetry = try await fm.generate(
+                FMClient.GenerateParameters(
+                    prompt: promptRetry,
+                    profile: .topK(50),
+                    initialSeed: UInt64.random(in: 0...UInt64.max),
+                    temperature: 0.9,
+                    maxTokens: max(1536, retryDelta * 25),
+                    maxRetries: 5
+                ),
+                telemetry: &state.localTelemetry
+            )
+            state.absorb(itemsRetry, logger: logger)
+        } catch {
+            logger("⚠️ Adaptive retry failed: \(error)")
+            captureFailureReason("Adaptive retry failed: \(error.localizedDescription)")
+        }
+    }
 
-                        CRITICAL: Avoid these items (most frequently repeated):
-                        [\(retryOffenders)]
+    private func executeUnguidedBackfill(
+        query: String,
+        targetCount: Int,
+        state: inout GenerationState
+    ) async throws {
+        var backfillRound = 0
+        var consecutiveNoProgress = 0
 
-                        Also avoid: [\(avoidSample)]
-                        """
+        while state.ordered.count < targetCount && backfillRound < Defaults.maxPasses {
+            backfillRound += 1
+            state.backfillRoundsTotal += 1
+            state.passCount += 1
 
-                        let itemsRetry = try await fm.generate(
-                            FMClient.GenerateParameters(
-                                prompt: promptRetry,
-                                profile: .topK(50),
-                                initialSeed: UInt64.random(in: 0...UInt64.max),
-                                temperature: 0.9,
-                                maxTokens: max(1536, retryDelta * 25),
-                                maxRetries: 5
-                            ),
-                            telemetry: &localTelemetry
-                        )
-                        absorb(itemsRetry)
-                    } catch {
-                        logger("⚠️ Adaptive retry failed: \(error)")
+            let before = state.ordered.count
+            try await executeUnguidedBackfillRound(
+                query: query,
+                targetCount: targetCount,
+                state: &state
+            )
 
-                        // Capture failure reason if not already set
-                        if self.lastRunFailureReason == nil {
-                            self.lastRunFailureReason = "Adaptive retry failed: \(error.localizedDescription)"
-                        }
-                    }
-                }
+            handleCircuitBreaker(
+                before: before,
+                current: state.ordered.count,
+                consecutiveNoProgress: &consecutiveNoProgress,
+                circuitBreakerTriggered: &state.circuitBreakerTriggered
+            )
 
-                logger("  Result: \(ordered.count)/\(targetCount) unique (filtered \(duplicatesFound) duplicates)")
+            if state.circuitBreakerTriggered { break }
 
-                // Circuit breaker
-                if ordered.count == before {
-                    consecutiveNoProgress += 1
-                    if consecutiveNoProgress >= 2 {
-                        logger("⚠️ Circuit breaker: 2 consecutive rounds with no progress. Exiting backfill early.")
-                        circuitBreakerTriggered = true
-                        break
-                    }
-                } else {
-                    consecutiveNoProgress = 0
-                }
+            try await executeGreedyLastMileIfNeeded(
+                query: query,
+                targetCount: targetCount,
+                state: &state,
+                isGuided: false
+            )
+        }
+    }
 
-                // Greedy last-mile for final 1-2 items
-                if (1...2).contains(targetCount - ordered.count) {
-                    do {
-                        let remaining = targetCount - ordered.count
-                        logger("  🎯 Greedy last-mile: requesting \(remaining) item(s)")
+    private func executeUnguidedBackfillRound(
+        query: String,
+        targetCount: Int,
+        state: inout GenerationState
+    ) async throws {
+        let deltaNeed = targetCount - state.ordered.count
+        let (delta, maxTok, deltaByBudget) = calculateUnguidedBackfillParams(
+            deltaNeed: deltaNeed,
+            targetCount: targetCount,
+            query: query
+        )
 
-                        let greedyPrompt = """
-                        Return ONLY a JSON object matching the schema.
-                        Task: \(query). Produce EXACTLY \(remaining) distinct item\(remaining > 1 ? "s" : "").
-                        """
+        logger("🔄 [Pass \(state.passCount)] Unguided Backfill: need \(deltaNeed), requesting \(delta)")
 
-                        let greedyItems = try await fm.generate(
-                            FMClient.GenerateParameters(
-                                prompt: greedyPrompt,
-                                profile: .greedy,
-                                initialSeed: nil,
-                                temperature: 0.0,
-                                maxTokens: 512,
-                                maxRetries: 5
-                            ),
-                            telemetry: &localTelemetry
-                        )
-                        absorb(greedyItems)
-                    } catch {
-                        logger("⚠️ Greedy last-mile failed: \(error)")
+        let avoid = Array(state.seen)
+        let avoidJSON = avoid.map { "\"\($0)\"" }.joined(separator: ",")
+        let promptFill = buildUnguidedBackfillPrompt(query: query, delta: delta, avoidJSON: avoidJSON)
 
-                        // Capture failure reason if not already set
-                        if self.lastRunFailureReason == nil {
-                            self.lastRunFailureReason = "Greedy last-mile failed: \(error.localizedDescription)"
-                        }
-                    }
-                }
+        let before = state.ordered.count
+
+        do {
+            let itemsFill = try await fm.generateTextArray(
+                FMClient.GenerateTextArrayParameters(
+                    prompt: promptFill,
+                    profile: .topK(40),
+                    initialSeed: UInt64.random(in: 0...UInt64.max),
+                    temperature: 0.6,
+                    maxTokens: maxTok,
+                    maxRetries: 3
+                ),
+                telemetry: &state.localTelemetry
+            )
+            state.absorb(itemsFill, logger: logger)
+        } catch {
+            logger("⚠️ Unguided backfill error: \(error)")
+            captureFailureReason("Unguided backfill error: \(error.localizedDescription)")
+        }
+
+        if state.ordered.count == before {
+            try await retryUnguidedBackfill(
+                query: query,
+                targetCount: targetCount,
+                deltaByBudget: deltaByBudget,
+                avoidJSON: avoidJSON,
+                state: &state
+            )
+        }
+
+        logger("  Result: \(state.ordered.count)/\(targetCount) unique")
+    }
+
+    private func calculateUnguidedBackfillParams(
+        deltaNeed: Int,
+        targetCount: Int,
+        query: String
+    ) -> (delta: Int, maxTok: Int, deltaByBudget: Int) {
+        let budget = 3500
+        let backfillAvgTPI = 20
+        let promptFillBase = "Generate NEW items for: \(query). Do NOT include any with norm_keys in:"
+        let baseTok = (promptFillBase.count + 50) / 4
+        let respBudget = max(0, budget - baseTok - 200)
+        let deltaByBudget = respBudget / backfillAvgTPI
+        let deltaWithDupBuffer = Int(ceil(Double(deltaNeed) * 4.0))
+        let deltaMin = Int(ceil(Defaults.minBackfillFrac * Double(targetCount)))
+        let delta = min(max(deltaWithDupBuffer, deltaMin), deltaByBudget)
+        let maxTok = max(1024, delta * backfillAvgTPI * 2)
+        return (delta, maxTok, deltaByBudget)
+    }
+
+    private func buildUnguidedBackfillPrompt(query: String, delta: Int, avoidJSON: String) -> String {
+        return """
+        Generate EXACTLY \(delta) NEW unique items for: \(query).
+        Do NOT include any with norm_keys in:
+        [\(avoidJSON)]
+
+        Return ONLY a JSON array with \(delta) string items.
+        Format: ["item1", "item2", "item3", ...]
+        Include all \(delta) items in your response.
+        """
+    }
+
+    private func retryUnguidedBackfill(
+        query: String,
+        targetCount: Int,
+        deltaByBudget: Int,
+        avoidJSON: String,
+        state: inout GenerationState
+    ) async throws {
+        do {
+            let retryCount = min((targetCount - state.ordered.count) * 5, deltaByBudget)
+            let promptRetry = """
+            Generate EXACTLY \(retryCount) NEW unique items for: \(query).
+            Do NOT include any with norm_keys in: [\(avoidJSON)]
+
+            Return ONLY a JSON array with \(retryCount) string items.
+            Format: ["item1", "item2", "item3", ...]
+            """
+            let itemsRetry = try await fm.generateTextArray(
+                FMClient.GenerateTextArrayParameters(
+                    prompt: promptRetry,
+                    profile: .topK(40),
+                    initialSeed: UInt64.random(in: 0...UInt64.max),
+                    temperature: 0.55,
+                    maxTokens: max(1536, retryCount * 30),
+                    maxRetries: 3
+                ),
+                telemetry: &state.localTelemetry
+            )
+            state.absorb(itemsRetry, logger: logger)
+        } catch {
+            logger("⚠️ Adaptive retry also failed: \(error)")
+            captureFailureReason("Adaptive retry also failed: \(error.localizedDescription)")
+        }
+    }
+
+    private func handleCircuitBreaker(
+        before: Int,
+        current: Int,
+        consecutiveNoProgress: inout Int,
+        circuitBreakerTriggered: inout Bool
+    ) {
+        if current == before {
+            consecutiveNoProgress += 1
+            if consecutiveNoProgress >= 2 {
+                logger("⚠️ Circuit breaker: 2 consecutive rounds with no progress. Exiting backfill early.")
+                circuitBreakerTriggered = true
             }
         } else {
-            // UNGUIDED BACKFILL: Semantic constraints in prompt
-            var backfillRound = 0
-            var consecutiveNoProgress = 0  // Circuit breaker: exit early if no progress
-            while ordered.count < targetCount && backfillRound < Defaults.maxPasses {
-                backfillRound += 1
-                backfillRoundsTotal += 1
-                passCount += 1
+            consecutiveNoProgress = 0
+        }
+    }
 
-                let deltaNeed = targetCount - ordered.count
+    private func executeGreedyLastMileIfNeeded(
+        query: String,
+        targetCount: Int,
+        state: inout GenerationState,
+        isGuided: Bool
+    ) async throws {
+        guard (1...2).contains(targetCount - state.ordered.count) else { return }
 
-                // Token budgeting - INCREASED for better results
-                let backfillAvgTPI = 20  // Increased from 16 for more room per item
-                let promptFillBase = "Generate NEW items for: \(query). Do NOT include any with norm_keys in:"
-                let baseTok = (promptFillBase.count + 50) / 4
-                let respBudget = max(0, budget - baseTok - 200)
-                let deltaByBudget = respBudget / backfillAvgTPI
-                // Request 4x items to account for high duplicate rate (~50%) in unguided generation
-                let deltaWithDupBuffer = Int(ceil(Double(deltaNeed) * 4.0))
-                let deltaMin = Int(ceil(Defaults.minBackfillFrac * Double(targetCount)))
-                let delta = min(max(deltaWithDupBuffer, deltaMin), deltaByBudget)
-                // Significantly increased minimum and multiplier for better generation
-                let maxTok = max(1024, delta * backfillAvgTPI * 2)  // 2x multiplier and 1024 min
+        do {
+            let remaining = targetCount - state.ordered.count
+            logger("  🎯 Greedy last-mile: requesting \(remaining) item(s)")
 
-                logger("🔄 [Pass \(passCount)] Unguided Backfill: need \(deltaNeed), requesting \(delta)")
-
-                let avoid = Array(seen)
-                let avoidJSON = avoid.map { "\"\($0)\"" }.joined(separator: ",")
-
-                let promptFill = """
-                Generate EXACTLY \(delta) NEW unique items for: \(query).
-                Do NOT include any with norm_keys in:
-                [\(avoidJSON)]
-
-                Return ONLY a JSON array with \(delta) string items.
-                Format: ["item1", "item2", "item3", ...]
-                Include all \(delta) items in your response.
+            if isGuided {
+                let greedyPrompt = """
+                Return ONLY a JSON object matching the schema.
+                Task: \(query). Produce EXACTLY \(remaining) distinct item\(remaining > 1 ? "s" : "").
                 """
 
-                let before = ordered.count
+                let greedyItems = try await fm.generate(
+                    FMClient.GenerateParameters(
+                        prompt: greedyPrompt,
+                        profile: .greedy,
+                        initialSeed: nil,
+                        temperature: 0.0,
+                        maxTokens: 512,
+                        maxRetries: 5
+                    ),
+                    telemetry: &state.localTelemetry
+                )
+                state.absorb(greedyItems, logger: logger)
+            } else {
+                let greedyPrompt = """
+                Generate EXACTLY \(remaining) NEW unique item\(remaining > 1 ? "s" : "") for: \(query).
 
-                do {
-                    let itemsFill = try await fm.generateTextArray(
-                        FMClient.GenerateTextArrayParameters(
-                            prompt: promptFill,
-                            profile: .topK(40),
-                            initialSeed: UInt64.random(in: 0...UInt64.max),
-                            temperature: 0.6,
-                            maxTokens: maxTok,
-                            maxRetries: 3
-                        ),
-                        telemetry: &localTelemetry
-                    )
-                    absorb(itemsFill)
-                } catch {
-                    logger("⚠️ Unguided backfill error: \(error)")
-
-                    // Capture failure reason if not already set
-                    if self.lastRunFailureReason == nil {
-                        self.lastRunFailureReason = "Unguided backfill error: \(error.localizedDescription)"
-                    }
-                }
-
-                // Adaptive retry if no progress
-                if ordered.count == before {
-                    do {
-                        // Request 5x items in retry to maximize chance of getting enough unique items
-                        let retryCount = min((targetCount - ordered.count) * 5, deltaByBudget)
-                        let promptRetry = """
-                        Generate EXACTLY \(retryCount) NEW unique items for: \(query).
-                        Do NOT include any with norm_keys in: [\(avoidJSON)]
-
-                        Return ONLY a JSON array with \(retryCount) string items.
-                        Format: ["item1", "item2", "item3", ...]
-                        """
-                        let itemsRetry = try await fm.generateTextArray(
-                            FMClient.GenerateTextArrayParameters(
-                                prompt: promptRetry,
-                                profile: .topK(40),
-                                initialSeed: UInt64.random(in: 0...UInt64.max),
-                                temperature: 0.55,
-                                maxTokens: max(1536, retryCount * 30),  // More generous tokens
-                                maxRetries: 3
-                            ),
-                            telemetry: &localTelemetry
-                        )
-                        absorb(itemsRetry)
-                    } catch {
-                        logger("⚠️ Adaptive retry also failed: \(error)")
-
-                        // Capture failure reason if not already set
-                        if self.lastRunFailureReason == nil {
-                            self.lastRunFailureReason = "Adaptive retry also failed: \(error.localizedDescription)"
-                        }
-                    }
-                }
-
-                logger("  Result: \(ordered.count)/\(targetCount) unique")
-
-                // Circuit breaker: track consecutive rounds with no progress
-                if ordered.count == before {
-                    consecutiveNoProgress += 1
-                    if consecutiveNoProgress >= 2 {
-                        logger("⚠️ Circuit breaker: 2 consecutive rounds with no progress. Exiting backfill early.")
-                        circuitBreakerTriggered = true
-                        break
-                    }
-                } else {
-                    consecutiveNoProgress = 0  // Reset on any progress
-                }
-
-                // Greedy last-mile for final 1-2 items
-                if (1...2).contains(targetCount - ordered.count) {
-                    do {
-                        let remaining = targetCount - ordered.count
-                        let greedyPrompt = """
-                        Generate EXACTLY \(remaining) NEW unique item\(remaining > 1 ? "s" : "") for: \(query).
-
-                        Return ONLY a JSON array with \(remaining) string item\(remaining > 1 ? "s" : "").
-                        Format: \(remaining == 1 ? "[\"item\"]" : "[\"item1\", \"item2\"]")
-                        """
-                        let greedyItems = try await fm.generateTextArray(
-                            FMClient.GenerateTextArrayParameters(
-                                prompt: greedyPrompt,
-                                profile: .greedy,
-                                initialSeed: nil,
-                                temperature: 0.0,
-                                maxTokens: 512,  // Increased from 200
-                                maxRetries: 3
-                            ),
-                            telemetry: &localTelemetry
-                        )
-                        absorb(greedyItems)
-                    } catch {
-                        logger("⚠️ Greedy last-mile failed: \(error)")
-
-                        // Capture failure reason if not already set
-                        if self.lastRunFailureReason == nil {
-                            self.lastRunFailureReason = "Greedy last-mile failed: \(error.localizedDescription)"
-                        }
-                    }
-                }
+                Return ONLY a JSON array with \(remaining) string item\(remaining > 1 ? "s" : "").
+                Format: \(remaining == 1 ? "[\"item\"]" : "[\"item1\", \"item2\"]")
+                """
+                let greedyItems = try await fm.generateTextArray(
+                    FMClient.GenerateTextArrayParameters(
+                        prompt: greedyPrompt,
+                        profile: .greedy,
+                        initialSeed: nil,
+                        temperature: 0.0,
+                        maxTokens: 512,
+                        maxRetries: 3
+                    ),
+                    telemetry: &state.localTelemetry
+                )
+                state.absorb(greedyItems, logger: logger)
             }
+        } catch {
+            logger("⚠️ Greedy last-mile failed: \(error)")
+            captureFailureReason("Greedy last-mile failed: \(error.localizedDescription)")
         }
+    }
 
+    private func captureFailureReason(_ reason: String) {
+        if lastRunFailureReason == nil {
+            lastRunFailureReason = reason
+        }
+    }
+
+    private func finalizeGeneration(state: GenerationState, targetCount: Int, startTime: Date) {
         let elapsed = Date().timeIntervalSince(startTime)
-        let success = ordered.count >= targetCount
+        let success = state.ordered.count >= targetCount
 
-        // Store telemetry
-        telemetry = localTelemetry
+        telemetry = state.localTelemetry
 
         if success {
-            logger("✅ Success in \(passCount) passes (\(String(format: "%.2f", elapsed))s)")
+            logger("✅ Success in \(state.passCount) passes (\(String(format: "%.2f", elapsed))s)")
         } else {
-            logger("⚠️ Incomplete: \(ordered.count)/\(targetCount) after \(passCount) passes")
+            logger("⚠️ Incomplete: \(state.ordered.count)/\(targetCount) after \(state.passCount) passes")
         }
 
-        let dupRatePercent = Double(duplicatesFound) / Double(totalGeneratedCount) * 100
+        let dupRatePercent = Double(state.duplicatesFound) / Double(state.totalGeneratedCount) * 100
         logger(
-            "📊 Stats: \(totalGeneratedCount) total generated, \(duplicatesFound) filtered " +
+            "📊 Stats: \(state.totalGeneratedCount) total generated, \(state.duplicatesFound) filtered " +
             "(\(String(format: "%.1f", dupRatePercent))% dup rate)"
         )
 
-        // Store diagnostics for telemetry export
-        lastRunTotalGenerated = totalGeneratedCount
-        lastRunDupCount = duplicatesFound
-        lastRunDupRate = totalGeneratedCount > 0 ? Double(duplicatesFound) / Double(totalGeneratedCount) : 0.0
-        lastRunPassCount = passCount
-        lastRunBackfillRounds = backfillRoundsTotal
-        lastRunCircuitBreakerTriggered = circuitBreakerTriggered
+        storeDiagnostics(state: state, targetCount: targetCount, success: success)
+    }
 
-        // Extract top 5 duplicates
-        let topDups = dupFrequency.sorted { $0.value > $1.value }.prefix(5)
+    private func storeDiagnostics(state: GenerationState, targetCount: Int, success: Bool) {
+        lastRunTotalGenerated = state.totalGeneratedCount
+        lastRunDupCount = state.duplicatesFound
+        lastRunDupRate = state.totalGeneratedCount > 0
+            ? Double(state.duplicatesFound) / Double(state.totalGeneratedCount)
+            : 0.0
+        lastRunPassCount = state.passCount
+        lastRunBackfillRounds = state.backfillRoundsTotal
+        lastRunCircuitBreakerTriggered = state.circuitBreakerTriggered
+
+        let topDups = state.dupFrequency.sorted { $0.value > $1.value }.prefix(5)
         lastRunTopDuplicates = topDups.isEmpty ? nil : Dictionary(uniqueKeysWithValues: Array(topDups))
 
-        // Failure reason (if incomplete)
         if !success {
-            if circuitBreakerTriggered {
+            if state.circuitBreakerTriggered {
                 lastRunFailureReason =
-                    "Circuit breaker: 2 consecutive rounds with no progress at \(ordered.count)/\(targetCount)"
-            } else {
-                lastRunFailureReason = "Incomplete: \(ordered.count)/\(targetCount) items after \(passCount) passes"
+                    "Circuit breaker: 2 consecutive rounds with no progress at \(state.ordered.count)/\(targetCount)"
+            } else if lastRunFailureReason == nil {
+                lastRunFailureReason = "Incomplete: \(state.ordered.count)/\(targetCount) items after \(state.passCount) passes"
             }
         } else {
             lastRunFailureReason = nil
         }
-
-        return Array(ordered.prefix(targetCount))
     }
 
-    /// Generate unique list with full telemetry
     func uniqueListWithMetrics(
         query: String,
         targetCount: Int,

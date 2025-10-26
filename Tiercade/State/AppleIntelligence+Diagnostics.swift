@@ -79,89 +79,122 @@ struct ModelDiagnostics {
 
         do {
             guard let session = try? await createTestSession() else {
-                return DiagnosticResult(
+                return buildFailureResult(
                     testName: "RawOutput_\(itemCount)items_\(tokens)tokens",
-                    success: false,
-                    message: "Failed to create session",
-                    rawOutput: nil,
-                    details: [:]
+                    message: "Failed to create session"
                 )
             }
 
-            let prompt = """
-            Return ONLY a JSON object matching the schema.
-            Task: famous scientists throughout history. Produce \(itemCount) distinct items.
-            """
-
-            let options = GenerationOptions(
-                sampling: .random(probabilityThreshold: 0.92, seed: 42),
-                temperature: 0.8,
-                maximumResponseTokens: tokens
-            )
-
-            logger("  📝 Prompt: \(prompt.count) chars")
-            logger("  🎛️  Options: maxTokens=\(tokens), temp=0.8, seed=42")
+            let prompt = buildRawOutputPrompt(itemCount: itemCount)
+            let options = buildGenerationOptions(tokens: tokens)
+            logPromptAndOptions(prompt: prompt, tokens: tokens)
 
             let start = Date()
-
-            // Use raw respond() to get the actual text output
-            let response = try await session.respond(
-                to: Prompt(prompt),
-                options: options
-            )
-
+            let response = try await session.respond(to: Prompt(prompt), options: options)
             let elapsed = Date().timeIntervalSince(start)
             let rawText = response.content
 
-            logger("  ✓ Got response in \(String(format: "%.2f", elapsed))s")
-            logger("  📏 Response length: \(rawText.count) chars")
-            logger("  📄 First 500 chars:")
-            logger("  ---")
-            logger(String(rawText.prefix(500)))
-            logger("  ---")
-            logger("  📄 Last 200 chars:")
-            logger("  ---")
-            logger(String(rawText.suffix(200)))
-            logger("  ---")
+            logResponseMetrics(rawText: rawText, elapsed: elapsed)
 
-            // Try to parse as JSON manually
-            var parseSuccess = false
-            var itemsParsed = 0
+            let (parseSuccess, itemsParsed) = attemptManualJSONParse(rawText: rawText)
 
-            if let data = rawText.data(using: .utf8) {
-                do {
-                    let json = try JSONDecoder().decode(UniqueListResponse.self, from: data)
-                    itemsParsed = json.items.count
-                    parseSuccess = true
-                    logger("  ✓ Manual JSON parse succeeded: \(itemsParsed) items")
-                } catch {
-                    logger("  ❌ Manual JSON parse failed: \(error.localizedDescription)")
-                }
-            }
-
-            return DiagnosticResult(
+            return buildSuccessResult(
                 testName: "RawOutput_\(itemCount)items_\(tokens)tokens",
-                success: true,
-                message: "Response captured. ParseSuccess=\(parseSuccess), Items=\(itemsParsed)",
-                rawOutput: rawText,
-                details: [
-                    "responseLength": "\(rawText.count)",
-                    "elapsedSeconds": "\(String(format: "%.2f", elapsed))",
-                    "manualParseSuccess": "\(parseSuccess)",
-                    "itemsParsed": "\(itemsParsed)"
-                ]
+                rawText: rawText,
+                elapsed: elapsed,
+                parseSuccess: parseSuccess,
+                itemsParsed: itemsParsed
             )
 
         } catch {
             logger("  ❌ Error: \(error)")
-            return DiagnosticResult(
+            return buildFailureResult(
                 testName: "RawOutput_\(itemCount)items_\(tokens)tokens",
-                success: false,
-                message: "Exception: \(error.localizedDescription)",
-                rawOutput: nil,
-                details: [:]
+                message: "Exception: \(error.localizedDescription)"
             )
         }
+    }
+
+    private func buildRawOutputPrompt(itemCount: Int) -> String {
+        """
+        Return ONLY a JSON object matching the schema.
+        Task: famous scientists throughout history. Produce \(itemCount) distinct items.
+        """
+    }
+
+    private func buildGenerationOptions(tokens: Int) -> GenerationOptions {
+        GenerationOptions(
+            sampling: .random(probabilityThreshold: 0.92, seed: 42),
+            temperature: 0.8,
+            maximumResponseTokens: tokens
+        )
+    }
+
+    private func logPromptAndOptions(prompt: String, tokens: Int) {
+        logger("  📝 Prompt: \(prompt.count) chars")
+        logger("  🎛️  Options: maxTokens=\(tokens), temp=0.8, seed=42")
+    }
+
+    private func logResponseMetrics(rawText: String, elapsed: TimeInterval) {
+        logger("  ✓ Got response in \(String(format: "%.2f", elapsed))s")
+        logger("  📏 Response length: \(rawText.count) chars")
+        logger("  📄 First 500 chars:")
+        logger("  ---")
+        logger(String(rawText.prefix(500)))
+        logger("  ---")
+        logger("  📄 Last 200 chars:")
+        logger("  ---")
+        logger(String(rawText.suffix(200)))
+        logger("  ---")
+    }
+
+    private func attemptManualJSONParse(rawText: String) -> (success: Bool, itemsParsed: Int) {
+        var parseSuccess = false
+        var itemsParsed = 0
+
+        if let data = rawText.data(using: .utf8) {
+            do {
+                let json = try JSONDecoder().decode(UniqueListResponse.self, from: data)
+                itemsParsed = json.items.count
+                parseSuccess = true
+                logger("  ✓ Manual JSON parse succeeded: \(itemsParsed) items")
+            } catch {
+                logger("  ❌ Manual JSON parse failed: \(error.localizedDescription)")
+            }
+        }
+
+        return (parseSuccess, itemsParsed)
+    }
+
+    private func buildSuccessResult(
+        testName: String,
+        rawText: String,
+        elapsed: TimeInterval,
+        parseSuccess: Bool,
+        itemsParsed: Int
+    ) -> DiagnosticResult {
+        DiagnosticResult(
+            testName: testName,
+            success: true,
+            message: "Response captured. ParseSuccess=\(parseSuccess), Items=\(itemsParsed)",
+            rawOutput: rawText,
+            details: [
+                "responseLength": "\(rawText.count)",
+                "elapsedSeconds": "\(String(format: "%.2f", elapsed))",
+                "manualParseSuccess": "\(parseSuccess)",
+                "itemsParsed": "\(itemsParsed)"
+            ]
+        )
+    }
+
+    private func buildFailureResult(testName: String, message: String) -> DiagnosticResult {
+        DiagnosticResult(
+            testName: testName,
+            success: false,
+            message: message,
+            rawOutput: nil,
+            details: [:]
+        )
     }
 
     // MARK: - Test 2: @Generable with Token Variations
@@ -172,193 +205,269 @@ struct ModelDiagnostics {
         seed: UInt64 = 42
     ) async -> DiagnosticResult {
         let maxTokens = itemCount * tokensPerItem
-        logger(
-            "🔬 [Test] @Generable - \(itemCount) items, \(tokensPerItem) tokens/item = \(maxTokens) total, seed=\(seed)"
-        )
+        let testName = "Generable_\(itemCount)items_\(tokensPerItem)tpi_seed\(seed)"
+        logger("🔬 [Test] @Generable - \(itemCount) items, \(tokensPerItem) tokens/item = \(maxTokens) total, seed=\(seed)")
 
         do {
             guard let session = try? await createTestSession() else {
-                return DiagnosticResult(
-                    testName: "Generable_\(itemCount)items_\(tokensPerItem)tpi_seed\(seed)",
-                    success: false,
-                    message: "Failed to create session",
-                    rawOutput: nil,
-                    details: [:]
-                )
+                return buildGenerableFailureResult(testName: testName, message: "Failed to create session", seed: seed)
             }
 
-            let prompt = """
-            Return ONLY a JSON object matching the schema.
-            Task: famous scientists throughout history. Produce \(itemCount) distinct items.
-            """
-
-            let options = GenerationOptions(
-                sampling: .random(probabilityThreshold: 0.92, seed: seed),
-                temperature: 0.8,
-                maximumResponseTokens: maxTokens
-            )
-
-            logger("  📝 Prompt: \(prompt.count) chars")
-            logger("  🔍 Full prompt: \"\(prompt)\"")
-            logger("  🔍 Options.maximumResponseTokens: \(String(describing: options.maximumResponseTokens))")
-            logger("  🔍 Options.temperature: \(String(describing: options.temperature))")
-            logger("  🔍 Options.sampling: \(String(describing: options.sampling))")
+            let prompt = buildRawOutputPrompt(itemCount: itemCount)
+            let options = buildGenerableOptions(seed: seed, maxTokens: maxTokens)
+            logGenerableOptions(prompt: prompt, options: options)
 
             let start = Date()
-
-            // Use @Generable guided generation
             let response = try await session.respond(
                 to: Prompt(prompt),
                 generating: UniqueListResponse.self,
                 includeSchemaInPrompt: true,
                 options: options
             )
-
             let elapsed = Date().timeIntervalSince(start)
             let items = response.content.items
 
-            logger("  ✓ @Generable succeeded in \(String(format: "%.2f", elapsed))s")
-            logger("  📦 Received \(items.count) items")
-            logger("  📄 First 3 items: \(items.prefix(3).joined(separator: ", "))")
+            logGenerableSuccess(items: items, elapsed: elapsed)
 
-            return DiagnosticResult(
-                testName: "Generable_\(itemCount)items_\(tokensPerItem)tpi_seed\(seed)",
-                success: true,
-                message: "@Generable succeeded with \(items.count) items",
-                rawOutput: nil,
-                details: [
-                    "itemsReceived": "\(items.count)",
-                    "elapsedSeconds": "\(String(format: "%.2f", elapsed))",
-                    "tokensPerItem": "\(tokensPerItem)",
-                    "maxTokens": "\(maxTokens)",
-                    "seed": "\(seed)"
-                ]
+            return buildGenerableSuccessResult(
+                testName: testName,
+                items: items,
+                elapsed: elapsed,
+                tokensPerItem: tokensPerItem,
+                maxTokens: maxTokens,
+                seed: seed
             )
 
         } catch let e as LanguageModelSession.GenerationError {
-            logger("  ❌ @Generable failed: \(e)")
-
-            // Check specific error type
-            var errorType = "unknown"
-            var contextInfo = ""
-            if case .decodingFailure(let context) = e {
-                errorType = "decodingFailure"
-                contextInfo = context.debugDescription
-                logger("  📋 Context: \(contextInfo)")
-            }
-
-            return DiagnosticResult(
-                testName: "Generable_\(itemCount)items_\(tokensPerItem)tpi_seed\(seed)",
-                success: false,
-                message: "GenerationError: \(errorType)",
-                rawOutput: nil,
-                details: [
-                    "errorType": errorType,
-                    "errorDescription": e.localizedDescription,
-                    "contextInfo": contextInfo,
-                    "tokensPerItem": "\(tokensPerItem)",
-                    "maxTokens": "\(maxTokens)",
-                    "seed": "\(seed)"
-                ]
+            return handleGenerationError(
+                error: e,
+                testName: testName,
+                tokensPerItem: tokensPerItem,
+                maxTokens: maxTokens,
+                seed: seed
             )
         } catch {
             logger("  ❌ Unexpected error: \(error)")
-            return DiagnosticResult(
-                testName: "Generable_\(itemCount)items_\(tokensPerItem)tpi_seed\(seed)",
-                success: false,
+            return buildGenerableFailureResult(
+                testName: testName,
                 message: "Unexpected error: \(error.localizedDescription)",
-                rawOutput: nil,
-                details: ["seed": "\(seed)"]
+                seed: seed
             )
         }
+    }
+
+    private func buildGenerableOptions(seed: UInt64, maxTokens: Int) -> GenerationOptions {
+        GenerationOptions(
+            sampling: .random(probabilityThreshold: 0.92, seed: seed),
+            temperature: 0.8,
+            maximumResponseTokens: maxTokens
+        )
+    }
+
+    private func logGenerableOptions(prompt: String, options: GenerationOptions) {
+        logger("  📝 Prompt: \(prompt.count) chars")
+        logger("  🔍 Full prompt: \"\(prompt)\"")
+        logger("  🔍 Options.maximumResponseTokens: \(String(describing: options.maximumResponseTokens))")
+        logger("  🔍 Options.temperature: \(String(describing: options.temperature))")
+        logger("  🔍 Options.sampling: \(String(describing: options.sampling))")
+    }
+
+    private func logGenerableSuccess(items: [String], elapsed: TimeInterval) {
+        logger("  ✓ @Generable succeeded in \(String(format: "%.2f", elapsed))s")
+        logger("  📦 Received \(items.count) items")
+        logger("  📄 First 3 items: \(items.prefix(3).joined(separator: ", "))")
+    }
+
+    private func buildGenerableSuccessResult(
+        testName: String,
+        items: [String],
+        elapsed: TimeInterval,
+        tokensPerItem: Int,
+        maxTokens: Int,
+        seed: UInt64
+    ) -> DiagnosticResult {
+        DiagnosticResult(
+            testName: testName,
+            success: true,
+            message: "@Generable succeeded with \(items.count) items",
+            rawOutput: nil,
+            details: [
+                "itemsReceived": "\(items.count)",
+                "elapsedSeconds": "\(String(format: "%.2f", elapsed))",
+                "tokensPerItem": "\(tokensPerItem)",
+                "maxTokens": "\(maxTokens)",
+                "seed": "\(seed)"
+            ]
+        )
+    }
+
+    private func handleGenerationError(
+        error: LanguageModelSession.GenerationError,
+        testName: String,
+        tokensPerItem: Int,
+        maxTokens: Int,
+        seed: UInt64
+    ) -> DiagnosticResult {
+        logger("  ❌ @Generable failed: \(error)")
+
+        var errorType = "unknown"
+        var contextInfo = ""
+        if case .decodingFailure(let context) = error {
+            errorType = "decodingFailure"
+            contextInfo = context.debugDescription
+            logger("  📋 Context: \(contextInfo)")
+        }
+
+        return DiagnosticResult(
+            testName: testName,
+            success: false,
+            message: "GenerationError: \(errorType)",
+            rawOutput: nil,
+            details: [
+                "errorType": errorType,
+                "errorDescription": error.localizedDescription,
+                "contextInfo": contextInfo,
+                "tokensPerItem": "\(tokensPerItem)",
+                "maxTokens": "\(maxTokens)",
+                "seed": "\(seed)"
+            ]
+        )
+    }
+
+    private func buildGenerableFailureResult(testName: String, message: String, seed: UInt64) -> DiagnosticResult {
+        DiagnosticResult(
+            testName: testName,
+            success: false,
+            message: message,
+            rawOutput: nil,
+            details: ["seed": "\(seed)"]
+        )
     }
 
     // MARK: - Test 3: Via Coordinator (Exact Acceptance Test Path)
 
     private func testViaCoordinator(itemCount: Int) async -> DiagnosticResult {
+        let testName = "Coordinator_\(itemCount)items"
         logger("🔬 [Test] Via UniqueListCoordinator - \(itemCount) items (EXACT acceptance test path)")
 
         do {
             guard let session = try? await createTestSession() else {
-                return DiagnosticResult(
-                    testName: "Coordinator_\(itemCount)items",
-                    success: false,
-                    message: "Failed to create session",
-                    rawOutput: nil,
-                    details: [:]
-                )
+                return buildCoordinatorFailureResult(testName: testName, message: "Failed to create session")
             }
 
-            logger("  📝 Creating FMClient and UniqueListCoordinator...")
+            let coordinator = setupCoordinator(session: session)
 
-            let fm = FMClient(session: session, logger: logger)
-            let coordinator = UniqueListCoordinator(fm: fm, logger: logger)
-
-            logger("  🎯 Calling coordinator.uniqueList(query:targetCount:seed:)...")
             let start = Date()
-
-            let items = try await coordinator.uniqueList(
-                query: "famous scientists throughout history",
-                targetCount: itemCount,
-                seed: 123
-            )
-
+            let items = try await runCoordinatorTest(coordinator: coordinator, itemCount: itemCount)
             let elapsed = Date().timeIntervalSince(start)
 
-            logger("  ✓ Coordinator succeeded in \(String(format: "%.2f", elapsed))s")
-            logger("  📦 Received \(items.count) items")
-            logger("  📄 First 3 items: \(items.prefix(3).joined(separator: ", "))")
+            logCoordinatorSuccess(items: items, elapsed: elapsed)
 
-            // Check uniqueness
-            let normKeys = items.map { $0.normKey }
-            let uniqueKeys = Set(normKeys)
-            let allUnique = normKeys.count == uniqueKeys.count
+            let (uniqueKeys, allUnique) = checkUniqueness(items: items)
 
-            return DiagnosticResult(
-                testName: "Coordinator_\(itemCount)items",
-                success: true,
-                message: "Coordinator succeeded with \(items.count) items, allUnique=\(allUnique)",
-                rawOutput: nil,
-                details: [
-                    "itemsReceived": "\(items.count)",
-                    "uniqueCount": "\(uniqueKeys.count)",
-                    "allUnique": "\(allUnique)",
-                    "elapsedSeconds": "\(String(format: "%.2f", elapsed))"
-                ]
+            return buildCoordinatorSuccessResult(
+                testName: testName,
+                items: items,
+                uniqueKeys: uniqueKeys,
+                allUnique: allUnique,
+                elapsed: elapsed
             )
 
         } catch let e as LanguageModelSession.GenerationError {
-            logger("  ❌ Coordinator failed with GenerationError: \(e)")
-
-            var errorType = "unknown"
-            var contextInfo = ""
-            if case .decodingFailure(let context) = e {
-                errorType = "decodingFailure"
-                contextInfo = context.debugDescription
-                logger("  📋 Context: \(contextInfo)")
-            }
-
-            return DiagnosticResult(
-                testName: "Coordinator_\(itemCount)items",
-                success: false,
-                message: "GenerationError: \(errorType)",
-                rawOutput: nil,
-                details: [
-                    "errorType": errorType,
-                    "errorDescription": e.localizedDescription,
-                    "contextInfo": contextInfo
-                ]
-            )
+            return handleCoordinatorGenerationError(error: e, testName: testName)
         } catch {
             logger("  ❌ Unexpected error: \(error)")
-            return DiagnosticResult(
-                testName: "Coordinator_\(itemCount)items",
-                success: false,
-                message: "Unexpected error: \(error.localizedDescription)",
-                rawOutput: nil,
-                details: [:]
+            return buildCoordinatorFailureResult(
+                testName: testName,
+                message: "Unexpected error: \(error.localizedDescription)"
             )
         }
+    }
+
+    private func setupCoordinator(session: LanguageModelSession) -> UniqueListCoordinator {
+        logger("  📝 Creating FMClient and UniqueListCoordinator...")
+        let fm = FMClient(session: session, logger: logger)
+        return UniqueListCoordinator(fm: fm, logger: logger)
+    }
+
+    private func runCoordinatorTest(coordinator: UniqueListCoordinator, itemCount: Int) async throws -> [String] {
+        logger("  🎯 Calling coordinator.uniqueList(query:targetCount:seed:)...")
+        return try await coordinator.uniqueList(
+            query: "famous scientists throughout history",
+            targetCount: itemCount,
+            seed: 123
+        )
+    }
+
+    private func logCoordinatorSuccess(items: [String], elapsed: TimeInterval) {
+        logger("  ✓ Coordinator succeeded in \(String(format: "%.2f", elapsed))s")
+        logger("  📦 Received \(items.count) items")
+        logger("  📄 First 3 items: \(items.prefix(3).joined(separator: ", "))")
+    }
+
+    private func checkUniqueness(items: [String]) -> (uniqueKeys: Set<String>, allUnique: Bool) {
+        let normKeys = items.map { $0.normKey }
+        let uniqueKeys = Set(normKeys)
+        let allUnique = normKeys.count == uniqueKeys.count
+        return (uniqueKeys, allUnique)
+    }
+
+    private func buildCoordinatorSuccessResult(
+        testName: String,
+        items: [String],
+        uniqueKeys: Set<String>,
+        allUnique: Bool,
+        elapsed: TimeInterval
+    ) -> DiagnosticResult {
+        DiagnosticResult(
+            testName: testName,
+            success: true,
+            message: "Coordinator succeeded with \(items.count) items, allUnique=\(allUnique)",
+            rawOutput: nil,
+            details: [
+                "itemsReceived": "\(items.count)",
+                "uniqueCount": "\(uniqueKeys.count)",
+                "allUnique": "\(allUnique)",
+                "elapsedSeconds": "\(String(format: "%.2f", elapsed))"
+            ]
+        )
+    }
+
+    private func handleCoordinatorGenerationError(
+        error: LanguageModelSession.GenerationError,
+        testName: String
+    ) -> DiagnosticResult {
+        logger("  ❌ Coordinator failed with GenerationError: \(error)")
+
+        var errorType = "unknown"
+        var contextInfo = ""
+        if case .decodingFailure(let context) = error {
+            errorType = "decodingFailure"
+            contextInfo = context.debugDescription
+            logger("  📋 Context: \(contextInfo)")
+        }
+
+        return DiagnosticResult(
+            testName: testName,
+            success: false,
+            message: "GenerationError: \(errorType)",
+            rawOutput: nil,
+            details: [
+                "errorType": errorType,
+                "errorDescription": error.localizedDescription,
+                "contextInfo": contextInfo
+            ]
+        )
+    }
+
+    private func buildCoordinatorFailureResult(testName: String, message: String) -> DiagnosticResult {
+        DiagnosticResult(
+            testName: testName,
+            success: false,
+            message: message,
+            rawOutput: nil,
+            details: [:]
+        )
     }
 
     // MARK: - Helper

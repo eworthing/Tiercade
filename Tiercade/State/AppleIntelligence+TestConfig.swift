@@ -158,9 +158,8 @@ extension UniqueListCoordinator {
             .replacingOccurrences(of: "{avoid_list}", with: avoidJSON)
     }
 
-    // TODO: Implement runTestScenario when generate method is available
     /*
-     /// Run a specific test scenario
+     /// Run a specific test scenario (future enhancement - requires generate method)
      func runTestScenario(_ scenario: TestScenario) async throws {
      guard let configs = Self.loadTestConfigurations() else {
      throw NSError(domain: "TestConfig", code: -1, userInfo: [

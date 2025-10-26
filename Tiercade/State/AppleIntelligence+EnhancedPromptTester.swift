@@ -181,7 +181,49 @@ class EnhancedPromptTester {
     ) async -> [AggregateResult] {
         var aggregateResults: [AggregateResult] = []
 
-        // Clear previous logs
+        logTestHeader(config: config, onProgress: onProgress)
+
+        let totalRuns = calculateTotalRuns(config: config)
+        var completedTests = 0
+
+        let pilotPrompts = selectPilotPrompts()
+
+        for (promptIndex, (promptName, promptText)) in pilotPrompts {
+            let promptNumber = promptIndex + 1
+            onProgress("\n📝 Testing Prompt: \(promptName)")
+
+            let runResults = await executePromptTestRuns(
+                config: config,
+                promptNumber: promptNumber,
+                promptName: promptName,
+                promptText: promptText,
+                completedTests: &completedTests,
+                totalRuns: totalRuns,
+                onProgress: onProgress
+            )
+
+            let aggregate = computeAggregate(
+                config: config,
+                promptNumber: promptNumber,
+                promptName: promptName,
+                promptText: promptText,
+                runs: runResults
+            )
+
+            aggregateResults.append(aggregate)
+            logAggregateResult(aggregate, promptName: promptName, onProgress: onProgress)
+        }
+
+        logTestCompletion(completedTests: completedTests, onProgress: onProgress)
+        await saveAllResults(aggregateResults)
+
+        return aggregateResults
+    }
+
+    private static func logTestHeader(
+        config: TestConfig,
+        onProgress: @MainActor @escaping (String) -> Void
+    ) {
         clearLogFile()
 
         logToFile("🧪 ========================================")
@@ -192,8 +234,7 @@ class EnhancedPromptTester {
         onProgress("🧪 PILOT TEST (pass@N primary, stratified reporting)")
         onProgress("🧪 ========================================")
 
-        let totalRuns = 4 * config.testQueries.count * config.decodingConfigs.count *
-                        config.seeds.count * config.guidedModes.count
+        let totalRuns = calculateTotalRuns(config: config)
         onProgress("  • Prompts: 4 (G0, G2, G3, G6 - pilot subset)")
         onProgress("  • Queries: \(config.testQueries.count) (small/medium/large/open)")
         onProgress("  • Decoders: \(config.decodingConfigs.count) (Greedy, TopK, TopP)")
@@ -207,91 +248,118 @@ class EnhancedPromptTester {
         logToFile("Dynamic token budgets enabled")
         logToFile("Fresh session per run")
         logToFile("")
+    }
 
-        var completedTests = 0
+    private static func calculateTotalRuns(config: TestConfig) -> Int {
+        4 * config.testQueries.count * config.decodingConfigs.count *
+        config.seeds.count * config.guidedModes.count
+    }
 
-        // PILOT: Test only G0, G2, G3, G6
-        let pilotPrompts = [
+    private static func selectPilotPrompts() -> [(Int, (name: String, text: String))] {
+        [
             (0, enhancedPrompts[0]),
             (2, enhancedPrompts[2]),
             (3, enhancedPrompts[3]),
             (6, enhancedPrompts[6])
         ]
+    }
 
-        for (promptIndex, (promptName, promptText)) in pilotPrompts {
-            let promptNumber = promptIndex + 1
-            onProgress("\n📝 Testing Prompt: \(promptName)")
+    private static func executePromptTestRuns(
+        config: TestConfig,
+        promptNumber: Int,
+        promptName: String,
+        promptText: String,
+        completedTests: inout Int,
+        totalRuns: Int,
+        onProgress: @MainActor @escaping (String) -> Void
+    ) async -> [SingleRunResult] {
+        var runResults: [SingleRunResult] = []
 
-            var runResults: [SingleRunResult] = []
+        for testQuery in config.testQueries {
+            let query = testQuery.query
+            let target = testQuery.target
+            let domain = testQuery.domain
+            for decodingConfig in config.decodingConfigs {
+                for seed in config.seeds {
+                    for guided in config.guidedModes {
+                        let result = await testSingleRun(SingleRunParameters(
+                            config: config,
+                            promptNumber: promptNumber,
+                            promptName: promptName,
+                            promptText: promptText,
+                            runNumber: completedTests + 1,
+                            query: query,
+                            targetCount: target,
+                            domain: domain,
+                            decodingConfig: decodingConfig,
+                            seed: seed,
+                            useGuidedSchema: guided
+                        ))
 
-            for testQuery in config.testQueries {
-                let query = testQuery.query
-                let target = testQuery.target
-                let domain = testQuery.domain
-                for decodingConfig in config.decodingConfigs {
-                    for seed in config.seeds {
-                        for guided in config.guidedModes {
-                            let result = await testSingleRun(SingleRunParameters(
-                                config: config,
-                                promptNumber: promptNumber,
-                                promptName: promptName,
-                                promptText: promptText,
-                                runNumber: completedTests + 1,
-                                query: query,
-                                targetCount: target,
+                        runResults.append(result)
+                        completedTests += 1
+
+                        if completedTests % 10 == 0 {
+                            logProgressUpdate(
+                                result: result,
+                                completedTests: completedTests,
+                                totalRuns: totalRuns,
                                 domain: domain,
-                                decodingConfig: decodingConfig,
-                                seed: seed,
-                                useGuidedSchema: guided
-                            ))
-
-                            runResults.append(result)
-                            completedTests += 1
-
-                            if completedTests % 10 == 0 {
-                                let passIcon = result.passAtN ? "✅" : "❌"
-                                onProgress(
-                                    "   [\(completedTests)/\(totalRuns)] \(passIcon) " +
-                                    "\(result.nBucket)/\(domain), pass=\(result.passAtN), " +
-                                    "u=\(result.uniqueItems), js=\(result.jsonStrict)"
-                                )
-                            }
+                                onProgress: onProgress
+                            )
                         }
                     }
                 }
             }
-
-            let aggregate = computeAggregate(
-                config: config,
-                promptNumber: promptNumber,
-                promptName: promptName,
-                promptText: promptText,
-                runs: runResults
-            )
-
-            aggregateResults.append(aggregate)
-
-            onProgress(
-                "   📊 pass@N=\(String(format: "%.0f", aggregate.passAtNRate * 100))%, " +
-                "jsonS=\(String(format: "%.0f", aggregate.jsonStrictRate * 100))%, " +
-                "tpu=\(String(format: "%.2f", aggregate.meanTimePerUnique))s"
-            )
-
-            logToFile(
-                "Prompt \(promptName) aggregate: pass@N=\(aggregate.passAtNRate), " +
-                "jsonStrict=\(aggregate.jsonStrictRate)"
-            )
         }
 
+        return runResults
+    }
+
+    private static func logProgressUpdate(
+        result: SingleRunResult,
+        completedTests: Int,
+        totalRuns: Int,
+        domain: String,
+        onProgress: @MainActor @escaping (String) -> Void
+    ) {
+        let passIcon = result.passAtN ? "✅" : "❌"
+        onProgress(
+            "   [\(completedTests)/\(totalRuns)] \(passIcon) " +
+            "\(result.nBucket)/\(domain), pass=\(result.passAtN), " +
+            "u=\(result.uniqueItems), js=\(result.jsonStrict)"
+        )
+    }
+
+    private static func logAggregateResult(
+        _ aggregate: AggregateResult,
+        promptName: String,
+        onProgress: @MainActor @escaping (String) -> Void
+    ) {
+        onProgress(
+            "   📊 pass@N=\(String(format: "%.0f", aggregate.passAtNRate * 100))%, " +
+            "jsonS=\(String(format: "%.0f", aggregate.jsonStrictRate * 100))%, " +
+            "tpu=\(String(format: "%.2f", aggregate.meanTimePerUnique))s"
+        )
+
+        logToFile(
+            "Prompt \(promptName) aggregate: pass@N=\(aggregate.passAtNRate), " +
+            "jsonStrict=\(aggregate.jsonStrictRate)"
+        )
+    }
+
+    private static func logTestCompletion(
+        completedTests: Int,
+        onProgress: @MainActor @escaping (String) -> Void
+    ) {
         onProgress("\n🎉 Pilot complete! \(completedTests) runs")
         logToFile("🎉 Pilot test complete")
+    }
 
-        // Save results
+    private static func saveAllResults(_ aggregateResults: [AggregateResult]) async {
         await saveFinalResults(aggregateResults, to: "tiercade_pilot_results.json")
         await saveStratifiedReport(aggregateResults, to: "tiercade_pilot_report.txt")
         await saveRecommendations(aggregateResults, to: "tiercade_pilot_recommendations.txt")
-
-        return aggregateResults
     }
 
     struct SingleRunParameters {
@@ -311,56 +379,18 @@ class EnhancedPromptTester {
     private static func testSingleRun(_ params: SingleRunParameters) async -> SingleRunResult {
         let startTime = Date()
 
-        // Determine effective target
-        let effectiveTarget = params.targetCount ?? 40  // Open-ended default
+        let effectiveTarget = params.targetCount ?? 40
         let nBucket = params.config.nBucket(for: params.targetCount)
         let overgenFactor = params.config.overgenFactor(for: effectiveTarget)
         let maxTokens = params.config.dynamicMaxTokens(targetCount: effectiveTarget, overgenFactor: overgenFactor)
 
-        logToFile(
-            "🔵 RUN #\(params.runNumber): prompt=\(params.promptName), query='\(params.query)', N=\(effectiveTarget), " +
-            "domain=\(params.domain), decoder=\(params.decodingConfig.name), seed=\(params.seed), " +
-            "guided=\(params.useGuidedSchema), maxTok=\(maxTokens)"
-        )
+        logRunStart(params: params, effectiveTarget: effectiveTarget, maxTokens: maxTokens)
 
         do {
-            // FRESH SESSION PER RUN - no shared state
-            let finalPrompt = params.promptText.replacingOccurrences(of: "{QUERY}", with: params.query)
-            let instructions = Instructions(finalPrompt)
-            let session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
-            let opts = params.decodingConfig.generationOptions(seed: params.seed, maxTokens: maxTokens)
-
-            let responseContent: String
-            var finishReason: String?
-            var wasTruncated = false
-
-            if params.useGuidedSchema {
-                let stringList: StringList = try await withTimeout(seconds: 60) {
-                    try await session.respond(
-                        to: Prompt(params.query),
-                        generating: StringList.self,
-                        includeSchemaInPrompt: true,
-                        options: opts
-                    ).content
-                }
-                let jsonData = try JSONEncoder().encode(stringList)
-                responseContent = String(data: jsonData, encoding: .utf8) ?? ""
-                finishReason = "guided-schema"
-                wasTruncated = false
-            } else {
-                responseContent = try await withTimeout(seconds: 60) {
-                    try await session.respond(to: Prompt(params.query), options: opts).content
-                }
-                // Infer truncation
-                let charLimit = maxTokens * 4  // Rough estimate
-                if responseContent.count >= charLimit {
-                    finishReason = "likely-truncated"
-                    wasTruncated = true
-                } else {
-                    finishReason = "stop"
-                    wasTruncated = false
-                }
-            }
+            let (responseContent, finishReason, wasTruncated) = try await executeLanguageModelRequest(
+                params: params,
+                maxTokens: maxTokens
+            )
 
             let duration = Date().timeIntervalSince(startTime)
             let analysis = analyzeResponse(responseContent, targetCount: effectiveTarget)
@@ -368,41 +398,17 @@ class EnhancedPromptTester {
             let surplusAtN = max(0, analysis.uniqueItems - effectiveTarget)
             let timePerUnique = analysis.uniqueItems > 0 ? duration / Double(analysis.uniqueItems) : duration
 
-            logToFile(
-                "✅ SUCCESS: unique=\(analysis.uniqueItems), pass@N=\(analysis.passAtN), " +
-                "jsonStrict=\(analysis.wasJsonParsed), " +
-                "dup=\(String(format: "%.1f", analysis.dupRate * 100))%, surplus=\(surplusAtN), " +
-                "tpu=\(String(format: "%.3f", timePerUnique))s, " +
-                "dur=\(String(format: "%.2f", duration))s, finish=\(finishReason ?? "unknown")"
-            )
+            logRunSuccess(analysis: analysis, surplusAtN: surplusAtN, timePerUnique: timePerUnique, duration: duration, finishReason: finishReason)
 
-            return SingleRunResult(
-                promptNumber: params.promptNumber,
-                promptName: params.promptName,
-                runNumber: params.runNumber,
-                seed: params.seed,
-                query: params.query,
-                targetCount: params.targetCount,
-                domain: params.domain,
+            return buildSuccessResult(
+                params: params,
                 nBucket: nBucket,
-                decodingName: params.decodingConfig.name,
-                guidedSchema: params.useGuidedSchema,
-                response: responseContent,
-                parsedItems: analysis.parsedItems,
-                normalizedItems: analysis.normalizedItems,
-                totalItems: analysis.totalItems,
-                uniqueItems: analysis.uniqueItems,
-                duplicateCount: analysis.duplicateCount,
-                dupRate: analysis.dupRate,
-                passAtN: analysis.passAtN,
+                responseContent: responseContent,
+                analysis: analysis,
                 surplusAtN: surplusAtN,
-                jsonStrict: analysis.wasJsonParsed,
-                insufficient: analysis.insufficient,
-                formatError: analysis.formatError,
-                wasJsonParsed: analysis.wasJsonParsed,
                 finishReason: finishReason,
                 wasTruncated: wasTruncated,
-                maxTokensUsed: maxTokens,
+                maxTokens: maxTokens,
                 duration: duration,
                 timePerUnique: timePerUnique
             )
@@ -410,37 +416,157 @@ class EnhancedPromptTester {
             let duration = Date().timeIntervalSince(startTime)
             logToFile("❌ ERROR: \(error.localizedDescription)")
 
-            return SingleRunResult(
-                promptNumber: params.promptNumber,
-                promptName: params.promptName,
-                runNumber: params.runNumber,
-                seed: params.seed,
-                query: params.query,
-                targetCount: params.targetCount,
-                domain: params.domain,
+            return buildErrorResult(
+                params: params,
                 nBucket: nBucket,
-                decodingName: params.decodingConfig.name,
-                guidedSchema: params.useGuidedSchema,
-                response: "ERROR: \(error.localizedDescription)",
-                parsedItems: [],
-                normalizedItems: [],
-                totalItems: 0,
-                uniqueItems: 0,
-                duplicateCount: 0,
-                dupRate: 1.0,
-                passAtN: false,
-                surplusAtN: -(effectiveTarget),
-                jsonStrict: false,
-                insufficient: true,
-                formatError: true,
-                wasJsonParsed: false,
-                finishReason: "error",
-                wasTruncated: false,
-                maxTokensUsed: maxTokens,
+                effectiveTarget: effectiveTarget,
+                maxTokens: maxTokens,
                 duration: duration,
-                timePerUnique: 0.0
+                error: error
             )
         }
+    }
+
+    private static func logRunStart(params: SingleRunParameters, effectiveTarget: Int, maxTokens: Int) {
+        logToFile(
+            "🔵 RUN #\(params.runNumber): prompt=\(params.promptName), query='\(params.query)', N=\(effectiveTarget), " +
+            "domain=\(params.domain), decoder=\(params.decodingConfig.name), seed=\(params.seed), " +
+            "guided=\(params.useGuidedSchema), maxTok=\(maxTokens)"
+        )
+    }
+
+    private static func executeLanguageModelRequest(
+        params: SingleRunParameters,
+        maxTokens: Int
+    ) async throws -> (content: String, finishReason: String?, wasTruncated: Bool) {
+        let finalPrompt = params.promptText.replacingOccurrences(of: "{QUERY}", with: params.query)
+        let instructions = Instructions(finalPrompt)
+        let session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
+        let opts = params.decodingConfig.generationOptions(seed: params.seed, maxTokens: maxTokens)
+
+        if params.useGuidedSchema {
+            let stringList: StringList = try await withTimeout(seconds: 60) {
+                try await session.respond(
+                    to: Prompt(params.query),
+                    generating: StringList.self,
+                    includeSchemaInPrompt: true,
+                    options: opts
+                ).content
+            }
+            let jsonData = try JSONEncoder().encode(stringList)
+            let content = String(data: jsonData, encoding: .utf8) ?? ""
+            return (content, "guided-schema", false)
+        } else {
+            let content = try await withTimeout(seconds: 60) {
+                try await session.respond(to: Prompt(params.query), options: opts).content
+            }
+            let charLimit = maxTokens * 4
+            if content.count >= charLimit {
+                return (content, "likely-truncated", true)
+            } else {
+                return (content, "stop", false)
+            }
+        }
+    }
+
+    private static func logRunSuccess(
+        analysis: ResponseAnalysis,
+        surplusAtN: Int,
+        timePerUnique: Double,
+        duration: TimeInterval,
+        finishReason: String?
+    ) {
+        logToFile(
+            "✅ SUCCESS: unique=\(analysis.uniqueItems), pass@N=\(analysis.passAtN), " +
+            "jsonStrict=\(analysis.wasJsonParsed), " +
+            "dup=\(String(format: "%.1f", analysis.dupRate * 100))%, surplus=\(surplusAtN), " +
+            "tpu=\(String(format: "%.3f", timePerUnique))s, " +
+            "dur=\(String(format: "%.2f", duration))s, finish=\(finishReason ?? "unknown")"
+        )
+    }
+
+    private static func buildSuccessResult(
+        params: SingleRunParameters,
+        nBucket: String,
+        responseContent: String,
+        analysis: ResponseAnalysis,
+        surplusAtN: Int,
+        finishReason: String?,
+        wasTruncated: Bool,
+        maxTokens: Int,
+        duration: TimeInterval,
+        timePerUnique: Double
+    ) -> SingleRunResult {
+        SingleRunResult(
+            promptNumber: params.promptNumber,
+            promptName: params.promptName,
+            runNumber: params.runNumber,
+            seed: params.seed,
+            query: params.query,
+            targetCount: params.targetCount,
+            domain: params.domain,
+            nBucket: nBucket,
+            decodingName: params.decodingConfig.name,
+            guidedSchema: params.useGuidedSchema,
+            response: responseContent,
+            parsedItems: analysis.parsedItems,
+            normalizedItems: analysis.normalizedItems,
+            totalItems: analysis.totalItems,
+            uniqueItems: analysis.uniqueItems,
+            duplicateCount: analysis.duplicateCount,
+            dupRate: analysis.dupRate,
+            passAtN: analysis.passAtN,
+            surplusAtN: surplusAtN,
+            jsonStrict: analysis.wasJsonParsed,
+            insufficient: analysis.insufficient,
+            formatError: analysis.formatError,
+            wasJsonParsed: analysis.wasJsonParsed,
+            finishReason: finishReason,
+            wasTruncated: wasTruncated,
+            maxTokensUsed: maxTokens,
+            duration: duration,
+            timePerUnique: timePerUnique
+        )
+    }
+
+    private static func buildErrorResult(
+        params: SingleRunParameters,
+        nBucket: String,
+        effectiveTarget: Int,
+        maxTokens: Int,
+        duration: TimeInterval,
+        error: Error
+    ) -> SingleRunResult {
+        SingleRunResult(
+            promptNumber: params.promptNumber,
+            promptName: params.promptName,
+            runNumber: params.runNumber,
+            seed: params.seed,
+            query: params.query,
+            targetCount: params.targetCount,
+            domain: params.domain,
+            nBucket: nBucket,
+            decodingName: params.decodingConfig.name,
+            guidedSchema: params.useGuidedSchema,
+            response: "ERROR: \(error.localizedDescription)",
+            parsedItems: [],
+            normalizedItems: [],
+            totalItems: 0,
+            uniqueItems: 0,
+            duplicateCount: 0,
+            dupRate: 1.0,
+            passAtN: false,
+            surplusAtN: -(effectiveTarget),
+            jsonStrict: false,
+            insufficient: true,
+            formatError: true,
+            wasJsonParsed: false,
+            finishReason: "error",
+            wasTruncated: false,
+            maxTokensUsed: maxTokens,
+            duration: duration,
+            timePerUnique: 0.0
+        )
     }
 
     private static func computeAggregate(
@@ -450,51 +576,106 @@ class EnhancedPromptTester {
         promptText: String,
         runs: [SingleRunResult]
     ) -> AggregateResult {
-        // Extract common domain and N-bucket (should be consistent per prompt test)
         let domain = runs.first?.domain ?? "unknown"
         let nBucket = runs.first?.nBucket ?? "unknown"
 
-        // PRIMARY: pass@N rate
+        let metrics = calculateAggregateMetrics(runs: runs)
+        let (bestRun, worstRun) = findBestAndWorstRuns(runs: runs)
+
+        return AggregateResult(
+            promptNumber: promptNumber,
+            promptName: promptName,
+            promptText: promptText,
+            totalRuns: runs.count,
+            nBucket: nBucket,
+            domain: domain,
+            passAtNRate: metrics.passAtNRate,
+            meanUniqueItems: metrics.meanUniqueItems,
+            jsonStrictRate: metrics.jsonStrictRate,
+            meanTimePerUnique: metrics.meanTimePerUnique,
+            meanDupRate: metrics.meanDupRate,
+            stdevDupRate: metrics.stdevDupRate,
+            meanSurplusAtN: metrics.meanSurplusAtN,
+            truncationRate: metrics.truncationRate,
+            seedVariance: metrics.seedVariance,
+            insufficientRate: metrics.insufficientRate,
+            formatErrorRate: metrics.formatErrorRate,
+            bestRun: bestRun,
+            worstRun: worstRun,
+            allRuns: runs
+        )
+    }
+
+    private struct AggregateMetrics {
+        let passAtNRate: Double
+        let jsonStrictRate: Double
+        let meanUniqueItems: Double
+        let meanTimePerUnique: Double
+        let meanDupRate: Double
+        let stdevDupRate: Double
+        let meanSurplusAtN: Double
+        let truncationRate: Double
+        let seedVariance: Double
+        let insufficientRate: Double
+        let formatErrorRate: Double
+    }
+
+    private static func calculateAggregateMetrics(runs: [SingleRunResult]) -> AggregateMetrics {
         let passAtNCount = runs.filter { $0.passAtN }.count
         let passAtNRate = Double(passAtNCount) / Double(runs.count)
 
-        // SECONDARY: jsonStrict rate
         let jsonStrictCount = runs.filter { $0.jsonStrict }.count
         let jsonStrictRate = Double(jsonStrictCount) / Double(runs.count)
 
-        // Mean unique items
         let meanUniqueItems = runs.map { Double($0.uniqueItems) }.reduce(0, +) / Double(runs.count)
-
-        // Mean time per unique
         let meanTimePerUnique = runs.map { $0.timePerUnique }.reduce(0, +) / Double(runs.count)
 
-        // Dup rate stats
+        let (meanDupRate, stdevDupRate) = calculateDupRateStats(runs: runs)
+        let meanSurplusAtN = runs.map { Double($0.surplusAtN) }.reduce(0, +) / Double(runs.count)
+
+        let truncationCount = runs.filter { $0.wasTruncated }.count
+        let truncationRate = Double(truncationCount) / Double(runs.count)
+
+        let seedVariance = calculateSeedVariance(runs: runs)
+
+        let insufficientCount = runs.filter { $0.insufficient }.count
+        let insufficientRate = Double(insufficientCount) / Double(runs.count)
+
+        let formatErrorCount = runs.filter { $0.formatError }.count
+        let formatErrorRate = Double(formatErrorCount) / Double(runs.count)
+
+        return AggregateMetrics(
+            passAtNRate: passAtNRate,
+            jsonStrictRate: jsonStrictRate,
+            meanUniqueItems: meanUniqueItems,
+            meanTimePerUnique: meanTimePerUnique,
+            meanDupRate: meanDupRate,
+            stdevDupRate: stdevDupRate,
+            meanSurplusAtN: meanSurplusAtN,
+            truncationRate: truncationRate,
+            seedVariance: seedVariance,
+            insufficientRate: insufficientRate,
+            formatErrorRate: formatErrorRate
+        )
+    }
+
+    private static func calculateDupRateStats(runs: [SingleRunResult]) -> (mean: Double, stdev: Double) {
         let dupRates = runs.map { $0.dupRate }
         let meanDupRate = dupRates.reduce(0, +) / Double(runs.count)
         let variance = dupRates.map { pow($0 - meanDupRate, 2) }.reduce(0, +) / Double(runs.count)
         let stdevDupRate = sqrt(variance)
+        return (meanDupRate, stdevDupRate)
+    }
 
-        // Surplus
-        let meanSurplusAtN = runs.map { Double($0.surplusAtN) }.reduce(0, +) / Double(runs.count)
-
-        // Truncation
-        let truncationCount = runs.filter { $0.wasTruncated }.count
-        let truncationRate = Double(truncationCount) / Double(runs.count)
-
-        // Seed variance
+    private static func calculateSeedVariance(runs: [SingleRunResult]) -> Double {
         let uniqueByRun = runs.map { $0.uniqueItems }
         let meanUnique = uniqueByRun.reduce(0, +) / uniqueByRun.count
         let varianceSum = uniqueByRun.map { pow(Double($0 - meanUnique), 2) }.reduce(0, +)
         let seedVarianceVal = varianceSum / Double(uniqueByRun.count)
-        let seedVariance = sqrt(seedVarianceVal)
+        return sqrt(seedVarianceVal)
+    }
 
-        // Insufficient and format errors
-        let insufficientCount = runs.filter { $0.insufficient }.count
-        let insufficientRate = Double(insufficientCount) / Double(runs.count)
-        let formatErrorCount = runs.filter { $0.formatError }.count
-        let formatErrorRate = Double(formatErrorCount) / Double(runs.count)
-
-        // Best/worst by priority: passAtN → unique → !formatError → dupRate
+    private static func findBestAndWorstRuns(runs: [SingleRunResult]) -> (best: SingleRunResult?, worst: SingleRunResult?) {
         let bestRun = runs.max { lhs, rhs in
             if lhs.passAtN != rhs.passAtN { return !lhs.passAtN }
             if lhs.uniqueItems != rhs.uniqueItems { return lhs.uniqueItems < rhs.uniqueItems }
@@ -507,29 +688,7 @@ class EnhancedPromptTester {
             if lhs.formatError != rhs.formatError { return lhs.formatError }
             return lhs.dupRate > rhs.dupRate
         }
-
-        return AggregateResult(
-            promptNumber: promptNumber,
-            promptName: promptName,
-            promptText: promptText,
-            totalRuns: runs.count,
-            nBucket: nBucket,
-            domain: domain,
-            passAtNRate: passAtNRate,
-            meanUniqueItems: meanUniqueItems,
-            jsonStrictRate: jsonStrictRate,
-            meanTimePerUnique: meanTimePerUnique,
-            meanDupRate: meanDupRate,
-            stdevDupRate: stdevDupRate,
-            meanSurplusAtN: meanSurplusAtN,
-            truncationRate: truncationRate,
-            seedVariance: seedVariance,
-            insufficientRate: insufficientRate,
-            formatErrorRate: formatErrorRate,
-            bestRun: bestRun,
-            worstRun: worstRun,
-            allRuns: runs
-        )
+        return (bestRun, worstRun)
     }
 
     // MARK: - Analysis
@@ -548,61 +707,11 @@ class EnhancedPromptTester {
     }
 
     private static func analyzeResponse(_ text: String, targetCount: Int) -> ResponseAnalysis {
-        var items: [String] = []
-        var wasJsonParsed = false
-
-        // Try JSON array
-        if let jsonData = text.data(using: .utf8),
-           let jsonArray = try? JSONSerialization.jsonObject(with: jsonData) as? [String] {
-            items = jsonArray
-            wasJsonParsed = true
-        } else if let jsonData = text.data(using: .utf8),
-                  let jsonDict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
-                  let itemsArray = jsonDict["items"] as? [String] {
-            items = itemsArray
-            wasJsonParsed = true
-        } else {
-            // Fallback: numbered list
-            let lines = text.components(separatedBy: .newlines)
-            for line in lines {
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if let range = trimmed.range(of: #"^\d+[\.):\s]+"#, options: .regularExpression) {
-                    let content = String(trimmed[range.upperBound...]).trimmingCharacters(in: .whitespaces)
-                    if !content.isEmpty {
-                        items.append(content)
-                    }
-                }
-            }
-
-            if items.isEmpty {
-                for line in lines {
-                    let trimmed = line.trimmingCharacters(in: .whitespaces)
-                    if !trimmed.isEmpty && trimmed.count < 100 {
-                        items.append(trimmed)
-                    }
-                }
-            }
-        }
-
-        // CLIENT-SIDE DEDUP
-        var seenNormalized = Set<String>()
-        var normalizedList: [String] = []
-        var duplicateCount = 0
-
-        for item in items {
-            let normalized = normalizeForComparison(item)
-            if !normalized.isEmpty {
-                if seenNormalized.contains(normalized) {
-                    duplicateCount += 1
-                } else {
-                    seenNormalized.insert(normalized)
-                    normalizedList.append(normalized)
-                }
-            }
-        }
+        let (items, wasJsonParsed) = parseResponseItems(text)
+        let (normalizedList, duplicateCount) = deduplicateItems(items)
 
         let totalItems = items.count
-        let uniqueItems = seenNormalized.count
+        let uniqueItems = normalizedList.count
         let dupRate = totalItems > 0 ? Double(duplicateCount) / Double(totalItems) : 0.0
         let passAtN = uniqueItems >= targetCount
         let insufficient = uniqueItems < Int(Double(targetCount) * 0.8)
@@ -620,6 +729,72 @@ class EnhancedPromptTester {
             formatError: formatError,
             wasJsonParsed: wasJsonParsed
         )
+    }
+
+    private static func parseResponseItems(_ text: String) -> (items: [String], wasJsonParsed: Bool) {
+        var items: [String] = []
+        var wasJsonParsed = false
+
+        if let jsonData = text.data(using: .utf8),
+           let jsonArray = try? JSONSerialization.jsonObject(with: jsonData) as? [String] {
+            items = jsonArray
+            wasJsonParsed = true
+        } else if let jsonData = text.data(using: .utf8),
+                  let jsonDict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                  let itemsArray = jsonDict["items"] as? [String] {
+            items = itemsArray
+            wasJsonParsed = true
+        } else {
+            items = parseFallbackFormat(text)
+        }
+
+        return (items, wasJsonParsed)
+    }
+
+    private static func parseFallbackFormat(_ text: String) -> [String] {
+        var items: [String] = []
+        let lines = text.components(separatedBy: .newlines)
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if let range = trimmed.range(of: #"^\d+[\.):\s]+"#, options: .regularExpression) {
+                let content = String(trimmed[range.upperBound...]).trimmingCharacters(in: .whitespaces)
+                if !content.isEmpty {
+                    items.append(content)
+                }
+            }
+        }
+
+        if items.isEmpty {
+            for line in lines {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if !trimmed.isEmpty && trimmed.count < 100 {
+                    items.append(trimmed)
+                }
+            }
+        }
+
+        return items
+    }
+
+    private static func deduplicateItems(_ items: [String]) -> (normalizedList: [String], duplicateCount: Int) {
+        var seenNormalized = Set<String>()
+        var normalizedList: [String] = []
+        var duplicateCount = 0
+
+        for item in items {
+            let normalized = normalizeForComparison(item)
+            if !normalized.isEmpty {
+                if seenNormalized.contains(normalized) {
+                    duplicateCount += 1
+                } else {
+                    seenNormalized.insert(normalized)
+                    normalizedList.append(normalized)
+                }
+            }
+        }
+
+        return (normalizedList, duplicateCount)
     }
 
     private static func normalizeForComparison(_ text: String) -> String {

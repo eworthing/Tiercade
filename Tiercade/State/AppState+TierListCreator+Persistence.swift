@@ -186,7 +186,30 @@ extension AppState {
     }
 
     func buildProject(from draft: TierProjectDraft) throws -> Project {
-        let tiers = orderedTiers(for: draft).map { tier -> Project.Tier in
+        let tiers = buildTiersFromDraft(draft)
+        let items = buildItemsFromDraft(draft)
+        let overrides = buildOverridesFromDraft(draft)
+        let audit = draft.audit?.projectAudit ?? Project.Audit(createdAt: draft.createdAt, updatedAt: draft.updatedAt)
+
+        return Project(
+            schemaVersion: draft.schemaVersion,
+            projectId: draft.projectId.uuidString,
+            title: draft.title.isEmpty ? nil : draft.title,
+            description: draft.summary.isEmpty ? nil : draft.summary,
+            tiers: tiers,
+            items: items,
+            overrides: overrides.isEmpty ? nil : overrides,
+            links: draft.links,
+            storage: draft.storage,
+            settings: draft.settings,
+            collab: draft.collaboration,
+            audit: audit,
+            additional: draft.additional
+        )
+    }
+
+    private func buildTiersFromDraft(_ draft: TierProjectDraft) -> [Project.Tier] {
+        orderedTiers(for: draft).map { tier -> Project.Tier in
             let itemIds = orderedItems(for: tier).map(\.itemId)
             return Project.Tier(
                 id: tier.tierId,
@@ -200,7 +223,9 @@ extension AppState {
                 additional: tier.additional.isEmpty ? nil : tier.additional
             )
         }
+    }
 
+    private func buildItemsFromDraft(_ draft: TierProjectDraft) -> [String: Project.Item] {
         var items: [String: Project.Item] = [:]
         for item in draft.items {
             let media = item.media.map { $0.toProjectMedia() }
@@ -221,7 +246,10 @@ extension AppState {
             )
             items[item.itemId] = projectItem
         }
+        return items
+    }
 
+    private func buildOverridesFromDraft(_ draft: TierProjectDraft) -> [String: Project.ItemOverride] {
         var overrides: [String: Project.ItemOverride] = [:]
         for override in draft.overrides {
             let media = override.media.map { $0.toProjectMedia() }
@@ -235,24 +263,7 @@ extension AppState {
                 additional: override.additional.isEmpty ? nil : override.additional
             )
         }
-
-        let audit = draft.audit?.projectAudit ?? Project.Audit(createdAt: draft.createdAt, updatedAt: draft.updatedAt)
-
-        return Project(
-            schemaVersion: draft.schemaVersion,
-            projectId: draft.projectId.uuidString,
-            title: draft.title.isEmpty ? nil : draft.title,
-            description: draft.summary.isEmpty ? nil : draft.summary,
-            tiers: tiers,
-            items: items,
-            overrides: overrides.isEmpty ? nil : overrides,
-            links: draft.links,
-            storage: draft.storage,
-            settings: draft.settings,
-            collab: draft.collaboration,
-            audit: audit,
-            additional: draft.additional
-        )
+        return overrides
     }
 
     func normalizeTierOrdering(for draft: TierProjectDraft) {
@@ -263,7 +274,31 @@ extension AppState {
 
     func project(from entity: TierListEntity, source: TierListSource) -> Project {
         let sortedTiers = entity.tiers.sorted { $0.order < $1.order }
+        let (itemMap, projectTiers) = buildProjectComponents(sortedTiers: sortedTiers)
+        let settings = buildProjectSettingsFromEntity(entity, projectTiers: projectTiers)
+        let storageMode = determineStorageMode(source: source)
+        let audit = buildProjectAuditFromEntity(entity)
 
+        return Project(
+            schemaVersion: 1,
+            projectId: entity.identifier.uuidString,
+            title: entity.title,
+            description: entity.subtitle,
+            tiers: projectTiers,
+            items: itemMap,
+            overrides: nil,
+            links: nil,
+            storage: Project.Storage(mode: storageMode),
+            settings: settings,
+            collab: nil,
+            audit: audit,
+            additional: nil
+        )
+    }
+
+    private func buildProjectComponents(
+        sortedTiers: [TierEntity]
+    ) -> ([String: Project.Item], [Project.Tier]) {
         var itemMap: [String: Project.Item] = [:]
         var projectTiers: [Project.Tier] = []
 
@@ -285,43 +320,54 @@ extension AppState {
             projectTiers.append(tier)
 
             for itemEntity in sortedItems where itemMap[itemEntity.itemID] == nil {
-                var attributes: [String: JSONValue] = [:]
-                if let season = itemEntity.seasonString {
-                    attributes["season"] = .string(season)
-                }
-                if let seasonNumber = itemEntity.seasonNumber {
-                    attributes["seasonNumber"] = .number(Double(seasonNumber))
-                }
-                if let status = itemEntity.status {
-                    attributes["status"] = .string(status)
-                }
-                if let image = itemEntity.imageUrl {
-                    attributes["imageUrl"] = .string(image)
-                }
-
-                let item = Project.Item(
-                    id: itemEntity.itemID,
-                    title: itemEntity.name ?? itemEntity.itemID,
-                    subtitle: nil,
-                    summary: itemEntity.details,
-                    slug: itemEntity.itemID,
-                    media: nil,
-                    attributes: attributes.isEmpty ? nil : attributes,
-                    tags: nil,
-                    rating: nil,
-                    sources: nil,
-                    locale: nil,
-                    meta: nil,
-                    additional: nil
-                )
+                let item = buildProjectItemFromEntity(itemEntity)
                 itemMap[itemEntity.itemID] = item
             }
         }
 
-        let hasUnranked = projectTiers.contains { $0.id.lowercased() == "unranked" }
+        return (itemMap, projectTiers)
+    }
 
+    private func buildProjectItemFromEntity(_ itemEntity: TierItemEntity) -> Project.Item {
+        var attributes: [String: JSONValue] = [:]
+        if let season = itemEntity.seasonString {
+            attributes["season"] = .string(season)
+        }
+        if let seasonNumber = itemEntity.seasonNumber {
+            attributes["seasonNumber"] = .number(Double(seasonNumber))
+        }
+        if let status = itemEntity.status {
+            attributes["status"] = .string(status)
+        }
+        if let image = itemEntity.imageUrl {
+            attributes["imageUrl"] = .string(image)
+        }
+
+        return Project.Item(
+            id: itemEntity.itemID,
+            title: itemEntity.name ?? itemEntity.itemID,
+            subtitle: nil,
+            summary: itemEntity.details,
+            slug: itemEntity.itemID,
+            media: nil,
+            attributes: attributes.isEmpty ? nil : attributes,
+            tags: nil,
+            rating: nil,
+            sources: nil,
+            locale: nil,
+            meta: nil,
+            additional: nil
+        )
+    }
+
+    private func buildProjectSettingsFromEntity(
+        _ entity: TierListEntity,
+        projectTiers: [Project.Tier]
+    ) -> Project.Settings {
+        let hasUnranked = projectTiers.contains { $0.id.lowercased() == "unranked" }
         let themeSlug = entity.selectedThemeID.flatMap { TierThemeCatalog.theme(id: $0)?.slug }
-        let settings = Project.Settings(
+
+        return Project.Settings(
             theme: themeSlug,
             tierSortOrder: "descending",
             gridSnap: true,
@@ -331,129 +377,34 @@ extension AppState {
                 "highContrast": false
             ]
         )
+    }
 
-        let storageMode: String
+    private func determineStorageMode(source: TierListSource) -> String {
         switch source {
         case .bundled:
-            storageMode = "bundled"
+            return "bundled"
         case .file:
-            storageMode = "file"
+            return "file"
         case .authored:
-            storageMode = "local"
+            return "local"
         }
+    }
 
-        let audit = Project.Audit(
+    private func buildProjectAuditFromEntity(_ entity: TierListEntity) -> Project.Audit {
+        Project.Audit(
             createdAt: entity.createdAt,
             updatedAt: entity.updatedAt,
             createdBy: nil,
             updatedBy: nil
         )
-
-        return Project(
-            schemaVersion: 1,
-            projectId: entity.identifier.uuidString,
-            title: entity.title,
-            description: entity.subtitle,
-            tiers: projectTiers,
-            items: itemMap,
-            overrides: nil,
-            links: nil,
-            storage: Project.Storage(mode: storageMode),
-            settings: settings,
-            collab: nil,
-            audit: audit,
-            additional: nil
-        )
     }
 
     func projectFromInMemoryState(source: TierListSource) -> Project {
-        var orderedTiers = tierOrder
-        if tiers["unranked"].map({ !$0.isEmpty }) ?? false {
-            orderedTiers.append("unranked")
-        }
-
-        var projectTiers: [Project.Tier] = []
-        var projectItems: [String: Project.Item] = [:]
-
-        for (index, tierId) in orderedTiers.enumerated() {
-            let resolvedItems = tiers[tierId] ?? []
-            let label = tierLabels[tierId] ?? tierId
-            let color = tierColors[tierId]
-            let locked = lockedTiers.contains(tierId) ? true : nil
-
-            let identifiers = resolvedItems.map(\.id)
-            let tier = Project.Tier(
-                id: tierId,
-                label: label,
-                color: color,
-                order: index,
-                locked: locked,
-                collapsed: nil,
-                rules: nil,
-                itemIds: identifiers,
-                additional: nil
-            )
-            projectTiers.append(tier)
-
-            for item in resolvedItems where projectItems[item.id] == nil {
-                var attributes: [String: JSONValue] = [:]
-                if let season = item.seasonString {
-                    attributes["season"] = .string(season)
-                }
-                if let seasonNumber = item.seasonNumber {
-                    attributes["seasonNumber"] = .number(Double(seasonNumber))
-                }
-                if let status = item.status {
-                    attributes["status"] = .string(status)
-                }
-                if let imageUrl = item.imageUrl {
-                    attributes["imageUrl"] = .string(imageUrl)
-                }
-                if let description = item.description {
-                    attributes["description"] = .string(description)
-                }
-
-                let projectItem = Project.Item(
-                    id: item.id,
-                    title: item.name ?? item.id,
-                    subtitle: nil,
-                    summary: item.description,
-                    slug: item.id,
-                    media: nil,
-                    attributes: attributes.isEmpty ? nil : attributes,
-                    tags: nil,
-                    rating: nil,
-                    sources: nil,
-                    locale: nil,
-                    meta: nil,
-                    additional: nil
-                )
-                projectItems[item.id] = projectItem
-            }
-        }
-
-        let themeSlug = TierThemeCatalog.theme(id: selectedThemeID)?.slug
-        let settings = Project.Settings(
-            theme: themeSlug,
-            tierSortOrder: "descending",
-            gridSnap: true,
-            showUnranked: tiers["unranked"].map { !$0.isEmpty } ?? false,
-            accessibility: [
-                "voiceOver": true,
-                "highContrast": false
-            ]
-        )
-
-        let audit = Project.Audit(
-            createdAt: Date(),
-            updatedAt: Date(),
-            createdBy: "local-user",
-            updatedBy: "local-user"
-        )
-
-        let projectIdentifier = activeTierList?.entityID?.uuidString
-            ?? activeTierList?.identifier
-            ?? UUID().uuidString
+        let orderedTiers = buildOrderedTiersIncludingUnranked()
+        let (projectTiers, projectItems) = buildProjectTiersAndItems(orderedTiers: orderedTiers)
+        let settings = buildInMemoryProjectSettings()
+        let audit = buildInMemoryProjectAudit()
+        let projectIdentifier = determineProjectIdentifier()
 
         return Project(
             schemaVersion: 1,
@@ -470,6 +421,125 @@ extension AppState {
             audit: audit,
             additional: nil
         )
+    }
+
+    private func buildOrderedTiersIncludingUnranked() -> [String] {
+        var orderedTiers = tierOrder
+        if tiers["unranked"].map({ !$0.isEmpty }) ?? false {
+            orderedTiers.append("unranked")
+        }
+        return orderedTiers
+    }
+
+    private func buildProjectTiersAndItems(
+        orderedTiers: [String]
+    ) -> ([Project.Tier], [String: Project.Item]) {
+        var projectTiers: [Project.Tier] = []
+        var projectItems: [String: Project.Item] = [:]
+
+        for (index, tierId) in orderedTiers.enumerated() {
+            let resolvedItems = tiers[tierId] ?? []
+            let tier = buildProjectTierFromMemory(
+                tierId: tierId,
+                index: index,
+                items: resolvedItems
+            )
+            projectTiers.append(tier)
+
+            for item in resolvedItems where projectItems[item.id] == nil {
+                let projectItem = buildProjectItemFromMemory(item)
+                projectItems[item.id] = projectItem
+            }
+        }
+
+        return (projectTiers, projectItems)
+    }
+
+    private func buildProjectTierFromMemory(
+        tierId: String,
+        index: Int,
+        items: [Item]
+    ) -> Project.Tier {
+        let label = tierLabels[tierId] ?? tierId
+        let color = tierColors[tierId]
+        let locked = lockedTiers.contains(tierId) ? true : nil
+        let identifiers = items.map(\.id)
+
+        return Project.Tier(
+            id: tierId,
+            label: label,
+            color: color,
+            order: index,
+            locked: locked,
+            collapsed: nil,
+            rules: nil,
+            itemIds: identifiers,
+            additional: nil
+        )
+    }
+
+    private func buildProjectItemFromMemory(_ item: Item) -> Project.Item {
+        var attributes: [String: JSONValue] = [:]
+        if let season = item.seasonString {
+            attributes["season"] = .string(season)
+        }
+        if let seasonNumber = item.seasonNumber {
+            attributes["seasonNumber"] = .number(Double(seasonNumber))
+        }
+        if let status = item.status {
+            attributes["status"] = .string(status)
+        }
+        if let imageUrl = item.imageUrl {
+            attributes["imageUrl"] = .string(imageUrl)
+        }
+        if let description = item.description {
+            attributes["description"] = .string(description)
+        }
+
+        return Project.Item(
+            id: item.id,
+            title: item.name ?? item.id,
+            subtitle: nil,
+            summary: item.description,
+            slug: item.id,
+            media: nil,
+            attributes: attributes.isEmpty ? nil : attributes,
+            tags: nil,
+            rating: nil,
+            sources: nil,
+            locale: nil,
+            meta: nil,
+            additional: nil
+        )
+    }
+
+    private func buildInMemoryProjectSettings() -> Project.Settings {
+        let themeSlug = TierThemeCatalog.theme(id: selectedThemeID)?.slug
+        return Project.Settings(
+            theme: themeSlug,
+            tierSortOrder: "descending",
+            gridSnap: true,
+            showUnranked: tiers["unranked"].map { !$0.isEmpty } ?? false,
+            accessibility: [
+                "voiceOver": true,
+                "highContrast": false
+            ]
+        )
+    }
+
+    private func buildInMemoryProjectAudit() -> Project.Audit {
+        Project.Audit(
+            createdAt: Date(),
+            updatedAt: Date(),
+            createdBy: "local-user",
+            updatedBy: "local-user"
+        )
+    }
+
+    private func determineProjectIdentifier() -> String {
+        activeTierList?.entityID?.uuidString
+            ?? activeTierList?.identifier
+            ?? UUID().uuidString
     }
 }
 

@@ -168,6 +168,22 @@ struct PilotTestRunner {
 
     /// Run comprehensive pilot test grid
     func runPilot() async -> PilotTestReport {
+        logPilotHeader()
+
+        guard let session = try? await createTestSession() else {
+            onProgress("❌ Failed to create test session")
+            return PilotTestReport.generate(from: [])
+        }
+
+        let allResults = await executeTestRuns(session: session)
+        let report = PilotTestReport.generate(from: allResults)
+
+        logPilotSummary(report: report)
+
+        return report
+    }
+
+    private func logPilotHeader() {
         onProgress("🧪 ========================================")
         onProgress("🧪 PILOT TESTING: Unique List Generation")
         onProgress("🧪 ========================================")
@@ -179,15 +195,11 @@ struct PilotTestRunner {
         onProgress("  • Decoders: \(PilotTestConfig.DecoderConfig.all.count)")
         onProgress("  • Total runs: \(config.totalRuns)")
         onProgress("")
+    }
 
+    private func executeTestRuns(session: LanguageModelSession) async -> [PilotTestResult] {
         var allResults: [PilotTestResult] = []
         var runIndex = 0
-
-        // Create test session
-        guard let session = try? await createTestSession() else {
-            onProgress("❌ Failed to create test session")
-            return PilotTestReport.generate(from: [])
-        }
 
         for query in config.testQueries {
             for size in config.sizes {
@@ -207,20 +219,25 @@ struct PilotTestRunner {
                         decoder: "Diverse"
                     ) {
                         allResults.append(result)
-
-                        let status = result.passAtN ? "✅" : "⚠️"
-                        let dupPercent = String(format: "%.1f", result.dupRatePreDedup * 100)
-                        onProgress("""
-                              \(status) Got \(result.receivedN)/\(size) unique \
-                            (\(dupPercent)% dup)
-                            """)
+                        logTestResult(result: result, requestedSize: size)
                     }
                 }
             }
         }
 
-        let report = PilotTestReport.generate(from: allResults)
+        return allResults
+    }
 
+    private func logTestResult(result: PilotTestResult, requestedSize: Int) {
+        let status = result.passAtN ? "✅" : "⚠️"
+        let dupPercent = String(format: "%.1f", result.dupRatePreDedup * 100)
+        onProgress("""
+              \(status) Got \(result.receivedN)/\(requestedSize) unique \
+            (\(dupPercent)% dup)
+            """)
+    }
+
+    private func logPilotSummary(report: PilotTestReport) {
         onProgress("")
         onProgress("🧪 ========================================")
         onProgress("🧪 PILOT TEST COMPLETE")
@@ -239,8 +256,6 @@ struct PilotTestRunner {
         for performer in report.summary.topPerformers {
             onProgress("  • \(performer)")
         }
-
-        return report
     }
 
     private func runSingleTest(

@@ -23,16 +23,10 @@ class SystemPromptTester {
         let testQuery = "What are the top 25 most popular animated series"
         var results: [TestResult] = []
 
-        onProgress("🧪 Starting automated test of \(prompts.count) system prompts...")
-        onProgress("Test query: '\(testQuery)'")
-        print("\n🧪 ========== SYSTEM PROMPT TESTING ==========")
-        print("🧪 Test query: \(testQuery)")
-        print("🧪 Testing \(prompts.count) different system prompts...\n")
+        logTestHeader(testQuery: testQuery, onProgress: onProgress)
 
         for (index, prompt) in prompts.enumerated() {
-            onProgress("\n[\(index + 1)/\(prompts.count)] Testing prompt variant \(index + 1)...")
-            print("🧪 [\(index + 1)/\(prompts.count)] Testing prompt variant...")
-            print("🧪 Prompt preview: \(String(prompt.prefix(100)))...")
+            logPromptStart(index: index, prompt: prompt, onProgress: onProgress)
 
             let result = await testSinglePrompt(
                 promptNumber: index + 1,
@@ -41,70 +35,106 @@ class SystemPromptTester {
             )
 
             results.append(result)
+            savePartialResults(results: results)
 
-            // Save partial results after each test in case we hang later
-            let partialPath = "/tmp/tiercade_prompt_test_PARTIAL.txt"
-            writeDetailedLog(results: results, to: partialPath)
-            print("🧪 💾 Saved partial results (\(results.count) tests) to: \(partialPath)")
-
-            // Separate status reporting for different failure types
-            let status: String
-            if !result.hasDuplicates && !result.insufficient {
-                status = "✅ PASSED"
-            } else if result.insufficient && !result.hasDuplicates {
-                status = "⚠️ INSUFFICIENT"
-            } else if result.hasDuplicates && !result.insufficient {
-                status = "❌ DUPLICATES"
-            } else {
-                status = "❌ BOTH"
-            }
-
-            // Show raw response (no truncation)
-            onProgress("\n📝 RAW RESPONSE:")
-            onProgress(result.response)
-
-            // Show parsed items (all of them)
-            if !result.parsedItems.isEmpty {
-                onProgress("\n📋 PARSED ITEMS (\(result.parsedItems.count)):")
-                for (index, item) in result.parsedItems.enumerated() {
-                    onProgress("\(index + 1). \(item)")
-                }
-            }
-
-            // Show normalized items (all of them)
-            if !result.normalizedItems.isEmpty {
-                onProgress("\n🔍 NORMALIZED ITEMS (\(result.normalizedItems.count) unique):")
-                for (index, item) in result.normalizedItems.enumerated() {
-                    onProgress("\(index + 1). \(item)")
-                }
-            }
-
-            // Show analysis results
-            let summaryMessage = """
-
-            📊 ANALYSIS:
-            • Status: \(status)
-            • Format: \(result.wasJsonParsed ? "JSON" : "Text")
-            • Total items: \(result.totalItems)
-            • Unique items: \(result.uniqueItems)
-            • Duplicates: \(result.duplicateCount)
-            \(result.insufficient ? "• ⚠️ Insufficient items (needed 20+)" : "")
-            """
-            onProgress(summaryMessage)
-
-            print("🧪 Result: \(status)")
-            print("🧪   - Total items: \(result.totalItems)")
-            print("🧪   - Unique items: \(result.uniqueItems)")
-            print("🧪   - Duplicates: \(result.duplicateCount)")
-            if result.insufficient {
-                print("🧪   ⚠️ Insufficient items (needed 20+)")
-            }
-            print("")
+            let status = buildTestStatus(result: result)
+            reportTestResult(result: result, status: status, onProgress: onProgress)
 
             // Short delay between tests
             try? await Task.sleep(for: .seconds(1))
         }
 
+        printTestSummary(results: results, onProgress: onProgress)
+        saveCompleteLogs(results: results, onProgress: onProgress)
+
+        return results
+    }
+
+    private static func logTestHeader(testQuery: String, onProgress: @MainActor @escaping (String) -> Void) {
+        onProgress("🧪 Starting automated test of \(prompts.count) system prompts...")
+        onProgress("Test query: '\(testQuery)'")
+        print("\n🧪 ========== SYSTEM PROMPT TESTING ==========")
+        print("🧪 Test query: \(testQuery)")
+        print("🧪 Testing \(prompts.count) different system prompts...\n")
+    }
+
+    private static func logPromptStart(
+        index: Int,
+        prompt: String,
+        onProgress: @MainActor @escaping (String) -> Void
+    ) {
+        onProgress("\n[\(index + 1)/\(prompts.count)] Testing prompt variant \(index + 1)...")
+        print("🧪 [\(index + 1)/\(prompts.count)] Testing prompt variant...")
+        print("🧪 Prompt preview: \(String(prompt.prefix(100)))...")
+    }
+
+    private static func savePartialResults(results: [TestResult]) {
+        let partialPath = "/tmp/tiercade_prompt_test_PARTIAL.txt"
+        writeDetailedLog(results: results, to: partialPath)
+        print("🧪 💾 Saved partial results (\(results.count) tests) to: \(partialPath)")
+    }
+
+    private static func buildTestStatus(result: TestResult) -> String {
+        if !result.hasDuplicates && !result.insufficient {
+            return "✅ PASSED"
+        } else if result.insufficient && !result.hasDuplicates {
+            return "⚠️ INSUFFICIENT"
+        } else if result.hasDuplicates && !result.insufficient {
+            return "❌ DUPLICATES"
+        } else {
+            return "❌ BOTH"
+        }
+    }
+
+    private static func reportTestResult(
+        result: TestResult,
+        status: String,
+        onProgress: @MainActor @escaping (String) -> Void
+    ) {
+        // Show raw response (no truncation)
+        onProgress("\n📝 RAW RESPONSE:")
+        onProgress(result.response)
+
+        // Show parsed items (all of them)
+        if !result.parsedItems.isEmpty {
+            onProgress("\n📋 PARSED ITEMS (\(result.parsedItems.count)):")
+            for (index, item) in result.parsedItems.enumerated() {
+                onProgress("\(index + 1). \(item)")
+            }
+        }
+
+        // Show normalized items (all of them)
+        if !result.normalizedItems.isEmpty {
+            onProgress("\n🔍 NORMALIZED ITEMS (\(result.normalizedItems.count) unique):")
+            for (index, item) in result.normalizedItems.enumerated() {
+                onProgress("\(index + 1). \(item)")
+            }
+        }
+
+        // Show analysis results
+        let summaryMessage = """
+
+        📊 ANALYSIS:
+        • Status: \(status)
+        • Format: \(result.wasJsonParsed ? "JSON" : "Text")
+        • Total items: \(result.totalItems)
+        • Unique items: \(result.uniqueItems)
+        • Duplicates: \(result.duplicateCount)
+        \(result.insufficient ? "• ⚠️ Insufficient items (needed 20+)" : "")
+        """
+        onProgress(summaryMessage)
+
+        print("🧪 Result: \(status)")
+        print("🧪   - Total items: \(result.totalItems)")
+        print("🧪   - Unique items: \(result.uniqueItems)")
+        print("🧪   - Duplicates: \(result.duplicateCount)")
+        if result.insufficient {
+            print("🧪   ⚠️ Insufficient items (needed 20+)")
+        }
+        print("")
+    }
+
+    private static func printTestSummary(results: [TestResult], onProgress: @MainActor @escaping (String) -> Void) {
         print("\n🧪 ========== TEST SUMMARY ==========")
         let successful = results.filter { !$0.hasDuplicates && !$0.insufficient }
         let onlyDuplicates = results.filter { $0.hasDuplicates && !$0.insufficient }
@@ -137,8 +167,9 @@ class SystemPromptTester {
         } else {
             onProgress("\n❌ No prompts fully passed both checks.")
         }
+    }
 
-        // Write comprehensive log file for LLM analysis
+    private static func saveCompleteLogs(results: [TestResult], onProgress: @MainActor @escaping (String) -> Void) {
         let logPath = "/tmp/tiercade_prompt_test_results.txt"
         let legacyLogPath = "/tmp/tiercade_test_output.log"
         writeDetailedLog(results: results, to: logPath)
@@ -146,12 +177,22 @@ class SystemPromptTester {
         onProgress("📁 Legacy log mirrored to: \(legacyLogPath)")
         print("🧪 Detailed log saved to: \(logPath)")
         print("🧪 Legacy log mirrored to: \(legacyLogPath)")
-
-        return results
     }
 
     private static func writeDetailedLog(results: [TestResult], to path: String) {
-        var log = """
+        let log = buildLogContent(results: results)
+        writeLogToFile(log: log, path: path)
+    }
+
+    private static func buildLogContent(results: [TestResult]) -> String {
+        var log = buildLogHeader(results: results)
+        log += buildLogResultEntries(results: results)
+        log += buildLogSummary(results: results)
+        return log
+    }
+
+    private static func buildLogHeader(results: [TestResult]) -> String {
+        """
         ================================================================================
         TIERCADE PROMPT TESTING - DETAILED RESULTS
         ================================================================================
@@ -161,14 +202,17 @@ class SystemPromptTester {
 
 
         """
+    }
 
+    private static func buildLogResultEntries(results: [TestResult]) -> String {
+        var entries = ""
         for result in results {
             let status = !result.hasDuplicates && !result.insufficient ? "PASSED"
                 : result.insufficient && !result.hasDuplicates ? "INSUFFICIENT"
                 : result.hasDuplicates && !result.insufficient ? "DUPLICATES"
                 : "BOTH_FAILURES"
 
-            log += """
+            entries += """
             ================================================================================
             PROMPT #\(result.promptNumber)
             ================================================================================
@@ -198,8 +242,11 @@ class SystemPromptTester {
 
             """
         }
+        return entries
+    }
 
-        log += """
+    private static func buildLogSummary(results: [TestResult]) -> String {
+        """
         ================================================================================
         SUMMARY
         ================================================================================
@@ -210,7 +257,9 @@ class SystemPromptTester {
         Both Failures: \(results.filter { $0.hasDuplicates && $0.insufficient }.count)
         ================================================================================
         """
+    }
 
+    private static func writeLogToFile(log: String, path: String) {
         do {
             // Ensure the directory exists
             let url = URL(fileURLWithPath: path)
@@ -227,19 +276,23 @@ class SystemPromptTester {
             try log.write(toFile: legacyPath, atomically: true, encoding: .utf8)
             print("🧪 ✅ Legacy log mirrored to: \(legacyPath)")
         } catch {
-            print("🧪 ❌ ERROR writing log file to \(path)")
-            print("🧪 ❌ Error: \(error)")
-            print("🧪 ❌ Error description: \(error.localizedDescription)")
+            handleLogWriteError(log: log, path: path, error: error)
+        }
+    }
 
-            // Fallback: try writing to Documents directory
-            if let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-                let fallbackPath = documentsPath.appendingPathComponent("tiercade_prompt_test_results.txt").path
-                do {
-                    try log.write(toFile: fallbackPath, atomically: true, encoding: .utf8)
-                    print("🧪 ✅ Fallback: Log written to \(fallbackPath)")
-                } catch {
-                    print("🧪 ❌ Fallback also failed: \(error)")
-                }
+    private static func handleLogWriteError(log: String, path: String, error: Error) {
+        print("🧪 ❌ ERROR writing log file to \(path)")
+        print("🧪 ❌ Error: \(error)")
+        print("🧪 ❌ Error description: \(error.localizedDescription)")
+
+        // Fallback: try writing to Documents directory
+        if let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+            let fallbackPath = documentsPath.appendingPathComponent("tiercade_prompt_test_results.txt").path
+            do {
+                try log.write(toFile: fallbackPath, atomically: true, encoding: .utf8)
+                print("🧪 ✅ Fallback: Log written to \(fallbackPath)")
+            } catch {
+                print("🧪 ❌ Fallback also failed: \(error)")
             }
         }
     }
@@ -275,70 +328,94 @@ class SystemPromptTester {
         testQuery: String
     ) async -> TestResult {
         do {
-            let instructions = Instructions(systemPrompt)
-            let session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
-
-            // Explicit generation options for reproducibility and control
-            let opts = GenerationOptions(
-                sampling: .random(top: 50, seed: UInt64.random(in: 0...UInt64.max)),
-                temperature: 0.8,
-                maximumResponseTokens: 1200
-            )
-
-            print("🧪   ⏱️ Starting generation with 60s timeout...")
-
-            // Add timeout to prevent hanging forever
-            let responseContent = try await withTimeout(seconds: 60) {
-                try await session.respond(to: Prompt(testQuery), options: opts).content
-            }
-
+            let responseContent = try await executePromptGeneration(systemPrompt: systemPrompt, testQuery: testQuery)
             print("🧪   ✅ Generation completed successfully")
             let analysis = analyzeDuplicates(responseContent)
-
-            return TestResult(
+            return buildSuccessfulTestResult(
                 promptNumber: promptNumber,
-                promptText: systemPrompt,
-                hasDuplicates: analysis.hasDuplicates,
-                duplicateCount: analysis.duplicateCount,
-                uniqueItems: analysis.uniqueItems,
-                totalItems: analysis.totalItems,
-                insufficient: analysis.insufficient,
-                wasJsonParsed: analysis.wasJsonParsed,
-                response: responseContent,
-                parsedItems: analysis.parsedItems,
-                normalizedItems: analysis.normalizedItems
+                systemPrompt: systemPrompt,
+                responseContent: responseContent,
+                analysis: analysis
             )
         } catch is TimeoutError {
-            print("🧪 ⏱️ TIMEOUT after 60 seconds for prompt #\(promptNumber)")
-            return TestResult(
-                promptNumber: promptNumber,
-                promptText: systemPrompt,
-                hasDuplicates: true,
-                duplicateCount: 0,
-                uniqueItems: 0,
-                totalItems: 0,
-                insufficient: true,
-                wasJsonParsed: false,
-                response: "TIMEOUT: Generation took longer than 60 seconds",
-                parsedItems: [],
-                normalizedItems: []
-            )
+            return buildTimeoutTestResult(promptNumber: promptNumber, systemPrompt: systemPrompt)
         } catch {
-            print("🧪 ❌ ERROR testing prompt #\(promptNumber): \(error)")
-            return TestResult(
-                promptNumber: promptNumber,
-                promptText: systemPrompt,
-                hasDuplicates: true,
-                duplicateCount: 0,
-                uniqueItems: 0,
-                totalItems: 0,
-                insufficient: true,
-                wasJsonParsed: false,
-                response: "ERROR: \(error.localizedDescription)",
-                parsedItems: [],
-                normalizedItems: []
-            )
+            return buildErrorTestResult(promptNumber: promptNumber, systemPrompt: systemPrompt, error: error)
         }
+    }
+
+    private static func executePromptGeneration(systemPrompt: String, testQuery: String) async throws -> String {
+        let instructions = Instructions(systemPrompt)
+        let session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
+
+        // Explicit generation options for reproducibility and control
+        let opts = GenerationOptions(
+            sampling: .random(top: 50, seed: UInt64.random(in: 0...UInt64.max)),
+            temperature: 0.8,
+            maximumResponseTokens: 1200
+        )
+
+        print("🧪   ⏱️ Starting generation with 60s timeout...")
+
+        // Add timeout to prevent hanging forever
+        return try await withTimeout(seconds: 60) {
+            try await session.respond(to: Prompt(testQuery), options: opts).content
+        }
+    }
+
+    private static func buildSuccessfulTestResult(
+        promptNumber: Int,
+        systemPrompt: String,
+        responseContent: String,
+        analysis: DuplicateAnalysisResult
+    ) -> TestResult {
+        TestResult(
+            promptNumber: promptNumber,
+            promptText: systemPrompt,
+            hasDuplicates: analysis.hasDuplicates,
+            duplicateCount: analysis.duplicateCount,
+            uniqueItems: analysis.uniqueItems,
+            totalItems: analysis.totalItems,
+            insufficient: analysis.insufficient,
+            wasJsonParsed: analysis.wasJsonParsed,
+            response: responseContent,
+            parsedItems: analysis.parsedItems,
+            normalizedItems: analysis.normalizedItems
+        )
+    }
+
+    private static func buildTimeoutTestResult(promptNumber: Int, systemPrompt: String) -> TestResult {
+        print("🧪 ⏱️ TIMEOUT after 60 seconds for prompt #\(promptNumber)")
+        return TestResult(
+            promptNumber: promptNumber,
+            promptText: systemPrompt,
+            hasDuplicates: true,
+            duplicateCount: 0,
+            uniqueItems: 0,
+            totalItems: 0,
+            insufficient: true,
+            wasJsonParsed: false,
+            response: "TIMEOUT: Generation took longer than 60 seconds",
+            parsedItems: [],
+            normalizedItems: []
+        )
+    }
+
+    private static func buildErrorTestResult(promptNumber: Int, systemPrompt: String, error: Error) -> TestResult {
+        print("🧪 ❌ ERROR testing prompt #\(promptNumber): \(error)")
+        return TestResult(
+            promptNumber: promptNumber,
+            promptText: systemPrompt,
+            hasDuplicates: true,
+            duplicateCount: 0,
+            uniqueItems: 0,
+            totalItems: 0,
+            insufficient: true,
+            wasJsonParsed: false,
+            response: "ERROR: \(error.localizedDescription)",
+            parsedItems: [],
+            normalizedItems: []
+        )
     }
 
     // Robust normalization function for duplicate detection
@@ -392,54 +469,103 @@ class SystemPromptTester {
         let normalizedItems: [String]
     }
 
+    struct ParsedItems {
+        let items: [String]
+        let wasJsonParsed: Bool
+    }
+
+    struct DuplicateDetectionResult {
+        let seenNormalized: Set<String>
+        let normalizedList: [String]
+        let duplicateCount: Int
+    }
+
+    struct AnalysisMetrics {
+        let totalItems: Int
+        let uniqueItems: Int
+        let insufficient: Bool
+    }
+
     private static func analyzeDuplicates(
         _ text: String,
         expectedCount: Int = 25
     ) -> DuplicateAnalysisResult {
+        let parsed = parseItems(from: text)
+        let duplicates = detectDuplicates(in: parsed.items)
+        let metrics = calculateMetrics(
+            itemCount: parsed.items.count,
+            uniqueCount: duplicates.seenNormalized.count,
+            expectedCount: expectedCount
+        )
+
+        return DuplicateAnalysisResult(
+            hasDuplicates: duplicates.duplicateCount > 0,
+            duplicateCount: duplicates.duplicateCount,
+            uniqueItems: metrics.uniqueItems,
+            totalItems: metrics.totalItems,
+            insufficient: metrics.insufficient,
+            wasJsonParsed: parsed.wasJsonParsed,
+            parsedItems: parsed.items,
+            normalizedItems: duplicates.normalizedList
+        )
+    }
+
+    private static func parseItems(from text: String) -> ParsedItems {
+        if let items = tryParseAsJson(text) {
+            return ParsedItems(items: items, wasJsonParsed: true)
+        }
+        return ParsedItems(items: parseAsText(text), wasJsonParsed: false)
+    }
+
+    private static func tryParseAsJson(_ text: String) -> [String]? {
+        guard let jsonData = text.data(using: .utf8),
+              let jsonArray = try? JSONSerialization.jsonObject(with: jsonData) as? [String] else {
+            return nil
+        }
+        print("🧪   Parsed as JSON array")
+        return jsonArray
+    }
+
+    private static func parseAsText(_ text: String) -> [String] {
+        let lines = text.components(separatedBy: .newlines)
+        if let numberedItems = tryParseNumberedList(lines), !numberedItems.isEmpty {
+            return numberedItems
+        }
+        return parseOnePerLine(lines)
+    }
+
+    private static func tryParseNumberedList(_ lines: [String]) -> [String]? {
         var items: [String] = []
-        var wasJsonParsed = false
-
-        // Try to parse as JSON array first
-        if let jsonData = text.data(using: .utf8),
-           let jsonArray = try? JSONSerialization.jsonObject(with: jsonData) as? [String] {
-            items = jsonArray
-            wasJsonParsed = true
-            print("🧪   Parsed as JSON array")
-        } else {
-            // Try numbered list parsing
-            let lines = text.components(separatedBy: .newlines)
-            var foundNumberedItems = false
-
-            for line in lines {
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if let range = trimmed.range(of: #"^\d+[\.)]\s*"#, options: .regularExpression) {
-                    let content = String(trimmed[range.upperBound...])
-                        .trimmingCharacters(in: .whitespaces)
-                    items.append(content)
-                    foundNumberedItems = true
-                }
-            }
-
-            // If no numbered items found, try one-per-line format
-            // But limit to avoid counting prose as items
-            if !foundNumberedItems {
-                var lineCount = 0
-                for line in lines {
-                    let trimmed = line.trimmingCharacters(in: .whitespaces)
-                    // Skip empty lines and lines that look like commentary or prose
-                    if !trimmed.isEmpty
-                        && !trimmed.hasPrefix("//")
-                        && !trimmed.hasPrefix("#")
-                        && trimmed.count < 100 {  // Avoid prose paragraphs
-                        items.append(trimmed)
-                        lineCount += 1
-                        if lineCount > 50 { break }  // Cap to avoid runaway parsing
-                    }
-                }
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if let range = trimmed.range(of: #"^\d+[\.)]\s*"#, options: .regularExpression) {
+                let content = String(trimmed[range.upperBound...])
+                    .trimmingCharacters(in: .whitespaces)
+                items.append(content)
             }
         }
+        return items.isEmpty ? nil : items
+    }
 
-        // Count duplicates using robust normalization
+    private static func parseOnePerLine(_ lines: [String]) -> [String] {
+        var items: [String] = []
+        var lineCount = 0
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            // Skip empty lines and lines that look like commentary or prose
+            if !trimmed.isEmpty
+                && !trimmed.hasPrefix("//")
+                && !trimmed.hasPrefix("#")
+                && trimmed.count < 100 {  // Avoid prose paragraphs
+                items.append(trimmed)
+                lineCount += 1
+                if lineCount > 50 { break }  // Cap to avoid runaway parsing
+            }
+        }
+        return items
+    }
+
+    private static func detectDuplicates(in items: [String]) -> DuplicateDetectionResult {
         var seenNormalized = Set<String>()
         var normalizedList: [String] = []
         var duplicateCount = 0
@@ -455,23 +581,24 @@ class SystemPromptTester {
             }
         }
 
-        let totalItems = items.count
-        let uniqueItems = seenNormalized.count
+        return DuplicateDetectionResult(
+            seenNormalized: seenNormalized,
+            normalizedList: normalizedList,
+            duplicateCount: duplicateCount
+        )
+    }
 
-        // Separate failure causes
+    private static func calculateMetrics(
+        itemCount: Int,
+        uniqueCount: Int,
+        expectedCount: Int
+    ) -> AnalysisMetrics {
         let minimumRequired = Int(Double(expectedCount) * 0.8)
-        let insufficient = totalItems < minimumRequired
-        let hasDuplicates = duplicateCount > 0
-
-        return DuplicateAnalysisResult(
-            hasDuplicates: hasDuplicates,
-            duplicateCount: duplicateCount,
-            uniqueItems: uniqueItems,
-            totalItems: totalItems,
-            insufficient: insufficient,
-            wasJsonParsed: wasJsonParsed,
-            parsedItems: items,
-            normalizedItems: normalizedList
+        let insufficient = itemCount < minimumRequired
+        return AnalysisMetrics(
+            totalItems: itemCount,
+            uniqueItems: uniqueCount,
+            insufficient: insufficient
         )
     }
 
