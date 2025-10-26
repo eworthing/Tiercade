@@ -554,6 +554,14 @@ final class FMClient {
         let params: GenerateParameters
     }
 
+    struct UnguidedAttemptContext: Sendable {
+        let attempt: Int
+        let params: GenerateTextArrayParameters
+        let options: GenerationOptions
+        let sessionRecreated: Bool
+        let elapsed: Double
+    }
+
     struct GenerateTextArrayParameters {
         let prompt: String
         let profile: DecoderProfile

@@ -291,13 +291,15 @@ extension FMClient {
             saveParseSuccessDebug(arr: arr, debugDir: debugDir)
 
             recordUnguidedSuccess(
-                telemetry: &telemetry,
-                attempt: attempt,
-                params: params,
-                options: options,
-                sessionRecreated: sessionRecreated,
+                context: UniqueListCoordinator.UnguidedAttemptContext(
+                    attempt: attempt,
+                    params: params,
+                    options: options,
+                    sessionRecreated: sessionRecreated,
+                    elapsed: attemptElapsed
+                ),
                 itemCount: arr.count,
-                elapsed: attemptElapsed
+                telemetry: &telemetry
             )
 
             return arr
@@ -322,12 +324,14 @@ extension FMClient {
         logUnguidedFailure(error: error, elapsed: attemptElapsed)
 
         recordUnguidedFailure(
-            telemetry: &telemetry,
-            attempt: attempt,
-            params: params,
-            options: options,
-            sessionRecreated: sessionRecreated,
-            elapsed: attemptElapsed
+            context: UniqueListCoordinator.UnguidedAttemptContext(
+                attempt: attempt,
+                params: params,
+                options: options,
+                sessionRecreated: sessionRecreated,
+                elapsed: attemptElapsed
+            ),
+            telemetry: &telemetry
         )
 
         return await handleUnguidedRetry(
@@ -427,22 +431,18 @@ extension FMClient {
     }
 
     func recordUnguidedSuccess(
-        telemetry: inout [AttemptMetrics],
-        attempt: Int,
-        params: GenerateTextArrayParameters,
-        options: GenerationOptions,
-        sessionRecreated: Bool,
+        context: UniqueListCoordinator.UnguidedAttemptContext,
         itemCount: Int,
-        elapsed: Double
+        telemetry: inout [AttemptMetrics]
     ) {
         telemetry.append(AttemptMetrics(
-            attemptIndex: attempt,
-            seed: params.initialSeed,
-            sampling: "unguided:\(params.profile.description)",
-            temperature: options.temperature,
-            sessionRecreated: sessionRecreated,
+            attemptIndex: context.attempt,
+            seed: context.params.initialSeed,
+            sampling: "unguided:\(context.params.profile.description)",
+            temperature: context.options.temperature,
+            sessionRecreated: context.sessionRecreated,
             itemsReturned: itemCount,
-            elapsedSec: elapsed
+            elapsedSec: context.elapsed
         ))
     }
 
@@ -454,21 +454,17 @@ extension FMClient {
     }
 
     func recordUnguidedFailure(
-        telemetry: inout [AttemptMetrics],
-        attempt: Int,
-        params: GenerateTextArrayParameters,
-        options: GenerationOptions,
-        sessionRecreated: Bool,
-        elapsed: Double
+        context: UniqueListCoordinator.UnguidedAttemptContext,
+        telemetry: inout [AttemptMetrics]
     ) {
         telemetry.append(AttemptMetrics(
-            attemptIndex: attempt,
-            seed: params.initialSeed,
-            sampling: "unguided:\(params.profile.description)",
-            temperature: options.temperature,
-            sessionRecreated: sessionRecreated,
+            attemptIndex: context.attempt,
+            seed: context.params.initialSeed,
+            sampling: "unguided:\(context.params.profile.description)",
+            temperature: context.options.temperature,
+            sessionRecreated: context.sessionRecreated,
             itemsReturned: 0,
-            elapsedSec: elapsed
+            elapsedSec: context.elapsed
         ))
     }
 
