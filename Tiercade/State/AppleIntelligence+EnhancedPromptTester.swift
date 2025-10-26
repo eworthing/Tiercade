@@ -193,12 +193,14 @@ class EnhancedPromptTester {
             onProgress("\n📝 Testing Prompt: \(promptName)")
 
             let runResults = await executePromptTestRuns(
-                config: config,
-                promptNumber: promptNumber,
-                promptName: promptName,
-                promptText: promptText,
+                context: TestExecutionContext(
+                    config: config,
+                    promptNumber: promptNumber,
+                    promptName: promptName,
+                    promptText: promptText,
+                    totalRuns: totalRuns
+                ),
                 completedTests: &completedTests,
-                totalRuns: totalRuns,
                 onProgress: onProgress
             )
 
@@ -265,28 +267,24 @@ class EnhancedPromptTester {
     }
 
     private static func executePromptTestRuns(
-        config: TestConfig,
-        promptNumber: Int,
-        promptName: String,
-        promptText: String,
+        context: TestExecutionContext,
         completedTests: inout Int,
-        totalRuns: Int,
         onProgress: @MainActor @escaping (String) -> Void
     ) async -> [SingleRunResult] {
         var runResults: [SingleRunResult] = []
 
-        for testQuery in config.testQueries {
+        for testQuery in context.config.testQueries {
             let query = testQuery.query
             let target = testQuery.target
             let domain = testQuery.domain
-            for decodingConfig in config.decodingConfigs {
-                for seed in config.seeds {
-                    for guided in config.guidedModes {
+            for decodingConfig in context.config.decodingConfigs {
+                for seed in context.config.seeds {
+                    for guided in context.config.guidedModes {
                         let result = await testSingleRun(SingleRunParameters(
-                            config: config,
-                            promptNumber: promptNumber,
-                            promptName: promptName,
-                            promptText: promptText,
+                            config: context.config,
+                            promptNumber: context.promptNumber,
+                            promptName: context.promptName,
+                            promptText: context.promptText,
                             runNumber: completedTests + 1,
                             query: query,
                             targetCount: target,
@@ -303,7 +301,7 @@ class EnhancedPromptTester {
                             logProgressUpdate(
                                 result: result,
                                 completedTests: completedTests,
-                                totalRuns: totalRuns,
+                                totalRuns: context.totalRuns,
                                 domain: domain,
                                 onProgress: onProgress
                             )
@@ -403,7 +401,7 @@ class EnhancedPromptTester {
                 duration: duration, finishReason: response.finishReason
             )
 
-            return buildSuccessResult(
+            return buildSuccessResult(context: SuccessResultContext(
                 params: params,
                 nBucket: nBucket,
                 responseContent: response.content,
@@ -414,19 +412,19 @@ class EnhancedPromptTester {
                 maxTokens: maxTokens,
                 duration: duration,
                 timePerUnique: timePerUnique
-            )
+            ))
         } catch {
             let duration = Date().timeIntervalSince(startTime)
             logToFile("❌ ERROR: \(error.localizedDescription)")
 
-            return buildErrorResult(
+            return buildErrorResult(context: ErrorResultContext(
                 params: params,
                 nBucket: nBucket,
                 effectiveTarget: effectiveTarget,
                 maxTokens: maxTokens,
                 duration: duration,
                 error: error
-            )
+            ))
         }
     }
 
@@ -442,6 +440,36 @@ class EnhancedPromptTester {
         let content: String
         let finishReason: String?
         let wasTruncated: Bool
+    }
+
+    private struct SuccessResultContext: Sendable {
+        let params: SingleRunParameters
+        let nBucket: String
+        let responseContent: String
+        let analysis: ResponseAnalysis
+        let surplusAtN: Int
+        let finishReason: String?
+        let wasTruncated: Bool
+        let maxTokens: Int
+        let duration: TimeInterval
+        let timePerUnique: Double
+    }
+
+    private struct ErrorResultContext: Sendable {
+        let params: SingleRunParameters
+        let nBucket: String
+        let effectiveTarget: Int
+        let maxTokens: Int
+        let duration: TimeInterval
+        let error: Error
+    }
+
+    private struct TestExecutionContext: Sendable {
+        let config: TestConfig
+        let promptNumber: Int
+        let promptName: String
+        let promptText: String
+        let totalRuns: Int
     }
 
     private static func executeLanguageModelRequest(
@@ -494,70 +522,52 @@ class EnhancedPromptTester {
         )
     }
 
-    private static func buildSuccessResult(
-        params: SingleRunParameters,
-        nBucket: String,
-        responseContent: String,
-        analysis: ResponseAnalysis,
-        surplusAtN: Int,
-        finishReason: String?,
-        wasTruncated: Bool,
-        maxTokens: Int,
-        duration: TimeInterval,
-        timePerUnique: Double
-    ) -> SingleRunResult {
+    private static func buildSuccessResult(context: SuccessResultContext) -> SingleRunResult {
         SingleRunResult(
-            promptNumber: params.promptNumber,
-            promptName: params.promptName,
-            runNumber: params.runNumber,
-            seed: params.seed,
-            query: params.query,
-            targetCount: params.targetCount,
-            domain: params.domain,
-            nBucket: nBucket,
-            decodingName: params.decodingConfig.name,
-            guidedSchema: params.useGuidedSchema,
-            response: responseContent,
-            parsedItems: analysis.parsedItems,
-            normalizedItems: analysis.normalizedItems,
-            totalItems: analysis.totalItems,
-            uniqueItems: analysis.uniqueItems,
-            duplicateCount: analysis.duplicateCount,
-            dupRate: analysis.dupRate,
-            passAtN: analysis.passAtN,
-            surplusAtN: surplusAtN,
-            jsonStrict: analysis.wasJsonParsed,
-            insufficient: analysis.insufficient,
-            formatError: analysis.formatError,
-            wasJsonParsed: analysis.wasJsonParsed,
-            finishReason: finishReason,
-            wasTruncated: wasTruncated,
-            maxTokensUsed: maxTokens,
-            duration: duration,
-            timePerUnique: timePerUnique
+            promptNumber: context.params.promptNumber,
+            promptName: context.params.promptName,
+            runNumber: context.params.runNumber,
+            seed: context.params.seed,
+            query: context.params.query,
+            targetCount: context.params.targetCount,
+            domain: context.params.domain,
+            nBucket: context.nBucket,
+            decodingName: context.params.decodingConfig.name,
+            guidedSchema: context.params.useGuidedSchema,
+            response: context.responseContent,
+            parsedItems: context.analysis.parsedItems,
+            normalizedItems: context.analysis.normalizedItems,
+            totalItems: context.analysis.totalItems,
+            uniqueItems: context.analysis.uniqueItems,
+            duplicateCount: context.analysis.duplicateCount,
+            dupRate: context.analysis.dupRate,
+            passAtN: context.analysis.passAtN,
+            surplusAtN: context.surplusAtN,
+            jsonStrict: context.analysis.wasJsonParsed,
+            insufficient: context.analysis.insufficient,
+            formatError: context.analysis.formatError,
+            wasJsonParsed: context.analysis.wasJsonParsed,
+            finishReason: context.finishReason,
+            wasTruncated: context.wasTruncated,
+            maxTokensUsed: context.maxTokens,
+            duration: context.duration,
+            timePerUnique: context.timePerUnique
         )
     }
 
-    private static func buildErrorResult(
-        params: SingleRunParameters,
-        nBucket: String,
-        effectiveTarget: Int,
-        maxTokens: Int,
-        duration: TimeInterval,
-        error: Error
-    ) -> SingleRunResult {
+    private static func buildErrorResult(context: ErrorResultContext) -> SingleRunResult {
         SingleRunResult(
-            promptNumber: params.promptNumber,
-            promptName: params.promptName,
-            runNumber: params.runNumber,
-            seed: params.seed,
-            query: params.query,
-            targetCount: params.targetCount,
-            domain: params.domain,
-            nBucket: nBucket,
-            decodingName: params.decodingConfig.name,
-            guidedSchema: params.useGuidedSchema,
-            response: "ERROR: \(error.localizedDescription)",
+            promptNumber: context.params.promptNumber,
+            promptName: context.params.promptName,
+            runNumber: context.params.runNumber,
+            seed: context.params.seed,
+            query: context.params.query,
+            targetCount: context.params.targetCount,
+            domain: context.params.domain,
+            nBucket: context.nBucket,
+            decodingName: context.params.decodingConfig.name,
+            guidedSchema: context.params.useGuidedSchema,
+            response: "ERROR: \(context.error.localizedDescription)",
             parsedItems: [],
             normalizedItems: [],
             totalItems: 0,
@@ -565,15 +575,15 @@ class EnhancedPromptTester {
             duplicateCount: 0,
             dupRate: 1.0,
             passAtN: false,
-            surplusAtN: -(effectiveTarget),
+            surplusAtN: -(context.effectiveTarget),
             jsonStrict: false,
             insufficient: true,
             formatError: true,
             wasJsonParsed: false,
             finishReason: "error",
             wasTruncated: false,
-            maxTokensUsed: maxTokens,
-            duration: duration,
+            maxTokensUsed: context.maxTokens,
+            duration: context.duration,
             timePerUnique: 0.0
         )
     }
