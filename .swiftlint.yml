@@ -31,15 +31,26 @@ identifier_name:
     - Lw
     - Lk
 
-# Quality-focused opt-in rules to enable when ready; kept commented so current runs stay aligned.
-# opt_in_rules:
-#   - explicit_acl  # Require explicit access control to prevent accidental scope changes during refactors.
-#   - explicit_top_level_acl  # Ensure top-level declarations declare visibility, aiding module boundary clarity.
-#   - explicit_self  # Enforce explicit self usage for clearer capture semantics in async/concurrency-heavy code.
-#   - unused_declaration  # Flag dead APIs so agents don't rely on stale entry points.
-#   - unused_import  # Remove unused imports to keep dependencies obvious for automated tooling.
-#   - redundant_type_annotation  # Eliminate duplicate typing that obscures real logic changes.
-#   - redundant_optional_initialization  # Detect unnecessary optional defaults that add noise to state structs.
-#   - prefer_self_type_over_type_of_self  # Uphold Swift 6 idioms for actor and type references.
-#   - typed_throwing_functions  # Require explicit error types to document failure contracts for agents.
-#   - unneeded_parentheses_in_closure_argument  # Strip syntactic clutter that complicates diff-based reasoning.
+# Function parameter count suppression policy (see commit d910b22):
+# - Acceptable: Helper functions with 8+ params where parameter objects would obscure intent
+# - Prefer: Extract parameter objects (see RetryState pattern in ca46798)
+# - REQUIRED: Document reasoning inline for future reviewers when suppressing
+
+# High-impact opt-in rules (enabled to prevent recurring bugs):
+opt_in_rules:
+  - explicit_acl                          # Require explicit access control (catches f662d34-style visibility bugs during file splits)
+  - explicit_top_level_acl                # Ensure top-level declarations declare visibility, aiding module boundary clarity
+
+# Analyzer rules (run with 'swiftlint analyze' - requires compilation):
+analyzer_rules:
+  - unused_declaration                    # Flag dead code after refactors (catches cleanup needed after file splits)
+  - unused_import                         # Remove unused imports to keep dependencies clean
+
+# Staged for future (generates large initial diff):
+#   - explicit_self  # Enforce explicit self usage for clearer capture semantics in async/concurrency-heavy code
+
+# Low signal for current issues (keep disabled):
+#   - redundant_type_annotation  # Eliminate duplicate typing that obscures real logic changes
+#   - redundant_optional_initialization  # Detect unnecessary optional defaults that add noise to state structs
+#   - prefer_self_type_over_type_of_self  # Uphold Swift 6 idioms for actor and type references
+#   - unneeded_parentheses_in_closure_argument  # Strip syntactic clutter that complicates diff-based reasoning

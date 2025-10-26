@@ -22,7 +22,7 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 
 - `Tiercade/State/AppState.swift` is the only source of truth (`@MainActor @Observable`). Every mutation lives in `AppState+*.swift` extensions and calls TiercadeCore helpers—never mutate `tiers` or `selection` directly inside views.
 - Shared logic comes from `TiercadeCore/` (`TierLogic`, `HeadToHeadLogic`, `RandomUtils`, etc.). Import the module instead of reimplementing `Items`/`TierConfig` types.
-- Views are grouped by intent: `Views/Main` (tier grid / `MainAppView`), `Views/Toolbar`, `Views/Overlays`, `Views/Components`. Match existing composition when adding surfaces.
+- Views are grouped by intent: `Views/Main` (tier grid / `MainAppView`), `Views/Toolbar`, `Views/Overlays`, `Views/Components`. Match existing composition when adding surfaces. **Proactive file size targets:** Keep overlays under ~400 lines, view files under ~600 lines; split helper views early to avoid reactive SwiftLint cleanup cycles (see [7f9fb84](https://github.com/eworthing/Tiercade/commit/7f9fb84), [373d731](https://github.com/eworthing/Tiercade/commit/373d731), [1837087](https://github.com/eworthing/Tiercade/commit/1837087) where files grew to 700+ lines before splitting).
 - Design tokens live in `Tiercade/Design/` (`Palette`, `TypeScale`, `Metrics`, `TVMetrics`). Reference these rather than hardcoding colors or spacing, especially for tvOS focus chrome.
 - `SharedCore.swift` wires TiercadeCore + design singletons; keep dependency injection consistent with its patterns.
 
@@ -31,6 +31,37 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 - Follow the pipeline `View → AppState method → TiercadeCore → state update → SwiftUI refresh`. Example: `AppState+Items.moveItem` wraps `TierLogic.moveItem` and auto-captures history.
 - Long work must use `withLoadingIndicator` / `updateProgress` from `AppState+Progress`; success and failure feedback flows through `AppState+Toast`.
 - Persistence & import/export: `AppState+Persistence` auto-saves to UserDefaults; `AppState+Export` and `+Import` wrap async file IO with typed errors (`ExportError`, `ImportError`). tvOS excludes PDF export via `#if os(tvOS)`.
+
+### AI Generation Loop Invariants
+**When working with Apple Intelligence retry logic** (AppleIntelligence+UniqueListGeneration.swift), preserve these critical state semantics:
+
+**RetryState parameter object pattern ([ca46798](https://github.com/eworthing/Tiercade/commit/ca46798)):**
+- State like `sessionRecreated`, `seed`, `options` lives in a `RetryState` struct passed by `inout`
+- **Per-attempt scoping:** Reset flags at the **start** of each loop iteration
+- **Telemetry accuracy:** Always report current attempt's state, not stale values from previous iterations
+
+**Common bug pattern ([1c5d26b](https://github.com/eworthing/Tiercade/commit/1c5d26b)):**
+```swift
+// ❌ WRONG: Local variable shadows struct field, reports stale value
+var sessionRecreated = false  // Never updated!
+for attempt in 0..<maxRetries {
+    // ... handleAttemptFailure updates retryState.sessionRecreated ...
+    recordMetrics(sessionRecreated: sessionRecreated)  // ❌ Always false!
+}
+
+// ✅ CORRECT: Reset struct field per-attempt, report current value
+for attempt in 0..<maxRetries {
+    retryState.sessionRecreated = false  // ✅ Reset each iteration
+    // ... handleAttemptFailure updates retryState.sessionRecreated ...
+    recordMetrics(sessionRecreated: retryState.sessionRecreated)  // ✅ Accurate!
+}
+```
+
+**After parameter-object refactors:**
+1. Search for local variables with same names as new struct fields (shadowing)
+2. Remove shadowing variables and update all references to use struct fields
+3. Verify per-loop reset logic is preserved
+4. Run acceptance tests: See debug hooks in `Tiercade/Views/Overlays/AIChat/AIChatOverlay+Tests.swift` for quick manual validation
 
 ## tvOS-first UX rules
 
@@ -205,6 +236,29 @@ func moveItem(_ id: String, to tier: String) {
 }
 ```
 
+### File Splitting & Access Control
+**When splitting files for SwiftLint compliance,** manage Swift's visibility rules carefully:
+
+**Critical visibility rules:**
+- Properties/methods accessed across split files **must** be `internal` (not `private`)
+- Extensions in separate files need `internal` visibility (Swift scopes `private` to the file)
+- Example: After splitting `ContentView+TierGrid.swift` → `ContentView+TierGrid+HardwareFocus.swift`, shared properties like `hardwareFocus`, `lastHardwareFocus` must change from `private` → `internal`
+
+**Mandatory build verification (prevents cross-platform regressions like [f662d34](https://github.com/eworthing/Tiercade/commit/f662d34)):**
+```bash
+# Build tvOS
+./build_install_launch.sh
+
+# Build Mac Catalyst
+./build_install_launch.sh catalyst
+```
+
+Both platforms **must** build successfully before merging structural splits. Catalyst often surfaces visibility issues that tvOS doesn't catch.
+
+**Pattern from recent splits:**
+- [f662d34](https://github.com/eworthing/Tiercade/commit/f662d34) - Fixed Catalyst build errors: `private` → `internal` for cross-file access
+- [5fe41fe](https://github.com/eworthing/Tiercade/commit/5fe41fe), [0060169](https://github.com/eworthing/Tiercade/commit/0060169) - MatchupArenaOverlay, TierListProjectWizardPages splits required visibility updates
+
 ### Async Operations & Progress
 Wrap long operations with loading indicators and progress tracking:
 ```swift
@@ -368,6 +422,25 @@ xcodebuild -project Tiercade.xcodeproj -scheme Tiercade \
 
 ### Test Commands
 TiercadeCore owns package tests. Run `swift test` inside `TiercadeCore/` (Swift Testing). UI automation stays lean—see UI test minimalism below.
+
+### Critical Test Scenarios
+**Import/Export validation before merging** (prevents regressions like [99dc534](https://github.com/eworthing/Tiercade/commit/99dc534), [f93d735](https://github.com/eworthing/Tiercade/commit/f93d735)):
+
+**CSV Import (AppState+Import):**
+- [ ] Preserves unique item IDs (no duplicates after import)
+- [ ] Handles malformed CSV gracefully (validation errors, not crashes)
+- [ ] Correctly maps columns to item attributes
+
+**Export Formats (AppState+Export):**
+- [ ] All formats include custom tiers (not just S-F defaults)
+- [ ] Empty tiers are handled correctly
+- [ ] Edge-case tier names (special characters, long names) export cleanly
+
+**Cross-Platform:**
+- [ ] After UI refactors or access-level changes, build succeeds on both platforms:
+  - `./build_install_launch.sh` (tvOS)
+  - `./build_install_launch.sh catalyst` (Mac Catalyst)
+- [ ] Visibility modifiers allow cross-file access within module
 
 ### UI test minimalism
 - Prefer existence checks and stable accessibility IDs over long remote navigation. Target < 12 s per focus path.

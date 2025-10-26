@@ -48,6 +48,9 @@ final class FMClient {
 
         for attempt in 0..<params.maxRetries {
             let attemptStart = Date()
+            // INVARIANT: Reset per-attempt flags to preserve telemetry accuracy (see 1c5d26b).
+            // This flag is scoped per attempt; handleAttemptFailure may set it to true during
+            // session recreation, but it must start false each iteration for accurate reporting.
             retryState.sessionRecreated = false
 
             logAttemptDetails(attempt: attempt, maxRetries: params.maxRetries, options: retryState.options)
