@@ -3,8 +3,8 @@ import TiercadeCore
 
 // MARK: - View Modifiers for MatchupArenaOverlay
 
-extension View {
-    func applyOverlayModifiers(namespace: Namespace.ID) -> some View {
+internal extension View {
+    internal func applyOverlayModifiers(namespace: Namespace.ID) -> some View {
         self
             .tvGlassRounded(40)
             #if swift(>=6.0)
@@ -23,7 +23,7 @@ extension View {
             #endif
     }
 
-    func applyFocusModifiers(
+    internal func applyFocusModifiers(
         focusAnchor: FocusState<MatchupFocusAnchor?>.Binding,
         defaultFocus: MatchupFocusAnchor,
         onAppear: @escaping () -> Void,
@@ -35,7 +35,7 @@ extension View {
             .onChange(of: focusAnchor.wrappedValue) { _, newValue in onFocusChange(newValue) }
     }
 
-    func applyH2HPairTracking(
+    internal func applyH2HPairTracking(
         app: AppState,
         onSync: @escaping () -> Void,
         onDisappear: @escaping () -> Void
@@ -48,7 +48,7 @@ extension View {
     }
 
     #if os(tvOS)
-    func applyTVOSModifiers(
+    internal func applyTVOSModifiers(
         app: AppState,
         handleMove: @escaping (MoveCommandDirection) -> Void
     ) -> some View {
@@ -57,7 +57,7 @@ extension View {
             .onMoveCommand(perform: handleMove)
     }
     #else
-    func applyNonTVOSModifiers(
+    internal func applyNonTVOSModifiers(
         app: AppState,
         overlayHasFocus: FocusState<Bool>.Binding,
         handleInput: @escaping (DirectionalMove) -> Void,
@@ -88,9 +88,9 @@ extension View {
 
 #if swift(>=6.0)
 private struct GlassEffectModifier: ViewModifier {
-    let namespace: Namespace.ID
+    internal let namespace: Namespace.ID
 
-    func body(content: Content) -> some View {
+    internal func body(content: Content) -> some View {
         content
             .glassEffectID("matchupOverlay", in: namespace)
             .glassEffectTransition(.matchedGeometry)

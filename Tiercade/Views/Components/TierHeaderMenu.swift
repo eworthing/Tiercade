@@ -1,15 +1,15 @@
 import SwiftUI
 
 #if os(tvOS)
-struct TierHeaderView: View {
+internal struct TierHeaderView: View {
     @Environment(AppState.self) private var app: AppState
-    let tierId: String
-    var titleColor: Color?
+    internal let tierId: String
+    internal var titleColor: Color?
     @State private var showMenu = false
     @State private var newLabel: String = ""
     @State private var newColorHex: String = ""
 
-    var body: some View {
+    internal var body: some View {
         HStack {
             Button(action: { showMenu = true }, label: {
                 Text(app.displayLabel(for: tierId))
@@ -54,12 +54,12 @@ struct TierHeaderView: View {
 
 private struct TierLabelEditor: View {
     @Bindable var app: AppState
-    let tierId: String
+    internal let tierId: String
     @Binding var showMenu: Bool
     @State private var label: String = ""
     @State private var colorHex: String = ""
 
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 16) {
             Text("Tier \(tierId)").font(.title2)
             HStack(spacing: 12) {

@@ -3,7 +3,7 @@ import SwiftUI
 import Observation
 import Charts
 
-struct AnalyticsSidebarView: View {
+internal struct AnalyticsSidebarView: View {
     @Environment(AppState.self) private var app: AppState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -14,7 +14,7 @@ struct AnalyticsSidebarView: View {
         case insight(Int)
     }
 
-    var body: some View {
+    internal var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width * 0.65
             ZStack(alignment: .trailing) {

@@ -14,7 +14,7 @@ import UIKit
 
 extension AIChatOverlay {
     @available(iOS 18.4, macOS 15.4, *)
-    func performImageGeneration(prompt: String) async {
+    internal func performImageGeneration(prompt: String) async {
         #if canImport(ImagePlayground)
         do {
             logImageGenerationStart(prompt: prompt)
@@ -44,7 +44,7 @@ extension AIChatOverlay {
 #if canImport(ImagePlayground)
 extension AIChatOverlay {
     @available(iOS 18.4, macOS 15.4, *)
-    func logImageGenerationStart(prompt: String) {
+    internal func logImageGenerationStart(prompt: String) {
         let currentLocale = Locale.current
         print("🎨 [Image] Starting generation for: \(prompt)")
         print("🎨 [Image] Current locale: \(currentLocale.identifier)")
@@ -53,7 +53,7 @@ extension AIChatOverlay {
     }
 
     @available(iOS 18.4, macOS 15.4, *)
-    func generateAndConvertImage(
+    internal func generateAndConvertImage(
         creator: ImageCreator,
         prompt: String,
         style: ImagePlaygroundStyle
@@ -81,14 +81,14 @@ extension AIChatOverlay {
     }
 
     @available(iOS 18.4, macOS 15.4, *)
-    func handleImageCreationError(_ error: ImageCreator.Error) {
+    internal func handleImageCreationError(_ error: ImageCreator.Error) {
         print("🎨 [Image] Error: \(error)")
         let message = buildImageErrorMessage(error)
         app.showErrorToast("Generation Failed", message: message)
     }
 
     @available(iOS 18.4, macOS 15.4, *)
-    func buildImageErrorMessage(_ error: ImageCreator.Error) -> String {
+    internal func buildImageErrorMessage(_ error: ImageCreator.Error) -> String {
         switch error {
         case .notSupported:
             return "Image generation is not supported on this device"
@@ -115,7 +115,7 @@ extension AIChatOverlay {
     }
 
     @available(iOS 18.4, macOS 15.4, *)
-    func handleUnexpectedImageError(_ error: Error) {
+    internal func handleUnexpectedImageError(_ error: Error) {
         print("🎨 [Image] Unexpected error: \(error)")
         app.showErrorToast("Error", message: "Unexpected error: \(error.localizedDescription)")
     }

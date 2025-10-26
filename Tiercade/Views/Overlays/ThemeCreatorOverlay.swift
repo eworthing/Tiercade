@@ -9,9 +9,9 @@ private enum FocusField: Hashable {
     case cancel
 }
 
-struct ThemeCreatorOverlay: View {
+internal struct ThemeCreatorOverlay: View {
     @Bindable var appState: AppState
-    let draft: ThemeDraft
+    internal let draft: ThemeDraft
 
     @FocusState private var focusedElement: FocusField?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -31,7 +31,7 @@ struct ThemeCreatorOverlay: View {
         "#FF6B6B", "#34D399", "#0EA5E9", "#2563EB", "#9333EA", "#DB2777"
     ]
 
-    var body: some View {
+    internal var body: some View {
         ZStack {
             Color.black.opacity(0.75)
                 .ignoresSafeArea()
@@ -544,7 +544,7 @@ private extension ThemeCreatorOverlay {
         return Self.paletteHexes.firstIndex { ThemeDraft.normalizeHex($0) == normalized } ?? 0
     }
 
-    func setFocus(_ target: FocusField) {
+    private func setFocus(_ target: FocusField) {
         focusedElement = target
         lastFocus = target
     }

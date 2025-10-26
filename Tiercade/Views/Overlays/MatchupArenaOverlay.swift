@@ -1,7 +1,7 @@
 import SwiftUI
 import TiercadeCore
 
-enum MatchupFocusAnchor: Hashable {
+internal enum MatchupFocusAnchor: Hashable {
     case primary
     case secondary
     case pass
@@ -9,7 +9,7 @@ enum MatchupFocusAnchor: Hashable {
     case abort
 }
 
-struct MatchupArenaOverlay: View {
+internal struct MatchupArenaOverlay: View {
     @Bindable var app: AppState
     @Namespace private var glassNamespace
     @FocusState private var focusAnchor: MatchupFocusAnchor?
@@ -21,7 +21,7 @@ struct MatchupArenaOverlay: View {
 
     private let minOverlayWidth: CGFloat = 960
 
-    var body: some View {
+    internal var body: some View {
         if app.h2hActive {
             ZStack {
                 LinearGradient(

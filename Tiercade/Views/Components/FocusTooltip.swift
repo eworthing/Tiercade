@@ -2,12 +2,12 @@ import SwiftUI
 
 #if os(tvOS)
 /// A modifier that shows a tooltip label when the view is focused
-struct FocusTooltip: ViewModifier {
-    let label: String
+internal struct FocusTooltip: ViewModifier {
+    internal let label: String
     @Environment(\.isFocused) private var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    func body(content: Content) -> some View {
+    internal func body(content: Content) -> some View {
         content
             .overlay(alignment: .top) {
                 if isFocused {
@@ -30,15 +30,15 @@ struct FocusTooltip: ViewModifier {
     }
 }
 
-extension View {
+internal extension View {
     /// Shows a tooltip label when the view is focused on tvOS
-    func focusTooltip(_ label: String) -> some View {
+    internal func focusTooltip(_ label: String) -> some View {
         modifier(FocusTooltip(label: label))
     }
 }
 #else
-extension View {
+internal extension View {
     /// No-op focus tooltip fallback for non-tvOS platforms
-    func focusTooltip(_ label: String) -> some View { self }
+    internal func focusTooltip(_ label: String) -> some View { self }
 }
 #endif

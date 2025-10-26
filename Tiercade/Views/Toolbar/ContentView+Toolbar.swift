@@ -7,7 +7,7 @@ import TiercadeCore
 
 // MARK: - Toolbar and supporting components
 
-struct ToolbarView: ToolbarContent {
+internal struct ToolbarView: ToolbarContent {
     @Bindable var app: AppState
     @Environment(\.editMode) private var editMode
     @State private var exportText: String = ""
@@ -24,7 +24,7 @@ struct ToolbarView: ToolbarContent {
     @State private var showingLoadDialog = false
     @State private var saveFileName = ""
 
-    var body: some ToolbarContent {
+    internal var body: some ToolbarContent {
         #if os(iOS) || targetEnvironment(macCatalyst)
         #if targetEnvironment(macCatalyst)
         ToolbarItem(placement: .principal) {
@@ -207,37 +207,37 @@ struct ToolbarView: ToolbarContent {
 }
 
 #if os(iOS) || targetEnvironment(macCatalyst)
-struct TiersDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.json] }
-    var tiers: Items = [:]
+internal struct TiersDocument: FileDocument {
+    internal static var readableContentTypes: [UTType] { [.json] }
+    internal var tiers: Items = [:]
 
-    init() {}
-    init(tiers: Items) { self.tiers = tiers }
+    internal init() {}
+    internal init(tiers: Items) { self.tiers = tiers }
 
-    init(configuration: ReadConfiguration) throws {
+    internal init(configuration: ReadConfiguration) throws {
         guard let data = configuration.file.regularFileContents else {
             throw CocoaError(.fileReadCorruptFile)
         }
         tiers = try JSONDecoder().decode(Items.self, from: data)
     }
 
-    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+    internal func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
         let data = try JSONEncoder().encode(tiers)
         return .init(regularFileWithContents: data)
     }
 }
 #endif
 
-struct SecondaryToolbarActions: ToolbarContent {
+internal struct SecondaryToolbarActions: ToolbarContent {
     @Bindable var app: AppState
-    var onShowSave: () -> Void = {}
-    var onShowLoad: () -> Void = {}
-    var onShowExportFormat: (ExportFormat) -> Void = { _ in }
-    var onImportJSON: () -> Void = {}
-    var onImportCSV: () -> Void = {}
-    var onShowSettings: () -> Void = {}
+    internal var onShowSave: () -> Void = {}
+    internal var onShowLoad: () -> Void = {}
+    internal var onShowExportFormat: (ExportFormat) -> Void = { _ in }
+    internal var onImportJSON: () -> Void = {}
+    internal var onImportCSV: () -> Void = {}
+    internal var onShowSettings: () -> Void = {}
 
-    var body: some ToolbarContent {
+    internal var body: some ToolbarContent {
         ToolbarItemGroup(placement: toolbarPlacement) {
             Menu("Actions") {
                 ForEach(["S", "A", "B", "C", "D", "F"], id: \.self) { tier in
@@ -331,7 +331,7 @@ struct SecondaryToolbarActions: ToolbarContent {
 }
 
 #if os(iOS) || targetEnvironment(macCatalyst)
-struct BottomToolbarSheets: ToolbarContent {
+internal struct BottomToolbarSheets: ToolbarContent {
     @Bindable var app: AppState
     @Binding var exportText: String
     @Binding var showingSettings: Bool
@@ -345,7 +345,7 @@ struct BottomToolbarSheets: ToolbarContent {
     @Binding var showingLoadDialog: Bool
     @Binding var saveFileName: String
 
-    var body: some ToolbarContent {
+    internal var body: some ToolbarContent {
         ToolbarItem(placement: .bottomBar) {
             EmptyView()
                 .sheet(isPresented: $showingSettings) {
@@ -452,14 +452,14 @@ struct BottomToolbarSheets: ToolbarContent {
     }
 }
 #else
-struct MacAndTVToolbarSheets: ToolbarContent {
+internal struct MacAndTVToolbarSheets: ToolbarContent {
     @Bindable var app: AppState
     @Binding var showingSaveDialog: Bool
     @Binding var showingLoadDialog: Bool
     @Binding var saveFileName: String
     @Binding var showingSettings: Bool
 
-    var body: some ToolbarContent {
+    internal var body: some ToolbarContent {
         ToolbarItem(placement: .automatic) {
             EmptyView()
                 .alert("Save Tier List", isPresented: $showingSaveDialog) {

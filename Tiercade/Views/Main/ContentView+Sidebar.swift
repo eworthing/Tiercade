@@ -2,10 +2,10 @@ import SwiftUI
 import TiercadeCore
 
 // MARK: - Sidebar (filters/summary)
-struct SidebarView: View {
+internal struct SidebarView: View {
     @Environment(AppState.self) var app
-    let tierOrder: [String]
-    var body: some View {
+    internal let tierOrder: [String]
+    internal var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("Tier List").font(.largeTitle.bold())
@@ -30,9 +30,9 @@ struct SidebarView: View {
     }
 }
 
-struct SidebarSearchView: View {
+internal struct SidebarSearchView: View {
     @Environment(AppState.self) private var app
-    var body: some View {
+    internal var body: some View {
         @Bindable var state = app
         VStack(alignment: .leading, spacing: 8) {
             Text("Search & Filter").font(.headline)
@@ -78,10 +78,10 @@ struct SidebarSearchView: View {
     }
 }
 
-struct SidebarStatsView: View {
+internal struct SidebarStatsView: View {
     @Environment(AppState.self) var app
-    let tierOrder: [String]
-    var body: some View {
+    internal let tierOrder: [String]
+    internal var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Statistics").font(.headline)
             HStack { Text("Total:"); Spacer(); Text("\(app.allItems().count)").bold() }
@@ -100,10 +100,10 @@ struct SidebarStatsView: View {
     }
 }
 
-struct SidebarTierListView: View {
+internal struct SidebarTierListView: View {
     @Environment(AppState.self) var app
-    let tierOrder: [String]
-    var body: some View {
+    internal let tierOrder: [String]
+    internal var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(tierOrder, id: \.self) { t in
@@ -121,11 +121,11 @@ struct SidebarTierListView: View {
 }
 
 // MARK: - Persistence Status
-struct PersistenceStatusView: View {
+internal struct PersistenceStatusView: View {
     @Bindable var app: AppState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    var body: some View {
+    internal var body: some View {
         VStack(alignment: .trailing, spacing: 4) {
             if let fileName = app.currentFileName {
                 Text(fileName)

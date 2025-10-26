@@ -9,7 +9,7 @@ import Foundation
 // It composes SidebarView, TierGridView, ToolbarView and overlays (from the
 // ContentView+*.swift modular files).
 
-struct MainAppView: View {
+internal struct MainAppView: View {
     @Environment(AppState.self) private var app: AppState
     @State private var editMode: EditMode = .inactive
     #if os(tvOS)
@@ -22,7 +22,7 @@ struct MainAppView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
 
-    var body: some View {
+    internal var body: some View {
         @Bindable var app = app
         let detailPresented = app.detailItem != nil
         let headToHeadPresented = app.h2hActive
@@ -480,13 +480,13 @@ private extension MainAppView {
 
 // File-scoped helper to expose an immediate accessibility element for UI tests.
 private struct AccessibilityBridgeView: View {
-    let identifier: String
+    internal let identifier: String
 
-    init(identifier: String = "ThemePicker_Overlay") {
+    internal init(identifier: String = "ThemePicker_Overlay") {
         self.identifier = identifier
     }
 
-    var body: some View {
+    internal var body: some View {
         Color.clear
             .frame(width: 1, height: 1)
             .accessibilityIdentifier(identifier)

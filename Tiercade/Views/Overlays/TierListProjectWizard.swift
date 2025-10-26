@@ -3,10 +3,10 @@ import TiercadeCore
 
 // MARK: - Compact Tabbed Creator
 
-struct TierListProjectWizard: View {
+internal struct TierListProjectWizard: View {
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
-    let context: AppState.TierListWizardContext
+    internal let context: AppState.TierListWizardContext
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedTab = 0
@@ -21,7 +21,7 @@ struct TierListProjectWizard: View {
     @State private var selectedTierID: UUID?
     @State private var selectedItemID: UUID?
 
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 0) {
             toolbarSection
             contentSection
@@ -258,13 +258,13 @@ struct TierListProjectWizard: View {
 
 // MARK: - Large Item Editor
 
-struct LargeItemEditorView: View {
+internal struct LargeItemEditorView: View {
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
     @Bindable var item: TierDraftItem
     @Environment(\.dismiss) private var dismiss
 
-    var body: some View {
+    internal var body: some View {
         NavigationStack {
             Form {
                 Section("Basic Information") {

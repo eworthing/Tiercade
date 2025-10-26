@@ -2,7 +2,7 @@ import SwiftUI
 import TiercadeCore
 
 @MainActor
-struct ThemeLibraryOverlay: View {
+internal struct ThemeLibraryOverlay: View {
     @Environment(AppState.self) private var appState
     @Namespace private var glassNamespace
     @FocusState private var focusedThemeID: TierTheme.ID?
@@ -24,7 +24,7 @@ struct ThemeLibraryOverlay: View {
         ]
     }
 
-    var body: some View {
+    internal var body: some View {
         ZStack {
             scrim
             overlayContent
@@ -391,17 +391,17 @@ private extension ThemeLibraryOverlay {
 // MARK: - Tile
 
 private struct ThemeLibraryTile: View {
-    let theme: TierTheme
-    let tint: Color
-    let isSelected: Bool
-    let isCustom: Bool
-    let namespace: Namespace.ID
-    let action: () -> Void
+    internal let theme: TierTheme
+    internal let tint: Color
+    internal let isSelected: Bool
+    internal let isCustom: Bool
+    internal let namespace: Namespace.ID
+    internal let action: () -> Void
 
     @Environment(\.isFocused) private var isFocused
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    var body: some View {
+    internal var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 20) {
                 header
@@ -525,11 +525,11 @@ private struct ThemeLibraryTile: View {
 }
 
 private struct ThemeStatusBadge: View {
-    let text: String
-    let tint: Color
-    let textColor: Color
+    internal let text: String
+    internal let tint: Color
+    internal let textColor: Color
 
-    var body: some View {
+    internal var body: some View {
         Text(text)
             .font(TypeScale.label.weight(.semibold))
             .foregroundStyle(textColor)
@@ -542,7 +542,7 @@ private struct ThemeStatusBadge: View {
 }
 
 private struct SelectedBadge: View {
-    var body: some View {
+    internal var body: some View {
         Image(systemName: "checkmark.circle.fill")
             .font(.title2.weight(.bold))
             .foregroundStyle(.white)

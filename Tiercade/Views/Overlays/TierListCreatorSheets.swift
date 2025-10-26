@@ -3,13 +3,13 @@ import TiercadeCore
 
 // MARK: - Tier Details Sheet
 
-struct TierDetailsSheet: View {
+internal struct TierDetailsSheet: View {
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
     @Bindable var tier: TierDraftTier
     @Environment(\.dismiss) private var dismiss
 
-    var body: some View {
+    internal var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -97,14 +97,14 @@ struct TierDetailsSheet: View {
 
 // MARK: - Item Details Sheet
 
-struct ItemDetailsSheet: View {
+internal struct ItemDetailsSheet: View {
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
     @Bindable var item: TierDraftItem
-    let currentTier: TierDraftTier?
+    internal let currentTier: TierDraftTier?
     @Environment(\.dismiss) private var dismiss
 
-    var body: some View {
+    internal var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -275,12 +275,12 @@ struct ItemDetailsSheet: View {
 
 // MARK: - Project Settings Sheet
 
-struct ProjectSettingsSheet: View {
+internal struct ProjectSettingsSheet: View {
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
     @Environment(\.dismiss) private var dismiss
 
-    var body: some View {
+    internal var body: some View {
         NavigationStack {
             Form {
                 Section("Project Information") {

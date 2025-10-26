@@ -1,7 +1,7 @@
 import SwiftUI
 import Observation
 
-struct SettingsView: View {
+internal struct SettingsView: View {
     @Bindable var app: AppState
     @AppStorage("ui.theme") private var themeRaw: String = ThemePreference.system.rawValue
     @Environment(\.dismiss) private var dismiss
@@ -11,7 +11,7 @@ struct SettingsView: View {
         set { themeRaw = newValue.rawValue }
     }
 
-    var body: some View {
+    internal var body: some View {
         NavigationStack {
             List {
                 Section("Appearance") {
@@ -52,10 +52,10 @@ struct SettingsView: View {
 }
 
 private struct SettingsOptionLabel: View {
-    let title: String
-    let isSelected: Bool
+    internal let title: String
+    internal let isSelected: Bool
 
-    var body: some View {
+    internal var body: some View {
         HStack {
             Text(title)
                 .font(.headline)
@@ -71,10 +71,10 @@ private struct SettingsOptionLabel: View {
 }
 
 private struct SettingsInfoRow: View {
-    let title: String
-    let value: String
+    internal let title: String
+    internal let value: String
 
-    var body: some View {
+    internal var body: some View {
         HStack {
             Text(title)
             Spacer()
@@ -88,9 +88,9 @@ private struct SettingsInfoRow: View {
 
 #if os(tvOS)
 private struct CloseButton: View {
-    let dismiss: DismissAction
+    internal let dismiss: DismissAction
 
-    var body: some View {
+    internal var body: some View {
         Button("Done") { dismiss() }
             .buttonStyle(.tvRemote(.secondary))
     }
@@ -102,11 +102,11 @@ private extension ThemePreference {
 }
 
 private struct CardDensityOptionRow: View {
-    let option: CardDensityPreference
-    let isSelected: Bool
-    let onSelect: () -> Void
+    internal let option: CardDensityPreference
+    internal let isSelected: Bool
+    internal let onSelect: () -> Void
 
-    var body: some View {
+    internal var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 16) {
                 Image(systemName: option.symbolName)
@@ -157,10 +157,10 @@ private extension SettingsView {
 }
 
 private struct ThemeOptionRow: View {
-    let option: ThemePreference
+    internal let option: ThemePreference
     @Binding var selectionRaw: String
 
-    var body: some View {
+    internal var body: some View {
         Button {
             selectionRaw = option.rawValue
         } label: {

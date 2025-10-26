@@ -2,10 +2,10 @@ import SwiftUI
 import TiercadeCore
 
 #if os(tvOS)
-struct TVActionBar: View {
+internal struct TVActionBar: View {
     @Bindable var app: AppState
     @Environment(\.editMode) private var editMode
-    var glassNamespace: Namespace.ID
+    internal var glassNamespace: Namespace.ID
     @FocusState private var focusedControl: FocusTarget?
 
     private enum FocusTarget: Hashable {
@@ -17,7 +17,7 @@ struct TVActionBar: View {
         editMode?.wrappedValue == .active
     }
 
-    var body: some View {
+    internal var body: some View {
         if isMultiSelectActive {
             let hasSelection = app.selection.count > 0
             let defaultFocus = hasSelection ? FocusTarget.move : .clear

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Displays build timestamp in DEBUG builds for verification during development
-struct BuildInfoView: View {
+internal struct BuildInfoView: View {
     private var buildTimestamp: String {
         #if DEBUG
         // Use actual compile time from Info.plist or bundle creation date
@@ -43,7 +43,7 @@ struct BuildInfoView: View {
         buildTimestamp
     }
 
-    var body: some View {
+    internal var body: some View {
         #if DEBUG
         Text("Build: \(formattedBuildTime)")
             .font(.caption2)

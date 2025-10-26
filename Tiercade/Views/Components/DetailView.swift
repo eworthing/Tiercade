@@ -4,15 +4,15 @@ import TiercadeCore
 import AVKit
 #endif
 
-struct DetailView: View {
-    let item: Item
+internal struct DetailView: View {
+    internal let item: Item
     #if os(tvOS)
     @State private var showVideoPlayer: Bool = false
     @State private var activePlayer: AVPlayer?
     #endif
     @State private var showQR: Bool = false
     @State private var pendingURL: URL?
-    var body: some View {
+    internal var body: some View {
         VStack(spacing: 16) {
             // Hero gallery (image URIs only)
             let galleryUris: [String] = [item.imageUrl, item.videoUrl]
@@ -88,10 +88,10 @@ struct DetailView: View {
 
 #if os(tvOS)
 private struct TVVideoPlayerContainer: View {
-    let player: AVPlayer?
-    let dismiss: () -> Void
+    internal let player: AVPlayer?
+    internal let dismiss: () -> Void
 
-    var body: some View {
+    internal var body: some View {
         ZStack {
             if let player {
                 VideoPlayer(player: player)

@@ -4,9 +4,9 @@ import os
 
 // MARK: - Add Schema Field Sheet
 
-struct AddSchemaFieldSheet: View {
+internal struct AddSchemaFieldSheet: View {
     @Environment(\.dismiss) private var dismiss
-    var onAdd: (SchemaFieldDefinition) -> Void
+    internal var onAdd: (SchemaFieldDefinition) -> Void
 
     @State private var fieldName = ""
     @State private var fieldType: SchemaFieldDefinition.FieldType = .text
@@ -19,7 +19,7 @@ struct AddSchemaFieldSheet: View {
         GridItem(.adaptive(minimum: 200, maximum: 240), spacing: 16)
     ]
 
-    var body: some View {
+    internal var body: some View {
         #if os(tvOS)
         // tvOS: Custom header approach for better control
         ZStack {
@@ -378,11 +378,11 @@ struct AddSchemaFieldSheet: View {
 // MARK: - Field Type Support Views
 
 private struct FieldTypeCard: View {
-    let type: SchemaFieldDefinition.FieldType
-    let isSelected: Bool
-    let action: () -> Void
+    internal let type: SchemaFieldDefinition.FieldType
+    internal let isSelected: Bool
+    internal let action: () -> Void
 
-    var body: some View {
+    internal var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
@@ -436,9 +436,9 @@ private struct FieldTypeCard: View {
 }
 
 private struct FieldTypeDetailView: View {
-    let type: SchemaFieldDefinition.FieldType
+    internal let type: SchemaFieldDefinition.FieldType
 
-    var body: some View {
+    internal var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 12) {
                 Image(systemName: type.icon)
