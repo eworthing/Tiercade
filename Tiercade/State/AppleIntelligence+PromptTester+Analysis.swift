@@ -7,7 +7,7 @@ import FoundationModels
 
 @MainActor
 extension SystemPromptTester {
-private static func normalize(_ text: String) -> String {
+static func normalize(_ text: String) -> String {
     // Unicode folding (handles diacritics and case)
     var normalized = text.folding(
         options: [.diacriticInsensitive, .caseInsensitive],
@@ -74,7 +74,7 @@ struct AnalysisMetrics {
     let insufficient: Bool
 }
 
-private static func analyzeDuplicates(
+static func analyzeDuplicates(
     _ text: String,
     expectedCount: Int = 25
 ) -> DuplicateAnalysisResult {
@@ -98,14 +98,14 @@ private static func analyzeDuplicates(
     )
 }
 
-private static func parseItems(from text: String) -> ParsedItems {
+static func parseItems(from text: String) -> ParsedItems {
     if let items = tryParseAsJson(text) {
         return ParsedItems(items: items, wasJsonParsed: true)
     }
     return ParsedItems(items: parseAsText(text), wasJsonParsed: false)
 }
 
-private static func tryParseAsJson(_ text: String) -> [String]? {
+static func tryParseAsJson(_ text: String) -> [String]? {
     guard let jsonData = text.data(using: .utf8),
           let jsonArray = try? JSONSerialization.jsonObject(with: jsonData) as? [String] else {
         return nil
@@ -114,7 +114,7 @@ private static func tryParseAsJson(_ text: String) -> [String]? {
     return jsonArray
 }
 
-private static func parseAsText(_ text: String) -> [String] {
+static func parseAsText(_ text: String) -> [String] {
     let lines = text.components(separatedBy: .newlines)
     if let numberedItems = tryParseNumberedList(lines), !numberedItems.isEmpty {
         return numberedItems
@@ -122,7 +122,7 @@ private static func parseAsText(_ text: String) -> [String] {
     return parseOnePerLine(lines)
 }
 
-private static func tryParseNumberedList(_ lines: [String]) -> [String]? {
+static func tryParseNumberedList(_ lines: [String]) -> [String]? {
     var items: [String] = []
     for line in lines {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -135,7 +135,7 @@ private static func tryParseNumberedList(_ lines: [String]) -> [String]? {
     return items.isEmpty ? nil : items
 }
 
-private static func parseOnePerLine(_ lines: [String]) -> [String] {
+static func parseOnePerLine(_ lines: [String]) -> [String] {
     var items: [String] = []
     var lineCount = 0
     for line in lines {
@@ -153,7 +153,7 @@ private static func parseOnePerLine(_ lines: [String]) -> [String] {
     return items
 }
 
-private static func detectDuplicates(in items: [String]) -> DuplicateDetectionResult {
+static func detectDuplicates(in items: [String]) -> DuplicateDetectionResult {
     var seenNormalized = Set<String>()
     var normalizedList: [String] = []
     var duplicateCount = 0
@@ -176,7 +176,7 @@ private static func detectDuplicates(in items: [String]) -> DuplicateDetectionRe
     )
 }
 
-private static func calculateMetrics(
+static func calculateMetrics(
     itemCount: Int,
     uniqueCount: Int,
     expectedCount: Int

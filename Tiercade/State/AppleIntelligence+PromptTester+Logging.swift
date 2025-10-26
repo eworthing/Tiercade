@@ -7,7 +7,7 @@ import FoundationModels
 
 @MainActor
 extension SystemPromptTester {
-private static func logTestHeader(testQuery: String, onProgress: @MainActor @escaping (String) -> Void) {
+static func logTestHeader(testQuery: String, onProgress: @MainActor @escaping (String) -> Void) {
     onProgress("🧪 Starting automated test of \(prompts.count) system prompts...")
     onProgress("Test query: '\(testQuery)'")
     print("\n🧪 ========== SYSTEM PROMPT TESTING ==========")
@@ -15,7 +15,7 @@ private static func logTestHeader(testQuery: String, onProgress: @MainActor @esc
     print("🧪 Testing \(prompts.count) different system prompts...\n")
 }
 
-private static func logPromptStart(
+static func logPromptStart(
     index: Int,
     prompt: String,
     onProgress: @MainActor @escaping (String) -> Void
@@ -25,13 +25,13 @@ private static func logPromptStart(
     print("🧪 Prompt preview: \(String(prompt.prefix(100)))...")
 }
 
-private static func savePartialResults(results: [TestResult]) {
+static func savePartialResults(results: [TestResult]) {
     let partialPath = "/tmp/tiercade_prompt_test_PARTIAL.txt"
     writeDetailedLog(results: results, to: partialPath)
     print("🧪 💾 Saved partial results (\(results.count) tests) to: \(partialPath)")
 }
 
-private static func buildTestStatus(result: TestResult) -> String {
+static func buildTestStatus(result: TestResult) -> String {
     if !result.hasDuplicates && !result.insufficient {
         return "✅ PASSED"
     } else if result.insufficient && !result.hasDuplicates {
@@ -43,7 +43,7 @@ private static func buildTestStatus(result: TestResult) -> String {
     }
 }
 
-private static func reportTestResult(
+static func reportTestResult(
     result: TestResult,
     status: String,
     onProgress: @MainActor @escaping (String) -> Void
@@ -91,7 +91,7 @@ private static func reportTestResult(
     print("")
 }
 
-private static func printTestSummary(results: [TestResult], onProgress: @MainActor @escaping (String) -> Void) {
+static func printTestSummary(results: [TestResult], onProgress: @MainActor @escaping (String) -> Void) {
     print("\n🧪 ========== TEST SUMMARY ==========")
     let successful = results.filter { !$0.hasDuplicates && !$0.insufficient }
     let onlyDuplicates = results.filter { $0.hasDuplicates && !$0.insufficient }
@@ -126,7 +126,7 @@ private static func printTestSummary(results: [TestResult], onProgress: @MainAct
     }
 }
 
-private static func saveCompleteLogs(results: [TestResult], onProgress: @MainActor @escaping (String) -> Void) {
+static func saveCompleteLogs(results: [TestResult], onProgress: @MainActor @escaping (String) -> Void) {
     let logPath = "/tmp/tiercade_prompt_test_results.txt"
     let legacyLogPath = "/tmp/tiercade_test_output.log"
     writeDetailedLog(results: results, to: logPath)

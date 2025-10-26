@@ -9,7 +9,7 @@ import FoundationModels
 extension EnhancedPromptTester {
 // MARK: - Analysis
 
-private struct ResponseAnalysis {
+struct ResponseAnalysis {
     let parsedItems: [String]
     let normalizedItems: [String]
     let totalItems: Int
@@ -22,7 +22,7 @@ private struct ResponseAnalysis {
     let wasJsonParsed: Bool
 }
 
-private static func analyzeResponse(_ text: String, targetCount: Int) -> ResponseAnalysis {
+static func analyzeResponse(_ text: String, targetCount: Int) -> ResponseAnalysis {
     let (items, wasJsonParsed) = parseResponseItems(text)
     let (normalizedList, duplicateCount) = deduplicateItems(items)
 
@@ -47,7 +47,7 @@ private static func analyzeResponse(_ text: String, targetCount: Int) -> Respons
     )
 }
 
-private static func parseResponseItems(_ text: String) -> (items: [String], wasJsonParsed: Bool) {
+static func parseResponseItems(_ text: String) -> (items: [String], wasJsonParsed: Bool) {
     var items: [String] = []
     var wasJsonParsed = false
 
@@ -67,7 +67,7 @@ private static func parseResponseItems(_ text: String) -> (items: [String], wasJ
     return (items, wasJsonParsed)
 }
 
-private static func parseFallbackFormat(_ text: String) -> [String] {
+static func parseFallbackFormat(_ text: String) -> [String] {
     var items: [String] = []
     let lines = text.components(separatedBy: .newlines)
 
@@ -93,7 +93,7 @@ private static func parseFallbackFormat(_ text: String) -> [String] {
     return items
 }
 
-private static func deduplicateItems(_ items: [String]) -> (normalizedList: [String], duplicateCount: Int) {
+static func deduplicateItems(_ items: [String]) -> (normalizedList: [String], duplicateCount: Int) {
     var seenNormalized = Set<String>()
     var normalizedList: [String] = []
     var duplicateCount = 0
@@ -113,7 +113,7 @@ private static func deduplicateItems(_ items: [String]) -> (normalizedList: [Str
     return (normalizedList, duplicateCount)
 }
 
-private static func normalizeForComparison(_ text: String) -> String {
+static func normalizeForComparison(_ text: String) -> String {
     var normalized = text.lowercased()
     normalized = normalized.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
 
@@ -140,7 +140,7 @@ private static func normalizeForComparison(_ text: String) -> String {
 
 // MARK: - Logging
 
-private static func logToFile(_ message: String, filename: String = "tiercade_test_detailed.log") {
+static func logToFile(_ message: String, filename: String = "tiercade_test_detailed.log") {
     let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
     let logURL = documentsURL.appendingPathComponent(filename)
 
@@ -163,7 +163,7 @@ private static func logToFile(_ message: String, filename: String = "tiercade_te
     print(message)
 }
 
-private static func clearLogFile(filename: String = "tiercade_test_detailed.log") {
+static func clearLogFile(filename: String = "tiercade_test_detailed.log") {
     let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
     let logURL = documentsURL.appendingPathComponent(filename)
     try? FileManager.default.removeItem(at: logURL)
@@ -171,7 +171,7 @@ private static func clearLogFile(filename: String = "tiercade_test_detailed.log"
 
 // MARK: - Save Results
 
-private static func saveFinalResults(_ results: [AggregateResult], to filename: String) async {
+static func saveFinalResults(_ results: [AggregateResult], to filename: String) async {
     let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
     let outputURL = documentsURL.appendingPathComponent(filename)
 
@@ -195,7 +195,7 @@ private static func saveFinalResults(_ results: [AggregateResult], to filename: 
     }
 }
 
-private static func saveStratifiedReport(_ results: [AggregateResult], to filename: String) async {
+static func saveStratifiedReport(_ results: [AggregateResult], to filename: String) async {
     let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
     let outputURL = documentsURL.appendingPathComponent(filename)
 
@@ -242,7 +242,7 @@ private static func saveStratifiedReport(_ results: [AggregateResult], to filena
     logToFile("📄 Saved stratified report: \(outputURL.path)")
 }
 
-private static func saveRecommendations(_ results: [AggregateResult], to filename: String) async {
+static func saveRecommendations(_ results: [AggregateResult], to filename: String) async {
     let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
     let outputURL = documentsURL.appendingPathComponent(filename)
 
@@ -274,7 +274,7 @@ private static func saveRecommendations(_ results: [AggregateResult], to filenam
 
 struct TimeoutError: Error, Sendable {}
 
-nonisolated private static func withTimeout<T: Sendable>(
+nonisolated static func withTimeout<T: Sendable>(
     seconds: TimeInterval,
     operation: @Sendable @escaping () async throws -> T
 ) async throws -> T {

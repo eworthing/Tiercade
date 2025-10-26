@@ -81,7 +81,7 @@ class EnhancedPromptTester {
         let useGuidedSchema: Bool
     }
 
-    private static func testSingleRun(_ params: SingleRunParameters) async -> SingleRunResult {
+    static func testSingleRun(_ params: SingleRunParameters) async -> SingleRunResult {
         let startTime = Date()
 
         let effectiveTarget = params.targetCount ?? 40
@@ -135,7 +135,7 @@ class EnhancedPromptTester {
         }
     }
 
-    private static func logRunStart(params: SingleRunParameters, effectiveTarget: Int, maxTokens: Int) {
+    static func logRunStart(params: SingleRunParameters, effectiveTarget: Int, maxTokens: Int) {
         logToFile(
             "🔵 RUN #\(params.runNumber): prompt=\(params.promptName), query='\(params.query)', N=\(effectiveTarget), " +
             "domain=\(params.domain), decoder=\(params.decodingConfig.name), seed=\(params.seed), " +
@@ -143,13 +143,13 @@ class EnhancedPromptTester {
         )
     }
 
-    private struct LanguageModelResponse: Sendable {
+    struct LanguageModelResponse: Sendable {
         let content: String
         let finishReason: String?
         let wasTruncated: Bool
     }
 
-    private struct SuccessResultContext: Sendable {
+    struct SuccessResultContext: Sendable {
         let params: SingleRunParameters
         let nBucket: String
         let responseContent: String
@@ -162,7 +162,7 @@ class EnhancedPromptTester {
         let timePerUnique: Double
     }
 
-    private struct ErrorResultContext: Sendable {
+    struct ErrorResultContext: Sendable {
         let params: SingleRunParameters
         let nBucket: String
         let effectiveTarget: Int
@@ -171,7 +171,7 @@ class EnhancedPromptTester {
         let error: Error
     }
 
-    private struct TestExecutionContext: Sendable {
+    struct TestExecutionContext: Sendable {
         let config: TestConfig
         let promptNumber: Int
         let promptName: String
@@ -179,7 +179,7 @@ class EnhancedPromptTester {
         let totalRuns: Int
     }
 
-    private static func executeLanguageModelRequest(
+    static func executeLanguageModelRequest(
         params: SingleRunParameters,
         maxTokens: Int
     ) async throws -> LanguageModelResponse {
@@ -213,7 +213,7 @@ class EnhancedPromptTester {
         }
     }
 
-    private static func logRunSuccess(
+    static func logRunSuccess(
         analysis: ResponseAnalysis,
         surplusAtN: Int,
         timePerUnique: Double,
@@ -229,7 +229,7 @@ class EnhancedPromptTester {
         )
     }
 
-    private static func buildSuccessResult(context: SuccessResultContext) -> SingleRunResult {
+    static func buildSuccessResult(context: SuccessResultContext) -> SingleRunResult {
         SingleRunResult(
             promptNumber: context.params.promptNumber,
             promptName: context.params.promptName,
@@ -262,7 +262,7 @@ class EnhancedPromptTester {
         )
     }
 
-    private static func buildErrorResult(context: ErrorResultContext) -> SingleRunResult {
+    static func buildErrorResult(context: ErrorResultContext) -> SingleRunResult {
         SingleRunResult(
             promptNumber: context.params.promptNumber,
             promptName: context.params.promptName,

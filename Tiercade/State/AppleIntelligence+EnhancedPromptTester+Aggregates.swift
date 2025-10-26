@@ -7,7 +7,7 @@ import FoundationModels
 
 @available(iOS 26.0, macOS 26.0, *)
 extension EnhancedPromptTester {
-private static func computeAggregate(
+static func computeAggregate(
     config: TestConfig,
     promptNumber: Int,
     promptName: String,
@@ -44,7 +44,7 @@ private static func computeAggregate(
     )
 }
 
-private struct AggregateMetrics {
+struct AggregateMetrics {
     let passAtNRate: Double
     let jsonStrictRate: Double
     let meanUniqueItems: Double
@@ -58,7 +58,7 @@ private struct AggregateMetrics {
     let formatErrorRate: Double
 }
 
-private static func calculateAggregateMetrics(runs: [SingleRunResult]) -> AggregateMetrics {
+static func calculateAggregateMetrics(runs: [SingleRunResult]) -> AggregateMetrics {
     let passAtNCount = runs.filter { $0.passAtN }.count
     let passAtNRate = Double(passAtNCount) / Double(runs.count)
 
@@ -97,7 +97,7 @@ private static func calculateAggregateMetrics(runs: [SingleRunResult]) -> Aggreg
     )
 }
 
-private static func calculateDupRateStats(runs: [SingleRunResult]) -> (mean: Double, stdev: Double) {
+static func calculateDupRateStats(runs: [SingleRunResult]) -> (mean: Double, stdev: Double) {
     let dupRates = runs.map { $0.dupRate }
     let meanDupRate = dupRates.reduce(0, +) / Double(runs.count)
     let variance = dupRates.map { pow($0 - meanDupRate, 2) }.reduce(0, +) / Double(runs.count)
@@ -105,7 +105,7 @@ private static func calculateDupRateStats(runs: [SingleRunResult]) -> (mean: Dou
     return (meanDupRate, stdevDupRate)
 }
 
-private static func calculateSeedVariance(runs: [SingleRunResult]) -> Double {
+static func calculateSeedVariance(runs: [SingleRunResult]) -> Double {
     let uniqueByRun = runs.map { $0.uniqueItems }
     let meanUnique = uniqueByRun.reduce(0, +) / uniqueByRun.count
     let varianceSum = uniqueByRun.map { pow(Double($0 - meanUnique), 2) }.reduce(0, +)
@@ -113,7 +113,7 @@ private static func calculateSeedVariance(runs: [SingleRunResult]) -> Double {
     return sqrt(seedVarianceVal)
 }
 
-private static func findBestAndWorstRuns(runs: [SingleRunResult])
+static func findBestAndWorstRuns(runs: [SingleRunResult])
     -> (best: SingleRunResult?, worst: SingleRunResult?) {
     let bestRun = runs.max { lhs, rhs in
         if lhs.passAtN != rhs.passAtN { return !lhs.passAtN }

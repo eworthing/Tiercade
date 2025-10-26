@@ -7,7 +7,7 @@ import FoundationModels
 
 @MainActor
 extension SystemPromptTester {
-private static let prompts = [
+static let prompts = [
     // 1. Ultra-simple (baseline)
     """
     You are a helpful assistant.

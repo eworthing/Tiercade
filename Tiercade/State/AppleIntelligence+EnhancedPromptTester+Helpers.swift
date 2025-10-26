@@ -7,7 +7,7 @@ import FoundationModels
 
 @available(iOS 26.0, macOS 26.0, *)
 extension EnhancedPromptTester {
-private static func logTestHeader(
+static func logTestHeader(
     config: TestConfig,
     onProgress: @MainActor @escaping (String) -> Void
 ) {
@@ -37,12 +37,12 @@ private static func logTestHeader(
     logToFile("")
 }
 
-private static func calculateTotalRuns(config: TestConfig) -> Int {
+static func calculateTotalRuns(config: TestConfig) -> Int {
     4 * config.testQueries.count * config.decodingConfigs.count *
     config.seeds.count * config.guidedModes.count
 }
 
-private static func selectPilotPrompts() -> [(Int, (name: String, text: String))] {
+static func selectPilotPrompts() -> [(Int, (name: String, text: String))] {
     [
         (0, enhancedPrompts[0]),
         (2, enhancedPrompts[2]),
@@ -51,7 +51,7 @@ private static func selectPilotPrompts() -> [(Int, (name: String, text: String))
     ]
 }
 
-private static func executePromptTestRuns(
+static func executePromptTestRuns(
     context: TestExecutionContext,
     completedTests: inout Int,
     onProgress: @MainActor @escaping (String) -> Void
@@ -99,7 +99,7 @@ private static func executePromptTestRuns(
     return runResults
 }
 
-private static func logProgressUpdate(
+static func logProgressUpdate(
     result: SingleRunResult,
     completedTests: Int,
     totalRuns: Int,
@@ -114,7 +114,7 @@ private static func logProgressUpdate(
     )
 }
 
-private static func logAggregateResult(
+static func logAggregateResult(
     _ aggregate: AggregateResult,
     promptName: String,
     onProgress: @MainActor @escaping (String) -> Void
@@ -131,7 +131,7 @@ private static func logAggregateResult(
     )
 }
 
-private static func logTestCompletion(
+static func logTestCompletion(
     completedTests: Int,
     onProgress: @MainActor @escaping (String) -> Void
 ) {
@@ -139,7 +139,7 @@ private static func logTestCompletion(
     logToFile("🎉 Pilot test complete")
 }
 
-    private static func saveAllResults(_ aggregateResults: [AggregateResult]) async {
+    static func saveAllResults(_ aggregateResults: [AggregateResult]) async {
         await saveFinalResults(aggregateResults, to: "tiercade_pilot_results.json")
         await saveStratifiedReport(aggregateResults, to: "tiercade_pilot_report.txt")
         await saveRecommendations(aggregateResults, to: "tiercade_pilot_recommendations.txt")

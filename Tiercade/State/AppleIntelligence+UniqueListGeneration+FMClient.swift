@@ -32,7 +32,7 @@ extension FMClient {
     }
 
     func handleSuccessResponse(
-        context: UniqueListCoordinator.ResponseContext,
+        context: FMClient.ResponseContext,
         telemetry: inout [AttemptMetrics]
     ) {
         logSuccessfulGeneration(
@@ -43,7 +43,7 @@ extension FMClient {
         )
 
         recordSuccessfulAttempt(
-            context: UniqueListCoordinator.AttemptContext(
+            context: FMClient.AttemptContext(
                 attempt: context.attempt,
                 seed: context.currentSeed,
                 profile: context.params.profile,
@@ -73,7 +73,7 @@ extension FMClient {
         let attemptElapsed = Date().timeIntervalSince(attemptStart)
 
         recordFailedAttempt(
-            context: UniqueListCoordinator.AttemptContext(
+            context: FMClient.AttemptContext(
                 attempt: attempt,
                 seed: currentSeed,
                 profile: params.profile,
@@ -147,7 +147,7 @@ extension FMClient {
     }
 
     func recordSuccessfulAttempt(
-        context: UniqueListCoordinator.AttemptContext,
+        context: FMClient.AttemptContext,
         itemsReturned: Int,
         telemetry: inout [AttemptMetrics]
     ) {
@@ -163,7 +163,7 @@ extension FMClient {
     }
 
     func recordFailedAttempt(
-        context: UniqueListCoordinator.AttemptContext,
+        context: FMClient.AttemptContext,
         telemetry: inout [AttemptMetrics]
     ) {
         telemetry.append(AttemptMetrics(
@@ -291,7 +291,7 @@ extension FMClient {
             saveParseSuccessDebug(arr: arr, debugDir: debugDir)
 
             recordUnguidedSuccess(
-                context: UniqueListCoordinator.UnguidedAttemptContext(
+                context: FMClient.UnguidedAttemptContext(
                     attempt: attempt,
                     params: params,
                     options: options,
@@ -324,7 +324,7 @@ extension FMClient {
         logUnguidedFailure(error: error, elapsed: attemptElapsed)
 
         recordUnguidedFailure(
-            context: UniqueListCoordinator.UnguidedAttemptContext(
+            context: FMClient.UnguidedAttemptContext(
                 attempt: attempt,
                 params: params,
                 options: options,
@@ -431,7 +431,7 @@ extension FMClient {
     }
 
     func recordUnguidedSuccess(
-        context: UniqueListCoordinator.UnguidedAttemptContext,
+        context: FMClient.UnguidedAttemptContext,
         itemCount: Int,
         telemetry: inout [AttemptMetrics]
     ) {
@@ -454,7 +454,7 @@ extension FMClient {
     }
 
     func recordUnguidedFailure(
-        context: UniqueListCoordinator.UnguidedAttemptContext,
+        context: FMClient.UnguidedAttemptContext,
         telemetry: inout [AttemptMetrics]
     ) {
         telemetry.append(AttemptMetrics(

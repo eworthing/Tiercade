@@ -535,7 +535,7 @@ final class FMClient {
         var lastError: Error?
     }
 
-    struct AttemptContext: Sendable {
+    public struct AttemptContext: Sendable {
         let attempt: Int
         let seed: UInt64?
         let profile: DecoderProfile
@@ -544,7 +544,7 @@ final class FMClient {
         let elapsed: Double
     }
 
-    struct ResponseContext: Sendable {
+    public struct ResponseContext: Sendable {
         let response: LanguageModelSession.Response<UniqueListResponse>
         let attempt: Int
         let attemptStart: Date
@@ -554,7 +554,7 @@ final class FMClient {
         let params: GenerateParameters
     }
 
-    struct UnguidedAttemptContext: Sendable {
+    public struct UnguidedAttemptContext: Sendable {
         let attempt: Int
         let params: GenerateTextArrayParameters
         let options: GenerationOptions

@@ -7,19 +7,19 @@ import FoundationModels
 
 @MainActor
 extension SystemPromptTester {
-private static func writeDetailedLog(results: [TestResult], to path: String) {
+static func writeDetailedLog(results: [TestResult], to path: String) {
     let log = buildLogContent(results: results)
     writeLogToFile(log: log, path: path)
 }
 
-private static func buildLogContent(results: [TestResult]) -> String {
+static func buildLogContent(results: [TestResult]) -> String {
     var log = buildLogHeader(results: results)
     log += buildLogResultEntries(results: results)
     log += buildLogSummary(results: results)
     return log
 }
 
-private static func buildLogHeader(results: [TestResult]) -> String {
+static func buildLogHeader(results: [TestResult]) -> String {
     """
     ================================================================================
     TIERCADE PROMPT TESTING - DETAILED RESULTS
@@ -32,7 +32,7 @@ private static func buildLogHeader(results: [TestResult]) -> String {
     """
 }
 
-private static func buildLogResultEntries(results: [TestResult]) -> String {
+static func buildLogResultEntries(results: [TestResult]) -> String {
     var entries = ""
     for result in results {
         let status = !result.hasDuplicates && !result.insufficient ? "PASSED"
@@ -73,7 +73,7 @@ private static func buildLogResultEntries(results: [TestResult]) -> String {
     return entries
 }
 
-private static func buildLogSummary(results: [TestResult]) -> String {
+static func buildLogSummary(results: [TestResult]) -> String {
     """
     ================================================================================
     SUMMARY
@@ -87,7 +87,7 @@ private static func buildLogSummary(results: [TestResult]) -> String {
     """
 }
 
-private static func writeLogToFile(log: String, path: String) {
+static func writeLogToFile(log: String, path: String) {
     do {
         // Ensure the directory exists
         let url = URL(fileURLWithPath: path)
@@ -108,7 +108,7 @@ private static func writeLogToFile(log: String, path: String) {
     }
 }
 
-private static func handleLogWriteError(log: String, path: String, error: Error) {
+static func handleLogWriteError(log: String, path: String, error: Error) {
     print("🧪 ❌ ERROR writing log file to \(path)")
     print("🧪 ❌ Error: \(error)")
     print("🧪 ❌ Error description: \(error.localizedDescription)")
