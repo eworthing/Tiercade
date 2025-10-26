@@ -408,4 +408,3 @@ struct MatchupArenaOverlay: View {
         }
     }
 }
-

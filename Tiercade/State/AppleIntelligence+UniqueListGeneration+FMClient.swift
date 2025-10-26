@@ -60,7 +60,7 @@ extension FMClient {
         )
     }
 
-    // swiftlint:disable:next function_parameter_count - Natural grouping: error + attempt context + retry state + telemetry
+    // swiftlint:disable:next function_parameter_count - Grouped: error + context + retry + telemetry
     func handleAttemptFailure(
         error: LanguageModelSession.GenerationError,
         attempt: Int,
@@ -255,7 +255,7 @@ extension FMClient {
 
     // MARK: - Unguided Generation Helpers
 
-    // swiftlint:disable:next function_parameter_count - Natural grouping: response + attempt context + params + telemetry
+    // swiftlint:disable:next function_parameter_count - Grouped: response + context + params + telemetry
     func handleUnguidedResponse(
         response: LanguageModelSession.Response<String>,
         attempt: Int,
@@ -301,7 +301,7 @@ extension FMClient {
         return nil
     }
 
-    // swiftlint:disable:next function_parameter_count - Natural grouping: error + attempt context + params + retry state + telemetry
+    // swiftlint:disable:next function_parameter_count - Grouped: error + context + params + retry + telemetry
     func handleUnguidedError(
         error: Error,
         attempt: Int,
@@ -349,7 +349,7 @@ extension FMClient {
         return debugDir
     }
 
-    // swiftlint:disable:next function_parameter_count - Natural grouping: response data + attempt context + params + debug output
+    // swiftlint:disable:next function_parameter_count - Grouped: response + context + params + debug
     func saveUnguidedDebugData(
         response: LanguageModelSession.Response<String>,
         attempt: Int,

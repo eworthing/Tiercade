@@ -414,7 +414,6 @@ struct CardView: View {
     }
 }
 
-
 private struct ThumbnailView: View {
     let item: Item
     #if os(tvOS)

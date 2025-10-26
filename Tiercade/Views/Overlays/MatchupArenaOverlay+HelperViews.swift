@@ -1,7 +1,6 @@
 import SwiftUI
 import TiercadeCore
 
-
 struct MatchupProgressDial: View {
     let progress: Double
     let label: String
@@ -210,4 +209,3 @@ struct MatchupCompletionPanel: View {
         .accessibilityIdentifier("MatchupOverlay_Complete")
     }
 }
-

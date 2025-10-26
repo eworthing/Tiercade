@@ -266,4 +266,3 @@ struct ItemsWizardPage: View, WizardPage {
         return draft.items.first { $0.identifier == id }
     }
 }
-
