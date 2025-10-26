@@ -126,7 +126,8 @@ extension UniqueListCoordinator {
                     "Circuit breaker: 2 consecutive rounds with no progress at \(state.ordered.count)/\(targetCount)"
                 lastRunFailureReason = failureMsg
             } else if lastRunFailureReason == nil {
-                lastRunFailureReason = "Incomplete: \(state.ordered.count)/\(targetCount) items after \(state.passCount) passes"
+                lastRunFailureReason =
+                    "Incomplete: \(state.ordered.count)/\(targetCount) items after \(state.passCount) passes"
             }
         } else {
             lastRunFailureReason = nil
@@ -148,12 +149,12 @@ extension UniqueListCoordinator {
             uniqueAtN: items.count,
             jsonStrictSuccess: true,
             itemsPerSecond: Double(items.count) / max(0.001, elapsed),
-            dupRatePreDedup: 0.0, // TODO: Track this in absorb
+            dupRatePreDedup: 0.0, // Pre-dedup rate not tracked in this simplified metrics path
             seed: seed,
             decoderProfile: decoderProfile,
             env: RunEnv(),
             generationTimeSeconds: elapsed,
-            totalPasses: 0 // TODO: Track this
+            totalPasses: 0 // Pass count tracking deferred for simplified metrics API
         )
 
         return (items, metrics)

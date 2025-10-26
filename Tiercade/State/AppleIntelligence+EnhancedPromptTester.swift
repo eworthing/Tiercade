@@ -387,27 +387,30 @@ class EnhancedPromptTester {
         logRunStart(params: params, effectiveTarget: effectiveTarget, maxTokens: maxTokens)
 
         do {
-            let (responseContent, finishReason, wasTruncated) = try await executeLanguageModelRequest(
+            let response = try await executeLanguageModelRequest(
                 params: params,
                 maxTokens: maxTokens
             )
 
             let duration = Date().timeIntervalSince(startTime)
-            let analysis = analyzeResponse(responseContent, targetCount: effectiveTarget)
+            let analysis = analyzeResponse(response.content, targetCount: effectiveTarget)
 
             let surplusAtN = max(0, analysis.uniqueItems - effectiveTarget)
             let timePerUnique = analysis.uniqueItems > 0 ? duration / Double(analysis.uniqueItems) : duration
 
-            logRunSuccess(analysis: analysis, surplusAtN: surplusAtN, timePerUnique: timePerUnique, duration: duration, finishReason: finishReason)
+            logRunSuccess(
+                analysis: analysis, surplusAtN: surplusAtN, timePerUnique: timePerUnique,
+                duration: duration, finishReason: response.finishReason
+            )
 
             return buildSuccessResult(
                 params: params,
                 nBucket: nBucket,
-                responseContent: responseContent,
+                responseContent: response.content,
                 analysis: analysis,
                 surplusAtN: surplusAtN,
-                finishReason: finishReason,
-                wasTruncated: wasTruncated,
+                finishReason: response.finishReason,
+                wasTruncated: response.wasTruncated,
                 maxTokens: maxTokens,
                 duration: duration,
                 timePerUnique: timePerUnique
@@ -435,10 +438,16 @@ class EnhancedPromptTester {
         )
     }
 
+    private struct LanguageModelResponse: Sendable {
+        let content: String
+        let finishReason: String?
+        let wasTruncated: Bool
+    }
+
     private static func executeLanguageModelRequest(
         params: SingleRunParameters,
         maxTokens: Int
-    ) async throws -> (content: String, finishReason: String?, wasTruncated: Bool) {
+    ) async throws -> LanguageModelResponse {
         let finalPrompt = params.promptText.replacingOccurrences(of: "{QUERY}", with: params.query)
         let instructions = Instructions(finalPrompt)
         let session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
@@ -455,16 +464,16 @@ class EnhancedPromptTester {
             }
             let jsonData = try JSONEncoder().encode(stringList)
             let content = String(data: jsonData, encoding: .utf8) ?? ""
-            return (content, "guided-schema", false)
+            return LanguageModelResponse(content: content, finishReason: "guided-schema", wasTruncated: false)
         } else {
             let content = try await withTimeout(seconds: 60) {
                 try await session.respond(to: Prompt(params.query), options: opts).content
             }
             let charLimit = maxTokens * 4
             if content.count >= charLimit {
-                return (content, "likely-truncated", true)
+                return LanguageModelResponse(content: content, finishReason: "likely-truncated", wasTruncated: true)
             } else {
-                return (content, "stop", false)
+                return LanguageModelResponse(content: content, finishReason: "stop", wasTruncated: false)
             }
         }
     }
@@ -675,7 +684,9 @@ class EnhancedPromptTester {
         return sqrt(seedVarianceVal)
     }
 
-    private static func findBestAndWorstRuns(runs: [SingleRunResult]) -> (best: SingleRunResult?, worst: SingleRunResult?) {
+    private static func findBestAndWorstRuns(runs: [SingleRunResult])
+        -> (best: SingleRunResult?, worst: SingleRunResult?)
+    {
         let bestRun = runs.max { lhs, rhs in
             if lhs.passAtN != rhs.passAtN { return !lhs.passAtN }
             if lhs.uniqueItems != rhs.uniqueItems { return lhs.uniqueItems < rhs.uniqueItems }

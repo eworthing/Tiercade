@@ -489,21 +489,21 @@ enum AcceptanceTestSuite {
         logger("\n[Test 7/8] Normalization - edge case handling...")
 
         let testCases = buildNormalizationTestCases()
-        let (passed, failed, failures) = runNormalizationTests(testCases: testCases, logger: logger)
+        let result = runNormalizationTests(testCases: testCases, logger: logger)
 
-        let success = failed == 0
+        let success = result.failed == 0
         let message = success
             ? "All \(testCases.count) normalization tests passed"
-            : "\(failed)/\(testCases.count) normalization tests failed"
+            : "\(result.failed)/\(testCases.count) normalization tests failed"
 
         return TestResult(
             testName: "Normalization",
             passed: success,
             message: message,
             details: [
-                "passed": "\(passed)",
-                "failed": "\(failed)",
-                "failures": failures.joined(separator: "; ")
+                "passed": "\(result.passed)",
+                "failed": "\(result.failed)",
+                "failures": result.failures.joined(separator: "; ")
             ]
         )
     }
@@ -529,10 +529,16 @@ enum AcceptanceTestSuite {
         ]
     }
 
+    private struct NormalizationTestResult: Sendable {
+        let passed: Int
+        let failed: Int
+        let failures: [String]
+    }
+
     private static func runNormalizationTests(
         testCases: [NormalizationTestCase],
         logger: @escaping (String) -> Void
-    ) -> (passed: Int, failed: Int, failures: [String]) {
+    ) -> NormalizationTestResult {
         var passed = 0
         var failed = 0
         var failures: [String] = []
@@ -550,7 +556,7 @@ enum AcceptanceTestSuite {
             }
         }
 
-        return (passed, failed, failures)
+        return NormalizationTestResult(passed: passed, failed: failed, failures: failures)
     }
 
     // MARK: - Test 8: Token Budgeting

@@ -134,7 +134,7 @@ extension UniqueListCoordinator {
             "requesting \(delta), avoiding \(avoid.count) items"
         )
 
-        let (avoidSample, coverageNote, offenderNote) = buildGuidedAvoidList(
+        let avoidComponents = buildGuidedAvoidList(
             avoid: avoid,
             dupFrequency: state.dupFrequency,
             backfillRound: backfillRound
@@ -143,9 +143,9 @@ extension UniqueListCoordinator {
         let promptFill = buildGuidedBackfillPrompt(
             query: query,
             delta: delta,
-            avoidSample: avoidSample,
-            coverageNote: coverageNote,
-            offenderNote: offenderNote
+            avoidSample: avoidComponents.avoidSample,
+            coverageNote: avoidComponents.coverageNote,
+            offenderNote: avoidComponents.offenderNote
         )
 
         let before = state.ordered.count
@@ -173,7 +173,7 @@ extension UniqueListCoordinator {
                 query: query,
                 targetCount: targetCount,
                 deltaNeed: deltaNeed,
-                avoidSample: avoidSample,
+                avoidSample: avoidComponents.avoidSample,
                 state: &state
             )
         }
@@ -187,11 +187,17 @@ extension UniqueListCoordinator {
         return max(deltaA, deltaB)
     }
 
-    func buildGuidedAvoidList(
+    private struct GuidedAvoidListComponents: Sendable {
+        let avoidSample: String
+        let coverageNote: String
+        let offenderNote: String
+    }
+
+    private func buildGuidedAvoidList(
         avoid: [String],
         dupFrequency: [String: Int],
         backfillRound: Int
-    ) -> (avoidSample: String, coverageNote: String, offenderNote: String) {
+    ) -> GuidedAvoidListComponents {
         let sampleSize = 40
         let offset = (backfillRound - 1) * 20
         let startIdx = offset % max(1, avoid.count)
@@ -220,7 +226,11 @@ extension UniqueListCoordinator {
         let offenderNote = !topOffenders.isEmpty ?
             "\n  Most repeated: [\(topOffenders)]" : ""
 
-        return (avoidSample, coverageNote, offenderNote)
+        return GuidedAvoidListComponents(
+            avoidSample: avoidSample,
+            coverageNote: coverageNote,
+            offenderNote: offenderNote
+        )
     }
 
     func buildGuidedBackfillPrompt(
@@ -332,17 +342,17 @@ extension UniqueListCoordinator {
         state: inout GenerationState
     ) async throws {
         let deltaNeed = targetCount - state.ordered.count
-        let (delta, maxTok, deltaByBudget) = calculateUnguidedBackfillParams(
+        let params = calculateUnguidedBackfillParams(
             deltaNeed: deltaNeed,
             targetCount: targetCount,
             query: query
         )
 
-        logger("🔄 [Pass \(state.passCount)] Unguided Backfill: need \(deltaNeed), requesting \(delta)")
+        logger("🔄 [Pass \(state.passCount)] Unguided Backfill: need \(deltaNeed), requesting \(params.delta)")
 
         let avoid = Array(state.seen)
         let avoidJSON = avoid.map { "\"\($0)\"" }.joined(separator: ",")
-        let promptFill = buildUnguidedBackfillPrompt(query: query, delta: delta, avoidJSON: avoidJSON)
+        let promptFill = buildUnguidedBackfillPrompt(query: query, delta: params.delta, avoidJSON: avoidJSON)
 
         let before = state.ordered.count
 
@@ -353,7 +363,7 @@ extension UniqueListCoordinator {
                     profile: .topK(40),
                     initialSeed: UInt64.random(in: 0...UInt64.max),
                     temperature: 0.6,
-                    maxTokens: maxTok,
+                    maxTokens: params.maxTok,
                     maxRetries: 3
                 ),
                 telemetry: &state.localTelemetry
@@ -368,7 +378,7 @@ extension UniqueListCoordinator {
             try await retryUnguidedBackfill(
                 query: query,
                 targetCount: targetCount,
-                deltaByBudget: deltaByBudget,
+                deltaByBudget: params.deltaByBudget,
                 avoidJSON: avoidJSON,
                 state: &state
             )
@@ -377,11 +387,17 @@ extension UniqueListCoordinator {
         logger("  Result: \(state.ordered.count)/\(targetCount) unique")
     }
 
-    func calculateUnguidedBackfillParams(
+    private struct UnguidedBackfillParams: Sendable {
+        let delta: Int
+        let maxTok: Int
+        let deltaByBudget: Int
+    }
+
+    private func calculateUnguidedBackfillParams(
         deltaNeed: Int,
         targetCount: Int,
         query: String
-    ) -> (delta: Int, maxTok: Int, deltaByBudget: Int) {
+    ) -> UnguidedBackfillParams {
         let budget = 3500
         let backfillAvgTPI = 20
         let promptFillBase = "Generate NEW items for: \(query). Do NOT include any with norm_keys in:"
@@ -392,7 +408,7 @@ extension UniqueListCoordinator {
         let deltaMin = Int(ceil(Defaults.minBackfillFrac * Double(targetCount)))
         let delta = min(max(deltaWithDupBuffer, deltaMin), deltaByBudget)
         let maxTok = max(1024, delta * backfillAvgTPI * 2)
-        return (delta, maxTok, deltaByBudget)
+        return UnguidedBackfillParams(delta: delta, maxTok: maxTok, deltaByBudget: deltaByBudget)
     }
 
     func buildUnguidedBackfillPrompt(query: String, delta: Int, avoidJSON: String) -> String {

@@ -206,7 +206,9 @@ struct ModelDiagnostics {
     ) async -> DiagnosticResult {
         let maxTokens = itemCount * tokensPerItem
         let testName = "Generable_\(itemCount)items_\(tokensPerItem)tpi_seed\(seed)"
-        logger("🔬 [Test] @Generable - \(itemCount) items, \(tokensPerItem) tokens/item = \(maxTokens) total, seed=\(seed)")
+        logger(
+            "🔬 [Test] @Generable - \(itemCount) items, \(tokensPerItem) tokens/item = \(maxTokens) total, seed=\(seed)"
+        )
 
         do {
             guard let session = try? await createTestSession() else {
