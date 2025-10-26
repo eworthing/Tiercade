@@ -66,3 +66,15 @@ yarn-error.log*
 Pods/
 Carthage/
 fastlane/report.xml
+
+# Temporary test outputs
+*test_report*.json
+test_configs.json
+*.jsonl
+
+# Backup files
+*.backup
+*.backup-*
+
+# NPM lock files (if not using npm)
+package-lock.json
