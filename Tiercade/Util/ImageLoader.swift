@@ -3,8 +3,8 @@ import CoreGraphics
 import ImageIO
 
 /// Lightweight async image loader with in-memory caching using Core Graphics images.
-final actor ImageLoader {
-    nonisolated static let shared = ImageLoader()
+internal final actor ImageLoader {
+    internal nonisolated static let shared = ImageLoader()
 
     private enum LoaderError: Error {
         case decodingFailed
@@ -20,11 +20,11 @@ final actor ImageLoader {
 
     private let cache = NSCache<NSURL, CGImageBox>()
 
-    func cachedImage(for url: URL) async -> CGImage? {
+    internal func cachedImage(for url: URL) async -> CGImage? {
         cache.object(forKey: url as NSURL)?.image
     }
 
-    func image(for url: URL) async throws -> CGImage {
+    internal func image(for url: URL) async throws -> CGImage {
         if let cached = cache.object(forKey: url as NSURL)?.image {
             return cached
         }
@@ -35,7 +35,7 @@ final actor ImageLoader {
         return image
     }
 
-    func prefetch(_ url: URL) async {
+    internal func prefetch(_ url: URL) async {
         if cache.object(forKey: url as NSURL) != nil {
             return
         }

@@ -4,10 +4,10 @@ import SwiftUI
 import UIKit
 #endif
 
-enum ExternalOpenResult { case success, handoff, unsupported }
+internal enum ExternalOpenResult { case success, handoff, unsupported }
 
-struct OpenExternal {
-    static func open(_ url: URL, completion: @escaping @MainActor (ExternalOpenResult) -> Void) {
+internal struct OpenExternal {
+    internal static func open(_ url: URL, completion: @escaping @MainActor (ExternalOpenResult) -> Void) {
         #if canImport(UIKit)
         UIApplication.shared.open(url) { ok in
             Task { @MainActor in
