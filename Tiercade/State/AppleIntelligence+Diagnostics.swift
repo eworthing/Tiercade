@@ -231,14 +231,14 @@ struct ModelDiagnostics {
 
             logGenerableSuccess(items: items, elapsed: elapsed)
 
-            return buildGenerableSuccessResult(
+            return buildGenerableSuccessResult(context: GenerableSuccessContext(
                 testName: testName,
                 items: items,
                 elapsed: elapsed,
                 tokensPerItem: tokensPerItem,
                 maxTokens: maxTokens,
                 seed: seed
-            )
+            ))
 
         } catch let e as LanguageModelSession.GenerationError {
             return handleGenerationError(
@@ -280,25 +280,27 @@ struct ModelDiagnostics {
         logger("  📄 First 3 items: \(items.prefix(3).joined(separator: ", "))")
     }
 
-    private func buildGenerableSuccessResult(
-        testName: String,
-        items: [String],
-        elapsed: TimeInterval,
-        tokensPerItem: Int,
-        maxTokens: Int,
-        seed: UInt64
-    ) -> DiagnosticResult {
+    private struct GenerableSuccessContext: Sendable {
+        let testName: String
+        let items: [String]
+        let elapsed: TimeInterval
+        let tokensPerItem: Int
+        let maxTokens: Int
+        let seed: UInt64
+    }
+
+    private func buildGenerableSuccessResult(context: GenerableSuccessContext) -> DiagnosticResult {
         DiagnosticResult(
-            testName: testName,
+            testName: context.testName,
             success: true,
-            message: "@Generable succeeded with \(items.count) items",
+            message: "@Generable succeeded with \(context.items.count) items",
             rawOutput: nil,
             details: [
-                "itemsReceived": "\(items.count)",
-                "elapsedSeconds": "\(String(format: "%.2f", elapsed))",
-                "tokensPerItem": "\(tokensPerItem)",
-                "maxTokens": "\(maxTokens)",
-                "seed": "\(seed)"
+                "itemsReceived": "\(context.items.count)",
+                "elapsedSeconds": "\(String(format: "%.2f", context.elapsed))",
+                "tokensPerItem": "\(context.tokensPerItem)",
+                "maxTokens": "\(context.maxTokens)",
+                "seed": "\(context.seed)"
             ]
         )
     }
