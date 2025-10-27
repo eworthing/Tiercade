@@ -1,8 +1,11 @@
 # Tiercade Design System (Swift 6 language mode, Swift 6.2 toolchain, OS 26+, tvOS-first)
 
+<!-- markdownlint-disable MD013 -->
+
 Design tokens and SwiftUI styles for Tiercade on the OS 26 baseline. Tokens are authored tvOS-first and fall back to adaptive system materials on iOS, iPadOS, and Mac Catalyst so a single definitions file supports every platform we ship.
 
 ## Files
+
 - **DesignTokens.swift** – `Palette`, `Metrics`, `TypeScale`, and `Motion` helpers (dynamic colors + shared animations).
 - **Styles.swift** – `card()`, `panel()`, `PrimaryButtonStyle`, `GhostButtonStyle`, `CardButtonStyle`, and `TVRemoteButtonStyle`.
 - **GlassEffects.swift** – `tvGlassRounded`, `tvGlassCapsule`, and `tvGlassContainer` wrappers for [`glassEffect(_:in:)`](https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)).
@@ -27,6 +30,7 @@ Design tokens and SwiftUI styles for Tiercade on the OS 26 baseline. Tokens are 
 **Solution:** Glass effects belong **ONLY** on interactive UI chrome (toolbars, buttons, headers). Section backgrounds and containers must use **solid, opaque backgrounds**.
 
 **Correct usage:**
+
 ```swift
 // ✅ Glass on chrome/toolbar only
 VStack(spacing: 0) {
@@ -56,6 +60,7 @@ VStack(spacing: 0) {
 ```
 
 **Incorrect usage:**
+
 ```swift
 // ❌ WRONG: Glass on section backgrounds
 VStack {
@@ -67,6 +72,7 @@ VStack {
 ```
 
 **Testing:** Always test text input and keyboard interaction in the tvOS simulator to verify that:
+
 - Text field content is readable when focused
 - Keyboard characters are visible when focused
 - No translucent overlays obscure interactive elements

@@ -2,7 +2,8 @@
 
 ## Summary
 
-Switch backfill from guided generation (which ignores avoid-list) to **unguided text generation** (which should respect semantic constraints).
+Switch backfill from guided generation (which ignores avoid-list) to
+**unguided text generation** (which should respect semantic constraints).
 
 **Files to modify:** `Tiercade/State/AppleIntelligence+UniqueListGeneration.swift`
 
@@ -238,16 +239,18 @@ Switch backfill from guided generation (which ignores avoid-list) to **unguided 
 ## Testing
 
 1. Build and run native macOS tests:
-   ```bash
-   ./build_install_launch.sh macos
-   ```
 
-2. Monitor for:
+```bash
+   ./build_install_launch.sh macos
+```
+
+1. Monitor for:
+
    - Parse failure rate (should be low < 5%)
    - Duplication rate in backfill (hypothesis: < 20%, down from 84%)
    - T3_Backfill pass@N (target: ≥ 0.6, up from 0.00)
 
-3. Check telemetry for "unguided:" sampling labels
+2. Check telemetry for "unguided:" sampling labels
 
 ---
 
@@ -256,16 +259,19 @@ Switch backfill from guided generation (which ignores avoid-list) to **unguided 
 **Hypothesis:** Unguided generation respects semantic "avoid" constraints.
 
 **Before (Guided Backfill):**
+
 - 84% duplication rate
 - pass@N = 0.00 (0/5 seeds)
 - Model repeats same items despite avoid-list
 
 **After (Unguided Backfill):**
+
 - < 20% duplication rate (target)
 - pass@N ≥ 0.6 (3+/5 seeds)
 - Avoid-list respected, diverse items generated
 
 **Trade-offs:**
+
 - ❌ Lose JSON structure guarantees (must handle parse errors)
 - ✅ Gain semantic constraint adherence
 - ✅ Keep all good patterns (token budgeting, adaptive retry, greedy last-mile)
@@ -284,6 +290,6 @@ If unguided backfill fails (high parse error rate or still high duplication):
 
 ## References
 
-- Guided generation: https://developer.apple.com/documentation/foundationmodels/using-guided-generation-to-produce-structured-outputs
-- Unguided respond: https://developer.apple.com/documentation/foundationmodels/languagemodelsession/respond(to:options:)-3b2m9
+- Guided generation: <https://developer.apple.com/documentation/foundationmodels/using-guided-generation-to-produce-structured-outputs>
+- Unguided respond: <https://developer.apple.com/documentation/foundationmodels/languagemodelsession/respond(to:options:)-3b2m9>
 - Analysis docs: `CHATGPT_ANALYSIS.md`, `TOOL_CALLING_EVALUATION.md`

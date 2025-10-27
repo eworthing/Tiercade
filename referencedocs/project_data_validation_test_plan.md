@@ -1,10 +1,13 @@
 # Project Data Validation Test Plan
 
-This plan exercises the offline Tiercade project data lifecycle, ensuring schema integrity, serialization correctness, media handling, and guardrails for the v1 local-only schema.
+This plan exercises the offline Tiercade project data lifecycle, ensuring
+schema integrity, serialization correctness, media handling, and guardrails for
+the v1 local-only schema.
 
 ## 1) Schema validation
 
-- Validate sample projects against `tierlist.schema.json` using a Swift JSON-schema validator or fixture-based Codable decoding.
+- Validate sample projects against `tierlist.schema.json` using a Swift
+  JSON-schema validator or fixture-based Codable decoding.
 
 ## 2) Codable round-trip (Swift 6)
 
@@ -43,5 +46,7 @@ This plan exercises the offline Tiercade project data lifecycle, ensuring schema
 
 ## 8) Validation regression tests
 
-- URI scheme enforcement: constructing a project with any `http(s)` media URI throws via `ProjectValidation.validateOfflineV1`.
-- Collaboration role required: missing `role` in any `collab.members` entry fails Codable decode (or explicit validation helper).
+- URI scheme enforcement: constructing a project with any `http(s)` media URI
+  throws via `ProjectValidation.validateOfflineV1`.
+- Collaboration role required: missing `role` in any `collab.members` entry
+  fails Codable decode (or explicit validation helper).

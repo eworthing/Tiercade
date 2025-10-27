@@ -75,6 +75,15 @@ final class UnifiedPromptTester {
     ) async throws -> TestReport {
         await onProgress("📦 Loading test suite '\(suiteId)'...")
 
+        // 🔍 DEBUG: Log suite loading
+        debugLog("╔═══════════════════════════════════════════════════════════════")
+        debugLog("║ UNIFIED PROMPT TESTER - TEST SUITE EXECUTION")
+        debugLog("╠═══════════════════════════════════════════════════════════════")
+        debugLog("║ Suite ID: \(suiteId)")
+        debugLog("║ Start Time: \(Date())")
+        debugLog("╚═══════════════════════════════════════════════════════════════")
+        debugLog("")
+
         // Load all configurations
         let suitesLib = try loadTestSuites()
         guard let suite = suitesLib.suites.first(where: { $0.id == suiteId }) else {
@@ -91,10 +100,45 @@ final class UnifiedPromptTester {
         await onProgress("📝 Suite: \(suite.name)")
         await onProgress("📋 Description: \(suite.description)")
 
+        // 🔍 DEBUG: Log loaded config counts
+        debugLog("📚 LOADED CONFIGURATION LIBRARIES:")
+        debugLog("  System Prompts: \(promptsLib.prompts.count) available")
+        debugLog("  Test Queries: \(queriesLib.queries.count) available")
+        debugLog("  Decoding Configs: \(decodersLib.configs.count) available")
+        debugLog("")
+
         // Resolve IDs to actual configs (handle wildcards)
         let prompts = try resolvePrompts(ids: suite.config.promptIds, library: promptsLib)
         let queries = try resolveQueries(ids: suite.config.queryIds, library: queriesLib)
         let decoders = try resolveDecoders(ids: suite.config.decoderIds, library: decodersLib)
+
+        // 🔍 DEBUG: Log resolved configurations
+        debugLog("🎯 SUITE CONFIGURATION:")
+        debugLog("  Name: \(suite.name)")
+        debugLog("  Description: \(suite.description)")
+        debugLog("  Timeout: \(suite.config.timeoutSeconds ?? 60)s")
+        debugLog("  Max Tokens Override: \(suite.config.maxTokensOverride.map { String($0) } ?? "auto")")
+        debugLog("")
+        debugLog("🎲 SELECTED PROMPTS (\(prompts.count)):")
+        for prompt in prompts {
+            debugLog("  • [\(prompt.id)] \(prompt.name) (\(prompt.category))")
+        }
+        debugLog("")
+        debugLog("❓ SELECTED QUERIES (\(queries.count)):")
+        for query in queries {
+            debugLog("  • [\(query.id)] target=\(query.targetCount ?? 40), domain=\(query.domain)")
+            debugLog("    Query: \(query.query)")
+        }
+        debugLog("")
+        debugLog("⚙️ SELECTED DECODERS (\(decoders.count)):")
+        for decoder in decoders {
+            debugLog("  • [\(decoder.id)] \(decoder.name)")
+            debugLog("    Mode: \(decoder.sampling.mode), Temp: \(decoder.temperature)")
+        }
+        debugLog("")
+        debugLog("🎲 SEEDS: \(suite.config.seeds)")
+        debugLog("🧬 GUIDED MODES: \(suite.config.guidedModes)")
+        debugLog("")
 
         await onProgress("🎯 Test matrix: \(prompts.count) prompts × \(queries.count) queries × \(decoders.count) decoders × \(suite.config.seeds.count) seeds × \(suite.config.guidedModes.count) modes")
 
@@ -246,11 +290,33 @@ final class UnifiedPromptTester {
 
         // Render prompt with substitutions
         let template = PromptTemplate(raw: run.prompt.text)
-        let renderedPrompt = try template.render(substitutions: [
+        let substitutions: [PromptTemplate.Variable: String] = [
             .query: run.query.query,
             .targetCount: String(run.effectiveTarget),
             .domain: run.query.domain
-        ])
+        ]
+        let renderedPrompt = try template.render(substitutions: substitutions)
+
+        // 🔍 DEBUG: Log prompt rendering details
+        debugLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        debugLog("🧪 TEST RUN #\(run.runNumber) - PROMPT RENDERING")
+        debugLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        debugLog("Prompt ID: \(run.prompt.id)")
+        debugLog("Prompt Name: \(run.prompt.name)")
+        debugLog("Query ID: \(run.query.id)")
+        debugLog("Query Text: \(run.query.query)")
+        debugLog("")
+        debugLog("📋 TEMPLATE VARIABLES:")
+        for (variable, value) in substitutions {
+            debugLog("  \(variable.rawValue) → \"\(value)\"")
+        }
+        debugLog("")
+        debugLog("📝 RAW TEMPLATE (\(run.prompt.text.count) chars):")
+        debugLog(run.prompt.text)
+        debugLog("")
+        debugLog("✨ RENDERED PROMPT (\(renderedPrompt.count) chars):")
+        debugLog(renderedPrompt)
+        debugLog("")
 
         // Create session
         let instructions = Instructions(renderedPrompt)
@@ -258,11 +324,31 @@ final class UnifiedPromptTester {
 
         let opts = run.decoder.toGenerationOptions(seed: run.seed, maxTokens: context.maxTokens)
 
+        // 🔍 DEBUG: Log generation parameters
+        debugLog("⚙️ GENERATION PARAMETERS:")
+        debugLog("  Decoder: \(run.decoder.id) (\(run.decoder.name))")
+        debugLog("  Sampling Mode: \(run.decoder.sampling.mode)")
+        if let k = run.decoder.sampling.k {
+            debugLog("  Top-K: \(k)")
+        }
+        if let threshold = run.decoder.sampling.threshold {
+            debugLog("  Top-P Threshold: \(threshold)")
+        }
+        debugLog("  Temperature: \(run.decoder.temperature)")
+        debugLog("  Seed: \(run.seed)")
+        debugLog("  Max Tokens: \(context.maxTokens)")
+        debugLog("  Guided Schema: \(run.useGuidedSchema)")
+        debugLog("  Target Count: \(run.effectiveTarget)")
+        debugLog("  Timeout: \(timeoutSeconds)s")
+        debugLog("")
+
         // Execute generation with timeout - use guided generation if requested
+        debugLog("🚀 EXECUTING GENERATION...")
         let responseContent: String
         do {
             if run.useGuidedSchema {
                 // Guided generation: constrained sampling with @Generable type
+                debugLog("  Mode: Guided (using StringList @Generable)")
                 let items = try await withTimeout(seconds: timeoutSeconds) {
                     let response = try await session.respond(
                         to: Prompt(run.query.query),
@@ -276,14 +362,26 @@ final class UnifiedPromptTester {
                 let encoder = JSONEncoder()
                 let data = try encoder.encode(items)
                 responseContent = String(data: data, encoding: .utf8) ?? "[]"
+                debugLog("  ✅ Guided generation complete: \(items.count) items")
             } else {
                 // Unguided generation: free-form response
+                debugLog("  Mode: Unguided (free-form response)")
                 responseContent = try await withTimeout(seconds: timeoutSeconds) {
                     try await session.respond(to: Prompt(run.query.query), options: opts).content
                 }
+                debugLog("  ✅ Unguided generation complete: \(responseContent.count) chars")
             }
         } catch {
             // Verbose error logging for LanguageModel failures
+            debugLog("🔴 LanguageModel Error: \(error)")
+            debugLog("🔴   Prompt: \(run.prompt.id)")
+            debugLog("🔴   Query: \(run.query.id)")
+            debugLog("🔴   Decoder: \(run.decoder.id)")
+            debugLog("🔴   Guided: \(run.useGuidedSchema)")
+            debugLog("🔴   Error type: \(type(of: error))")
+            debugLog("🔴   Error description: \(error.localizedDescription)")
+            debugLog("")
+
             print("🔴 LanguageModel Error: \(error)")
             print("🔴   Prompt: \(run.prompt.id)")
             print("🔴   Query: \(run.query.id)")
@@ -295,8 +393,45 @@ final class UnifiedPromptTester {
 
         let duration = Date().timeIntervalSince(startTime)
 
+        // 🔍 DEBUG: Log response details
+        debugLog("📥 RAW RESPONSE (\(responseContent.count) chars):")
+        debugLog(responseContent)
+        debugLog("")
+        debugLog("⏱️ Generation Duration: \(String(format: "%.2f", duration))s")
+        debugLog("")
+
         // Analyze response
         let analysis = analyzeResponse(responseContent, targetCount: run.effectiveTarget)
+
+        // 🔍 DEBUG: Log analysis results
+        debugLog("📊 ANALYSIS RESULTS:")
+        debugLog("  Parsed Items: \(analysis.parsedItems.count)")
+        debugLog("  Total Items: \(analysis.totalItems)")
+        debugLog("  Unique Items: \(analysis.uniqueItems)")
+        debugLog("  Duplicates: \(analysis.duplicateCount)")
+        debugLog("  Dup Rate: \(String(format: "%.1f%%", analysis.dupRate * 100))")
+        debugLog("  Pass@N: \(analysis.passAtN ? "✅ PASS" : "❌ FAIL")")
+        debugLog("  Surplus: \(analysis.surplusAtN)")
+        debugLog("  Insufficient: \(analysis.insufficient ? "⚠️ YES" : "✅ NO")")
+        debugLog("  Format Error: \(analysis.formatError ? "❌ YES" : "✅ NO")")
+        debugLog("  JSON Parsed: \(analysis.wasJsonParsed ? "✅ YES" : "❌ NO")")
+        debugLog("")
+        if !analysis.parsedItems.isEmpty {
+            debugLog("🔍 PARSED ITEMS (\(analysis.parsedItems.count)):")
+            for (index, item) in analysis.parsedItems.enumerated() {
+                debugLog("  \(index + 1). \(item)")
+            }
+            debugLog("")
+        }
+        if !analysis.normalizedItems.isEmpty {
+            debugLog("🔍 NORMALIZED (UNIQUE) ITEMS (\(analysis.normalizedItems.count)):")
+            for (index, item) in analysis.normalizedItems.enumerated() {
+                debugLog("  \(index + 1). \(item)")
+            }
+            debugLog("")
+        }
+        debugLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        debugLog("")
 
         // Note: finishReason tracking removed - FoundationModels API doesn't expose this yet
         // Will add back once Apple provides Response.finishReason property
@@ -761,6 +896,33 @@ final class UnifiedPromptTester {
 
             group.cancelAll()
             return result
+        }
+    }
+
+    // MARK: - Debug Logging
+
+    /// Enhanced debug logging that writes to both console and file
+    private static func debugLog(_ message: String) {
+        // Write to console
+        print("🔍 \(message)")
+
+        // Write to debug file
+        let logPath = NSTemporaryDirectory().appending("tiercade_prompt_test_debug.log")
+        let timestamp = ISO8601DateFormatter().string(from: Date())
+        let logLine = "[\(timestamp)] \(message)\n"
+
+        if let data = logLine.data(using: .utf8) {
+            if FileManager.default.fileExists(atPath: logPath) {
+                // Append to existing file
+                if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                    fileHandle.seekToEndOfFile()
+                    fileHandle.write(data)
+                    fileHandle.closeFile()
+                }
+            } else {
+                // Create new file
+                try? data.write(to: URL(fileURLWithPath: logPath), options: .atomic)
+            }
         }
     }
 }

@@ -1,21 +1,29 @@
 # Unified Prompt Testing Framework
 
-This directory contains JSON configuration files for the **UnifiedPromptTester** framework, which consolidates and replaces the old testing infrastructure (AcceptanceTestSuite, PilotTestRunner, EnhancedPromptTester).
+<!-- markdownlint-config: using repo default (line length 120) -->
+
+This directory contains JSON configuration files for the
+**UnifiedPromptTester** framework, which consolidates and replaces the old
+testing infrastructure (AcceptanceTestSuite, PilotTestRunner,
+EnhancedPromptTester).
 
 ## Overview
 
-The unified testing framework provides config-driven, multi-dimensional testing of Apple Intelligence prompt effectiveness. Tests run across multiple dimensions:
+The unified testing framework provides config-driven, multi-dimensional testing
+of Apple Intelligence prompt effectiveness. Tests run across multiple
+dimensions:
 
 - **Prompts** × **Queries** × **Decoders** × **Seeds** × **Guided Modes**
 
 Results are aggregated and stratified by:
+
 - **N-bucket** (small ≤25, medium 26-50, large >50)
 - **Domain** (food, entertainment, geography, etc.)
 - **Decoder** (greedy, topK, topP)
 
 ## File Structure
 
-```
+```text
 TestConfigs/
 ├── README.md                    # This file
 ├── SystemPrompts.json           # 48 system prompts (S01-S36, G0-G11, F2-F3)
@@ -31,6 +39,7 @@ TestConfigs/
 Contains all system prompts used for testing. Each prompt specifies how the model should generate unique lists.
 
 **Schema:**
+
 ```json
 {
   "prompts": [
@@ -53,6 +62,7 @@ Contains all system prompts used for testing. Each prompt specifies how the mode
 
 **Variables:**
 Prompts can contain template variables:
+
 - `{QUERY}` - The user query (e.g., "top 15 fruits")
 - `{DELTA}` - Shortfall count for fill operations
 - `{AVOID_LIST}` - Items to avoid (for deduplication)
@@ -60,6 +70,7 @@ Prompts can contain template variables:
 - `{DOMAIN}` - Query domain hint
 
 **Example:**
+
 ```json
 {
   "id": "S01-UltraSimple",
@@ -81,6 +92,7 @@ Prompts can contain template variables:
 Contains test queries representing different domains and difficulty levels.
 
 **Schema:**
+
 ```json
 {
   "queries": [
@@ -100,6 +112,7 @@ Contains test queries representing different domains and difficulty levels.
 ```
 
 **Example:**
+
 ```json
 {
   "id": "fruits-15",
@@ -119,6 +132,7 @@ Contains test queries representing different domains and difficulty levels.
 Contains sampling configurations for model generation.
 
 **Schema:**
+
 ```json
 {
   "decoders": [
@@ -141,11 +155,13 @@ Contains sampling configurations for model generation.
 ```
 
 **Sampling Modes:**
+
 - **greedy**: Deterministic, always picks highest probability token
 - **topK**: Samples from top-K highest probability tokens
 - **topP**: Nucleus sampling, samples from tokens with cumulative probability ≥ threshold
 
 **Example:**
+
 ```json
 {
   "id": "topk50-t08",
@@ -168,6 +184,7 @@ Contains sampling configurations for model generation.
 Contains predefined test suites that specify which combinations to test.
 
 **Schema:**
+
 ```json
 {
   "suites": [
@@ -193,6 +210,7 @@ Contains predefined test suites that specify which combinations to test.
 
 **Wildcards:**
 Use `"*"` to include all available items:
+
 ```json
 {
   "promptIds": ["*"],  // Test all prompts
@@ -202,6 +220,7 @@ Use `"*"` to include all available items:
 ```
 
 **Example:**
+
 ```json
 {
   "id": "quick-smoke",
@@ -258,26 +277,31 @@ func runTests() async {
 ## Predefined Test Suites
 
 ### quick-smoke
+
 **Purpose:** Fast validation (< 1 min)
 **Runs:** 2 prompts × 1 query × greedy decoder
 **Use for:** Quick sanity check after code changes
 
 ### standard-prompt-test
+
 **Purpose:** Standard acceptance testing
 **Runs:** 12 baseline prompts × 2 queries × greedy decoder
 **Use for:** Validating core prompt variations
 
 ### enhanced-pilot
+
 **Purpose:** Enhanced prompt diversity testing
 **Runs:** 12 enhanced prompts × 3 queries × 3 decoders × 3 seeds
 **Use for:** Comprehensive prompt comparison
 
 ### diversity-comparison
+
 **Purpose:** Decoder comparison study
 **Runs:** 2 prompts × 2 queries × 5 decoders × 2 seeds
 **Use for:** Comparing sampling strategies
 
 ### full-acceptance
+
 **Purpose:** Complete test matrix (SLOW)
 **Runs:** All prompts × all queries × all decoders × 5 seeds
 **Use for:** Comprehensive regression testing
@@ -370,7 +394,8 @@ func runTests() async {
 }
 ```
 
-3. Run your suite:
+1. Run your suite:
+
 ```swift
 runUnifiedTestSuite(suiteId: "my-custom-suite")
 ```
@@ -380,11 +405,13 @@ runUnifiedTestSuite(suiteId: "my-custom-suite")
 ### From AcceptanceTestSuite
 
 **Old:**
+
 ```swift
 let report = try await AcceptanceTestSuite.runAll { print($0) }
 ```
 
 **New:**
+
 ```swift
 let report = try await UnifiedPromptTester.runSuite(
     suiteId: "standard-prompt-test",
@@ -398,12 +425,14 @@ let report = try await UnifiedPromptTester.runSuite(
 ### From PilotTestRunner
 
 **Old:**
+
 ```swift
 let runner = PilotTestRunner { print($0) }
 let report = await runner.runPilot()
 ```
 
 **New:**
+
 ```swift
 let report = try await UnifiedPromptTester.runSuite(
     suiteId: "enhanced-pilot",
@@ -412,6 +441,7 @@ let report = try await UnifiedPromptTester.runSuite(
 ```
 
 **Configuration migrated:**
+
 - Sizes (15, 50, 150) → queries with varying targetCount
 - Decoders → `DecodingConfigs.json`
 - Seeds → defined in test suite config
@@ -419,6 +449,7 @@ let report = try await UnifiedPromptTester.runSuite(
 ### From EnhancedPromptTester
 
 **Old:**
+
 ```swift
 let results = await EnhancedPromptTester.testPrompts(
     config: TestConfig(),
@@ -427,6 +458,7 @@ let results = await EnhancedPromptTester.testPrompts(
 ```
 
 **New:**
+
 ```swift
 let report = try await UnifiedPromptTester.runSuite(
     suiteId: "diversity-comparison",
@@ -472,6 +504,7 @@ Test reports are saved to `/tmp/tiercade_unified_test_report.json` with structur
 ### Key Metrics
 
 **Per-run metrics:**
+
 - `passAtN`: Did we generate N unique items?
 - `dupRate`: Duplicate rate (0.0 = perfect uniqueness)
 - `jsonStrict`: Parsed as JSON without fallback?
@@ -479,6 +512,7 @@ Test reports are saved to `/tmp/tiercade_unified_test_report.json` with structur
 - `timePerUnique`: Seconds per unique item generated
 
 **Aggregate metrics:**
+
 - `passAtNRate`: Success rate across all runs
 - `meanDupRate`: Average duplicate rate
 - `stdevDupRate`: Consistency of deduplication
@@ -486,6 +520,7 @@ Test reports are saved to `/tmp/tiercade_unified_test_report.json` with structur
 - `seedVariance`: Consistency across different seeds
 
 **Stratification:**
+
 - Results grouped by N-bucket (small/medium/large)
 - Results grouped by domain (food/entertainment/etc.)
 - Results grouped by decoder (greedy/topK/topP)
@@ -495,16 +530,19 @@ Test reports are saved to `/tmp/tiercade_unified_test_report.json` with structur
 All configuration files are validated at load time:
 
 **SystemPrompts:**
+
 - Non-empty `id`, `text`
 - Variables documented in metadata
 - No duplicate IDs
 
 **TestQueries:**
+
 - Non-empty `id`, `query`
 - Valid `targetCount` (1-500 or null)
 - No duplicate IDs
 
 **DecodingConfigs:**
+
 - Valid sampling mode (greedy/topK/topP)
 - Temperature in range [0.0, 2.0]
 - topK requires positive `k`
@@ -512,6 +550,7 @@ All configuration files are validated at load time:
 - No duplicate IDs
 
 **TestSuites:**
+
 - At least one prompt, query, decoder, seed, guided mode
 - All referenced IDs must exist
 - No duplicate suite IDs
@@ -541,6 +580,7 @@ All configuration files are validated at load time:
 **Problem:** Apple Intelligence not enabled or FoundationModels framework missing
 
 **Solution:**
+
 1. Ensure running on iOS/macOS 26+
 2. Enable Apple Intelligence in System Settings
 3. Verify DEBUG build includes FoundationModels
@@ -578,6 +618,7 @@ All configuration files are validated at load time:
 ## Performance Notes
 
 **Approximate run times (Apple TV 4K, 3rd gen):**
+
 - quick-smoke: < 1 minute (2 runs)
 - standard-prompt-test: ~5 minutes (24 runs)
 - enhanced-pilot: ~30 minutes (324 runs)
@@ -585,16 +626,19 @@ All configuration files are validated at load time:
 - full-acceptance: ~2 hours (2,400 runs)
 
 **Memory usage:**
+
 - Per run: ~50-100 MB
 - Full report: ~5-10 MB JSON
 
 **Disk usage:**
+
 - Configuration files: ~200 KB
 - Test report: ~5-10 MB per suite
 
 ## Future Enhancements
 
 Planned improvements:
+
 - [ ] Web-based configuration editor
 - [ ] Real-time test progress visualization
 - [ ] Automated prompt regression detection
@@ -625,6 +669,7 @@ When adding new configurations:
 ## Support
 
 For issues or questions:
+
 1. Check deprecated testers for migration examples
 2. Review test report JSON for detailed error messages
 3. Validate configuration files for syntax errors

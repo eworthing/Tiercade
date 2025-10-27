@@ -1,5 +1,7 @@
 # Head-to-Head Tiering Architecture
 
+<!-- markdownlint-disable MD013 -->
+
 This document captures the architecture, evolution, and design rationale of Tiercade's head-to-head (H2H) ranking system. It is intended to help future maintainers and LLM copilots understand how the algorithm works, why the current guardrails exist, and what constraints guided the latest iterations.
 
 ## High-Level Goals
@@ -26,7 +28,9 @@ When the user starts H2H (`AppState.startH2H`):
    - Pools ≥ 10 members: target 3 comparisons per item.
    - Pools 6–9 members: target 3 comparisons.
    - Pools ≤ 5 members: target 2 comparisons (cannot exceed `poolCount - 1`).
-3. Warm-start the queue (`initialComparisonQueueWarmStart`) so early comparisons focus on likely boundaries. The warm-start uses current tier positions and priors to propose high-information pairs first.
+3. Warm-start the queue (`initialComparisonQueueWarmStart`) so early comparisons
+   focus on likely boundaries. The warm-start uses current tier positions and
+   priors to propose high-information pairs first.
 
 ### Stage 1 – Quick phase
 
@@ -35,19 +39,29 @@ During the quick pass the user works through the warmed queue:
 - `voteH2H` records the winner, increments `h2hCompletedComparisons`, and runs `HeadToHeadLogic.vote` to update Wilson statistics.
 - Deferred/ skipped pairs (`h2hDeferredPairs`) are recycled automatically once the queue empties.
 - After the queue drains we run `HeadToHeadLogic.quickTierPass`:
- 1. Partition the pool by comparisons. Items with fewer than `Tun.minimumComparisonsPerItem` (currently 2) are treated as undersampled and assigned to "unranked" in the provisional result.
-  2. Construct priors per item (quick pass only). For each tier index *i* (0-based) we compute a prior mean `priorMeanForTier(tierName, i, totalTierCount)`. We convert that mean into a Beta distribution with strength 6 (equivalent to six virtual matches):
+
+ 1. Partition the pool by comparisons. Items with fewer than
+    `Tun.minimumComparisonsPerItem` (currently 2) are treated as undersampled
+    and assigned to "unranked" in the provisional result.
+ 2. Construct priors per item (quick pass only). For each tier index *i*
+     (0-based) we compute a prior mean `priorMeanForTier(tierName, i,
+     totalTierCount)`. We convert that mean into a Beta distribution with
+     strength 6 (equivalent to six virtual matches):
      - `alpha = mean * strength`
      - `beta  = (1 - mean) * strength`
      - These priors feed into Wilson scores in quick pass, letting previously higher-tier members start with a mild advantage.
-  3. Compute Wilson lower/upper bounds using z = `Tun.zQuick` (1.0) and the priors above. `orderedItems` sorts descending by lower bound, then by comparisons, wins, and finally a lowercase name key for deterministic order.
-  4. Apply quantile cuts via `quantileCuts(count, tierCount)`. For tier count *k* we compute `round(i * n / k)` (nearest integer) for `i = 1...(k-1)` and deduplicate the cut list to keep them strictly increasing. Example: `n=12`, `k=6` → `[2,4,6,8,10]`.
-  5. Assign items to tiers using these cuts and sort members within each tier by Wilson lower bound (`sortTierMembers`).
-  6. If no refinement pairs are requested (`H2HArtifacts.suggestedPairs` empty), we finalize immediately; otherwise we transition to refinement.
+ 3. Compute Wilson lower/upper bounds using z = `Tun.zQuick` (1.0) and the
+     priors above. `orderedItems` sorts descending by lower bound, then by
+     comparisons, wins, and finally a lowercase name key for deterministic
+     order.
+ 4. Apply quantile cuts via `quantileCuts(count, tierCount)`. For tier count *k* we compute `round(i * n / k)` (nearest integer) for `i = 1...(k-1)` and deduplicate the cut list to keep them strictly increasing. Example: `n=12`, `k=6` → `[2,4,6,8,10]`.
+ 5. Assign items to tiers using these cuts and sort members within each tier by Wilson lower bound (`sortTierMembers`).
+ 6. If no refinement pairs are requested (`H2HArtifacts.suggestedPairs` empty), we finalize immediately; otherwise we transition to refinement.
 
 ### Stage 2 – Refinement
 
-When suggested refinement pairs exist, `finishH2H` reruns with `HeadToHeadLogic.finalizeTiers`:
+When suggested refinement pairs exist, `finishH2H` reruns with
+`HeadToHeadLogic.finalizeTiers`:
 
 1. Recompute metrics with z = `Tun.zStd` (1.28). If the average comparisons per item is < 3, we temporarily fall back to z = 1.0 (`zRefineEarly`) to keep early intervals wide.
 2. `refinementPairs` builds targeted comparisons:
@@ -79,10 +93,17 @@ The final tier assignment uses the refined metrics and the same `orderedItems` s
 4. Churn/hysteresis guard:
    - `churnFraction` measures the share of items whose tiers would change if we adopted the refined cuts instead of the quantile ones.
    - We only accept the refined cuts when:
-     * Total decisions (match outcomes) ≥ `artifacts.warmUpComparisons` (computed as `max(ceil(1.5 * ordered.count), 2 * tierCount)`).
-     * `churn` ≤ `Tun.hysteresisMaxChurnSoft = 0.12`, or ≤ `Tun.hysteresisMaxChurnHard * ramp`, where `Tun.hysteresisMaxChurnHard = 0.25`, `Tun.hysteresisRampBoost = 0.50`, and `ramp = min(1, decisions / warmUpComparisons * Tun.hysteresisRampBoost)`.
-   - If churn exceeds this gating (e.g., 0.58 in the logs), or decisions are below warm-up, we fall back to the quantile cuts.
-5. The final tiers are sorted by Wilson lower bound and saved. Undersampled members (comparisons below `minimumComparisonsPerItem`) remain in "unranked".
+
+- Total decisions (match outcomes) ≥ `artifacts.warmUpComparisons` (computed as
+  `max(ceil(1.5 * ordered.count), 2 * tierCount)`).
+- `churn` ≤ `Tun.hysteresisMaxChurnSoft = 0.12`, or ≤ `Tun.hysteresisMaxChurnHard * ramp`, where
+  `Tun.hysteresisMaxChurnHard = 0.25`, `Tun.hysteresisRampBoost = 0.50`, and
+  `ramp = min(1, decisions / warmUpComparisons * Tun.hysteresisRampBoost)`.
+  - If churn exceeds this gating (e.g., 0.58 in the logs), or decisions are below warm-up, we fall back to the quantile cuts.
+
+1. The final tiers are sorted by Wilson lower bound and saved. Undersampled
+   members (comparisons below `minimumComparisonsPerItem`) remain in
+   "unranked".
 
 ### Tie-breaking order
 
@@ -100,7 +121,7 @@ Direct head-to-head outcomes are not used as a secondary tie break (comparisons 
 
 For 12 rankable items and 6 tiers, `quantileCuts` yields `[2, 4, 6, 8, 10]`:
 
-```
+```text
 index:    0  1 | 2  3 | 4  5 | 6  7 | 8  9 | 10 11
 cut #:        1    2    3     4     5
 ```

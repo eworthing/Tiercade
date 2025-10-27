@@ -1,6 +1,10 @@
 # Tiercade
 
-A comprehensive tier list management application built with SwiftUI. Create, manage, and analyze tier lists with professional-grade features including advanced analytics, multiple export formats, and intelligent insights.
+<!-- markdownlint-disable MD013 -->
+
+A comprehensive tier list management application built with SwiftUI. Create,
+manage, and analyze tier lists with professional-grade features including
+advanced analytics, multiple export formats, and intelligent insights.
 
 ![iOS](https://img.shields.io/badge/iOS-26.0+-blue.svg)
 ![tvOS](https://img.shields.io/badge/tvOS-26.0+-blue.svg)
@@ -12,18 +16,21 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 ## 🚀 Features
 
 ### **Core Tier Management**
+
 - **Drag & Drop Interface** - Native SwiftUI drag and drop on iOS/macOS, with click-to-select Quick Move workflows on tvOS
 - **Multiple Tier Support** - Customizable tier structure (S, A, B, C, D, F tiers)
 - **Item Management** - Add, remove, and organize items across tiers
 - **Real-time Updates** - Instant visual feedback for all operations
 
 ### **Advanced Operations**
+
 - **Quick Rank Mode** - Rapid tier assignment with gesture shortcuts
 - **Head-to-Head Voting** - Binary comparison system for difficult ranking decisions
 - **Search & Filter** - Real-time search with highlighting and advanced filtering options
 - **Undo/Redo System** - Comprehensive history management with unlimited undo/redo
 
 ### **Data Management**
+
 - **Enhanced Persistence** - Auto-save with crash recovery and multiple save slots
 - **Export System** - Multiple format support:
   - JSON (structured data)
@@ -34,6 +41,7 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **Progress Tracking** - Visual progress indicators for all file operations
 
 ### **Analytics & Insights**
+
 - **Statistical Analysis** - Comprehensive tier distribution analysis
 - **Balance Scoring** - 0-100 scale algorithm evaluating tier distribution equality
 - **Visual Charts** - Animated bar charts showing tier percentages
@@ -41,6 +49,7 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **Interactive Dashboard** - Complete analytics UI with real-time statistics
 
 ### **User Experience**
+
 - **Toast Notifications** - Contextual feedback for user actions
 - **Loading Indicators** - Progress feedback for all async operations
 - **Keyboard Shortcuts** - Productivity shortcuts (Cmd+A for analysis, Cmd+Z for undo)
@@ -49,6 +58,7 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **Immersive Media Gallery** - SwiftUI TabView gallery with remote-friendly focus and full-screen playback on tvOS
 
 ### **tvOS Experience**
+
 - **Remote-First Navigation** - Optimized focus rings and directional layout tuned for the Siri Remote, with safe-area-aware spacing for comfortable living-room viewing.
 - **Dedicated Overlays** - Quick Move, Quick Rank, and Detail overlays appear as modal glass surfaces that pause background interaction until dismissed, keeping attention on the active task.
 - **Toolbar & Action Bar** - Floating top and bottom bars adapt to tvOS conventions, exposing undo/redo, head-to-head, analysis, and selection actions with clear focus targets.
@@ -56,9 +66,11 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **Deferred Skip Flow** - The Head-to-Head overlay now features a dedicated Skip card with a recirculating clock icon, updates the skipped count live, and automatically resurfaces deferred pairs after all first-pass matchups.
 - **Focus Tooltips** - Custom tooltips surface helpful hints (e.g. “Randomize”, “Lock Tier”) when buttons receive focus, guiding new users through tier management on the TV.
 - **Media Playback** - Item detail pages can promote images and video with full-screen playback support that respects tvOS playback gestures.
+
 ## 🏗️ Architecture
 
 ### **Technical Stack**
+
 - **SwiftUI** - Modern declarative UI framework
 - **Swift 6.0** - Latest language features with strict concurrency checking
 - **OS 26.0+** - Target deployment: iOS 26.0, tvOS 26.0, macOS 26.0
@@ -67,6 +79,7 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 > Note: The app targets OS 26.0+ to leverage the latest platform features (Swift 6 strict concurrency, modern SwiftUI APIs, @Observable macro). The `TiercadeCore` Swift package shares the same OS 26.0+ baseline to align compiler features and simplify maintenance.
 
 ### **Design Patterns**
+
 - **MVVM Architecture** - Clean separation of concerns with SwiftUI
 - **@Observable + @MainActor** - Modern Swift 6 state management with automatic observation
 - **Typed Throws** - Compile-time error handling with specific error types
@@ -74,6 +87,7 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **Protocol-Oriented Design** - Flexible, testable interfaces throughout
 
 ### **Modernization Guardrails**
+
 - **Strict Concurrency** – All targets enable "Complete" checking; core logic favors `Sendable` value types and actors for isolation (see `AGENTS.md` for build-setting guardrails).
 - **Observation-First State** – UI state uses Swift Observation macros (`@Observable`, `@Bindable`) instead of `ObservableObject`/`@Published`.
 - **SwiftUI Everywhere** – Screens, overlays, and navigation are pure SwiftUI with `NavigationStack`/`NavigationSplitView`; UIKit appears only through targeted representable adapters when absolutely necessary.
@@ -85,6 +99,7 @@ A comprehensive tier list management application built with SwiftUI. Create, man
 - **SwiftPM Only** – Dependencies live in SwiftPM; feature flags and environment variants opt into [SwiftPM traits](https://github.com/apple/swift-evolution/blob/main/proposals/0450-package-manager-traits.md). Trait identifiers are project-defined (e.g. `"feature.offlineMode"`), and can be toggled per configuration without extra targets. (Traits are planned but not yet active in the current manifest.)
 
 ### **Configuration Snippets**
+
 ```swift
 // Package.swift baseline for strict concurrency
 .enableUpcomingFeature("StrictConcurrency"),
@@ -103,7 +118,9 @@ traits: [
 ### **Core Components**
 
 #### **AppState (@MainActor + @Observable)**
+
 Central state management with modern Swift 6 concurrency and observation:
+
 ```swift
 @MainActor
 @Observable
@@ -132,6 +149,7 @@ final class AppState {
 ```
 
 #### **Feature Architecture**
+
 Each major feature is implemented as a self-contained system:
 
 - **Export/Import System** - `ExportFormat` enum with async operations
@@ -141,7 +159,8 @@ Each major feature is implemented as a self-contained system:
 - **Search System** - Real-time filtering with highlighting
 
 ### **Data Flow**
-```
+
+```text
 User Interaction → SwiftUI View → AppState Method →
 TiercadeCore Logic → State Update → UI Refresh
 ```
@@ -183,6 +202,7 @@ We keep tvOS UI automation lean and accessibility-driven; add high-value Swift T
 - **Swift 6 language mode (Swift 6.2 toolchain)** - Strict concurrency checking enabled
 
 ## 📚 More documentation
+
 - Design tokens, Liquid Glass, and focus patterns: [`Tiercade/Design/README.md`](Tiercade/Design/README.md)
 - Core domain models and deterministic helpers: [`TiercadeCore/README.md`](TiercadeCore/README.md)
 - Platform guardrails, tvOS focus, and build scripts: [`AGENTS.md`](AGENTS.md)

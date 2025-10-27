@@ -1,14 +1,16 @@
 #if os(macOS)
 import SwiftUI
 
+/// macOS menu bar commands for Tiercade
+/// Note: Only includes features with proper AppState backing
 internal struct TiercadeCommands: Commands {
-    @Bindable internal var appState: AppState
+    internal var appState: AppState
 
     internal var body: some Commands {
         // File menu commands
         CommandGroup(replacing: .newItem) {
             Button("New Tier List") {
-                appState.wizardActive = true
+                appState.showTierListCreator = true
             }
             .keyboardShortcut("n", modifiers: [.shift, .command])
             .help("Create a new tier list")
@@ -17,17 +19,17 @@ internal struct TiercadeCommands: Commands {
 
             Button("Save") {
                 Task {
-                    await appState.saveCurrentState()
+                    try? await appState.saveAsync()
                 }
             }
             .keyboardShortcut("s", modifiers: .command)
             .help("Save the current tier list")
 
-            Button("Load...") {
-                appState.showingLoadPicker = true
+            Button("Tier List Browser") {
+                appState.showingTierListBrowser.toggle()
             }
             .keyboardShortcut("o", modifiers: .command)
-            .help("Load a saved tier list")
+            .help("Browse and load saved tier lists")
         }
 
         CommandGroup(after: .newItem) {
@@ -69,26 +71,21 @@ internal struct TiercadeCommands: Commands {
                 }
             }
             .keyboardShortcut("e", modifiers: [.shift, .command])
-
-            Button("Import...") {
-                appState.showingImportPicker = true
-            }
-            .keyboardShortcut("i", modifiers: [.shift, .command])
-            .help("Import a tier list from file")
+            .help("Export tier list to various formats")
         }
 
         // View menu commands
         CommandGroup(after: .sidebar) {
-            Button(appState.themesActive ? "Close Theme Picker" : "Theme Picker") {
-                appState.themesActive.toggle()
+            Button(appState.showThemePicker ? "Close Theme Picker" : "Theme Picker") {
+                appState.showThemePicker.toggle()
             }
             .keyboardShortcut("t", modifiers: .command)
             .help("Open theme picker")
 
-            Button(appState.analysisActive ? "Close Analysis" : "Analysis") {
-                appState.analysisActive.toggle()
+            Button(appState.showingAnalysis ? "Close Analysis" : "Analysis") {
+                appState.showingAnalysis.toggle()
             }
-            .keyboardShortcut("a", modifiers: .command)
+            .keyboardShortcut("a", modifiers: [.shift, .command])
             .help("Show tier list analysis")
             .disabled(!appState.canShowAnalysis)
         }
@@ -100,45 +97,19 @@ internal struct TiercadeCommands: Commands {
             }
             .keyboardShortcut("h", modifiers: .command)
             .help("Compare items head-to-head")
-            .disabled(!appState.canStartH2H)
+            .disabled(!appState.canStartHeadToHead)
 
             Divider()
 
-            Button("Randomize All") {
-                appState.randomizeAll()
+            Button("Randomize") {
+                appState.randomize()
             }
             .keyboardShortcut("r", modifiers: [.shift, .command])
             .help("Randomly assign all items to tiers")
-
-            Button("Reset to Unranked") {
-                appState.resetToUnranked()
-            }
-            .keyboardShortcut("u", modifiers: [.shift, .command])
-            .help("Move all items to unranked tier")
-
-            Divider()
-
-            Button("Add Items") {
-                appState.showingAddItems = true
-            }
-            .keyboardShortcut("i", modifiers: .command)
-            .help("Add new items to the tier list")
-
-            Button("Edit Custom Schema") {
-                appState.showingSchemaEditor = true
-            }
-            .keyboardShortcut("e", modifiers: .command)
-            .help("Edit custom fields for items")
         }
 
         // Edit menu enhancements
         CommandGroup(after: .pasteboard) {
-            Button("Select All Items") {
-                appState.selectAllItems()
-            }
-            .keyboardShortcut("a", modifiers: [.shift, .command])
-            .help("Select all items in the tier list")
-
             Button("Deselect All") {
                 appState.clearSelection()
             }

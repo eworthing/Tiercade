@@ -7,7 +7,9 @@
 
 ## Executive Summary
 
-This document specifies a deterministic approach to generating N unique items using Apple's on-device `FoundationModels` framework. The model cannot guarantee non-repetition; **the client must enforce it**.
+This document specifies a deterministic approach to generating N unique items
+using Apple's on-device `FoundationModels` framework. The model cannot guarantee
+non-repetition; **the client must enforce it**.
 
 ### Core Principle
 
@@ -15,9 +17,9 @@ This document specifies a deterministic approach to generating N unique items us
 
 ### Architecture
 
-```
+```text
 Generate (over-sized) → Deduplicate (client-side) → Backfill (if needed)
-```
+```text
 
 ## Ground Truth (Contractual Facts)
 
@@ -91,7 +93,7 @@ func uniqueList(query: String, N: Int) async throws -> [String] {
 
     return Array(unique.values.prefix(N))
 }
-```
+```text
 
 ## Normalization: `String.normKey`
 
@@ -137,7 +139,7 @@ extension String {
         return s
     }
 }
-```
+```text
 
 ### Examples
 
@@ -173,7 +175,7 @@ extension GenerationOptions {
         topK(40, temp: 0.7, seed: seed, maxTok: maxTok)
     }
 }
-```
+```text
 
 ### Recommendations
 
@@ -259,14 +261,14 @@ return response.content.items
 
 ### G0-Minimal (Pass 1)
 
-```
+```text
 Return ONLY a JSON object matching the schema.
 Task: {QUERY}. Produce {M} distinct items.
 ```
 
 ### G18-Fill (Pass 2+, with avoid-list)
 
-```
+```text
 Return ONLY a JSON object matching the schema.
 Add {DELTA} NEW items for: {QUERY}.
 Do NOT include any with norm_keys in:
@@ -339,7 +341,7 @@ enum Defaults {
 6. **Normalization**: Edge cases handled correctly
 7. **Token Budgeting**: Chunking preserves all items
 
-### Running
+### Running (Acceptance)
 
 ```bash
 # Interactive (DEBUG mode)
@@ -360,7 +362,7 @@ Validates across multi-dimensional grid:
 - **Domains**: 4 (scientists, languages, sci-fi, games)
 - **Total runs**: 60
 
-### Running
+### Running (Pilot)
 
 ```bash
 # Interactive (DEBUG mode)
@@ -448,4 +450,4 @@ Validates across multi-dimensional grid:
 
 ---
 
-**End of Specification**
+## End of Specification

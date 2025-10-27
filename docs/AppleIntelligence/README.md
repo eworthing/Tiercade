@@ -20,7 +20,9 @@ Experimental integration of on-device Apple Intelligence for generating unique t
 
 ### Retired Experiments
 
-- **[Candidate-batch backfill](candidate_batch_analysis.md)** (88.7% duplication) - Abandoned approach that generated items without avoid-lists. Model repeatedly produced the same high-probability items despite client-side deduplication.
+- **[Candidate-batch backfill](candidate_batch_analysis.md)** (88.7% duplication) -
+  Abandoned approach that generated items without avoid-lists. Model repeatedly
+  produced the same high-probability items despite client-side deduplication.
 
 ### Framework Limitations
 
@@ -40,15 +42,18 @@ Based on testing against Apple's FoundationModels framework and verification aga
 ## Feature Flag
 
 Controlled via `UniqueListGenerationFlags.enableAdvancedGeneration`:
+
 - **DEBUG builds**: Enabled by default
 - **Release builds**: Disabled by default
-- **Override**: Use `--enable-advanced-generation` or `--disable-advanced-generation` build flags
+- **Override**: Use `--enable-advanced-generation` or `--disable-advanced-generation`
+  build flags
 
 See [FEATURE_FLAG_USAGE.md](FEATURE_FLAG_USAGE.md) for details.
 
 ## Testing
 
 Run acceptance tests:
+
 1. Build native macOS: `./build_install_launch.sh macos`
 2. Open AI Chat (sparkles button)
 3. Click green checkmark for acceptance tests
