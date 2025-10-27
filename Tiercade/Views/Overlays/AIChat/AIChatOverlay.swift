@@ -60,6 +60,14 @@ internal struct AIChatOverlay: View {
             Spacer()
 
             #if DEBUG
+            Button(action: runUnifiedTests) {
+                Image(systemName: "sparkles.rectangle.stack")
+                    .foregroundStyle(.purple)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Run unified test suite")
+            .accessibilityIdentifier("AIChat_UnifiedTests")
+
             Button(action: runAcceptanceTests) {
                 Image(systemName: "checkmark.circle")
                     .foregroundStyle(.green)
@@ -303,6 +311,28 @@ internal struct AIChatOverlay: View {
         #else
         app.showInfoToast("Unavailable", message: "Image generation is not available on this platform")
         #endif
+    }
+
+    internal func runUnifiedTests() {
+        #if DEBUG && canImport(FoundationModels)
+        print("🧪 [UnifiedTest] Sparkles button clicked!")
+
+        if #available(iOS 26.0, macOS 26.0, *) {
+            // Run comprehensive suite for interactive testing
+            // Use enhanced-pilot for good coverage (10-15 min, 192 runs)
+            // For quick automation, use CLI: -runUnifiedTests quick-smoke
+            runUnifiedTestSuite(suiteId: "enhanced-pilot")
+        } else {
+            showUnifiedTestsUnavailable()
+        }
+        #endif
+    }
+
+    internal func showUnifiedTestsUnavailable() {
+        aiService.messages.append(AIChatMessage(
+            content: "⚠️ Unified tests require iOS 26.0+ or macOS 26.0+",
+            isUser: false
+        ))
     }
 
     internal func runAcceptanceTests() {

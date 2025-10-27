@@ -6,6 +6,21 @@ import FoundationModels
 
 // MARK: - Pilot Testing Infrastructure
 //
+// ⚠️ DEPRECATED: This testing infrastructure has been replaced by UnifiedPromptTester.
+//
+// Migration path:
+// 1. Replace PilotTestRunner.runPilot() with UnifiedPromptTester.runSuite(suiteId: "enhanced-pilot")
+// 2. Customize test matrix by modifying TestConfigs/TestSuites.json
+// 3. Add new decoders in TestConfigs/DecodingConfigs.json
+// 4. See TestConfigs/TESTING_FRAMEWORK.md for configuration documentation
+//
+// Why replaced:
+// - Configuration hardcoded in Swift (sizes, seeds, queries defined in code)
+// - Redundant with AcceptanceTestSuite and EnhancedPromptTester
+// - Limited flexibility for adding new test dimensions
+// - UnifiedPromptTester provides config-driven, multi-dimensional testing
+//
+// Original purpose (preserved in UnifiedPromptTester):
 // Validates the unique list generation spec across multiple configurations:
 // - Sizes: N ∈ {15, 50, 150}
 // - Decoders: Greedy, Top-K (40, 50), Top-P (0.92, 0.95)

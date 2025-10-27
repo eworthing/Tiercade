@@ -1,0 +1,81 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "description": "Test query library for evaluating Apple Intelligence list generation",
+    "lastUpdated": "2025-10-26",
+    "totalQueries": 5
+  },
+  "queries": [
+    {
+      "id": "animated-series-25",
+      "query": "What are the top 25 most popular animated series",
+      "targetCount": 25,
+      "domain": "entertainment",
+      "difficulty": "medium",
+      "metadata": {
+        "expectedUniqueness": 0.85,
+        "notes": "Classic test case from original SystemPromptTester",
+        "dateAdded": "2025-10-20",
+        "source": "SystemPromptTester",
+        "tags": ["baseline", "entertainment", "tv"]
+      }
+    },
+    {
+      "id": "fruits-15",
+      "query": "top 15 most popular fruits",
+      "targetCount": 15,
+      "domain": "food",
+      "difficulty": "easy",
+      "metadata": {
+        "expectedUniqueness": 0.95,
+        "notes": "Small list with high uniqueness expected",
+        "dateAdded": "2025-10-24",
+        "source": "EnhancedPromptTester",
+        "tags": ["small", "food", "easy"]
+      }
+    },
+    {
+      "id": "us-places-50",
+      "query": "best places to live in the United States",
+      "targetCount": 50,
+      "domain": "geography",
+      "difficulty": "medium",
+      "metadata": {
+        "expectedUniqueness": 0.80,
+        "notes": "Medium-sized list testing geographic diversity",
+        "dateAdded": "2025-10-24",
+        "source": "EnhancedPromptTester",
+        "tags": ["medium", "geography", "usa"]
+      }
+    },
+    {
+      "id": "video-games-150",
+      "query": "best video games released in 2020-2023",
+      "targetCount": 150,
+      "domain": "media",
+      "difficulty": "hard",
+      "metadata": {
+        "expectedUniqueness": 0.65,
+        "notes": "Large list with circuit breaker risk",
+        "knownIssues": ["High duplicate rate in backfill", "Circuit breaker typically triggers around 120-130 items"],
+        "dateAdded": "2025-10-24",
+        "source": "EnhancedPromptTester",
+        "tags": ["large", "games", "hard", "circuit-breaker-risk"]
+      }
+    },
+    {
+      "id": "candy-bars-open",
+      "query": "What are the most popular candy bars?",
+      "targetCount": null,
+      "domain": "food",
+      "difficulty": "easy",
+      "metadata": {
+        "expectedUniqueness": 0.90,
+        "notes": "Open-ended query (treated as 40 by default)",
+        "dateAdded": "2025-10-24",
+        "source": "EnhancedPromptTester",
+        "tags": ["open-ended", "food", "easy"]
+      }
+    }
+  ]
+}

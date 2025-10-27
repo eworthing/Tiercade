@@ -154,7 +154,9 @@ struct TiercadeApp: App {
 
     #if DEBUG && canImport(FoundationModels)
     private func checkForAutomatedTesting() {
-        if CommandLine.arguments.contains("-runEnhancedPromptTests") {
+        if CommandLine.arguments.contains("-runUnifiedTests") {
+            runUnifiedTests()
+        } else if CommandLine.arguments.contains("-runEnhancedPromptTests") {
             runEnhancedPromptTests()
         } else if CommandLine.arguments.contains("-runPromptTests") {
             runPromptTests()
@@ -165,6 +167,92 @@ struct TiercadeApp: App {
         } else if CommandLine.arguments.contains("-runDiagnostics") {
             runDiagnostics()
         }
+    }
+
+    private func runUnifiedTests() {
+        print("🧪 Detected -runUnifiedTests launch argument")
+
+        // Check for optional suite ID argument
+        let args = CommandLine.arguments
+        var suiteId = "quick-smoke"  // Default to quick smoke test
+
+        if let flagIndex = args.firstIndex(of: "-runUnifiedTests"),
+           flagIndex + 1 < args.count {
+            let nextArg = args[flagIndex + 1]
+            // Only use it if it's not another flag
+            if !nextArg.hasPrefix("-") {
+                suiteId = nextArg
+                print("🧪 Using suite: \(suiteId)")
+            }
+        }
+
+        print("🧪 Starting unified test suite '\(suiteId)'...")
+
+        Task { @MainActor in
+            if #available(iOS 26.0, macOS 26.0, *) {
+                await executeUnifiedTests(suiteId: suiteId)
+            } else {
+                print("❌ Unified tests require iOS 26.0+ or macOS 26.0+")
+                exit(1)
+            }
+        }
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func executeUnifiedTests(suiteId: String) async {
+        do {
+            let report = try await UnifiedPromptTester.runSuite(suiteId: suiteId) { message in
+                print("🧪 \(message)")
+            }
+
+            printUnifiedTestResults(report)
+
+            // Use NSTemporaryDirectory for sandbox compatibility
+            let reportURL = URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("tiercade_unified_test_report.json")
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(report)
+            try data.write(to: reportURL)
+
+            print("🧪 ========================================")
+            print("🧪 UNIFIED TESTS COMPLETE!")
+            print("🧪 Suite: \(report.suiteName)")
+            print("🧪 Success rate: \(String(format: "%.1f%%", Double(report.successfulRuns) / Double(max(1, report.totalRuns)) * 100))")
+            print("🧪 Report saved: \(reportURL.path)")
+            print("🧪 ========================================")
+
+            let allPassed = report.successfulRuns == report.totalRuns
+            try? await Task.sleep(for: .seconds(2))
+            exit(allPassed ? 0 : 1)
+        } catch {
+            print("❌ Unified test error: \(error)")
+            print("❌ Error details: \(String(describing: error))")
+            exit(2)
+        }
+    }
+
+    private func printUnifiedTestResults(_ report: UnifiedPromptTester.TestReport) {
+        let passRate = Double(report.successfulRuns) / Double(max(1, report.totalRuns)) * 100
+        let topPrompt = report.rankings.byPassRate.first
+
+        print("\n📊 RESULTS:")
+        print("  • Total runs: \(report.totalRuns)")
+        print("  • Successful: \(report.successfulRuns)")
+        print("  • Success rate: \(String(format: "%.1f%%", passRate))")
+        print("  • Duration: \(String(format: "%.1f", report.totalDuration))s")
+
+        if let top = topPrompt {
+            print("\n🏆 TOP PROMPT:")
+            print("  • #1: \(top.promptName)")
+            print("  • Score: \(String(format: "%.3f", top.score))")
+            print("  • Metric: \(top.metric)")
+        }
+
+        print("\n🖥️  ENVIRONMENT:")
+        print("  • OS: \(report.environment.osVersion)")
+        print("  • Top-P: \(report.environment.hasTopP ? "Available" : "N/A")")
     }
 
     private func runEnhancedPromptTests() {

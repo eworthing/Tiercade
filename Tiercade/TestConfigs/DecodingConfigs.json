@@ -1,0 +1,91 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "description": "Decoding configuration library for testing various sampling strategies",
+    "lastUpdated": "2025-10-26",
+    "totalConfigs": 5
+  },
+  "configs": [
+    {
+      "id": "greedy",
+      "name": "Greedy",
+      "sampling": {
+        "mode": "greedy"
+      },
+      "temperature": 0.0,
+      "metadata": {
+        "description": "Deterministic sampling - always picks most probable token",
+        "recommendedFor": ["reproducibility", "baseline", "last-mile"],
+        "expectedDiversity": "low",
+        "dateAdded": "2025-10-20",
+        "tags": ["deterministic", "baseline"]
+      }
+    },
+    {
+      "id": "topk40-t07",
+      "name": "TopK40-T0.7",
+      "sampling": {
+        "mode": "topK",
+        "k": 40
+      },
+      "temperature": 0.7,
+      "metadata": {
+        "description": "Controlled diversity with moderate temperature",
+        "recommendedFor": ["backfill", "controlled-generation"],
+        "expectedDiversity": "medium",
+        "dateAdded": "2025-10-20",
+        "tags": ["topk", "controlled"]
+      }
+    },
+    {
+      "id": "topk50-t08",
+      "name": "TopK50-T0.8",
+      "sampling": {
+        "mode": "topK",
+        "k": 50
+      },
+      "temperature": 0.8,
+      "metadata": {
+        "description": "High diversity with controlled sampling",
+        "recommendedFor": ["initial-generation", "general-purpose"],
+        "expectedDiversity": "high",
+        "dateAdded": "2025-10-20",
+        "tags": ["topk", "diverse"]
+      }
+    },
+    {
+      "id": "topp92-t08",
+      "name": "TopP92-T0.8",
+      "sampling": {
+        "mode": "topP",
+        "threshold": 0.92
+      },
+      "temperature": 0.8,
+      "metadata": {
+        "description": "Nucleus sampling for natural diversity",
+        "recommendedFor": ["initial-generation", "backfill"],
+        "expectedDiversity": "high",
+        "requiresOS": "iOS 26.0+",
+        "dateAdded": "2025-10-24",
+        "tags": ["topp", "diverse", "nucleus"]
+      }
+    },
+    {
+      "id": "topp95-t09",
+      "name": "TopP95-T0.9",
+      "sampling": {
+        "mode": "topP",
+        "threshold": 0.95
+      },
+      "temperature": 0.9,
+      "metadata": {
+        "description": "Very high diversity nucleus sampling",
+        "recommendedFor": ["creative-generation", "exploratory"],
+        "expectedDiversity": "very-high",
+        "requiresOS": "iOS 26.0+",
+        "dateAdded": "2025-10-24",
+        "tags": ["topp", "very-diverse", "creative"]
+      }
+    }
+  ]
+}
