@@ -87,7 +87,11 @@ struct TiercadeApp: App {
             }
         }
         .modelContainer(modelContainer)
-
+        #if os(macOS)
+        .commands {
+            TiercadeCommands(appState: appState)
+        }
+        #endif
     }
 
     @MainActor

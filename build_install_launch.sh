@@ -12,8 +12,8 @@ Usage: ./build_install_launch.sh [platform] [options]
 
 Platforms:
   tvos        (default)
-  catalyst
-  mac
+  macos
+  mac         (alias for macos)
 
 Options:
   --enable-advanced-generation   Force advanced generation feature flag on
@@ -22,13 +22,13 @@ Options:
 
 Examples:
   ./build_install_launch.sh tvos
-  ./build_install_launch.sh catalyst --enable-advanced-generation --no-launch
+  ./build_install_launch.sh macos --enable-advanced-generation --no-launch
 USAGE
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    tvos|catalyst|mac)
+    tvos|macos|mac)
       PLATFORM="$1"
       shift
       ;;
@@ -69,8 +69,8 @@ case "$PLATFORM" in
     BUNDLE_ID='eworthing.Tiercade'
     EMOJI="📺"
     ;;
-  catalyst|mac)
-    DESTINATION='platform=macOS,variant=Mac Catalyst'
+  macos|mac)
+    DESTINATION='platform=macOS,name=My Mac'
     DEVICE_NAME='Mac'
     BUNDLE_ID='eworthing.Tiercade'
     EMOJI="💻"
@@ -139,7 +139,7 @@ if [ ! -d "$APP_PATH" ]; then
 fi
 
 INFO_PLIST="$APP_PATH/Info.plist"
-if [ "$PLATFORM" = "catalyst" ] || [ "$PLATFORM" = "mac" ]; then
+if [ "$PLATFORM" = "macos" ] || [ "$PLATFORM" = "mac" ]; then
   INFO_PLIST="$APP_PATH/Contents/Info.plist"
 fi
 
@@ -169,7 +169,7 @@ if [ "$PLATFORM" = "tvos" ]; then
   PID=$(xcrun simctl launch "$DEVICE_NAME" "$BUNDLE_ID" 2>&1 | awk '{print $NF}')
   echo "✅ Launched (PID: $PID)"
 else
-  echo "🚀 Launching Mac Catalyst app..."
+  echo "🚀 Launching native macOS app..."
   open "$APP_PATH"
   echo "✅ Launched"
 fi

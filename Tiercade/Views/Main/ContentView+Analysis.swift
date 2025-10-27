@@ -244,18 +244,8 @@ internal struct BalanceScoreView: View {
 
             VStack(spacing: 12) {
                 ZStack {
-                    let strokeColor: Color = {
-                        #if os(tvOS)
-                        return Palette.surfHi
-                        #elseif canImport(UIKit)
-                        return Color(UIColor.systemGray4)
-                        #else
-                        return Palette.surfHi
-                        #endif
-                    }()
-
                     Circle()
-                        .stroke(strokeColor, lineWidth: 8)
+                        .stroke(Palette.surfHi, lineWidth: 8)
                         .frame(width: 120, height: 120)
 
                     Circle()

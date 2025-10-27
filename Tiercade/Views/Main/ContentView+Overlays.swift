@@ -1,10 +1,11 @@
 import SwiftUI
 import Foundation
-#if canImport(UIKit)
+#if os(iOS)
 import UIKit
-#endif
-#if os(iOS) || targetEnvironment(macCatalyst)
 import UniformTypeIdentifiers
+#endif
+#if os(macOS)
+import AppKit
 #endif
 
 import TiercadeCore
@@ -92,7 +93,7 @@ internal struct ToastView: View {
                 }
             }
         }
-        #if os(iOS) || targetEnvironment(macCatalyst)
+        #if os(iOS)
         .focusable(interactions: .activate)
         .accessibilityAddTraits(.isModal)
         #endif
@@ -135,8 +136,13 @@ internal struct ToastView: View {
     }
 
     private func makeSymbolAttachment(named symbolName: String) -> NSTextAttachment? {
-        #if canImport(UIKit)
+        #if os(iOS)
         guard let image = UIImage(systemName: symbolName) else { return nil }
+        let attachment = NSTextAttachment()
+        attachment.image = image
+        return attachment
+        #elseif os(macOS)
+        guard let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) else { return nil }
         let attachment = NSTextAttachment()
         attachment.image = image
         return attachment

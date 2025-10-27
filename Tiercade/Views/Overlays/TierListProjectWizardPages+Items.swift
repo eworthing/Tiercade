@@ -62,11 +62,19 @@ internal struct ItemsWizardPage: View, WizardPage {
             addItemBar
         }
         .background(Palette.bg)
+        #if os(macOS)
+        .sheet(isPresented: $showingItemEditor) {
+            if let item = currentItem {
+                LargeItemEditorView(appState: appState, draft: draft, item: item)
+            }
+        }
+        #else
         .fullScreenCover(isPresented: $showingItemEditor) {
             if let item = currentItem {
                 LargeItemEditorView(appState: appState, draft: draft, item: item)
             }
         }
+        #endif
         #if os(tvOS)
         .onAppear { focusedField = .search }
         #endif

@@ -1,7 +1,7 @@
 # Apple Intelligence Experimental Feature
 
 **Status**: Experimental / Proof of Concept
-**Platforms**: iOS 26+, iPadOS 26+, macOS 26+ (Catalyst), visionOS 26+
+**Platforms**: iOS 26+, iPadOS 26+, macOS 26+ (native), visionOS 26+
 **Framework**: FoundationModels
 
 ## Overview
@@ -49,7 +49,7 @@ See [FEATURE_FLAG_USAGE.md](FEATURE_FLAG_USAGE.md) for details.
 ## Testing
 
 Run acceptance tests:
-1. Build Catalyst: `./build_install_launch.sh catalyst`
+1. Build native macOS: `./build_install_launch.sh macos`
 2. Open AI Chat (sparkles button)
 3. Click green checkmark for acceptance tests
 4. Results in `/tmp/tiercade_acceptance_test_report.json`

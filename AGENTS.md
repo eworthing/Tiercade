@@ -66,7 +66,7 @@ for attempt in 0..<maxRetries {
 ## tvOS-first UX rules
 
 - Overlays (QuickMove, HeadToHead, ThemePicker, etc.) are separate focus sections using `.focusSection()` and `.focusable(interactions: .activate)`. Keep background content interactive by toggling `.allowsHitTesting(!overlayActive)`—never `.disabled()`.
-- **Overlay Accessibility Pattern**: When adding new overlays for Catalyst/iOS, use `AccessibilityBridgeView` to ensure immediate accessibility tree presence. See `Tiercade/Views/OVERLAY_ACCESSIBILITY_PATTERN.md` for full pattern documentation. This solves async timing issues between state updates and accessibility registration on non-tvOS platforms.
+- **Overlay Accessibility Pattern**: When adding new overlays for iOS/macOS, use `AccessibilityBridgeView` to ensure immediate accessibility tree presence. See `Tiercade/Views/OVERLAY_ACCESSIBILITY_PATTERN.md` for full pattern documentation. This solves async timing issues between state updates and accessibility registration on non-tvOS platforms.
 - Accessibility IDs must follow `{Component}_{Action}` on leaf elements (e.g. `Toolbar_H2H`, `QuickMove_Overlay`). Avoid placing IDs on containers using `.accessibilityElement(children: .contain)`.
 - Head-to-head overlay contract: render skip card with `arrow.uturn.left.circle`, maintain `H2H_SkippedCount`, call `cancelH2H(fromExitCommand:)` from `.onExitCommand`.
 - Apply glass effects via `glassEffect`, `GlassEffectContainer`, or `.buttonStyle(.glass)` when touching toolbars/overlays; validate focus halos in the Apple TV 4K (3rd gen) tvOS 26 simulator.
@@ -76,7 +76,7 @@ for attempt in 0..<maxRetries {
 > **DerivedData location:** Xcode and the build script always emit products to `~/Library/Developer/Xcode/DerivedData/`. Nothing lands in `./build/`, so upload artifacts and inspect logs from DerivedData when debugging.
 
 1. **Build & launch tvOS** – `Cmd` + `Shift` + `B` in VS Code (task **Build, Install & Launch tvOS**). Script flow: 🧹 clean → 🔨 build → 📦 install → 🚀 launch. Confirm the timestamp printed at the end and the in-app `BuildInfoView` (DEBUG) match the current time.
-2. **Run Catalyst (when needed)** – `./build_install_launch.sh catalyst`. This cleanly builds, installs, and launches the Mac Catalyst app. Use it before validating cross-platform fixes.
+2. **Run native macOS** – `./build_install_launch.sh macos`. This cleanly builds, installs, and launches the native macOS app. Use it before validating cross-platform fixes.
 3. **Run package tests** – `cd TiercadeCore && swift test`. The `TiercadeCoreTests` target covers tier manipulation, head-to-head heuristics, bundled catalog metadata, and model decoding using Swift Testing (`@Test`, `#expect`) under the same strict concurrency flags.
 4. **Manual focus sweep** – With the tvOS 26 Apple TV 4K simulator open, cycle focus with the remote/arrow keys to confirm overlays and default focus behave. Capture issues with `/tmp/tiercade_debug.log` (see Operational Notes).
 
@@ -142,27 +142,33 @@ A SwiftUI tier list management app targeting tvOS 26+/iOS 26+ with Swift 6 stric
 
 **Migration priorities:** `ObservableObject`→`@Observable` | Combine→`AsyncSequence` | `NavigationView`→`NavigationStack` | Core Data→SwiftData | XCTest→Swift Testing | callbacks→`async/await` | queues→actors | String `+`→String interpolation | Test RTL text handling
 
-## Platform Strategy: Mac Catalyst
+## Platform Strategy: Native macOS
 
-**Platforms:** tvOS 26+ (primary) | iOS/iPadOS/macOS 26+ via Mac Catalyst
-- Mac runs as **Mac Catalyst** app (UIKit-based iOS app on macOS), NOT native AppKit
-- Benefits: Single iOS/iPadOS/Mac codebase, reduced platform conditionals, unified design system
-- tvOS remains separate (fundamentally different UX paradigm)
+**Platforms:** tvOS 26+ (primary) | iOS/iPadOS 26+ | macOS 26+ (native, not Catalyst)
+- Mac runs as **native macOS** app using AppKit/SwiftUI
+- **Mac Catalyst is no longer supported** - removed completely
+- Benefits: Native macOS experience, proper menu bar integration, AppKit APIs available
+- tvOS remains primary focus (fundamentally different UX paradigm)
 
-### Catalyst-Aware Patterns
+### Native macOS Patterns
 
-**Quick reference:** Reuse shared SwiftUI views whenever possible. Catalyst-only UX (menu bar commands, hover affordances) should live in the same files behind `targetEnvironment(macCatalyst)` checks, or move into helpers under `Views/Platform/Catalyst` if the code grows.
+**Quick reference:** Reuse shared SwiftUI views whenever possible. macOS-specific UX (menu bar commands, hover affordances, toolbar customization) should be conditionally compiled behind `#if os(macOS)` checks.
 
 **Platform checks:**
 ```swift
-// Correct: Check for UIKit availability
+// Correct: Check for UIKit availability (iOS/tvOS only)
 #if canImport(UIKit)
 import UIKit
 #endif
 
-// Correct: iOS family (includes Catalyst)
-#if os(iOS) || targetEnvironment(macCatalyst)
-  // iOS, iPadOS, and Mac Catalyst code
+// Correct: Check for AppKit availability (macOS only)
+#if canImport(AppKit)
+import AppKit
+#endif
+
+// Correct: iOS-specific
+#if os(iOS)
+  // iOS and iPadOS code
 #endif
 
 // Correct: tvOS-specific
@@ -170,40 +176,45 @@ import UIKit
   // tvOS-only code
 #endif
 
-// Avoid: Checking for macOS (Catalyst is iOS, not macOS)
-#if os(macOS)  // ❌ This excludes Catalyst!
+// Correct: Native macOS-specific
+#if os(macOS)
+  // Native macOS code using AppKit
+#endif
 ```
 
-**Liquid Glass fallbacks:**
-- Liquid Glass (`glassEffect`) is available on iOS, iPadOS, macOS (including Catalyst), and tvOS 26+. We intentionally lead with tvOS styling, but the same modifiers work on other OSes.
-- When a platform doesn’t support the desired effect (older OS, watchOS, etc.) fall back to `.ultraThinMaterial` / `.thinMaterial`.
+**Liquid Glass support:**
+- Liquid Glass (`glassEffect`) is available on iOS, iPadOS, macOS, and tvOS 26+. We intentionally lead with tvOS styling, but the same modifiers work on other OSes.
+- When a platform doesn't support the desired effect (older OS, watchOS, etc.) fall back to `.ultraThinMaterial` / `.thinMaterial`.
 - `GlassEffects.swift` handles these decisions automatically via platform checks.
 
-**API availability:**
-- TabView `.page` style is available on Catalyst 14.0+; prefer `.automatic` unless you explicitly want page-style paging on desktop.
-- UIKit APIs available on Catalyst (UIApplication, UIImage, etc.)
-- NavigationSplitView works identically across iOS/iPadOS/Catalyst
+**API availability differences:**
+- TabView `.page` style: Available on iOS/tvOS, NOT on native macOS. Use `.automatic` for macOS.
+- `fullScreenCover`: Available on iOS/tvOS, NOT on native macOS. Use `.sheet` for macOS.
+- `editMode` environment: Available on iOS/tvOS, NOT on native macOS.
+- `navigationBarTitleDisplayMode`: iOS-only. Use `.navigationTitle` for cross-platform.
+- Toolbar placements: `.topBarLeading`/`.topBarTrailing` are iOS-specific. Use `.principal`/`.automatic` for macOS.
+- UIKit APIs (UIApplication, UIImage, UIPasteboard): iOS/tvOS only. Use AppKit equivalents (NSWorkspace, NSImage, NSPasteboard) on macOS.
 
 **Build script:**
 ```bash
 # tvOS (default)
 ./build_install_launch.sh
 
-# Mac Catalyst
-./build_install_launch.sh catalyst
+# Native macOS
+./build_install_launch.sh macos
 ```
 
-**NavigationSplitView guardrails (Catalyst/iPad):**
-- Always feed production content into the active detail column. `NavigationSplitView` defaults to showing the detail pane, so leaving it empty (or replacing it with temporary placeholders) hides the toolbar and tier grid in Catalyst builds.
-- Route Catalyst/iPad through the shared `tierGridLayer` + `ToolbarView` composition. If you need to debug layouts, keep scaffolding behind `#if DEBUG` and delete it before merging so the detail column continues to render real state.
-- Prefer the two-column initializer (`sidebar:detail:`) unless you truly need a middle content column. The earlier three-column setup with an empty detail pane was the root cause of the missing top bar we chased in October 2025.
-- Whenever you add or rename toolbar actions on tvOS, wire the same control into the Catalyst toolbar and assign the shared accessibility identifier (e.g., `Toolbar_MultiSelect`). Reviews should fail if Catalyst (or iOS regular size class) loses parity with the tvOS toolbar. Validate both platforms during code review instead of relying on manual follow-up.
-- Hardware keyboard parity: treat arrow keys and Escape/Return as first-class inputs. New overlays and interactive surfaces should forward tvOS `.onMoveCommand` handlers to shared directional helpers and register `.onKeyPress` equivalents for iPad and Mac Catalyst so hardware keyboards mirror Siri Remote navigation.
+**NavigationSplitView guardrails (macOS/iPad):**
+- Always feed production content into the active detail column. `NavigationSplitView` defaults to showing the detail pane, so leaving it empty hides the toolbar and tier grid.
+- Route macOS/iPad through the shared `tierGridLayer` + `ToolbarView` composition. If you need to debug layouts, keep scaffolding behind `#if DEBUG` and delete it before merging.
+- Prefer the two-column initializer (`sidebar:detail:`) unless you truly need a middle content column.
+- Whenever you add or rename toolbar actions on tvOS, wire the same control into the macOS/iOS toolbar and assign the shared accessibility identifier (e.g., `Toolbar_MultiSelect`). Reviews should fail if macOS or iOS loses parity with tvOS toolbar.
+- Hardware keyboard parity: treat arrow keys and Escape/Return as first-class inputs. New overlays and interactive surfaces should forward tvOS `.onMoveCommand` handlers to shared directional helpers and register `.onKeyPress` equivalents for iPad and macOS so hardware keyboards mirror Siri Remote navigation.
 
 ## Architecture & Data Flow
 
 ### Structure
-- **App:** SwiftUI tvOS app with iOS support. Views in `Views/{Main,Overlays,Toolbar}` composed in `MainAppView.swift`
+- **App:** SwiftUI multi-platform app (tvOS, iOS, macOS). Views in `Views/{Main,Overlays,Toolbar}` composed in `MainAppView.swift`
 - **Core logic:** `TiercadeCore` Swift package (iOS 26+/macOS 26+/tvOS 26+) — platform-agnostic models and logic
   - Models: `Item`, `Items` (typealias for `[String: [Item]]`), `TierConfig`
   - Logic: `TierLogic`, `HeadToHeadLogic`, `RandomUtils`
@@ -249,14 +260,14 @@ func moveItem(_ id: String, to tier: String) {
 # Build tvOS
 ./build_install_launch.sh
 
-# Build Mac Catalyst
-./build_install_launch.sh catalyst
+# Build native macOS
+./build_install_launch.sh macos
 ```
 
-Both platforms **must** build successfully before merging structural splits. Catalyst often surfaces visibility issues that tvOS doesn't catch.
+Both platforms **must** build successfully before merging structural splits. Native macOS often surfaces visibility issues that tvOS doesn't catch.
 
 **Pattern from recent splits:**
-- [f662d34](https://github.com/eworthing/Tiercade/commit/f662d34) - Fixed Catalyst build errors: `private` → `internal` for cross-file access
+- [f662d34](https://github.com/eworthing/Tiercade/commit/f662d34) - Fixed macOS build errors: `private` → `internal` for cross-file access
 - [5fe41fe](https://github.com/eworthing/Tiercade/commit/5fe41fe), [0060169](https://github.com/eworthing/Tiercade/commit/0060169) - MatchupArenaOverlay, TierListProjectWizardPages splits required visibility updates
 
 ### Async Operations & Progress
@@ -339,7 +350,7 @@ tvOS Exit button (Menu/⌘) should dismiss modals, not exit app:
 | Platform | Implementation | Helper |
 | --- | --- | --- |
 | tvOS 26+ | `glassEffect` / `glassBackgroundEffect` with focus-ready spacing | See `GlassContainer` helper below |
-| iOS · iPadOS · macOS (Catalyst) | `.ultraThinMaterial` fallback inside the same shape | See `GlassContainer` helper below |
+| iOS · iPadOS · macOS (native) | `.ultraThinMaterial` fallback inside the same shape | See `GlassContainer` helper below |
 
 ```swift
 @ViewBuilder func GlassContainer<S: Shape, V: View>(_ shape: S, @ViewBuilder _ content: () -> V) -> some View {
@@ -412,8 +423,8 @@ VStack {
 ```bash
 # tvOS
 ./build_install_launch.sh
-# Catalyst
-./build_install_launch.sh catalyst
+# Native macOS
+./build_install_launch.sh macos
 # Manual tvOS build only
 xcodebuild clean -project Tiercade.xcodeproj -scheme Tiercade -configuration Debug
 xcodebuild -project Tiercade.xcodeproj -scheme Tiercade \
@@ -439,7 +450,7 @@ TiercadeCore owns package tests. Run `swift test` inside `TiercadeCore/` (Swift 
 **Cross-Platform:**
 - [ ] After UI refactors or access-level changes, build succeeds on both platforms:
   - `./build_install_launch.sh` (tvOS)
-  - `./build_install_launch.sh catalyst` (Mac Catalyst)
+  - `./build_install_launch.sh macos` (native macOS)
 - [ ] Visibility modifiers allow cross-file access within module
 
 ### UI test minimalism
@@ -518,9 +529,9 @@ Maintain bundled images manually within `Tiercade/Assets.xcassets`. Ensure any c
 4. iOS 26, macOS 26, and tvOS 26 require TLS 1.2+ by default for outbound `URLSession`/Network requests when the app links against the OS 26 SDKs; ensure remote endpoints negotiate an acceptable cipher suite or customize `NWProtocolTLS.Options` if absolutely necessary.
 
 ### Gatekeeper & UI test runner
-- macOS can quarantine the Catalyst UI test host, producing the dialog “`TiercadeUITests-Runner` is damaged and can't be opened.” Remove the quarantine bit before rerunning UI tests:
+- macOS can quarantine the native macOS UI test host, producing the dialog "`TiercadeUITests-Runner` is damaged and can't be opened." Remove the quarantine bit before rerunning UI tests:
   ```bash
-  xattr -dr com.apple.quarantine ~/Library/Developer/Xcode/DerivedData/Tiercade-*/Build/Products/Debug-maccatalyst/TiercadeUITests-Runner.app
+  xattr -dr com.apple.quarantine ~/Library/Developer/Xcode/DerivedData/Tiercade-*/Build/Products/Debug/TiercadeUITests-Runner.app
   ```
 - Repeat after DerivedData resets (the hash segment changes per build directory).
 

@@ -1,6 +1,6 @@
 # Candidate-Batch Backfill Analysis
-**Date:** 2025-10-24  
-**Test Run:** Mac Catalyst, OS 26.0.1
+**Date:** 2025-10-24
+**Test Run:** Native macOS, OS 26.0.1
 
 ## Executive Summary
 **RECOMMENDATION: ABANDON CANDIDATE-BATCH BACKFILL**
@@ -126,7 +126,7 @@ Even with doubled token budgets:
 ### 4. Fix Test Report Export
 **Issue:** `saveReport` uses hardcoded "/tmp/" instead of NSTemporaryDirectory()
 
-**Impact:** Test reports not created on Mac Catalyst (sandboxed /tmp)
+**Impact:** Test reports not created on native macOS (sandboxed /tmp)
 
 **Fix:**
 ```swift

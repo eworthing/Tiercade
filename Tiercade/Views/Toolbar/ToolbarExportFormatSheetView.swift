@@ -1,4 +1,4 @@
-#if os(iOS) || targetEnvironment(macCatalyst)
+#if !os(tvOS)
 import SwiftUI
 import UniformTypeIdentifiers
 import Observation
@@ -30,9 +30,11 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
             }
             .padding(Metrics.grid * 2)
             .navigationTitle("Export Tier List")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { isPresented = false }
                 }
             }

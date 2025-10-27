@@ -15,7 +15,7 @@
 ### 2. Fixed Test Report Export Paths ✅
 - **Location:** `TiercadeApp.swift:120-129`
 - **Changed:** Hardcoded `/tmp/` → `NSTemporaryDirectory()`
-- **Reason:** Mac Catalyst sandboxing prevents writing to `/tmp/`
+- **Reason:** Native macOS sandboxing prevents writing to `/tmp/`
 - **Result:** Reports now successfully created in sandbox temp directory
 
 ### 3. Verified Normalization ✅
@@ -157,4 +157,4 @@ The model generates high-probability items (Ada, Lua, Rust, etc.) because guided
 
 2. **TiercadeApp.swift**
    - Fixed report export paths (lines 120-129)
-   - Now uses `NSTemporaryDirectory()` for Catalyst compatibility
+   - Now uses `NSTemporaryDirectory()` for native macOS compatibility

@@ -48,8 +48,8 @@ internal enum PlatformCardLayoutProvider {
         let spec = spec(for: effectiveDensity)
 
         let scale: CGFloat = {
-            #if targetEnvironment(macCatalyst)
-            return 1.12
+            #if os(macOS)
+            return 1.0  // Native macOS uses 1:1 scaling
             #else
             switch horizontalSizeClass {
             case .some(.regular):

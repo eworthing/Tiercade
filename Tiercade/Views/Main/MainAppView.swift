@@ -11,7 +11,9 @@ import Foundation
 
 internal struct MainAppView: View {
     @Environment(AppState.self) private var app: AppState
+    #if os(iOS) || os(tvOS)
     @State private var editMode: EditMode = .inactive
+    #endif
     #if os(tvOS)
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var detailFocus: DetailFocus?
@@ -51,7 +53,7 @@ internal struct MainAppView: View {
         return Group {
             #if os(tvOS)
             tvOSPrimaryContent(modalBlockingFocus: modalBlockingFocus)
-            #elseif os(macOS) || targetEnvironment(macCatalyst)
+            #elseif os(macOS)
             macSplitView(modalBlockingFocus: modalBlockingFocus)
             #elseif os(iOS)
             if horizontalSizeClass == .regular {
@@ -129,6 +131,16 @@ internal struct MainAppView: View {
         } message: {
             Text("This will delete all items and reset the tier list. This action cannot be undone.")
         }
+        #if os(macOS)
+        .sheet(isPresented: Binding(
+            get: { app.showTierListCreator },
+            set: { app.showTierListCreator = $0 }
+        )) {
+            if let draft = app.tierListCreatorDraft {
+                TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
+            }
+        }
+        #else
         .fullScreenCover(isPresented: Binding(
             get: { app.showTierListCreator },
             set: { app.showTierListCreator = $0 }
@@ -137,6 +149,7 @@ internal struct MainAppView: View {
                 TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
             }
         }
+        #endif
         #if !os(tvOS)
         .sheet(isPresented: Binding(
             get: { app.showingAnalysis },
@@ -281,7 +294,7 @@ internal struct MainAppView: View {
 
     // MARK: - Platform Navigation Structures
 
-    #if os(macOS) || targetEnvironment(macCatalyst)
+    #if os(macOS)
     @ViewBuilder
     private func macSplitView(modalBlockingFocus: Bool) -> some View {
         NavigationSplitView {
@@ -332,7 +345,9 @@ internal struct MainAppView: View {
         ZStack {
             TierGridView(tierOrder: app.tierOrder)
                 .environment(app)
+                #if os(iOS)
                 .environment(\.editMode, $editMode)
+                #endif
                 // Add content padding to avoid overlay bars overlap
                 #if os(tvOS)
                 .padding(.top, TVMetrics.contentTopInset)
@@ -372,19 +387,12 @@ internal struct MainAppView: View {
             .allowsHitTesting(!modalBlockingFocus)
             .accessibilityElement(children: .contain)
 
-            // Action bar - no focus section on Catalyst for keyboard navigation
-            #if os(tvOS)
+            // Action bar - only show on tvOS (iOS and macOS use different toolbar)
             TVActionBar(app: app, glassNamespace: glassNamespace)
                 .environment(\.editMode, $editMode)
                 .allowsHitTesting(!modalBlockingFocus)
                 .accessibilityElement(children: .contain)
                 .focusSection()
-            #else
-            TVActionBar(app: app, glassNamespace: glassNamespace)
-                .environment(\.editMode, $editMode)
-                .allowsHitTesting(!modalBlockingFocus)
-                .accessibilityElement(children: .contain)
-            #endif
         }
         #if DEBUG
         .overlay(alignment: .bottomTrailing) {
@@ -466,11 +474,13 @@ private extension MainAppView {
             app.detailItem = nil
             return true
         }
+        #if os(iOS) || os(tvOS)
         if editMode == .active {
             editMode = .inactive
             app.clearSelection()
             return true
         }
+        #endif
         return false
     }
 }
