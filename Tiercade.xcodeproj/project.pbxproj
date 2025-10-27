@@ -9,12 +9,24 @@
 /* Begin PBXBuildFile section */
 		6E166BF72E78EE7100E74DA5 /* TiercadeCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6E166BF62E78EE7100E74DA5 /* TiercadeCore */; };
 		6EF0B10E2E78F0B0008EABCD /* TiercadeKeyboardNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EF0B10D2E78F0B0008EABCD /* TiercadeKeyboardNavigationTests.swift */; };
+		6ETC00022E77178A005B024E /* TestConfigs in Resources */ = {isa = PBXBuildFile; fileRef = 6ETC00012E77178A005B024E /* TestConfigs */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		6EF0B1322E78F0B0008EABCD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6EB4435F2E77178A005B024E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6EB443662E77178A005B024E;
+			remoteInfo = Tiercade;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		6EB443672E77178A005B024E /* Tiercade.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tiercade.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		6EF0B1052E78F0B0008EABCD /* TiercadeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.uibundle; includeInIndex = 0; path = TiercadeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		6EF0B1052E78F0B0008EABCD /* TiercadeUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = file; path = TiercadeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6EF0B10D2E78F0B0008EABCD /* TiercadeKeyboardNavigationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TiercadeKeyboardNavigationTests.swift; sourceTree = "<group>"; };
+		6ETC00012E77178A005B024E /* TestConfigs */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Tiercade/TestConfigs; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -72,16 +84,6 @@
 		};
 /* End PBXGroup section */
 
-/* Begin PBXContainerItemProxy section */
-		6EF0B1322E78F0B0008EABCD /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 6EB4435F2E77178A005B024E /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 6EB443662E77178A005B024E;
-			remoteInfo = Tiercade;
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin PBXNativeTarget section */
 		6EB443662E77178A005B024E /* Tiercade */ = {
 			isa = PBXNativeTarget;
@@ -125,14 +127,6 @@
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
-
-/* Begin PBXTargetDependency section */
-		6EF0B1332E78F0B0008EABCD /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 6EB443662E77178A005B024E /* Tiercade */;
-			targetProxy = 6EF0B1322E78F0B0008EABCD /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		6EB4435F2E77178A005B024E /* Project object */ = {
@@ -179,6 +173,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6ETC00022E77178A005B024E /* TestConfigs in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -208,6 +203,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		6EF0B1332E78F0B0008EABCD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6EB443662E77178A005B024E /* Tiercade */;
+			targetProxy = 6EF0B1322E78F0B0008EABCD /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		6EB443872E77178B005B024E /* Debug */ = {
@@ -338,7 +341,6 @@
 				DEVELOPMENT_TEAM = Z8FUXLNT6G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -383,7 +385,6 @@
 				DEVELOPMENT_TEAM = Z8FUXLNT6G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -418,10 +419,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Z8FUXLNT6G;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -433,6 +434,7 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature StrictConcurrency -strict-concurrency=complete";
 				PRODUCT_BUNDLE_IDENTIFIER = eworthing.TiercadeUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
@@ -440,7 +442,6 @@
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2,3";
 				TEST_TARGET_NAME = Tiercade;
-				SKIP_INSTALL = YES;
 			};
 			name = Debug;
 		};
@@ -448,10 +449,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGNING_ALLOWED = YES;
 				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = Z8FUXLNT6G;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -463,12 +464,12 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature StrictConcurrency -strict-concurrency=complete";
 				PRODUCT_BUNDLE_IDENTIFIER = eworthing.TiercadeUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = YES;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2,3";
 				TEST_TARGET_NAME = Tiercade;
-				SKIP_INSTALL = YES;
 			};
 			name = Release;
 		};

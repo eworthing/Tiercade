@@ -1,0 +1,112 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "description": "Predefined test suite configurations for various testing scenarios",
+    "lastUpdated": "2025-10-26",
+    "totalSuites": 5
+  },
+  "suites": [
+    {
+      "id": "quick-smoke",
+      "name": "Quick Smoke Test",
+      "description": "Fast validation (1-2 min) - tests basic functionality",
+      "config": {
+        "promptIds": ["G0-Minimal", "G2-LightUnique"],
+        "queryIds": ["fruits-15"],
+        "decoderIds": ["greedy"],
+        "seeds": [42],
+        "guidedModes": [false]
+      },
+      "metadata": {
+        "estimatedDuration": 60,
+        "totalRuns": 2,
+        "purpose": "Quick sanity check before commits",
+        "runWhen": "Before every commit, after small changes",
+        "dateAdded": "2025-10-26",
+        "tags": ["quick", "smoke", "ci"]
+      }
+    },
+    {
+      "id": "standard-prompt-test",
+      "name": "Standard Prompt Test",
+      "description": "Original SystemPromptTester baseline - tests all standard prompts",
+      "config": {
+        "promptIds": ["S01-UltraSimple", "S02-StrongImperative", "S03-FewShot-Correct", "S06-ChainOfThought-Basic", "S14-QualityOverQuantity", "S17-JSON-Canonicalization", "S22-OneConcept", "S25-JSON-FewShot"],
+        "queryIds": ["animated-series-25"],
+        "decoderIds": ["topk50-t08"],
+        "seeds": [42],
+        "guidedModes": [false],
+        "timeoutSeconds": 60
+      },
+      "metadata": {
+        "estimatedDuration": 480,
+        "totalRuns": 8,
+        "purpose": "Replicate original prompt testing methodology",
+        "runWhen": "Weekly, before releases",
+        "dateAdded": "2025-10-26",
+        "tags": ["standard", "baseline", "weekly"]
+      }
+    },
+    {
+      "id": "enhanced-pilot",
+      "name": "Enhanced Pilot Test",
+      "description": "Multi-dimensional grid testing (10-15 min)",
+      "config": {
+        "promptIds": ["G0-Minimal", "G2-LightUnique", "G3-Diversity", "G6-CandidateOnly"],
+        "queryIds": ["fruits-15", "us-places-50", "video-games-150", "candy-bars-open"],
+        "decoderIds": ["greedy", "topk50-t08", "topp92-t08"],
+        "seeds": [42, 1337],
+        "guidedModes": [false, true]
+      },
+      "metadata": {
+        "estimatedDuration": 900,
+        "totalRuns": 192,
+        "purpose": "Comprehensive multi-dimensional analysis",
+        "runWhen": "Before major releases, monthly",
+        "dateAdded": "2025-10-26",
+        "tags": ["pilot", "comprehensive", "monthly"]
+      }
+    },
+    {
+      "id": "diversity-comparison",
+      "name": "Diversity Comparison",
+      "description": "Compare diversity strategies across decoders",
+      "config": {
+        "promptIds": ["G3-Diversity", "S18-JSON-Diversity", "S35-JSON-DiversityFirst"],
+        "queryIds": ["animated-series-25", "us-places-50"],
+        "decoderIds": ["topk40-t07", "topk50-t08", "topp92-t08", "topp95-t09"],
+        "seeds": [42, 1337, 9999],
+        "guidedModes": [false]
+      },
+      "metadata": {
+        "estimatedDuration": 600,
+        "totalRuns": 72,
+        "purpose": "Evaluate diversity strategies and decoder impact",
+        "runWhen": "When tuning diversity parameters",
+        "dateAdded": "2025-10-26",
+        "tags": ["diversity", "tuning", "analysis"]
+      }
+    },
+    {
+      "id": "full-acceptance",
+      "name": "Full Acceptance Test",
+      "description": "Comprehensive validation (20-30 min) - all prompts, all configs",
+      "config": {
+        "promptIds": ["*"],
+        "queryIds": ["fruits-15", "animated-series-25", "us-places-50"],
+        "decoderIds": ["greedy", "topk50-t08", "topp92-t08"],
+        "seeds": [42],
+        "guidedModes": [false]
+      },
+      "metadata": {
+        "estimatedDuration": 1800,
+        "totalRuns": 432,
+        "purpose": "Full regression test of all prompts",
+        "runWhen": "Before major releases only",
+        "dateAdded": "2025-10-26",
+        "tags": ["acceptance", "comprehensive", "release"],
+        "notes": "Uses wildcard '*' for all 48 prompts"
+      }
+    }
+  ]
+}

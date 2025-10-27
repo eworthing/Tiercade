@@ -6,6 +6,21 @@ import FoundationModels
 
 // MARK: - Acceptance Test Suite
 //
+// ⚠️ DEPRECATED: This testing infrastructure has been replaced by UnifiedPromptTester.
+//
+// Migration path:
+// 1. Replace AcceptanceTestSuite.runAll() with UnifiedPromptTester.runSuite(suiteId: "standard-prompt-test")
+// 2. Use JSON configuration files in TestConfigs/ to define test queries and prompts
+// 3. See AIChatOverlay+Tests.swift for updated integration patterns
+// 4. Refer to TestConfigs/TESTING_FRAMEWORK.md for configuration documentation
+//
+// Why replaced:
+// - Configuration hardcoded in Swift (difficult to modify without recompiling)
+// - Limited test matrix flexibility
+// - Redundant with EnhancedPromptTester and PilotTestRunner
+// - UnifiedPromptTester provides config-driven, multi-dimensional testing
+//
+// Original purpose (preserved in UnifiedPromptTester):
 // Validates the unique list generation spec implementation:
 // 1. Structure: JSON decodes on all runs, no extra prose
 // 2. Uniqueness: Set(map(normKey)).count == N

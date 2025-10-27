@@ -1,7 +1,22 @@
 // ============================================================================
 // COMPREHENSIVE PROMPT TESTING FRAMEWORK - FINAL VERSION
 // ============================================================================
-// All improvements from ChatGPT feedback integrated:
+//
+// ⚠️ DEPRECATED: This testing infrastructure has been replaced by UnifiedPromptTester.
+//
+// Migration path:
+// 1. Replace EnhancedPromptTester.testPrompts() with UnifiedPromptTester.runSuite(suiteId: "diversity-comparison")
+// 2. All 12 enhanced prompts (G0-G11, F2-F3) are now in TestConfigs/SystemPrompts.json
+// 3. Customize test configuration via TestConfigs/TestSuites.json
+// 4. See TestConfigs/TESTING_FRAMEWORK.md for full configuration documentation
+//
+// Why replaced:
+// - Prompts hardcoded in Swift (G0-G11, F2-F3 defined in code)
+// - Configuration scattered across multiple methods
+// - Redundant with AcceptanceTestSuite and PilotTestRunner
+// - UnifiedPromptTester provides config-driven, multi-dimensional testing
+//
+// Original features (all preserved in UnifiedPromptTester):
 // - Dynamic token budgets per query
 // - Finish reason logging and truncation tracking
 // - Fresh session per run (no shared state)

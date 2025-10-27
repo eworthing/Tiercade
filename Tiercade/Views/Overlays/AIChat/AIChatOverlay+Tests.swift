@@ -3,6 +3,107 @@ import SwiftUI
 #if DEBUG && canImport(FoundationModels)
 @available(iOS 26.0, macOS 26.0, *)
 extension AIChatOverlay {
+    // MARK: - Unified Prompt Tester (New)
+
+    /// Run a unified test suite (new config-driven approach)
+    internal func runUnifiedTestSuite(suiteId: String = "quick-smoke") {
+        aiService.messages.append(AIChatMessage(
+            content: "🚀 Starting unified test suite '\(suiteId)'...",
+            isUser: false
+        ))
+
+        Task {
+            do {
+                let report = try await UnifiedPromptTester.runSuite(suiteId: suiteId) { message in
+                    Task { @MainActor in
+                        aiService.messages.append(AIChatMessage(content: message, isUser: false))
+                    }
+                }
+
+                // Wrap post-processing in @MainActor to avoid data races
+                await MainActor.run {
+                    handleUnifiedTestReport(report)
+                }
+            } catch {
+                await MainActor.run {
+                    aiService.messages.append(AIChatMessage(
+                        content: "❌ Test error: \(error.localizedDescription)",
+                        isUser: false
+                    ))
+                }
+            }
+        }
+    }
+
+    private func handleUnifiedTestReport(_ report: UnifiedPromptTester.TestReport) {
+        let summary = buildUnifiedTestSummary(report)
+        aiService.messages.append(AIChatMessage(content: summary, isUser: false))
+
+        saveUnifiedTestReport(report)
+        showUnifiedTestToast(report)
+    }
+
+    private func buildUnifiedTestSummary(_ report: UnifiedPromptTester.TestReport) -> String {
+        let passRate = Double(report.successfulRuns) / Double(max(1, report.totalRuns)) * 100
+        let topPrompt = report.rankings.byPassRate.first
+
+        return """
+        ✅ \(report.suiteName) Complete
+
+        Results:
+        • Total runs: \(report.totalRuns)
+        • Success rate: \(String(format: "%.1f%%", passRate))
+        • Duration: \(String(format: "%.1f", report.totalDuration))s
+
+        Top Prompt:
+        • #1: \(topPrompt?.promptName ?? "N/A") (score: \(String(format: "%.3f", topPrompt?.score ?? 0)))
+
+        Environment:
+        • OS: \(report.environment.osVersion)
+        • Top-P: \(report.environment.hasTopP ? "Available" : "N/A")
+
+        📄 Full report saved to temp directory
+        """
+    }
+
+    private func saveUnifiedTestReport(_ report: UnifiedPromptTester.TestReport) {
+        // Use NSTemporaryDirectory for sandbox compatibility
+        let reportPath = NSTemporaryDirectory()
+            .appending("tiercade_unified_test_report.json")
+
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(report)
+            try data.write(to: URL(fileURLWithPath: reportPath))
+
+            aiService.messages.append(AIChatMessage(
+                content: "📄 Detailed report: \(reportPath)",
+                isUser: false
+            ))
+        } catch {
+            print("❌ Failed to save report: \(error)")
+            aiService.messages.append(AIChatMessage(
+                content: "⚠️ Could not save report file: \(error.localizedDescription)",
+                isUser: false
+            ))
+        }
+    }
+
+    private func showUnifiedTestToast(_ report: UnifiedPromptTester.TestReport) {
+        let passRate = Double(report.successfulRuns) / Double(max(1, report.totalRuns))
+
+        if passRate == 1.0 {
+            app.showSuccessToast("All Tests Passed!", message: "\(report.totalRuns)/\(report.totalRuns)")
+        } else {
+            app.showInfoToast("Tests Complete", message: "\(report.successfulRuns)/\(report.totalRuns) passed")
+        }
+    }
+
+    // MARK: - Legacy Test Integrations (Deprecated)
+
+    /// @deprecated Use runUnifiedTestSuite(suiteId:) instead
     internal func startAcceptanceTests() {
         aiService.messages.append(AIChatMessage(
             content: "🧪 Starting acceptance test suite...",
