@@ -41,6 +41,8 @@ This report provides a comprehensive, step-by-step migration strategy for conver
 7. [Testing Strategy](#testing-strategy)
 8. [Rollout Plan](#rollout-plan)
 9. [Risk Mitigation](#risk-mitigation)
+10. [Command Menu Parity (macOS vs tvOS Toolbar)](#command-menu-parity-macos-vs-tvos-toolbar)
+11. [WindowGroup Multi-Window State Strategy](#windowgroup-multi-window-state-strategy)
 
 ---
 
@@ -521,25 +523,39 @@ import UIKit
 #endif
 ```
 
-**Decision Point:** This file uses iOS-specific `FileDocument` and `.fileExporter()`. Two options:
+**Decision Point:** This file already uses SwiftUI’s `FileDocument` and `.fileExporter()` helpers, which are supported on macOS 14+, iOS/iPadOS 17+, and Mac Catalyst 17+ (see [SwiftUI fileExporter macOS label](https://developer.apple.com/documentation/swiftui/view/fileexporterfilenamelabel(_:)-5kn1a/)). Two options:
 
-**Option A (Recommended):** Keep iOS-only, implement macOS alternative:
+**Option A (Recommended):** Keep the shared SwiftUI exporter across platforms
 ```swift
-#if os(iOS)
-// Existing iOS sheet with FileDocument
-#endif
+#if !os(tvOS)
+// Shared implementation using FileDocument + .fileExporter()
+// Works on iOS, macOS, visionOS - all platforms except tvOS
+// On macOS, you can add polish like .fileExporterFilenameLabel("Export name:")
 
-#if os(macOS)
-// macOS alternative using NSSavePanel
-internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
-    // Implement using macOS-native file save dialog
+struct ExportButton: View {
+  @State private var isExporting = false
+  @State private var document = TiercadeExportDocument() // your FileDocument type
+
+  var body: some View {
+    Button("Export…") { isExporting = true }
+    .fileExporter(
+      isPresented: $isExporting,
+      document: document,
+      contentType: .json
+    ) { result in
+      // handle result (success/failure)
+    }
+    #if os(macOS)
+    .fileExporterFilenameLabel("Export name:")
+    #endif
+  }
 }
 #endif
 ```
 
-**Option B:** Exclude from macOS entirely and use alternative export UX (e.g., direct save to Downloads).
+**Option B:** Exclude from macOS initially and use a temporary alternative (e.g., direct save to Downloads) — not recommended.
 
-**Recommendation:** Implement Option A to maintain feature parity. macOS users expect native file save dialogs.
+**Recommendation:** Keep `fileExporter` cross‑platform and add mac‑specific affordances (e.g., `fileExporterFilenameLabel(_:)`) later. This maintains parity and avoids unnecessary AppKit rewrites.
 
 ---
 
@@ -656,6 +672,43 @@ targets: [
 - `LSApplicationCategoryType` - App Store category for macOS
 - `LSMinimumSystemVersion` - Minimum macOS version (26.0 Tahoe)
 - Automatic/Sudden Termination - macOS app lifecycle best practices
+
+### Add Native macOS Target Checklist
+
+1) Create a macOS SwiftUI target
+- New Target → macOS → App → SwiftUI App life cycle; set deployment target to macOS 26.0.
+- Create a distinct scheme, e.g. `Tiercade-macOS`.
+
+2) Bundle identifiers and signing
+- Use a unique bundle identifier (e.g., `eworthing.Tiercade-macOS`) and configure signing for the new target.
+
+3) Link shared code
+- Add the `TiercadeCore` SwiftPM package to the macOS target and include shared design sources under `Tiercade/Design`.
+
+4) Swift 6 strict concurrency (Swift 6.0 language mode)
+- Use Swift 6.0 language mode (Xcode 26 default) with Complete strict concurrency checking via `-strict-concurrency=complete`
+- Mirror the package manifest's `.enableUpcomingFeature("StrictConcurrency")` flag
+- Note: Swift 6.2's default main actor isolation is available but requires updating to Swift 6.2 language mode (optional upgrade)
+
+5) Platforms and Catalyst
+- For the new macOS target, keep `SUPPORTS_MACCATALYST = NO` and retain `SUPPORTED_PLATFORMS` including `macosx`.
+
+6) App entry and scenes
+- Add a mac-only `@main` app type that defines `WindowGroup` and optional `Settings` (macOS 13.0+ only) / `MenuBarExtra` (macOS 13.0+ only) scenes, injecting `AppState` and (optionally) `modelContainer`
+- Note: Settings and MenuBarExtra scenes are macOS-exclusive. For cross-platform apps, wrap these in `#if os(macOS)` or create platform-specific app entry points
+- Evidence: App, WindowGroup, Settings, MenuBarExtra docs:
+  - https://developer.apple.com/documentation/swiftui/app/
+  - https://developer.apple.com/documentation/swiftui/windowgroup/
+  - https://developer.apple.com/documentation/swiftui/settings/
+  - https://developer.apple.com/documentation/swiftui/menubarextra/
+
+7) Bridging UIKit → AppKit for mac
+- URLs: `NSWorkspace.shared.open` (https://developer.apple.com/documentation/appkit/nsworkspace/)
+- Pasteboard: `NSPasteboard.general.setString(_:forType:)` (https://developer.apple.com/documentation/appkit/nspasteboard/) (https://developer.apple.com/documentation/appkit/nspasteboard/setstring(_:fortype:)/)
+- Images: `NSImage(cgImage:size:)` (https://developer.apple.com/documentation/appkit/nsimage/init(cgimage:size:)/)
+
+8) File export
+- Keep `FileDocument` + `fileExporter`; add mac polish via `fileExporterFilenameLabel(_:)` (https://developer.apple.com/documentation/swiftui/view/fileexporterfilenamelabel(_:)-5kn1a/).
 
 ---
 
@@ -1145,7 +1198,7 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
 #endif
 ```
 
-**Rationale:** The iOS `FileDocument` + `.fileExporter()` pattern is iOS-specific. macOS should use native `NSSavePanel` for better UX. This can be implemented in a follow-up PR to keep the initial migration focused.
+**Rationale:** SwiftUI’s `fileExporter` works natively on macOS 14+ with the same document types, so no rewrite is required for functionality. However, we can layer macOS-centric affordances (custom filename labels, default save locations) in a follow-up PR using APIs like `fileExporterFilenameLabel(_:)` to better match desktop expectations. This keeps Phase 1 focused on the migration while leaving room for UX polish once the native target is stable.
 
 **Changes Summary:**
 - ✅ Phase 1: Remove Catalyst support (change line 1 from `os(iOS) || targetEnvironment(macCatalyst)` to `os(iOS)`)
@@ -1482,6 +1535,20 @@ swift test --enable-code-coverage
 - ✅ No platform-specific failures
 - ✅ Code coverage remains >80%
 
+### Menu Commands & Shortcuts
+
+- Verify menu items exist under the expected menu groups and use correct titles.
+- Confirm `keyboardShortcut(_:)` accelerators trigger the same `AppState` methods as toolbar buttons on tvOS/iOS.
+- Validate enable/disable logic via `FocusedValue` or availability checks mirrors UI state.
+- Add basic UI tests if desired that assert presence of menu items by title/identifier; otherwise, manual checks suffice per Apple guidance. Evidence: Commands/menu bar guide https://developer.apple.com/documentation/swiftui/building-and-customizing-the-menu-bar-with-swiftui/
+
+### Multi‑Window (WindowGroup)
+
+- Use `openWindow(id:)` to open a second window; ensure per‑window overlays/focus don’t conflict.
+- Validate shared domain data (tiers, selection persistence) remains consistent across windows.
+- Switch between windows and confirm commands act on the active scene only.
+- Evidence: WindowGroup overview/programmatic open https://developer.apple.com/documentation/swiftui/windowgroup/
+
 ### UI Automation Tests
 
 **6. Accessibility Identifier Validation:**
@@ -1527,7 +1594,7 @@ xcodebuild test -project Tiercade.xcodeproj \
 2. Refactor `PlatformCardLayout.swift` (remove 1.12x scaling)
 3. Update `MediaGalleryView.swift` (TabView style)
 4. Update `ContentView+TierGrid.swift` (accessibility traits)
-5. Update `MainAppView.swift` (platform switch, method guards)
+5. Update `MainAppView.swift` — change `#elseif os(macOS) || targetEnvironment(macCatalyst)` to `#elseif os(macOS)` and remove Catalyst-only branches; keep tvOS/iOS branches unchanged
 
 **Day 5: Build Configuration**
 1. Update `Tiercade.xcodeproj` settings (`SUPPORTS_MACCATALYST = NO`)
@@ -1563,10 +1630,10 @@ xcodebuild test -project Tiercade.xcodeproj \
 2. Add to `TiercadeApp.swift`
 3. Test all menu actions
 
-**Day 3-4: Native File Management**
-1. Implement macOS-native `ExportFormatSheetView` using `NSSavePanel`
-2. Maintain iOS version (FileDocument) in parallel
-3. Test export flows on both platforms
+**Day 3-4: File Management Refinements (SwiftUI)**
+1. Keep shared `FileDocument` + `.fileExporter()` for macOS and iOS
+2. Add macOS polish (e.g., `.fileExporterFilenameLabel("Export name:")`)
+3. Test export flows on both platforms (no AppKit rewrite needed)
 
 **Day 5: Liquid Glass Refinement**
 1. Update `GlassContainer` to use native Liquid Glass on macOS 26
@@ -1605,6 +1672,30 @@ xcodebuild test -project Tiercade.xcodeproj \
 **Mitigation:**
 - Add comprehensive unit tests for each API replacement
 - Test on multiple macOS versions (26.0, 26.1 beta)
+
+### Risk 2: Command/menu parity drift from tvOS toolbar
+
+**Risk:** Menu commands or shortcuts diverge from tvOS toolbar actions over time.
+
+**Mitigation:**
+- Route both toolbar buttons and commands through the same `AppState` methods to ensure a single behavior locus.
+- Add review checklist items to verify parity when adding or renaming toolbar actions.
+- Add simple tests or manual checks for presence and enabled state of key commands.
+
+### Risk 3: Multi‑window presentation leaks
+
+**Risk:** Presentation state (overlays, focus) leaks between windows, creating confusing UX.
+
+**Mitigation:**
+- Keep presentation state (`@State`, `FocusedValue`) scoped to window view hierarchies; hold only domain data in `AppState`.
+- Use `scenePhase` to coordinate autosave/cleanup across windows. Evidence: https://developer.apple.com/documentation/swiftui/scenephase/
+
+### Risk 4: Concurrency on menu handlers
+
+**Risk:** Command handlers perform work off the main actor.
+
+**Mitigation:**
+- SwiftUI `Commands` are `@MainActor @preconcurrency` by default; keep handlers main‑actor isolated and delegate long work to async tasks using the existing `withLoadingIndicator` patterns. Evidence: `Commands` isolation note https://developer.apple.com/documentation/swiftui/commands/
 - Use debug logging to catch edge cases early
 - Reference Apple documentation for each API migration
 
@@ -1753,9 +1844,136 @@ instruments -t "Time Profiler" -D ~/Desktop/catalyst_profile.trace \
 
 | iOS (UIKit/SwiftUI) | macOS (AppKit) | SwiftUI Alternative |
 |---------------------|----------------|---------------------|
-| `.fileExporter()` + `FileDocument` | `NSSavePanel.beginSheetModal()` | `.fileExporter()` (iOS-only) |
+| `.fileExporter()` + `FileDocument` | `NSSavePanel.beginSheetModal()` | `.fileExporter()` (supported on iOS/iPadOS 17+, macOS 14+, Catalyst 17+) |
 
 ---
+
+## Command Menu Parity (macOS vs tvOS Toolbar)
+
+Deliver native macOS menu commands that mirror tvOS toolbar actions and share action wiring and accessibility identifiers.
+
+- Use SwiftUI `commands { }` with `CommandMenu`/`CommandGroup` to add app‑specific menus and integrate system groups. Evidence: Commands (https://developer.apple.com/documentation/swiftui/commands/), Menu bar guide (https://developer.apple.com/documentation/swiftui/building-and-customizing-the-menu-bar-with-swiftui/).
+- Assign `keyboardShortcut(_:)` for parity actions and keep conflicts in mind (system shortcuts can’t be overridden).
+- Use `FocusedValue` to enable/disable or rename items contextually (e.g., selection‑dependent actions). Evidence: Menu bar guide above.
+- Map tvOS toolbar actions (e.g., `Toolbar_H2H`, `Toolbar_Analysis`, `Toolbar_Themes`, `Toolbar_MultiSelect`) to corresponding `Button` items in `CommandMenu`, keeping the same leaf accessibility identifiers to preserve UI test coverage.
+- Group commands into a dedicated `TiercadeMenuCommands` and install via `.commands { TiercadeMenuCommands(app: app) }` in the mac app’s scene.
+- If appropriate, add a `MenuBarExtra` scene for status/control surfaces. Evidence: `MenuBarExtra` (https://developer.apple.com/documentation/swiftui/menubarextra/).
+
+Implementation pattern (conceptual):
+```swift
+@main
+struct TiercadeMacApp: App {
+  @Environment(AppState.self) private var app
+  var body: some Scene {
+    WindowGroup { MainAppView() }
+    Settings { SettingsView() }
+    .commands { TiercadeMenuCommands(app: app) }
+  }
+}
+```
+
+Concrete commands skeleton mapping to AppState (with FocusedValue):
+```swift
+// A focused context available when a tier grid is active
+extension FocusedValues {
+  @Entry var selectionCount: Int?
+}
+
+struct TiercadeMenuCommands: Commands {
+  @Environment(AppState.self) private var app
+  @FocusedValue(\.$selectionCount) private var selectionCount
+
+  var body: some Commands {
+    CommandMenu("Tiercade") {
+      // Head-to-Head
+      Button("Start Head-to-Head") { app.startH2H() }
+        .keyboardShortcut("H", modifiers: [.command])
+        .disabled(!app.hasEnoughForPairing || app.h2hActive)
+
+      // Analysis
+      Button(app.showingAnalysis ? "Hide Analysis" : "Show Analysis") { app.toggleAnalysis() }
+        .keyboardShortcut("A", modifiers: [.command])
+        .disabled(!app.canShowAnalysis)
+
+      // Themes
+      Button("Themes…") { app.toggleThemePicker() }
+        .keyboardShortcut("T", modifiers: [.command])
+        .accessibilityIdentifier("Toolbar_Themes")
+
+      Divider()
+
+      // Example of context-sensitive item (enabled only when anything is selected)
+      Button("Move Selected to Tier…") { /* open batch move overlay via AppState */ }
+        .keyboardShortcut(.return, modifiers: [.shift, .command])
+        .disabled((selectionCount ?? 0) == 0)
+        .accessibilityIdentifier("ActionBar_MoveBatch")
+    }
+  }
+}
+```
+
+Notes:
+- Keep leaf accessibility identifiers matching tvOS toolbar items (e.g., `Toolbar_Themes`).
+- Commands run on the main actor by default (Commands inherit `@MainActor`). Evidence: https://developer.apple.com/documentation/swiftui/commands/
+- Prefer routing all actions through `AppState` methods to ensure single-source-of-truth behavior.
+
+Providing the FocusedValue in the tier grid (stub):
+```swift
+// Wrap your tier grid/detail root so focused descendants expose selectionCount
+struct TierGridContainer: View {
+  @Environment(AppState.self) private var app
+  var body: some View {
+    TierGridView(/* your existing grid content */)
+      // When focus is within this subtree, commands can read selectionCount
+      .focusedValue(\.$selectionCount, app.selection.count)
+  }
+}
+
+// Alternatively, apply focusedValue at the call site inside MainAppView's detail layer
+// tierGridLayer(modalBlockingFocus: ...)
+//   .focusedValue(\.$selectionCount, app.selection.count)
+```
+
+---
+
+## WindowGroup Multi-Window State Strategy
+
+SwiftUI can present multiple windows from a `WindowGroup`. Each window maintains independent `State`, while shared models can still flow through the environment. Evidence: `WindowGroup` overview (each window has independent state) (https://developer.apple.com/documentation/swiftui/windowgroup/).
+
+Guidelines
+- Keep domain data in shared `AppState` on the main actor, as in tvOS/iOS. Scope ephemeral UI (focused elements, overlay visibility) to the window’s view hierarchy with `@State`/`FocusedValue`.
+- Use `@Environment(\.openWindow)` and `WindowGroup(id:)` when you need to programmatically open windows and route specific values. Evidence: programmatic open in `WindowGroup` (https://developer.apple.com/documentation/swiftui/windowgroup/).
+- Observe `@Environment(\.scenePhase)` for app‑wide background transitions and cleanup/autosave. Evidence: `ScenePhase` (https://developer.apple.com/documentation/swiftui/scenephase/).
+- Mirror tvOS directional inputs with keyboard shortcuts; ensure per‑window focus stacks and commands remain responsive and independent.
+
+By isolating transient presentation state per window while keeping domain logic centralized, we preserve predictable behavior across multiple macOS windows without fragmenting the data model.
+
+Programmatic windows with `openWindow` and data-driven windows:
+```swift
+@main
+struct TiercadeMacApp: App {
+  var body: some Scene {
+    WindowGroup("Tiercade") { MainAppView() }
+
+    // A secondary window group for item detail identified by String (item id)
+    WindowGroup("Item Detail", id: "item-detail", for: String.self) { $itemID in
+      if let id = itemID { DetailView(itemID: id) } else { PlaceholderDetailView() }
+    }
+  }
+}
+
+struct OpenDetailButton: View {
+  @Environment(\.openWindow) private var openWindow
+  var id: String
+  var body: some View {
+    Button("Open Detail") { openWindow(id: "item-detail", value: id) }
+  }
+}
+```
+
+Tips:
+- Distinguish multiple data-driven windows by using unique `id:` strings on `WindowGroup` initializers.
+- When a window for a given value already exists, `openWindow` brings it to front instead of opening a duplicate. Evidence: https://developer.apple.com/documentation/swiftui/windowgroup/
 
 ## Appendix C: Testing Checklist
 
@@ -1821,13 +2039,13 @@ instruments -t "Time Profiler" -D ~/Desktop/catalyst_profile.trace \
 
 **Rationale:** Maintains visual consistency across platforms, reduces platform conditionals.
 
-### Decision 3: Defer Export Sheet Migration to Phase 3
+### Decision 3: Retain SwiftUI fileExporter on macOS
 
-**Context:** ToolbarExportFormatSheetView uses iOS-specific FileDocument.
+**Context:** Toolbar export used SwiftUI `FileDocument`.
 
-**Decision:** Phase 1 removes Catalyst support, Phase 3 implements NSSavePanel.
+**Decision:** Keep `FileDocument` + `.fileExporter()` cross‑platform; add mac‑only affordances later (e.g., `fileExporterFilenameLabel(_:)`).
 
-**Rationale:** Keeps initial migration focused on core functionality, export is non-critical for initial launch.
+**Rationale:** `fileExporter` is supported on macOS 14+ and aligns with SwiftUI’s cross‑platform story; avoids unnecessary AppKit rewrites. Evidence: https://developer.apple.com/documentation/swiftui/view/fileexporterfilenamelabel(_:)-5kn1a/
 
 ### Decision 4: Remove 1.12x Catalyst Scaling
 
