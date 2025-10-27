@@ -17,15 +17,14 @@ import FoundationModels
 private let acceptanceTestFlag = "-runAcceptanceTests"
 private let bootLogPath = "/tmp/tiercade_acceptance_boot.log"
 
-@discardableResult
 private func bootLog(_ s: String) {
     let line = "[\(ISO8601DateFormatter().string(from: Date()))] \(s)\n"
     if let d = line.data(using: .utf8) {
         if FileManager.default.fileExists(atPath: bootLogPath) {
             if let h = try? FileHandle(forWritingTo: URL(fileURLWithPath: bootLogPath)) {
-                try? h.seekToEnd()
-                try? h.write(contentsOf: d)
-                try? h.close()
+                _ = try? h.seekToEnd()
+                _ = try? h.write(contentsOf: d)
+                _ = try? h.close()
             }
         } else {
             FileManager.default.createFile(atPath: bootLogPath, contents: d)

@@ -3,37 +3,45 @@
 ## Overview
 
 The `enableAdvancedGeneration` feature flag controls the unique list generation architecture:
+
 - **Enabled**: Uses Generate → Dedup → Fill architecture with over-generation, client-side deduplication, and backfill
 - **Disabled**: Falls back to simple client-side deduplication only
 
 ## Build Script Usage
 
 ### Default Behavior (Recommended)
+
 ```bash
 ./build_install_launch.sh macos
 ```
+
 - Uses **DEBUG setting**: enabled in DEBUG builds, disabled in Release
 - ✅ Safest for development (experimental code isolated)
 - ⚠️ Note: tvOS doesn't support Apple Intelligence, so use native macOS for testing feature flags
 
 ### Force Enable (For Testing Advanced Generation in Release)
+
 ```bash
 ./build_install_launch.sh macos --enable-advanced-generation
 ```
+
 - Enables advanced generation **regardless of build configuration**
 - Use case: Test advanced generation in Release builds before merging
 - Verifies the advanced generation algorithm works correctly
 
 ### Force Disable (For Regression Testing)
+
 ```bash
 ./build_install_launch.sh macos --disable-advanced-generation
 ```
+
 - Disables advanced generation **regardless of build configuration**
 - Use case: Verify fallback code path (simple client-side dedup) still works correctly
 
 ## Implementation Details
 
 ### Swift Code
+
 **File:** `Tiercade/State/AppleIntelligence+UniqueListGeneration.swift`
 
 The feature flag is evaluated at compile-time via preprocessor directives:
@@ -55,9 +63,11 @@ enum UniqueListGenerationFlags {
 ```
 
 ### Build Script
+
 **File:** `build_install_launch.sh`
 
 The script:
+
 1. Parses command-line arguments for `--enable-advanced-generation` or `--disable-advanced-generation`
 2. Passes compiler flags via `OTHER_SWIFT_FLAGS` to xcodebuild:
    - `-DFORCE_ENABLE_ADVANCED_GENERATION=1` (when `--enable-advanced-generation`)
@@ -67,32 +77,39 @@ The script:
 ## Testing Scenarios
 
 ### 1. Development Build (All Code Paths)
+
 ```bash
 # Run in DEBUG configuration with advanced generation enabled
 ./build_install_launch.sh macos
 # → 🔬 Advanced generation: using DEBUG setting
 ```
+
 ✅ Tests all code paths including experimental features
 
 ### 2. Release Candidate Testing
+
 ```bash
 # Build in Release but force-enable advanced generation to test before merge
 ./build_install_launch.sh macos --enable-advanced-generation
 # → 🔬 Advanced generation: ENABLED (forced)
 ```
+
 ✅ Verifies advanced generation works in Release optimization level
 
 ### 3. Fallback Code Path Verification
+
 ```bash
 # Build with advanced generation explicitly disabled
 ./build_install_launch.sh macos --disable-advanced-generation
 # → 🔬 Advanced generation: DISABLED (forced)
 ```
+
 ✅ Confirms simple deduplication fallback still functions
 
 ## Examples
 
 ### CI/CD Integration
+
 ```bash
 # Build matrix for comprehensive testing on native macOS (with AI support)
 ./build_install_launch.sh macos                              # Default
@@ -104,6 +121,7 @@ swift test
 ```
 
 ### Local Development Workflow
+
 ```bash
 # Normal development - uses DEBUG setting (advanced gen enabled)
 ./build_install_launch.sh macos
@@ -118,6 +136,7 @@ swift test
 ## Compile-Time Behavior
 
 All three flags are resolved **at compile time**, not runtime:
+
 - Different binaries are produced for each configuration
 - Zero runtime overhead - flag state is baked into the binary
 - Safe for shipping: compiler strips unreachable code paths

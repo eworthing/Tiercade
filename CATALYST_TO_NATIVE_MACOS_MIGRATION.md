@@ -1,5 +1,7 @@
 # Mac Catalyst to Native macOS Migration Report
 
+<!-- markdownlint-disable MD013 MD022 MD032 MD031 MD040 MD036 MD029 MD034 -->
+
 **Project:** Tiercade
 **Status:** ✅ **COMPLETED** (October 27, 2025)
 **Previous State:** Mac Catalyst (UIKit-based iOS app on macOS)

@@ -8,17 +8,20 @@
 ## Fixes Applied
 
 ### 1. Removed Candidate-Batch Backfill ✅
+
 - **Location:** `AppleIntelligence+UniqueListGeneration.swift:673-758`
 - **Removed:** 85 lines of candidate-batch backfill logic with seed rotation
 - **Reason:** 88.7% duplication rate (ChatGPT's recommendation failed)
 
 ### 2. Fixed Test Report Export Paths ✅
+
 - **Location:** `TiercadeApp.swift:120-129`
 - **Changed:** Hardcoded `/tmp/` → `NSTemporaryDirectory()`
 - **Reason:** Native macOS sandboxing prevents writing to `/tmp/`
 - **Result:** Reports now successfully created in sandbox temp directory
 
 ### 3. Verified Normalization ✅
+
 - Recursive article trimming works correctly
 - "The A-Team" → "team" (removes both "the" and "a")
 
@@ -48,14 +51,15 @@ After removing candidate-batch backfill, **negation backfill exhibits the same f
 | 123456 | 214 | 185 | **86.4%** | 29/50 |
 | 987654 | 299 | 259 | **86.6%** | 40/50 |
 
-**Average duplication rate: 84.1%**
+Average duplication rate: 84.1%
 
 ### Evidence: Model Ignores Avoid-List
 
 Example from seed 987654 (programming languages):
 
 **Pass 2-4 all generated the same 5 items:**
-```
+
+```text
 [Dedup] Filtered: Ada → ada
 [Dedup] Filtered: Lua → lua
 [Dedup] Filtered: Lisp → lisp
@@ -63,16 +67,20 @@ Example from seed 987654 (programming languages):
 [Dedup] Filtered: Nim → nim
 ```
 
-Despite the avoid-list containing 40 items including `["ada", "lua", "lisp", "perl", "nim"]`, the model **repeatedly generates these exact same items** across multiple passes.
+Despite the avoid-list containing 40 items including
+`["ada", "lua", "lisp", "perl", "nim"]`, the model
+**repeatedly generates these exact same items** across multiple passes.
 
-### Example from seed 9999 (programming languages):
+### Example from seed 9999 (programming languages)
 
 **Pass 2-4 all generated:**
-```
+
+```text
 [Dedup] Filtered: Rust → rust  (x4 per pass)
 ```
 
-The model generated "Rust" **4 times consecutively** in each backfill pass, even though "rust" was in the avoid-list.
+The model generated "Rust" **4 times consecutively** in each backfill pass,
+even though "rust" was in the avoid-list.
 
 ## Root Cause Analysis
 
@@ -88,10 +96,12 @@ The model generated "Rust" **4 times consecutively** in each backfill pass, even
 ### Why This Happens
 
 Apple's `@Generable` guided generation framework:
+
 - ✅ **Enforces JSON schema structure** (validates shape, types, required fields)
 - ❌ **Does NOT enforce semantic value constraints** (ignores "avoid these values" prompts)
 
 When we tell the model:
+
 ```swift
 let promptFill = """
 Add 20 NEW items for: programming languages.
@@ -101,20 +111,25 @@ Do NOT include any with norm_keys in:
 ```
 
 The guided generation sees:
+
 - ✅ "Return JSON matching UniqueListResponse schema" → **ENFORCED**
 - ❌ "Do NOT include norm_keys in: [...]" → **IGNORED**
 
-The model generates high-probability items (Ada, Lua, Rust, etc.) because guided generation's constraint system **only validates structural compliance**, not content semantics.
+The model generates high-probability items (Ada, Lua, Rust, etc.) because
+guided generation's constraint system **only validates structural
+compliance**, not content semantics.
 
 ## Implications
 
 ### What Works
+
 - **Small lists (N=10-15):** Single-pass generation with 1.6x over-generation succeeds
 - **T1_Structure:** JSON decoding perfect (5/5 seeds, pass@N=1.00)
 - **T2_Uniqueness:** 60% of seeds achieve full uniqueness in first pass
 - **Normalization:** Edge cases handled correctly
 
 ### What Fails
+
 - **Large lists (N=25-50):** Backfill required, both strategies fail
 - **Multi-pass generation:** Model repeats high-probability items regardless of avoid-list
 - **T3_Backfill:** 0% success rate across all 5 seeds

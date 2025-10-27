@@ -1,6 +1,8 @@
 # Project Data Storage Implementation
 
-This brief outlines the offline v1 storage pipeline for Tiercade projects, covering local persistence, import/export behavior, and future-ready schema constraints.
+This brief outlines the offline v1 storage pipeline for Tiercade projects,
+covering local persistence, import/export behavior, and future-ready schema
+constraints.
 
 ## What to implement
 

@@ -7,8 +7,14 @@ extension AIChatOverlay {
 
     /// Run a unified test suite (new config-driven approach)
     internal func runUnifiedTestSuite(suiteId: String = "quick-smoke") {
+        let debugLogPath = NSTemporaryDirectory().appending("tiercade_prompt_test_debug.log")
+
         aiService.messages.append(AIChatMessage(
             content: "🚀 Starting unified test suite '\(suiteId)'...",
+            isUser: false
+        ))
+        aiService.messages.append(AIChatMessage(
+            content: "🔍 Debug log: \(debugLogPath)",
             isUser: false
         ))
 

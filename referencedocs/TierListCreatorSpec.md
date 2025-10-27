@@ -1,58 +1,68 @@
 # Tiercade Tier Creator — Detailed Design Spec
 
-_Last updated: 2025-02-14_
+<!-- markdownlint-disable MD013 -->
+
+Last updated: 2025-02-14
 
 ## 1. Purpose
+
 - Provide a tvOS-first creation workspace for authoring tier-list projects that adhere to `referencedocs/tierlist.schema.json`.
 - Empower creators to define project metadata, tier frames, canonical items, and per-project overrides before handing data to the ranking surfaces.
 - Maintain multiplatform parity (tvOS 26, iOS/iPadOS 26, macOS 26+) while prioritising remote-based focus navigation and Liquid Glass visual language.
 
 ## 2. Scope
+
 - **In scope:** project metadata authoring, tier CRUD + ordering, item catalog management, override editing, validation, export/import, audit updates, inline preview.
 - **Out of scope:** head-to-head ranking UI, analytics dashboards, real-time collaboration edits (display-only for now), legacy OS backports.
 
 ## 3. Experience Pillars
+
 1. **Remote-first flow:** Every step is reachable with Siri Remote focus navigation; pointer and touch enhancements are additive.
-2. **Glass-guided chrome:** High-level controls sit on Liquid Glass surfaces using documented SwiftUI modifiers (`glassEffect` and glass button styles).[1][2]
+2. **Glass-guided chrome:** High-level controls sit on Liquid Glass surfaces using documented SwiftUI modifiers (`glassEffect` and glass button styles).
 3. **Schema-aligned persistence:** SwiftData models mirror JSON schema identifiers with validation hooks and typed exports via `AppState`.
 
 ## 4. Macro Layout
 
 | Zone | tvOS | iPadOS/macOS | iOS |
 | --- | --- | --- | --- |
-| **Header Toolbar** | Full-width Liquid Glass strip (Save, Export, Preview, Schema Version). Buttons styled with `.buttonStyle(.glass)`.[2] | NavigationSplitView toolbar. | Navigation bar items; same actions in primary menu. |
+| **Header Toolbar** | Full-width Liquid Glass strip (Save, Export, Preview, Schema Version). Buttons styled with `.buttonStyle(.glass)`. | NavigationSplitView toolbar. | Navigation bar items; same actions in primary menu. |
 | **Left Rail — Tiers** | Focus section listing tiers with order, lock, collapse, count. Select opens tier editor. | Sidebar column with drag handles for reorder. | First list tab. |
 | **Center — Composition Canvas** | Fixed focus section previewing tier lanes, rules button, quick actions. | Detail pane showing tier card preview. | Presented as stacked cards below tier list. |
-| **Right — Item Library** | Searchable list with filters; `searchable(placement: .toolbar)` lets system choose placement.[9] | List with search field in navigation UI. | Dedicated tab; search presented automatically. |
-| **Wizard Surface** | Full-screen tabbed wizard presented via `fullScreenCover`; glass toolbar hosts Save/Publish/Close and respects `.onExitCommand`.[4] | Tab-styled detail flow inside NavigationSplitView. | Dedicated wizard stack pushed modally. |
+| **Right — Item Library** | Searchable list with filters; `searchable(placement: .toolbar)` lets the system choose placement. | List with search field in navigation UI. | Dedicated tab; search presented automatically. |
+| **Wizard Surface** | Full-screen tabbed wizard presented via `fullScreenCover`; glass toolbar hosts Save/Publish/Close and respects `.onExitCommand`. | Tab-styled detail flow inside NavigationSplitView. | Dedicated wizard stack pushed modally. |
 | **Action Strip** | Floating glass bar (Undo/Redo/Validate/Publish) pinned at safe-area bottom; focus section ensures remote access. | Toolbar / command group. | Toolbar in tab or bottom sheet. |
 
 - Tier List Browser overlay adopts Liquid Glass (`tvGlassContainer` + `.buttonStyle(.glass)`) with primary “Open” and secondary “Edit” actions, matching tvOS 26 focus chrome.
 
 ## 5. Focus & Input Model (tvOS priority)
-- Divide layout into focus sections for rail, canvas, library, action strip, and active wizard panels using `.focusSection()` to guide remote traversal.[3]
+
+- Divide layout into focus sections for rail, canvas, library, action strip, and active wizard panels using `.focusSection()` to guide remote traversal.
 - Tab navigation inside the wizard uses `TabView` pages; default focus lands on the active tab's primary control when the creator surfaces.
 - Bind focus ownership with an enum-based `@FocusState` per major area. Default focus lands on the tier rail; push focus into overlays when presented.
 - Handle system commands:
-  - `.onExitCommand` closes modals or backs out of editing flows gracefully (Menu key).[4]
+  - `.onExitCommand` closes modals or backs out of editing flows gracefully (Menu key).
   - `.onMoveCommand` optionally refines navigation inside dense grids (future enhancement).
 - Provide clear visual focus affordances using existing focus ring styles and spacing from tvOS design tokens.
 
 ## 6. Liquid Glass & Visual Language
-- Apply `glassEffect()` to navigation surfaces, overlays, and floating toolbars.[1] Treat grouped panels as single glass surfaces to avoid stacking for performance.
-- Use `buttonStyle(.glass)` (and `.glassProminent` where emphasised actions make sense) for primary actions.[2]
+
+- Apply `glassEffect()` to navigation surfaces, overlays, and floating toolbars. Treat grouped panels as single glass surfaces to avoid stacking for performance.
+- Use `buttonStyle(.glass)` (and `.glassProminent` where emphasised actions make sense) for primary actions.
 - Canvas and library interior use standard materials, keeping glass for chrome so the layered experience remains responsive.
-- Manage scroll underlays with `scrollEdgeEffectStyle` when content sits beneath floating glass, ensuring scroll physics remain appropriate.[10]
+- Manage scroll underlays with `scrollEdgeEffectStyle` when content sits beneath floating glass, ensuring scroll physics remain appropriate.
 
 ## 7. SwiftData Model Outline
-- Define one `@Model` per schema entity (project, tier, item, override, media, audit, collab member).[5]
-- Apply `#Unique` constraints to fields that must remain globally unique (e.g., `projectId`, `tier.id`, `item.id`).[7]
-- Store flexible dictionaries (`attributes`, `settings`, `links`) as JSON-encoded strings with computed `@Transient` mirrors for decode/encode-on-access behavior.[6]
-- Annotate frequently queried fields (title, created timestamps) with `#Index` for search and sorting efficiency (doc link via `Index` macro family).[5]
+
+- Define one `@Model` per schema entity (project, tier, item, override, media, audit, collab member).
+- Apply `#Unique` constraints to fields that must remain globally unique (e.g., `projectId`, `tier.id`, `item.id`).
+- Store flexible dictionaries (`attributes`, `settings`, `links`) as JSON-encoded strings with computed `@Transient` mirrors for decode/encode-on-access behavior.
+- Annotate frequently queried fields (title, created timestamps) with `#Index` for search and sorting efficiency (doc link via `Index` macro family).
 - Relationships align with schema (project owns tiers/items/overrides; overrides link to canonical item via ID). Delete rules cascade from project -> tiers/items and nullify cross-links where appropriate.
 
 ## 8. Core Workflows
+
 The creator experience is implemented as a tabbed wizard (`TierListProjectWizard`) that surfaces Settings, Schema, Items, and Tiers pages. The same wizard powers both new projects and edits launched from the Tier List Browser, adapting button labels to “Update/Republish” when editing. The glass toolbar stays persistent for Save/Publish/Close and manages focus hand-off between the tab selector and page content.
+
 1. **Project Metadata**
    - Fields: title, description, schemaVersion picker, theme settings, tier sort order, accessibility toggles, visibility stub, audit info.
    - Auto-generate UUID project ID; update `audit.updatedAt/By` on save.
@@ -77,16 +87,19 @@ The creator experience is implemented as a tabbed wizard (`TierListProjectWizard
    - “Edit” glass buttons in the browser trigger `presentTierListEditor`, which converts the active `TierListEntity` (or in-memory tiers) back into a draft before presenting the wizard.
 
 ## 9. Data Transfer & Drag/Drop
-- Use `Transferable` protocol for pointer-platform drag/drop, providing both `CodableRepresentation` with custom `UTType(exportedAs: "com.tiercade.tieritem")` and `ProxyRepresentation` for text fallbacks.[8]
+
+- Use `Transferable` protocol for pointer-platform drag/drop, providing both `CodableRepresentation` with custom `UTType(exportedAs: "com.tiercade.tieritem")` and `ProxyRepresentation` for text fallbacks.
 - On tvOS, fall back to select → choose destination via overlay; no drag/drop behavior is assumed.
 - Register exported type identifiers in Info.plist to keep import/export consistent across platforms.
 
 ## 10. Search & Filtering
-- Apply `.searchable` to the item library host view, letting the system pick placement per idiom (toolbar on tvOS/iPad/macOS, navigation bar on iOS).[9]
+
+- Apply `.searchable` to the item library host view, letting the system pick placement per idiom (toolbar on tvOS/iPad/macOS, navigation bar on iOS).
 - Provide toggle filters (Unassigned, Assigned, Hidden) and tag quick filters; combine with search text.
 - Large datasets rely on SwiftData queries with predicates keyed on indexed properties.
 
 ## 11. Validation Matrix
+
 - **IDs**: Ensure uniqueness via `#Unique` plus runtime guard for cross-entity collisions.
 - **Color**: Validate hex string pattern; supply palette picker on platforms with pointer/touch.
 - **Ratings**: Clamp 0...100 with slider component.
@@ -95,29 +108,33 @@ The creator experience is implemented as a tabbed wizard (`TierListProjectWizard
 - **Overrides**: Only allow overriding fields present on canonical item; hidden flag prevents assignment but keeps data for exports.
 
 ## 12. Extensibility & Feature Flags
+
 - Cloud storage section remains hidden until `cloud-sync` trait flips; reveals `storage.mode`, provider, base URL, auth config (all optional for now).
 - Collaboration panel displays read-only member roster; editing rights planned later.
 - Template launcher placeholder in item library header (disabled state).
 - Analytics hooks capture create/update/delete events for tiers/items; integrate with existing telemetry dispatcher.
 
 ## 13. Testing Strategy
+
 - Unit tests for SwiftData models (serialization, validation).
 - UI tests: tvOS QuickSmoke covers focus routing, overlay dismissal, validation banners; iOS/mac test search/filter flows.
 - Snapshot tests for preview renderer ensuring consistent tier surface per platform (leveraging existing testing frameworks).
 
 ## 14. Open Questions
+
 1. Confirm default palette for tier colors (use design tokens or dynamic generator?).
 2. Decide on structured vs. freeform tier rules editor (rich text vs. plain text).
 3. Define audit user identity source (local profile vs. account system).
 
 ## References
-1. SwiftUI `glassEffect(_:in:)` — https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)  
-2. `GlassButtonStyle` — https://developer.apple.com/documentation/swiftui/glassbuttonstyle  
-3. SwiftUI `focusSection()` — https://developer.apple.com/documentation/swiftui/view/focussection()  
-4. SwiftUI `onExitCommand(perform:)` — https://developer.apple.com/documentation/swiftui/view/onexitcommand(perform:)  
-5. SwiftData `@Model` macro — https://developer.apple.com/documentation/swiftdata/model()/  
-6. SwiftData `@Transient` macro — https://developer.apple.com/documentation/swiftdata/transient()/  
-7. SwiftData `#Unique` macro — https://developer.apple.com/documentation/swiftdata/unique(_:)  
-8. CoreTransferable `Transferable` — https://developer.apple.com/documentation/coretransferable/transferable/  
-9. SwiftUI `searchable(text:placement:prompt:)` — https://developer.apple.com/documentation/swiftui/view/searchable(text:placement:prompt:)  
-10. SwiftUI `scrollEdgeEffectStyle(_:for:)` — https://developer.apple.com/documentation/swiftui/view/scrolledgeeffectstyle(_:for:)  
+
+1. SwiftUI `glassEffect(_:in:)` — <https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)>  
+2. `GlassButtonStyle` — <https://developer.apple.com/documentation/swiftui/glassbuttonstyle>  
+3. SwiftUI `focusSection()` — <https://developer.apple.com/documentation/swiftui/view/focussection()>  
+4. SwiftUI `onExitCommand(perform:)` — <https://developer.apple.com/documentation/swiftui/view/onexitcommand(perform:)>  
+5. SwiftData `@Model` macro — <https://developer.apple.com/documentation/swiftdata/model()/>  
+6. SwiftData `@Transient` macro — <https://developer.apple.com/documentation/swiftdata/transient()/>  
+7. SwiftData `#Unique` macro — <https://developer.apple.com/documentation/swiftdata/unique(_:)>  
+8. CoreTransferable `Transferable` — <https://developer.apple.com/documentation/coretransferable/transferable/>  
+9. SwiftUI `searchable(text:placement:prompt:)` — <https://developer.apple.com/documentation/swiftui/view/searchable(text:placement:prompt:)>  
+10. SwiftUI `scrollEdgeEffectStyle(_:for:)` — <https://developer.apple.com/documentation/swiftui/view/scrolledgeeffectstyle(_:for:)>  

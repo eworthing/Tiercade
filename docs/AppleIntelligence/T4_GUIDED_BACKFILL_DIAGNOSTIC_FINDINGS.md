@@ -26,12 +26,14 @@ All fields are optional for backward compatibility with existing telemetry.
 **Frequency:** 16/31 test runs (52%) hit the circuit breaker
 
 **Pattern:**
+
 - Generation consistently stalls at 44-46 items out of 50 target
 - Circuit breaker triggers after 2 consecutive rounds with no progress
 - Typical failure message: `"Circuit breaker: 2 consecutive rounds with no progress at 46/50"`
 
 **Example Cases:**
-```
+
+```text
 Seed 42:    Circuit breaker at 46/50 (dupRate: 62.6%)
 Seed 1337:  Circuit breaker at 46/50 (dupRate: 62.6%)
 Seed 9999:  Circuit breaker at 44/50 (dupRate: 74.4%)
@@ -43,6 +45,7 @@ Seed 9999:  Circuit breaker at 44/50 (dupRate: 74.4%)
 **Range:** 22.2% - 77.3%
 
 **Impact:**
+
 - High duplicate rate exhausts the LLM's ability to generate novel items
 - Each backfill round yields fewer and fewer unique items
 - System gets stuck in a loop generating the same items repeatedly
@@ -52,12 +55,16 @@ Seed 9999:  Circuit breaker at 44/50 (dupRate: 74.4%)
 ### 3. Limited Backfill Attempts
 
 **Typical Pattern:**
+
 - Only 3 backfill rounds attempted before failure
 - Total of 4 passes (1 initial + 3 backfill) before hitting max passes limit
 - Circuit breaker often triggers before max passes reached
 
 **Observation:**
-Backfill is not getting enough attempts to overcome the duplicate problem before either:
+
+Backfill is not getting enough attempts to overcome the duplicate problem
+before either:
+
 1. Circuit breaker stops generation (2 consecutive rounds with no progress)
 2. Max passes limit is reached (currently 4 passes)
 
@@ -66,12 +73,14 @@ Backfill is not getting enough attempts to overcome the duplicate problem before
 **Frequency:** 15/31 test runs (48%) completed max passes but still incomplete
 
 **Pattern:**
+
 - Runs that don't hit circuit breaker still fail to reach 50 items
 - Typical failure message: `"Incomplete: 34/50 items after 4 passes"` or `"Incomplete: 35/50 items after 4 passes"`
 - Similar high duplicate rates (~70%)
 
 **Example Cases:**
-```
+
+```text
 Seed 1337:  Incomplete at 34/50 (dupRate: 70.9%, 4 passes)
 Seed 123456: Incomplete at 35/50 (dupRate: 77.3%, 4 passes)
 ```
@@ -85,17 +94,23 @@ The enhanced diagnostics reveal a **duplicate saturation problem**:
 3. **Circuit breaker** correctly identifies when the system is stuck (2 rounds with no progress)
 4. **Max passes limit** (4 passes) is reached before 50 unique items are generated
 
-The guided backfill system is functioning as designed, but the LLM is unable to generate sufficient unique items within the current constraints.
+The guided backfill system is functioning as designed, but the LLM is unable
+to generate sufficient unique items within the current constraints.
 
 ## Discrepancies Noted
 
 ### itemsReturned vs Actual Count
 
-The `itemsReturned` field in telemetry represents raw output from individual LLM passes (before deduplication), not the final unique count. This explains why some telemetry entries show:
+The `itemsReturned` field in telemetry represents raw output from individual LLM
+passes (before deduplication), not the final unique count. This explains why some
+telemetry entries show:
+
 - `itemsReturned: 68` or `itemsReturned: 54` (raw pass output)
 - While `failureReason` reports `"35/50 items"` (actual unique count in `ordered` array)
 
-This is expected behavior - `itemsReturned` reflects per-pass metrics, while diagnostic fields (`failureReason`, etc.) reflect the final state after all deduplication and backfill.
+This is expected behavior - `itemsReturned` reflects per-pass metrics, while
+diagnostic fields (`failureReason`, etc.) reflect the final state after all
+deduplication and backfill.
 
 ## Recommendations
 
@@ -122,6 +137,7 @@ Based on these findings:
 ## Testing Verification
 
 ✅ Enhanced diagnostics successfully capture:
+
 - Circuit breaker trigger points
 - Duplicate rates at failure
 - Backfill round counts
@@ -129,6 +145,7 @@ Based on these findings:
 - Detailed failure reasons
 
 ❌ T4_GuidedBackfill test still fails:
+
 - Current: 1/5 seeds pass (20%)
 - Target: 3/5 seeds pass (60%)
 - Gap: 2 additional passing seeds needed

@@ -2,23 +2,29 @@
 
 ## Problem
 
-When SwiftUI overlays appear in response to state changes on Mac Catalyst, there is an **architectural timing gap** between:
+When SwiftUI overlays appear in response to state changes on Mac Catalyst, there
+is an **architectural timing gap** between:
 
 1. `@Observable` state mutation (e.g., `app.quickRankTarget = item`)
 2. SwiftUI view hierarchy diff/render
 3. Accessibility tree registration
 
-On tvOS, this pipeline is optimized and happens within a single run loop. On Mac Catalyst (and sometimes iOS), accessibility registration can lag by 1-2 run loops. This causes:
+On tvOS, this pipeline is optimized and happens within a single run loop. On
+Mac Catalyst (and sometimes iOS), accessibility registration can lag by 1-2 run
+loops. This causes:
 
 - UI tests that wait for overlay elements to timeout
 - VoiceOver announcements to be delayed
 - Flaky behavior in automated testing
 
-**This is not a bug in our code**—it's an inherent timing characteristic of how SwiftUI + Catalyst handle accessibility updates.
+**This is not a bug in our code**—it's an inherent timing characteristic of how
+SwiftUI + Catalyst handle accessibility updates.
 
 ## Solution: AccessibilityBridgeView
 
-Use a minimal, synchronous accessibility element that appears **immediately** when the overlay state becomes true, giving the accessibility tree (and UI tests) something to anchor while the full overlay renders asynchronously.
+Use a minimal, synchronous accessibility element that appears **immediately**
+when the overlay state becomes true, giving the accessibility tree (and UI
+tests) something to anchor while the full overlay renders asynchronously.
 
 ### Implementation
 
@@ -66,6 +72,7 @@ QuickRankOverlay(app: app)  // Has internal `if let` check
 2. **Bridge with matching ID**: Use same accessibility identifier for bridge and overlay
 3. **Escape key handling**: Add to `handleBackCommand()` for global dismiss
 4. **Focus management** (non-tvOS):
+
    ```swift
    #if !os(tvOS)
    @FocusState private var overlayHasFocus: Bool
