@@ -150,11 +150,21 @@ internal struct AddSchemaFieldSheet: View {
                 }
             }
             .background {
+                #if os(iOS)
                 Color(uiColor: .systemGroupedBackground)
                     .ignoresSafeArea()
+                #elseif os(macOS)
+                Color(nsColor: .windowBackgroundColor)
+                    .ignoresSafeArea()
+                #else
+                Color.clear
+                    .ignoresSafeArea()
+                #endif
             }
             .navigationTitle("Add Custom Field")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

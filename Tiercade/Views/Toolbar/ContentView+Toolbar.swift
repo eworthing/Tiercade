@@ -1,5 +1,5 @@
 import SwiftUI
-#if os(iOS) || targetEnvironment(macCatalyst)
+#if os(iOS)
 import UniformTypeIdentifiers
 #endif
 
@@ -9,14 +9,16 @@ import TiercadeCore
 
 internal struct ToolbarView: ToolbarContent {
     @Bindable var app: AppState
+    #if os(iOS)
     @Environment(\.editMode) private var editMode
+    #endif
     @State private var exportText: String = ""
     @State private var showingSettings = false
     @State private var showingExportFormatSheet = false
     @State private var selectedExportFormat: ExportFormat = .text
     @State private var exportingJSON = false
     @State private var importingJSON = false
-    #if os(iOS) || targetEnvironment(macCatalyst)
+    #if os(iOS)
     @State private var jsonDoc = TiersDocument()
     #endif
     @State private var showingImportSheet = false
@@ -25,100 +27,32 @@ internal struct ToolbarView: ToolbarContent {
     @State private var saveFileName = ""
 
     internal var body: some ToolbarContent {
-        #if os(iOS) || targetEnvironment(macCatalyst)
-        #if targetEnvironment(macCatalyst)
-        ToolbarItem(placement: .principal) {
-            TierListQuickMenu(app: app)
-                .frame(minWidth: 220, idealWidth: 280, maxWidth: 360)
-        }
-        #else
+        // Quick menu - iOS uses leading position, macOS uses principal
+        #if os(iOS)
         ToolbarItemGroup(placement: .topBarLeading) {
             TierListQuickMenu(app: app)
                 .frame(minWidth: 200)
         }
+        #elseif os(macOS)
+        ToolbarItem(placement: .principal) {
+            TierListQuickMenu(app: app)
+                .frame(minWidth: 220, idealWidth: 280, maxWidth: 360)
+        }
         #endif
 
+        // Primary actions - iOS uses topBarTrailing, macOS uses automatic
+        #if os(iOS)
         ToolbarItemGroup(placement: .topBarTrailing) {
-            Button {
-                app.presentTierListCreator()
-            } label: {
-                Label("New Tier List…", systemImage: "square.and.pencil")
-            }
-            .accessibilityIdentifier("Toolbar_NewTierList")
-            #if targetEnvironment(macCatalyst)
-            .help("Create a new tier list (⇧⌘N)")
-            #endif
-
-            Button {
-                app.toggleAnalysis()
-            } label: {
-                Image(systemName: app.showingAnalysis ? "chart.bar.fill" : "chart.bar")
-                    .accessibilityLabel(app.showingAnalysis ? "Close Analysis" : "Open Analysis")
-            }
-            .disabled(!app.canShowAnalysis && !app.showingAnalysis)
-            .accessibilityIdentifier("Toolbar_Analysis")
-            #if targetEnvironment(macCatalyst)
-            .help(app.showingAnalysis ? "Close analysis (⌘A)" : "Open analysis (⌘A)")
-            #endif
-
-            Button {
-                app.toggleThemePicker()
-            } label: {
-                Image(systemName: "paintpalette")
-                    .accessibilityLabel("Themes")
-            }
-            .accessibilityIdentifier("Toolbar_Themes")
-            #if targetEnvironment(macCatalyst)
-            .help("Browse themes (⌘T)")
-            #endif
-
-            if AppleIntelligenceService.isSupportedOnCurrentPlatform {
-                Button {
-                    app.toggleAIChat()
-                } label: {
-                    Label("Apple Intelligence", systemImage: "sparkles")
-                }
-                .accessibilityIdentifier("Toolbar_AIChat")
-                #if targetEnvironment(macCatalyst)
-                .help("Chat with Apple Intelligence")
-                #endif
-            }
-
-            Button {
-                app.startH2H()
-            } label: {
-                Image(systemName: "rectangle.grid.2x2")
-                    .accessibilityLabel("Head-to-Head")
-            }
-            .disabled(!app.canStartHeadToHead)
-            .accessibilityIdentifier("Toolbar_H2H")
-            #if targetEnvironment(macCatalyst)
-            .help("Start head-to-head (⌘H)")
-            #endif
-
-            let multiSelectActive = editMode?.wrappedValue == .active
-            Button {
-                let isActive = editMode?.wrappedValue == .active
-                withAnimation(.easeInOut(duration: 0.18)) {
-                    editMode?.wrappedValue = isActive ? .inactive : .active
-                }
-                if isActive {
-                    app.clearSelection()
-                }
-            } label: {
-                Label(
-                    multiSelectActive ? "Done" : "Multi-Select",
-                    systemImage: multiSelectActive ? "checkmark.rectangle.stack.fill" : "rectangle.stack.badge.plus"
-                )
-                .symbolRenderingMode(.hierarchical)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(multiSelectActive ? Color.accentColor : Color.secondary.opacity(0.35))
-            .accessibilityIdentifier("Toolbar_MultiSelect")
-            .accessibilityLabel(multiSelectActive ? "Finish Multi-Select" : "Start Multi-Select")
-            .accessibilityValue(multiSelectActive ? "\(app.selection.count) items selected" : "")
+            primaryActionButtons
         }
+        #elseif os(macOS)
+        ToolbarItemGroup(placement: .automatic) {
+            primaryActionButtons
+        }
+        #endif
 
+        // iOS-only bottom bar for multi-select mode
+        #if os(iOS)
         ToolbarItemGroup(placement: .bottomBar) {
             if editMode?.wrappedValue == .active {
                 let count = app.selection.count
@@ -155,6 +89,7 @@ internal struct ToolbarView: ToolbarContent {
         }
         #endif
 
+        // Secondary actions menu (all platforms)
         SecondaryToolbarActions(
             app: app,
             onShowSave: { showingSaveDialog = true },
@@ -165,7 +100,8 @@ internal struct ToolbarView: ToolbarContent {
             onShowSettings: { showingSettings = true }
         )
 
-        #if os(iOS) || targetEnvironment(macCatalyst)
+        // Sheet presentations (iOS-specific vs macOS/tvOS)
+        #if os(iOS)
         BottomToolbarSheets(
             app: app,
             exportText: $exportText,
@@ -191,9 +127,93 @@ internal struct ToolbarView: ToolbarContent {
         #endif
     }
 
+    @ViewBuilder
+    private var primaryActionButtons: some View {
+        Button {
+            app.presentTierListCreator()
+        } label: {
+            Label("New Tier List…", systemImage: "square.and.pencil")
+        }
+        .accessibilityIdentifier("Toolbar_NewTierList")
+        #if os(macOS)
+        .help("Create a new tier list (⇧⌘N)")
+        #endif
+
+        Button {
+            app.toggleAnalysis()
+        } label: {
+            Image(systemName: app.showingAnalysis ? "chart.bar.fill" : "chart.bar")
+                .accessibilityLabel(app.showingAnalysis ? "Close Analysis" : "Open Analysis")
+        }
+        .disabled(!app.canShowAnalysis && !app.showingAnalysis)
+        .accessibilityIdentifier("Toolbar_Analysis")
+        #if os(macOS)
+        .help(app.showingAnalysis ? "Close analysis (⌘A)" : "Open analysis (⌘A)")
+        #endif
+
+        Button {
+            app.toggleThemePicker()
+        } label: {
+            Image(systemName: "paintpalette")
+                .accessibilityLabel("Themes")
+        }
+        .accessibilityIdentifier("Toolbar_Themes")
+        #if os(macOS)
+        .help("Browse themes (⌘T)")
+        #endif
+
+        if AppleIntelligenceService.isSupportedOnCurrentPlatform {
+            Button {
+                app.toggleAIChat()
+            } label: {
+                Label("Apple Intelligence", systemImage: "sparkles")
+            }
+            .accessibilityIdentifier("Toolbar_AIChat")
+            #if os(macOS)
+            .help("Chat with Apple Intelligence")
+            #endif
+        }
+
+        Button {
+            app.startH2H()
+        } label: {
+            Image(systemName: "rectangle.grid.2x2")
+                .accessibilityLabel("Head-to-Head")
+        }
+        .disabled(!app.canStartHeadToHead)
+        .accessibilityIdentifier("Toolbar_H2H")
+        #if os(macOS)
+        .help("Start head-to-head (⌘H)")
+        #endif
+
+        #if os(iOS)
+        let multiSelectActive = editMode?.wrappedValue == .active
+        Button {
+            let isActive = editMode?.wrappedValue == .active
+            withAnimation(.easeInOut(duration: 0.18)) {
+                editMode?.wrappedValue = isActive ? .inactive : .active
+            }
+            if isActive {
+                app.clearSelection()
+            }
+        } label: {
+            Label(
+                multiSelectActive ? "Done" : "Multi-Select",
+                systemImage: multiSelectActive ? "checkmark.rectangle.stack.fill" : "rectangle.stack.badge.plus"
+            )
+            .symbolRenderingMode(.hierarchical)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(multiSelectActive ? Color.accentColor : Color.secondary.opacity(0.35))
+        .accessibilityIdentifier("Toolbar_MultiSelect")
+        .accessibilityLabel(multiSelectActive ? "Finish Multi-Select" : "Start Multi-Select")
+        .accessibilityValue(multiSelectActive ? "\(app.selection.count) items selected" : "")
+        #endif
+    }
+
     private func handleExportFormatSelection(_ format: ExportFormat) {
         selectedExportFormat = format
-        #if os(iOS) || targetEnvironment(macCatalyst)
+        #if os(iOS)
         if format == .json {
             jsonDoc = TiersDocument(tiers: app.tiers)
             exportingJSON = true
@@ -206,7 +226,7 @@ internal struct ToolbarView: ToolbarContent {
     }
 }
 
-#if os(iOS) || targetEnvironment(macCatalyst)
+#if os(iOS)
 internal struct TiersDocument: FileDocument {
     internal static var readableContentTypes: [UTType] { [.json] }
     internal var tiers: Items = [:]
@@ -320,7 +340,7 @@ internal struct SecondaryToolbarActions: ToolbarContent {
                 Button("PDF Document") { onShowExportFormat(.pdf) }
                 #endif
             }
-            #if os(iOS) || targetEnvironment(macCatalyst)
+            #if os(iOS)
             Menu("Import From...") {
                 Button("JSON File") { onImportJSON() }
                 Button("CSV File") { onImportCSV() }
@@ -330,7 +350,7 @@ internal struct SecondaryToolbarActions: ToolbarContent {
     }
 }
 
-#if os(iOS) || targetEnvironment(macCatalyst)
+#if os(iOS)
 internal struct BottomToolbarSheets: ToolbarContent {
     @Bindable var app: AppState
     @Binding var exportText: String
@@ -503,7 +523,7 @@ internal struct MacAndTVToolbarSheets: ToolbarContent {
 }
 #endif
 
-#if os(iOS) || targetEnvironment(macCatalyst)
+#if os(iOS)
 @MainActor
 extension AppState: ToolbarExportCoordinating {}
 #endif

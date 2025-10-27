@@ -32,11 +32,19 @@ internal struct TierListProjectWizard: View {
                 TierDetailsSheet(appState: appState, draft: draft, tier: tier)
             }
         }
+        #if os(macOS)
+        .sheet(isPresented: $showingItemDetailsSheet) {
+            if let item = currentItem {
+                LargeItemEditorView(appState: appState, draft: draft, item: item)
+            }
+        }
+        #else
         .fullScreenCover(isPresented: $showingItemDetailsSheet) {
             if let item = currentItem {
                 LargeItemEditorView(appState: appState, draft: draft, item: item)
             }
         }
+        #endif
         #if os(tvOS)
         .onExitCommand { dismiss() }
         #endif
@@ -86,8 +94,10 @@ internal struct TierListProjectWizard: View {
         }
         #if os(tvOS)
         .tabViewStyle(.page)
-        #else
+        #elseif os(iOS)
         .tabViewStyle(.page(indexDisplayMode: .never))
+        #else
+        .tabViewStyle(.automatic)
         #endif
     }
 
@@ -377,7 +387,7 @@ internal struct LargeItemEditorView: View {
                 }
             }
             .navigationTitle("Edit Item")
-            #if !os(tvOS)
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
             #endif
             .toolbar {

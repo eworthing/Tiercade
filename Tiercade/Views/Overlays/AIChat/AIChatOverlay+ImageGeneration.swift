@@ -4,7 +4,7 @@ import SwiftUI
 import ImagePlayground
 #endif
 
-#if os(macOS) || targetEnvironment(macCatalyst)
+#if os(macOS)
 import AppKit
 #endif
 
@@ -65,11 +65,11 @@ extension AIChatOverlay {
             print("🎨 [Image] Image generated successfully")
             let cgImage = createdImage.cgImage
 
-            #if os(macOS) && !targetEnvironment(macCatalyst)
+            #if os(macOS)
             let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
             generatedImage = Image(nsImage: nsImage)
             imageGenerated = true
-            #elseif os(iOS) || targetEnvironment(macCatalyst)
+            #elseif os(iOS)
             let uiImage = UIImage(cgImage: cgImage)
             generatedImage = Image(uiImage: uiImage)
             imageGenerated = true

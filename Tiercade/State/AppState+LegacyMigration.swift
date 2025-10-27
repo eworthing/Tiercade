@@ -218,11 +218,7 @@ internal struct LegacyMigrationView: View {
         }
         .padding(40)
         .frame(maxWidth: 400)
-        #if os(tvOS)
-        .background(Color.black.opacity(0.9))
-        #else
-        .background(Color(.systemBackground))
-        #endif
+        .background(Palette.cardBackground.opacity(0.95))
         .cornerRadius(16)
         .shadow(radius: 20)
     }

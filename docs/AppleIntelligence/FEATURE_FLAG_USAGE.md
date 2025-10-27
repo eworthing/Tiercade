@@ -10,15 +10,15 @@ The `enableAdvancedGeneration` feature flag controls the unique list generation 
 
 ### Default Behavior (Recommended)
 ```bash
-./build_install_launch.sh catalyst
+./build_install_launch.sh macos
 ```
 - Uses **DEBUG setting**: enabled in DEBUG builds, disabled in Release
 - ✅ Safest for development (experimental code isolated)
-- ⚠️ Note: tvOS doesn't support Apple Intelligence, so use Catalyst for testing feature flags
+- ⚠️ Note: tvOS doesn't support Apple Intelligence, so use native macOS for testing feature flags
 
 ### Force Enable (For Testing Advanced Generation in Release)
 ```bash
-./build_install_launch.sh catalyst --enable-advanced-generation
+./build_install_launch.sh macos --enable-advanced-generation
 ```
 - Enables advanced generation **regardless of build configuration**
 - Use case: Test advanced generation in Release builds before merging
@@ -26,7 +26,7 @@ The `enableAdvancedGeneration` feature flag controls the unique list generation 
 
 ### Force Disable (For Regression Testing)
 ```bash
-./build_install_launch.sh catalyst --disable-advanced-generation
+./build_install_launch.sh macos --disable-advanced-generation
 ```
 - Disables advanced generation **regardless of build configuration**
 - Use case: Verify fallback code path (simple client-side dedup) still works correctly
@@ -69,7 +69,7 @@ The script:
 ### 1. Development Build (All Code Paths)
 ```bash
 # Run in DEBUG configuration with advanced generation enabled
-./build_install_launch.sh catalyst
+./build_install_launch.sh macos
 # → 🔬 Advanced generation: using DEBUG setting
 ```
 ✅ Tests all code paths including experimental features
@@ -77,7 +77,7 @@ The script:
 ### 2. Release Candidate Testing
 ```bash
 # Build in Release but force-enable advanced generation to test before merge
-./build_install_launch.sh catalyst --enable-advanced-generation
+./build_install_launch.sh macos --enable-advanced-generation
 # → 🔬 Advanced generation: ENABLED (forced)
 ```
 ✅ Verifies advanced generation works in Release optimization level
@@ -85,7 +85,7 @@ The script:
 ### 3. Fallback Code Path Verification
 ```bash
 # Build with advanced generation explicitly disabled
-./build_install_launch.sh catalyst --disable-advanced-generation
+./build_install_launch.sh macos --disable-advanced-generation
 # → 🔬 Advanced generation: DISABLED (forced)
 ```
 ✅ Confirms simple deduplication fallback still functions
@@ -94,10 +94,10 @@ The script:
 
 ### CI/CD Integration
 ```bash
-# Build matrix for comprehensive testing on Catalyst (iOS variant with AI support)
-./build_install_launch.sh catalyst                              # Default
-./build_install_launch.sh catalyst --enable-advanced-generation  # Force enable
-./build_install_launch.sh catalyst --disable-advanced-generation # Force disable
+# Build matrix for comprehensive testing on native macOS (with AI support)
+./build_install_launch.sh macos                              # Default
+./build_install_launch.sh macos --enable-advanced-generation  # Force enable
+./build_install_launch.sh macos --disable-advanced-generation # Force disable
 
 # Run tests on each variant
 swift test
@@ -106,13 +106,13 @@ swift test
 ### Local Development Workflow
 ```bash
 # Normal development - uses DEBUG setting (advanced gen enabled)
-./build_install_launch.sh catalyst
+./build_install_launch.sh macos
 
 # Regression testing - ensure fallback works without advanced generation
-./build_install_launch.sh catalyst --disable-advanced-generation
+./build_install_launch.sh macos --disable-advanced-generation
 
 # Before PR merge - verify advanced gen in Release-like conditions
-./build_install_launch.sh catalyst --enable-advanced-generation
+./build_install_launch.sh macos --enable-advanced-generation
 ```
 
 ## Compile-Time Behavior

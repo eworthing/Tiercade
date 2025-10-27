@@ -73,9 +73,8 @@ final class AppleIntelligenceService {
     internal static let instructionsTokenEstimate = 100 // Estimated tokens for our strong anti-duplicate instructions
 
     internal static var isSupportedOnCurrentPlatform: Bool {
-        // Show button on platforms where Apple docs indicate FoundationModels should be available
-        // even if framework isn't accessible at compile time (e.g., Catalyst SDK limitation)
-        #if os(iOS) || os(iPadOS) || os(macOS) || targetEnvironment(macCatalyst) || os(visionOS)
+        // Show button on platforms where Apple Intelligence is available
+        #if os(iOS) || os(iPadOS) || os(macOS) || os(visionOS)
         return true
         #else
         return false

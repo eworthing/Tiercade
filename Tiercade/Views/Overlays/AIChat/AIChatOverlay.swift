@@ -4,7 +4,7 @@ import SwiftUI
 import ImagePlayground
 #endif
 
-#if os(macOS) || targetEnvironment(macCatalyst)
+#if os(macOS)
 import AppKit
 #endif
 
@@ -282,10 +282,10 @@ internal struct AIChatOverlay: View {
     }
 
     private func copyToClipboard(_ text: String) {
-        #if os(macOS) && !targetEnvironment(macCatalyst)
+        #if os(macOS)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
-        #elseif os(iOS) || targetEnvironment(macCatalyst)
+        #elseif os(iOS)
         UIPasteboard.general.string = text
         #endif
 

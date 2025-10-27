@@ -29,11 +29,10 @@ internal struct MediaGalleryView: View {
             let announcement = "Image \(newValue + 1) of \(pages.count)"
             AccessibilityNotification.Announcement(announcement).post()
         }
-        #elseif os(iOS) && !targetEnvironment(macCatalyst)
+        #elseif os(iOS)
         .tabViewStyle(.page(indexDisplayMode: pages.count > 1 ? .automatic : .never))
-        #else
-        // Mac Catalyst: .page style isn't available, use automatic
-        .tabViewStyle(.automatic)
+        #elseif os(macOS)
+        .tabViewStyle(.automatic)  // macOS uses tab-based navigation
         #endif
     }
 }

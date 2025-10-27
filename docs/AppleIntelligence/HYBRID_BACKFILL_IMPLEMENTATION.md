@@ -237,9 +237,9 @@ Switch backfill from guided generation (which ignores avoid-list) to **unguided 
 
 ## Testing
 
-1. Build and run Mac Catalyst tests:
+1. Build and run native macOS tests:
    ```bash
-   ./build_install_launch.sh catalyst
+   ./build_install_launch.sh macos
    ```
 
 2. Monitor for:

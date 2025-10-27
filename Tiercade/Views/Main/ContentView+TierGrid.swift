@@ -6,7 +6,9 @@ import TiercadeCore
 internal struct TierGridView: View {
     @Environment(AppState.self) var app: AppState
     internal let tierOrder: [String]
+    #if os(iOS)
     @Environment(\.editMode) private var editMode
+    #endif
     #if !os(tvOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @FocusState var hardwareFocus: CardFocus?
@@ -181,7 +183,9 @@ internal struct CardView: View {
     internal let item: Item
     @Environment(AppState.self) var app
     @Environment(\.isFocused) var isFocused: Bool
+    #if os(iOS)
     @Environment(\.editMode) private var editMode
+    #endif
     #if os(tvOS)
     internal let layout: TVCardLayout
     #else
@@ -190,7 +194,11 @@ internal struct CardView: View {
     #endif
 
     private var isMultiSelectActive: Bool {
-        editMode?.wrappedValue == .active
+        #if os(iOS)
+        return editMode?.wrappedValue == .active
+        #else
+        return false
+        #endif
     }
 
     private static let tierLookup: [String: Tier] = [
@@ -248,7 +256,7 @@ internal struct CardView: View {
         .contentShape(Rectangle())
         .accessibilityLabel(displayLabel)
         .punchyFocus(tier: tierForItem(item), cornerRadius: layoutCornerRadius)
-        #if os(iOS) && !os(tvOS) || targetEnvironment(macCatalyst)
+        #if os(iOS) || os(macOS)
         .accessibilityAddTraits(.isButton)
         #endif
         #if !os(tvOS)
