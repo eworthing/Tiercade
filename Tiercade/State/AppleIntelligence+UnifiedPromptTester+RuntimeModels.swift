@@ -61,9 +61,9 @@ internal struct TestRunContext: Sendable {
 
     /// Calculate max tokens based on target and overgen factor
     static func calculateMaxTokens(targetCount: Int, overgenFactor: Double) -> Int {
-        let tokensPerItem = 6
-        let calculated = Int(ceil(Double(targetCount) * overgenFactor * Double(tokensPerItem) * 1.3))
-        return min(3000, calculated)
+        let tokensPerItem = 10  // Increased from 6 to account for JSON formatting overhead
+        let calculated = Int(ceil(Double(targetCount) * overgenFactor * Double(tokensPerItem) * 1.5))
+        return min(4096, calculated)  // Increased cap to allow for larger lists
     }
 
     internal init(run: TestRun, maxTokensOverride: Int? = nil) {

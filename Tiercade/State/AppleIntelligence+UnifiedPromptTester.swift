@@ -498,7 +498,28 @@ final class UnifiedPromptTester {
     }
 
     private static func tryParseJSON(_ response: String) -> [String]? {
-        guard let data = response.data(using: .utf8) else { return nil }
+        // Strip markdown code blocks (```json ... ```)
+        var cleanedResponse = response
+
+        // Remove markdown code fence with optional language specifier
+        let markdownPattern = #"^```(?:json)?\s*\n?(.*?)\n?```$"#
+        if let regex = try? NSRegularExpression(pattern: markdownPattern, options: [.dotMatchesLineSeparators]),
+           let match = regex.firstMatch(in: response, options: [], range: NSRange(response.startIndex..., in: response)),
+           let contentRange = Range(match.range(at: 1), in: response) {
+            cleanedResponse = String(response[contentRange])
+        }
+
+        // Also try simpler pattern for cases like ```json on first line
+        if cleanedResponse.hasPrefix("```") {
+            let lines = cleanedResponse.components(separatedBy: .newlines)
+            if lines.count > 2 {
+                // Skip first and last line
+                cleanedResponse = lines.dropFirst().dropLast().joined(separator: "\n")
+            }
+        }
+
+        let trimmed = cleanedResponse.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let data = trimmed.data(using: .utf8) else { return nil }
 
         // Try parsing as bare array first: ["item1", "item2", ...]
         if let items = try? JSONDecoder().decode([String].self, from: data) {

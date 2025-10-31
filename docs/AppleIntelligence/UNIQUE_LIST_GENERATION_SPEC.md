@@ -345,7 +345,7 @@ enum Defaults {
 
 ```bash
 # Interactive (DEBUG mode)
-1. Build: ./build_install_launch.sh catalyst
+1. Build: ./build_install_launch.sh macos
 2. Open AI Chat (sparkles button)
 3. Click green checkmark button
 4. View results in chat + /tmp/tiercade_acceptance_test_report.json
@@ -440,7 +440,6 @@ Validates across multi-dimensional grid:
 
 ### Documentation
 
-- `PROMPT_TESTING_GUIDE.md` - User guide
 - This file (`UNIQUE_LIST_GENERATION_SPEC.md`) - Full specification
 
 ### Output Files

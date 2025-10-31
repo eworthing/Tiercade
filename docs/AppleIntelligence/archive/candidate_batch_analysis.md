@@ -1,4 +1,4 @@
-# Candidate-Batch Backfill Analysis
+# Candidate-Batch Backfill Analysis (Archived)
 
 **Date:** 2025-10-24
 **Test Run:** Native macOS, OS 26.0.1

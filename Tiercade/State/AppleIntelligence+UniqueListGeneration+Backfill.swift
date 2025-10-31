@@ -20,7 +20,7 @@ extension UniqueListCoordinator {
         logger("  Requesting \(overGenCount) items (over-gen: \(overGenFormatted)x, budget: \(maxTok1) tokens)")
 
         let prompt1 = buildPass1Prompt(query: query, overGenCount: overGenCount)
-        let items1 = try await fm.generate(
+        var rawItems1 = try await fm.generate(
             FMClient.GenerateParameters(
                 prompt: prompt1,
                 profile: .topP(0.92),
@@ -32,9 +32,19 @@ extension UniqueListCoordinator {
             telemetry: &state.localTelemetry
         )
 
+        // Pre-normalization, pre-dedup log: exact model items before placeholder filtering
+        logger("📥 Raw (Pass 1) model items (pre-placeholder, pre-dedup):\n• " + rawItems1.joined(separator: "\n• "))
+
+        let placeholdersRemoved1 = rawItems1.count - filterPlaceholders(rawItems1).count
+        var items1 = filterPlaceholders(rawItems1)
+        logger("📝 Pass 1 (post-placeholder) returned \(items1.count) items:\n• " + items1.joined(separator: "\n• "))
+
+        let beforeUniqueP1 = state.ordered.count
         state.absorb(items1, logger: logger)
         state.passCount = 1
-
+        let keptP1 = state.ordered.count - beforeUniqueP1
+        let droppedDupP1 = max(0, items1.count - keptP1)
+        logger("📊 Summary (Pass 1): kept=\(keptP1), droppedDuplicates=\(droppedDupP1), placeholders=\(placeholdersRemoved1)")
         logger("  Result: \(state.ordered.count)/\(targetCount) unique, \(state.duplicatesFound) duplicates filtered")
     }
 
@@ -54,15 +64,26 @@ extension UniqueListCoordinator {
     }
 
     internal func buildPass1Prompt(query: String, overGenCount: Int) -> String {
-        return """
-        Return ONLY a JSON object matching the schema.
-        Task: \(query). Produce \(overGenCount) distinct items.
-        """
+        switch promptStyle {
+        case .strict:
+            return """
+            Return ONLY a JSON object matching the schema.
+            Task: \(query). Produce \(overGenCount) distinct items.
+            """
+        case .minimal:
+            return """
+            Return a JSON object matching the schema.
+            Task: \(query). Provide about \(overGenCount) varied, concrete items.
+            Avoid placeholders. No commentary.
+            """
+        }
     }
 
     internal func finalizeSuccess(state: GenerationState, startTime: Date) {
         let elapsed = Date().timeIntervalSince(startTime)
         logger("✅ Success in \(state.passCount) pass (\(String(format: "%.2f", elapsed))s)")
+        // Store diagnostics on success as well, so dupRate etc. are available
+        storeDiagnostics(state: state, targetCount: state.targetCount, success: true)
     }
 
     internal func executeBackfill(
@@ -71,9 +92,120 @@ extension UniqueListCoordinator {
         state: inout GenerationState
     ) async throws {
         if useGuidedBackfill {
-            try await executeGuidedBackfill(query: query, targetCount: targetCount, state: &state)
+            if hybridSwitchEnabled {
+                try await executeHybridBackfill(query: query, targetCount: targetCount, state: &state)
+            } else {
+                try await executeGuidedBackfill(query: query, targetCount: targetCount, state: &state)
+            }
         } else {
             try await executeUnguidedBackfill(query: query, targetCount: targetCount, state: &state)
+        }
+    }
+
+    // MARK: - Hybrid Backfill (DEBUG heuristic)
+
+    internal func executeHybridBackfill(
+        query: String,
+        targetCount: Int,
+        state: inout GenerationState
+    ) async throws {
+        var backfillRound = 0
+        var consecutiveNoProgress = 0
+        var switchedToUnguided = false
+        var attemptedBudgetBump = false
+        var unguidedRounds = 0
+
+        while state.ordered.count < targetCount && backfillRound < Defaults.maxPasses {
+            backfillRound += 1
+            state.passCount += 1
+
+            let beforeUnique = state.ordered.count
+            let beforeDup = state.duplicatesFound
+            let beforeGen = state.totalGeneratedCount
+
+            if !switchedToUnguided {
+                try await executeGuidedBackfillRound(
+                    query: query,
+                    targetCount: targetCount,
+                    backfillRound: backfillRound,
+                    state: &state
+                )
+
+                // Progress + dup-rate for this round
+                let afterUnique = state.ordered.count
+                let dupDelta = state.duplicatesFound - beforeDup
+                let genDelta = max(0, state.totalGeneratedCount - beforeGen)
+                let roundDupRate = genDelta > 0 ? Double(dupDelta) / Double(genDelta) : 0.0
+
+                // Circuit breaker-like check
+                handleCircuitBreaker(
+                    before: beforeUnique,
+                    current: afterUnique,
+                    consecutiveNoProgress: &consecutiveNoProgress,
+                    circuitBreakerTriggered: &state.circuitBreakerTriggered
+                )
+                if state.circuitBreakerTriggered { break }
+
+                // Hybrid decision with budget bump before switching
+                if roundDupRate >= hybridDupThreshold || consecutiveNoProgress >= 2 {
+                    if !attemptedBudgetBump {
+                        attemptedBudgetBump = true
+                        let deltaNeed = targetCount - state.ordered.count
+                        let delta = calculateGuidedBackfillDelta(deltaNeed: deltaNeed, targetCount: targetCount)
+                        let baseMaxTok = max(1024, delta * 20)
+                        let boosted = min(4096, Int(Double(baseMaxTok) * 1.8))
+                        logger("⬆️  [Hybrid] Budget bump before switch: maxTokens \(baseMaxTok) → \(boosted)")
+                        try await executeGuidedBackfillRoundWithOverride(
+                            query: query,
+                            targetCount: targetCount,
+                            backfillRound: backfillRound,
+                            state: &state,
+                            maxTokOverride: boosted
+                        )
+                        // After bump, do not immediately switch; allow loop to reassess
+                    } else {
+                        logger("🔀 [Hybrid] Switching to unguided backfill (dupRate=\(String(format: "%.2f", roundDupRate)), noProgress=\(consecutiveNoProgress))")
+                        switchedToUnguided = true
+                    }
+                }
+
+                // Greedy last-mile (guided)
+                try await executeGreedyLastMileIfNeeded(
+                    query: query,
+                    targetCount: targetCount,
+                    state: &state,
+                    isGuided: true
+                )
+            } else {
+                // Unguided round (bounded)
+                try await executeUnguidedBackfillRound(
+                    query: query,
+                    targetCount: targetCount,
+                    state: &state
+                )
+                unguidedRounds += 1
+                if unguidedRounds >= 2 {
+                    logger("⏹️  [Hybrid] Unguided rounds limit reached (2)")
+                    break
+                }
+
+                let afterUnique = state.ordered.count
+                handleCircuitBreaker(
+                    before: beforeUnique,
+                    current: afterUnique,
+                    consecutiveNoProgress: &consecutiveNoProgress,
+                    circuitBreakerTriggered: &state.circuitBreakerTriggered
+                )
+                if state.circuitBreakerTriggered { break }
+
+                // Greedy last-mile (unguided)
+                try await executeGreedyLastMileIfNeeded(
+                    query: query,
+                    targetCount: targetCount,
+                    state: &state,
+                    isGuided: false
+                )
+            }
         }
     }
 
@@ -93,12 +225,28 @@ extension UniqueListCoordinator {
             state.passCount += 1
 
             let before = state.ordered.count
-            try await executeGuidedBackfillRound(
-                query: query,
-                targetCount: targetCount,
-                backfillRound: backfillRound,
-                state: &state
-            )
+            if guidedBudgetBumpFirst && backfillRound == 1 {
+                // Proactively use a larger token budget for the first guided backfill round
+                let deltaNeed = targetCount - state.ordered.count
+                let delta = calculateGuidedBackfillDelta(deltaNeed: deltaNeed, targetCount: targetCount)
+                let baseMaxTok = max(1024, delta * 20)
+                let boosted = min(4096, Int(Double(baseMaxTok) * 1.8))
+                logger("⬆️  [Guided] First-round budget bump: maxTokens \(baseMaxTok) → \(boosted)")
+                try await executeGuidedBackfillRoundWithOverride(
+                    query: query,
+                    targetCount: targetCount,
+                    backfillRound: backfillRound,
+                    state: &state,
+                    maxTokOverride: boosted
+                )
+            } else {
+                try await executeGuidedBackfillRound(
+                    query: query,
+                    targetCount: targetCount,
+                    backfillRound: backfillRound,
+                    state: &state
+                )
+            }
 
             handleCircuitBreaker(
                 before: before,
@@ -151,7 +299,7 @@ extension UniqueListCoordinator {
         let before = state.ordered.count
 
         do {
-            let itemsFill = try await fm.generate(
+            var rawItemsFill = try await fm.generate(
                 FMClient.GenerateParameters(
                     prompt: promptFill,
                     profile: .topP(0.92),
@@ -162,7 +310,16 @@ extension UniqueListCoordinator {
                 ),
                 telemetry: &state.localTelemetry
             )
+            // Pre-normalization, pre-dedup
+            logger("📥 Raw (Guided backfill pass \(state.passCount)) model items (pre-placeholder):\n• " + rawItemsFill.joined(separator: "\n• "))
+            let placeholdersRemoved = rawItemsFill.count - filterPlaceholders(rawItemsFill).count
+            var itemsFill = filterPlaceholders(rawItemsFill)
+            logger("📝 Guided backfill (pass \(state.passCount)) returned \(itemsFill.count) items:\n• " + itemsFill.joined(separator: "\n• "))
+            let kept = state.ordered.count
             state.absorb(itemsFill, logger: logger)
+            let keptDelta = state.ordered.count - kept
+            let droppedDup = max(0, itemsFill.count - keptDelta)
+            logger("📊 Summary (Guided pass \(state.passCount)): kept=\(keptDelta), droppedDuplicates=\(droppedDup), placeholders=\(placeholdersRemoved)")
         } catch {
             logger("⚠️ Guided backfill error: \(error)")
             captureFailureReason("Guided backfill error: \(error.localizedDescription)")
@@ -179,6 +336,62 @@ extension UniqueListCoordinator {
         }
 
         logger("  Result: \(state.ordered.count)/\(targetCount) unique (filtered \(state.duplicatesFound) duplicates)")
+    }
+
+    // Guided backfill with a maxTokens override used by hybrid budget bump
+    internal func executeGuidedBackfillRoundWithOverride(
+        query: String,
+        targetCount: Int,
+        backfillRound: Int,
+        state: inout GenerationState,
+        maxTokOverride: Int
+    ) async throws {
+        let deltaNeed = targetCount - state.ordered.count
+        let delta = calculateGuidedBackfillDelta(deltaNeed: deltaNeed, targetCount: targetCount)
+        let avoid = Array(state.seen)
+
+        let avoidComponents = buildGuidedAvoidList(
+            avoid: avoid,
+            dupFrequency: state.dupFrequency,
+            backfillRound: backfillRound
+        )
+
+        let promptFill = buildGuidedBackfillPrompt(
+            query: query,
+            delta: delta,
+            avoidSample: avoidComponents.avoidSample,
+            coverageNote: avoidComponents.coverageNote,
+            offenderNote: avoidComponents.offenderNote
+        )
+
+        let before = state.ordered.count
+        do {
+            let itemsFill = try await fm.generate(
+                FMClient.GenerateParameters(
+                    prompt: promptFill,
+                    profile: .topP(0.92),
+                    initialSeed: UInt64.random(in: 0...UInt64.max),
+                    temperature: Defaults.tempDiverse,
+                    maxTokens: maxTokOverride,
+                    maxRetries: 5
+                ),
+                telemetry: &state.localTelemetry
+            )
+            state.absorb(itemsFill, logger: logger)
+        } catch {
+            logger("⚠️ Guided backfill error (override): \(error)")
+            captureFailureReason("Guided backfill error (override): \(error.localizedDescription)")
+        }
+
+        if state.ordered.count == before {
+            try await retryGuidedBackfill(
+                query: query,
+                targetCount: targetCount,
+                deltaNeed: deltaNeed,
+                avoidSample: avoidComponents.avoidSample,
+                state: &state
+            )
+        }
     }
 
     internal func calculateGuidedBackfillDelta(deltaNeed: Int, targetCount: Int) -> Int {
@@ -240,15 +453,25 @@ extension UniqueListCoordinator {
         coverageNote: String,
         offenderNote: String
     ) -> String {
-        return """
-        Return ONLY a JSON object matching the schema.
-        Task: \(query). Produce \(delta) distinct items.
+        switch promptStyle {
+        case .strict:
+            return """
+            Return ONLY a JSON object matching the schema.
+            Task: \(query). Produce \(delta) distinct items.
 
-        CRITICAL: Do NOT include items with these normalized keys:
-        [\(avoidSample)]\(coverageNote)\(offenderNote)
+            CRITICAL: Do NOT include items with these normalized keys:
+            [\(avoidSample)]\(coverageNote)\(offenderNote)
 
-        Generate NEW items that are NOT in the forbidden list above.
-        """
+            Generate NEW items that are NOT in the forbidden list above.
+            """
+        case .minimal:
+            return """
+            Return a JSON object matching the schema.
+            Task: \(query). Provide \(delta) new, concrete items with good variety.
+            Exclude items whose normalized keys appear in this sample: [\(avoidSample)]\(coverageNote)\(offenderNote)
+            Avoid placeholders. No commentary.
+            """
+        }
     }
 
     internal func retryGuidedBackfill(
@@ -278,7 +501,7 @@ extension UniqueListCoordinator {
             Also avoid: [\(avoidSample)]
             """
 
-            let itemsRetry = try await fm.generate(
+            var rawItemsRetry = try await fm.generate(
                 FMClient.GenerateParameters(
                     prompt: promptRetry,
                     profile: .topK(50),
@@ -289,7 +512,15 @@ extension UniqueListCoordinator {
                 ),
                 telemetry: &state.localTelemetry
             )
+            logger("📥 Raw (Guided retry pass \(state.passCount)) model items (pre-placeholder):\n• " + rawItemsRetry.joined(separator: "\n• "))
+            let placeholdersRemovedRetry = rawItemsRetry.count - filterPlaceholders(rawItemsRetry).count
+            var itemsRetry = filterPlaceholders(rawItemsRetry)
+            logger("📝 Guided retry (pass \(state.passCount)) returned \(itemsRetry.count) items:\n• " + itemsRetry.joined(separator: "\n• "))
+            let kept = state.ordered.count
             state.absorb(itemsRetry, logger: logger)
+            let keptDelta = state.ordered.count - kept
+            let droppedDup = max(0, itemsRetry.count - keptDelta)
+            logger("📊 Summary (Guided retry pass \(state.passCount)): kept=\(keptDelta), droppedDuplicates=\(droppedDup), placeholders=\(placeholdersRemovedRetry)")
         } catch {
             logger("⚠️ Adaptive retry failed: \(error)")
             captureFailureReason("Adaptive retry failed: \(error.localizedDescription)")
@@ -357,7 +588,7 @@ extension UniqueListCoordinator {
         let before = state.ordered.count
 
         do {
-            let itemsFill = try await fm.generateTextArray(
+            var rawItemsFill = try await fm.generateTextArray(
                 FMClient.GenerateTextArrayParameters(
                     prompt: promptFill,
                     profile: .topK(40),
@@ -368,7 +599,15 @@ extension UniqueListCoordinator {
                 ),
                 telemetry: &state.localTelemetry
             )
+            logger("📥 Raw (Unguided backfill pass \(state.passCount)) model items (pre-placeholder):\n• " + rawItemsFill.joined(separator: "\n• "))
+            let placeholdersRemoved = rawItemsFill.count - filterPlaceholders(rawItemsFill).count
+            var itemsFill = filterPlaceholders(rawItemsFill)
+            logger("📝 Unguided backfill (pass \(state.passCount)) returned \(itemsFill.count) items:\n• " + itemsFill.joined(separator: "\n• "))
+            let kept = state.ordered.count
             state.absorb(itemsFill, logger: logger)
+            let keptDelta = state.ordered.count - kept
+            let droppedDup = max(0, itemsFill.count - keptDelta)
+            logger("📊 Summary (Unguided pass \(state.passCount)): kept=\(keptDelta), droppedDuplicates=\(droppedDup), placeholders=\(placeholdersRemoved)")
         } catch {
             logger("⚠️ Unguided backfill error: \(error)")
             captureFailureReason("Unguided backfill error: \(error.localizedDescription)")
@@ -412,15 +651,26 @@ extension UniqueListCoordinator {
     }
 
     internal func buildUnguidedBackfillPrompt(query: String, delta: Int, avoidJSON: String) -> String {
-        return """
-        Generate EXACTLY \(delta) NEW unique items for: \(query).
-        Do NOT include any with norm_keys in:
-        [\(avoidJSON)]
+        switch promptStyle {
+        case .strict:
+            return """
+            Generate EXACTLY \(delta) NEW unique items for: \(query).
+            Do NOT include any with norm_keys in:
+            [\(avoidJSON)]
 
-        Return ONLY a JSON array with \(delta) string items.
-        Format: ["item1", "item2", "item3", ...]
-        Include all \(delta) items in your response.
-        """
+            Return ONLY a JSON array with \(delta) string items.
+            Format: ["item1", "item2", "item3", ...]
+            Include all \(delta) items in your response.
+            """
+        case .minimal:
+            return """
+            Generate \(delta) new, concrete items for: \(query).
+            Exclude any whose normalized keys appear in:
+            [\(avoidJSON)]
+
+            Return only a JSON array of strings.
+            """
+        }
     }
 
     internal func retryUnguidedBackfill(
@@ -439,7 +689,7 @@ extension UniqueListCoordinator {
             Return ONLY a JSON array with \(retryCount) string items.
             Format: ["item1", "item2", "item3", ...]
             """
-            let itemsRetry = try await fm.generateTextArray(
+            var rawItemsRetry = try await fm.generateTextArray(
                 FMClient.GenerateTextArrayParameters(
                     prompt: promptRetry,
                     profile: .topK(40),
@@ -450,10 +700,75 @@ extension UniqueListCoordinator {
                 ),
                 telemetry: &state.localTelemetry
             )
+            logger("📥 Raw (Unguided retry pass \(state.passCount)) model items (pre-placeholder):\n• " + rawItemsRetry.joined(separator: "\n• "))
+            let placeholdersRemovedRetry = rawItemsRetry.count - filterPlaceholders(rawItemsRetry).count
+            var itemsRetry = filterPlaceholders(rawItemsRetry)
+            logger("📝 Unguided retry returned \(itemsRetry.count) items:\n• " + itemsRetry.joined(separator: "\n• "))
+            let kept = state.ordered.count
             state.absorb(itemsRetry, logger: logger)
+            let keptDelta = state.ordered.count - kept
+            let droppedDup = max(0, itemsRetry.count - keptDelta)
+            logger("📊 Summary (Unguided retry pass \(state.passCount)): kept=\(keptDelta), droppedDuplicates=\(droppedDup), placeholders=\(placeholdersRemovedRetry)")
         } catch {
             logger("⚠️ Adaptive retry also failed: \(error)")
             captureFailureReason("Adaptive retry also failed: \(error.localizedDescription)")
+        }
+    }
+
+    // Domain-agnostic placeholder filter: remove obvious enumerated placeholders
+    internal func filterPlaceholders(_ items: [String]) -> [String] {
+        // Detect groups like "<prefix> A..J" or "<prefix> 1..10" that repeat with only suffix difference
+        struct Key: Hashable { let prefix: String; let kind: String }
+        var groups: [Key: [Int]] = [:] // store suffix ranks to estimate breadth
+        let letterRegex = try? NSRegularExpression(pattern: #"^(.{2,}?)\s([A-Z])$"#)
+        let digitRegex = try? NSRegularExpression(pattern: #"^(.{2,}?)\s([0-9]{1,2})$"#)
+
+        func match(_ re: NSRegularExpression?, _ s: String) -> (String, Int)? {
+            guard let re else { return nil }
+            let ns = s as NSString
+            let range = NSRange(location: 0, length: ns.length)
+            guard let m = re.firstMatch(in: s, range: range) else { return nil }
+            guard m.numberOfRanges >= 3 else { return nil }
+            let pfx = ns.substring(with: m.range(at: 1))
+            let suf = ns.substring(with: m.range(at: 2))
+            if re == letterRegex {
+                if let ch = suf.unicodeScalars.first, ch.value >= 65, ch.value <= 90 { // A..Z
+                    // Rank A=1..Z=26
+                    return (pfx, Int(ch.value - 64))
+                }
+            } else {
+                if let val = Int(suf) { return (pfx, val) }
+            }
+            return nil
+        }
+
+        for s in items {
+            let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let (p, r) = match(letterRegex, t) {
+                let key = Key(prefix: p, kind: "letter")
+                groups[key, default: []].append(r)
+            } else if let (p, r) = match(digitRegex, t) {
+                let key = Key(prefix: p, kind: "digit")
+                groups[key, default: []].append(r)
+            }
+        }
+
+        // Identify placeholder groups with breadth ≥5 distinct suffixes
+        var bad: Set<String> = []
+        for (k, vals) in groups {
+            let distinct = Set(vals)
+            if distinct.count >= 5 {
+                bad.insert(k.prefix + "|" + k.kind)
+            }
+        }
+
+        if bad.isEmpty { return items }
+
+        return items.filter { s in
+            let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let (p, _) = match(letterRegex, t), bad.contains(p + "|letter") { return false }
+            if let (p, _) = match(digitRegex, t), bad.contains(p + "|digit") { return false }
+            return true
         }
     }
 

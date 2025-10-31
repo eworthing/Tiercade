@@ -1,6 +1,6 @@
 # Apple Intelligence Experimental Feature
 
-**Status**: Experimental / Proof of Concept
+**Status**: Experimental / Proof of Concept (Prototype-Only)
 **Platforms**: iOS 26+, iPadOS 26+, macOS 26+ (native), visionOS 26+
 **Framework**: FoundationModels
 
@@ -8,19 +8,26 @@
 
 Experimental integration of on-device Apple Intelligence for generating unique tier list items using schema-guided generation.
 
+### Prototype Testing Notice
+- This directory and related code paths exist to evaluate techniques on the small on-device model. They are not production architecture.
+- Prompts must remain cross-domain. We do not specialize for particular list types because user queries may target any category.
+- The final product will be re-architected around the best-performing method identified by these experiments. Treat this as disposable scaffolding.
+
 ## Documentation
 
 - **[Unique List Generation Spec](UNIQUE_LIST_GENERATION_SPEC.md)** - Complete specification and algorithm
 - **[Feature Flag Usage](FEATURE_FLAG_USAGE.md)** - How to enable/disable advanced generation
-- **[Hybrid Backfill Implementation](HYBRID_BACKFILL_IMPLEMENTATION.md)** - Current backfill strategy
-- **[Test Results (2025-10-24)](TEST_RESULTS_2025-10-24.md)** - Latest acceptance test results
-- **[Diagnostic Findings](T4_GUIDED_BACKFILL_DIAGNOSTIC_FINDINGS.md)** - T4 test analysis
+- **[Prototype Notice](PROTOTYPE_NOTICE.md)** - Scope, goals, and non-production disclaimer
+- **[Deep Research (Oct 2025)](DEEP_RESEARCH_2025-10.md)** - Consolidated research plan, constraints, and experiment matrix
+- **[RFC: Hybrid Backfill Implementation (archived)](archive/HYBRID_BACKFILL_IMPLEMENTATION.md)** - Implementation plan preserved for reference
+- **[Test Results (2025-10-24)](archive/test-results-2025-10-24-negation-backfill-failure.md)** - Acceptance test snapshot
+- **[Diagnostic Findings (T4 Guided Backfill, 2025-10-25)](archive/T4_GUIDED_BACKFILL_DIAGNOSTIC_FINDINGS.md)** - Point-in-time diagnostic analysis
 
 ## Known Issues & Limitations
 
 ### Retired Experiments
 
-- **[Candidate-batch backfill](candidate_batch_analysis.md)** (88.7% duplication) -
+- **[Candidate-batch backfill](archive/candidate_batch_analysis.md)** (88.7% duplication) -
   Abandoned approach that generated items without avoid-lists. Model repeatedly
   produced the same high-probability items despite client-side deduplication.
 

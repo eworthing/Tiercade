@@ -7,6 +7,11 @@ This directory contains JSON configuration files for the
 testing infrastructure (AcceptanceTestSuite, PilotTestRunner,
 EnhancedPromptTester).
 
+> Prototype disclaimer
+> - These suites are for evaluation and benchmarking only, not production behavior.
+> - Queries are intentionally cross-domain; avoid domain-specific prompt tuning.
+> - The final product will be re-architected using the winning technique; treat these configs as disposable scaffolding.
+
 ## Overview
 
 The unified testing framework provides config-driven, multi-dimensional testing

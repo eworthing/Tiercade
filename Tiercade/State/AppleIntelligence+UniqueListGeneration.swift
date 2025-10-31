@@ -116,7 +116,7 @@ final class FMClient {
         let elapsed: Double
     }
 
-    public struct ResponseContext: Sendable {
+    public struct ResponseContext {
         let response: LanguageModelSession.Response<UniqueListResponse>
         let attempt: Int
         let attemptStart: Date
@@ -240,6 +240,13 @@ final class UniqueListCoordinator {
     let logger: (String) -> Void
     var telemetry: [AttemptMetrics] = []
     let useGuidedBackfill: Bool
+    // DEBUG: Proactively boost first guided backfill round (no hybrid switch)
+    var guidedBudgetBumpFirst: Bool = false
+    // DEBUG-only: Hybrid switch from guided→unguided backfill by heuristic
+    var hybridSwitchEnabled: Bool = false
+    var hybridDupThreshold: Double = 0.70  // 70% round dup-rate
+    enum PromptStyle: String, Sendable { case strict, minimal }
+    var promptStyle: PromptStyle = .strict
 
     // Run diagnostics (populated by uniqueList())
     var lastRunTotalGenerated: Int?
@@ -251,10 +258,20 @@ final class UniqueListCoordinator {
     var lastRunFailureReason: String?
     var lastRunTopDuplicates: [String: Int]?
 
-    internal init(fm: FMClient, logger: @escaping (String) -> Void = { print($0) }, useGuidedBackfill: Bool = false) {
+    internal init(
+        fm: FMClient,
+        logger: @escaping (String) -> Void = { print($0) },
+        useGuidedBackfill: Bool = false,
+        hybridSwitchEnabled: Bool = false,
+        guidedBudgetBumpFirst: Bool = false,
+        promptStyle: PromptStyle = .strict
+    ) {
         self.fm = fm
         self.logger = logger
         self.useGuidedBackfill = useGuidedBackfill
+        self.hybridSwitchEnabled = hybridSwitchEnabled
+        self.guidedBudgetBumpFirst = guidedBudgetBumpFirst
+        self.promptStyle = promptStyle
     }
 
     /// Generate N unique items using Generate → Dedup → Fill architecture
