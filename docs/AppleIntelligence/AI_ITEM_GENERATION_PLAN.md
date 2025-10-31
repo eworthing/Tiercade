@@ -134,7 +134,7 @@ Add to the **Items page** of the existing `TierListProjectWizard` as an optional
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────┐
-│                  UniqueListGenerator                     │
+│                  UniqueListCoordinator (reused)           │
 │  ┌──────────────────────────────────────────────────┐   │
 │  │  Reuses existing UniqueListCoordinator logic     │   │
 │  │  • Generate → Dedup → Backfill loop              │   │
@@ -265,7 +265,7 @@ HStack {
 **Progress Updates:**
 - Uses existing `AppState.currentProgress` API
 - Updates via `updateProgress(_:)` method
-- Shows message + percentage from `UniqueListGenerator`
+- Shows message + percentage from coordinator progress
 
 **State Transitions:**
 - Auto-transitions to Review stage when generation completes
@@ -458,10 +458,10 @@ func generateItems(description: String, count: Int) async {
 
     await withLoadingIndicator(message: "Generating \(count) items...") {
         do {
-            // Call UniqueListGenerator
-            let items = try await generateUniqueItems(
+            // Reuse UniqueListCoordinator (AppleIntelligence)
+            let items = try await generateUniqueListForWizard(
                 query: description,
-                targetCount: count
+                count: count
             )
 
             // Convert to candidates (all selected by default)
@@ -702,9 +702,12 @@ private func generateUniqueListForWizard(query: String, count: Int) async throws
 
 ```swift
 #if os(tvOS)
-// Stepper-primary for number input
-Stepper("Item Count", value: $itemCount, in: 5...100, step: 5)
-Text("\(itemCount)").font(.title2.monospacedDigit())
+// Stepper is unavailable on tvOS; use +/- buttons and action-only focus
+HStack {
+    Button("-") { itemCount = max(5, itemCount - 5) }.buttonStyle(.glass).focusable(interactions: .activate)
+    Text("\(itemCount)").font(.title2.monospacedDigit())
+    Button("+") { itemCount = min(100, itemCount + 5) }.buttonStyle(.glass).focusable(interactions: .activate)
+}
 
 // No search bar (focus complexity)
 // Glass effects with proper spacing (.glassBackgroundEffect)
@@ -717,7 +720,7 @@ HStack {
 }
 
 // Search bar above list
-SearchBar(text: $searchText)
+ .searchable(text: $searchText, placement: .automatic)
 
 // Standard material backgrounds
 #endif
@@ -1209,14 +1212,12 @@ struct AIGenerationTests {
 
 ## File Structure
 
-### New Files (6 total)
+### New Files (4 total)
 
 ```
 Tiercade/
 ├── State/
-│   ├── AIItemGeneration/
-│   │   └── UniqueListGenerator.swift          [NEW] - Extracted AI generation logic
-│   ├── Persistence/
+│   ├── Wizard/
 │   │   └── AIGenerationModels.swift           [NEW] - Request & Candidate models
 │   └── AppState+AIGeneration.swift            [NEW] - State management extension
 └── Views/
@@ -1231,12 +1232,10 @@ docs/
     └── AI_ITEM_GENERATION_PLAN.md              [NEW] - This document
 ```
 
-### Modified Files (3 total)
+### Modified Files (2 total)
 
 ```
 Tiercade/
-├── State/
-│   └── AppleIntelligence+UniqueListGeneration.swift  [REFACTOR] - Extract coordinator
 └── Views/
     └── Overlays/
         └── TierListProjectWizardPages+Items.swift    [ADD] - Button & sheet
@@ -1248,7 +1247,6 @@ Tiercade/State/AppState.swift                         [OPTIONAL] - Add propertie
 
 | File | Responsibility | Size Est. |
 |------|----------------|-----------|
-| `UniqueListGenerator.swift` | AI generation coordinator | ~200 lines |
 | `AIGenerationModels.swift` | Data models (Request, Candidate) | ~50 lines |
 | `AppState+AIGeneration.swift` | State management, import logic | ~150 lines |
 | `AIItemGeneratorOverlay.swift` | UI overlay (3 stages) | ~400 lines |
@@ -1256,7 +1254,7 @@ Tiercade/State/AppState.swift                         [OPTIONAL] - Add propertie
 | Items page modifications | Integration point | +30 lines |
 
 **Total New Code:** ~930 lines
-**Refactored Code:** ~200 lines (coordinator extraction)
+**Refactored Code:** Minimal; reuse UniqueListCoordinator via wrapper
 
 ---
 
@@ -1475,8 +1473,11 @@ func testAIGeneratorButton_opensOverlay() {
 **Implementation:**
 ```swift
 #if os(tvOS)
-Stepper("Item Count", value: $itemCount, in: 5...100, step: 5)
-Text("\(itemCount)").font(.title2.monospacedDigit())
+HStack {
+    Button("-") { itemCount = max(5, itemCount - 5) }.buttonStyle(.glass).focusable(interactions: .activate)
+    Text("\(itemCount)").font(.title2.monospacedDigit())
+    Button("+") { itemCount = min(100, itemCount + 5) }.buttonStyle(.glass).focusable(interactions: .activate)
+}
 #else
 HStack {
     TextField("Count", value: $itemCount, format: .number)
@@ -1576,7 +1577,7 @@ let uniqueCandidates = selected.filter {
 **Implementation:**
 ```swift
 #if !os(tvOS)
-SearchBar(text: $searchText)
+ .searchable(text: $searchText, placement: .automatic)
     .padding()
 #endif
 
@@ -1787,11 +1788,19 @@ struct AIItemGeneratorOverlay: View {
 
             Section {
                 #if os(tvOS)
-                // tvOS: Stepper-only
-                Stepper("Item Count", value: $itemCount, in: 5...100, step: 5)
-                    .focused($focusedField, equals: .count)
-                Text("\(itemCount)")
-                    .font(.title2.monospacedDigit())
+                // tvOS: Action-only +/- controls
+                HStack {
+                    Button("-") { itemCount = max(5, itemCount - 5) }
+                        .buttonStyle(.glass)
+                        .focusable(interactions: .activate)
+                        .focused($focusedField, equals: .count)
+                    Text("\(itemCount)")
+                        .font(.title2.monospacedDigit())
+                        .frame(minWidth: 72)
+                    Button("+") { itemCount = min(100, itemCount + 5) }
+                        .buttonStyle(.glass)
+                        .focusable(interactions: .activate)
+                }
                 #else
                 // iOS/macOS: Hybrid
                 HStack {
@@ -1866,7 +1875,7 @@ struct AIItemGeneratorOverlay: View {
     private var reviewList: some View {
         VStack(spacing: 0) {
             #if !os(tvOS)
-            SearchBar(text: $searchText)
+             .searchable(text: $searchText, placement: .automatic)
                 .padding()
             #endif
 
