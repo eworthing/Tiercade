@@ -580,5 +580,52 @@ final class AppleIntelligenceService {
 
         return (false, nil)
     }
+
+    // MARK: - Wizard List Generation
+
+    /// Reuse existing UniqueListCoordinator for tier list wizard item generation.
+    ///
+    /// This wrapper instantiates the coordinator with the existing session and calls
+    /// `uniqueList(query:targetCount:)` to generate unique items. Progress updates
+    /// are handled by the caller via `withLoadingIndicator`.
+    ///
+    /// - Parameters:
+    ///   - query: Natural language description of items to generate
+    ///   - count: Target number of items (5-100)
+    /// - Returns: Array of unique item names
+    /// - Throws: Error if generation fails or platform is unsupported
+    ///
+    /// - Note: Only available on macOS/iOS 26+ with FoundationModels framework
+    @available(iOS 26.0, macOS 26.0, *)
+    internal func generateUniqueListForWizard(query: String, count: Int) async throws -> [String] {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            ensureSession()
+            guard let session else {
+                throw NSError(
+                    domain: "AIGeneration",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "No active AI session"]
+                )
+            }
+
+            let fm = FMClient(session: session, logger: { _ in })
+            let coordinator = UniqueListCoordinator(
+                fm: fm,
+                logger: { _ in },
+                useGuidedBackfill: true,
+                hybridSwitchEnabled: false,
+                guidedBudgetBumpFirst: false,
+                promptStyle: .strict
+            )
+
+            return try await coordinator.uniqueList(query: query, targetCount: count, seed: nil)
+        } else {
+            throw NSError(
+                domain: "AIGeneration",
+                code: -2,
+                userInfo: [NSLocalizedDescriptionKey: "AI generation requires macOS or iOS 26+"]
+            )
+        }
+    }
     #endif
 }
