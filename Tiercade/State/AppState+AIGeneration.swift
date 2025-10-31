@@ -103,16 +103,19 @@ internal extension AppState {
         await withLoadingIndicator(message: "Generating \(count) items...") {
             do {
                 #if canImport(FoundationModels)
-                // Inline UniqueListCoordinator usage to avoid cross-file #if visibility issues
-                ensureSession()
-                guard let session else {
-                    throw NSError(
-                        domain: "AIGeneration",
-                        code: -1,
-                        userInfo: [NSLocalizedDescriptionKey: "No active AI session"]
-                    )
-                }
+                // Create a fresh session locally to avoid cross-file #if and access-level coupling
+                // Use strong anti-duplicate instructions like the chat service
+                let instructions = Instructions("""
+                You are a helpful assistant. Answer questions clearly and concisely.
 
+                CRITICAL RULES FOR LISTS:
+                - NEVER repeat any item in a list
+                - ALWAYS check if an item was already mentioned before adding it
+                - If asked for N items, provide EXACTLY N UNIQUE items
+                - Stop immediately after reaching the requested number
+                - Do NOT continue generating after the list is complete
+                """)
+                let session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
                 let fm = FMClient(session: session, logger: { _ in })
                 let coordinator = UniqueListCoordinator(
                     fm: fm,

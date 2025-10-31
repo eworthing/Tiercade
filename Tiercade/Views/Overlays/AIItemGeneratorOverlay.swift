@@ -71,7 +71,7 @@ struct AIItemGeneratorOverlay: View {
                 }
             }
             .navigationTitle("Generate Items with AI")
-            #if !os(tvOS)
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
             .toolbar {
