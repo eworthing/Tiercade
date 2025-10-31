@@ -764,7 +764,7 @@ TextField("Description", text: $description)
 - [ ] Accessibility IDs for all interactive elements
 - [ ] Glass effects follow existing `GlassEffectContainer` pattern (tvOS)
 - [ ] **CRITICAL:** Solid backgrounds for text input areas (no glass behind TextFields)
-- [ ] Platform-specific number input (Stepper-only on tvOS, hybrid on iOS/macOS)
+- [ ] Platform-specific number input (tvOS uses +/- controls; iOS/macOS use TextField + Stepper)
 - [ ] Search bar only on iOS/macOS
 - [ ] Navigation title and toolbar buttons
 
@@ -1064,7 +1064,7 @@ catch {
 ///
 /// This method orchestrates the full generation flow:
 /// 1. Validates input parameters
-/// 2. Calls `UniqueListGenerator` with progress tracking
+/// 2. Calls `UniqueListCoordinator` via wrapper with progress
 /// 3. Converts results to `AIGeneratedItemCandidate` instances
 /// 4. Shows success/error feedback via toast
 ///
@@ -1620,7 +1620,7 @@ private var filteredCandidates: [AIGeneratedItemCandidate] {
 ## Timeline & Milestones
 
 ### Phase 1: Core Infrastructure (4-6 hours)
-- **Milestone 1.1:** UniqueListGenerator extracted and tested
+- **Milestone 1.1:** Wrapper wired to UniqueListCoordinator and tested
 - **Milestone 1.2:** Data models defined and validated
 - **Milestone 1.3:** AppState extension complete with all methods
 
