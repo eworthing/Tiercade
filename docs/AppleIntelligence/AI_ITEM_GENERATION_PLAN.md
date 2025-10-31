@@ -3,7 +3,7 @@
 **Status:** Planning Phase
 **Created:** 2025-10-31
 **Estimated Effort:** 14-20 hours (2-3 work days)
-**Platform Support:** macOS/iOS only (tvOS shows informative message)
+**Platform Support:** tvOS-first UI (independent); macOS/iOS enable Apple Intelligence generation. tvOS shows an informative message (no AI session) per platform gating.
 
 ---
 
@@ -217,11 +217,20 @@ Button {
 
 **Platform-Specific Number Input:**
 
-**tvOS:**
+**tvOS (Stepper unavailable on tvOS):**
 ```swift
-Stepper("Item Count", value: $itemCount, in: 5...100, step: 5)
-Text("\(itemCount)")
-    .font(.title2.monospacedDigit())
+HStack(spacing: Metrics.padding) {
+    Button("-") { itemCount = max(5, itemCount - 5) }
+        .buttonStyle(.glass)
+        .focusable(interactions: .activate)
+    Text("\(itemCount)")
+        .font(.title2.monospacedDigit())
+        .frame(minWidth: 72)
+    Button("+") { itemCount = min(100, itemCount + 5) }
+        .buttonStyle(.glass)
+        .focusable(interactions: .activate)
+}
+.focusSection()
 ```
 
 **iOS/macOS:**
@@ -299,6 +308,7 @@ HStack {
 - "Done" button to exit edit mode
 
 **Search (iOS/macOS only):**
+- Use `.searchable(text:)` on container per SwiftUI docs
 - Filter candidates by name
 - Case-insensitive search
 - Live filtering as user types
@@ -318,7 +328,7 @@ HStack {
 ### AIGenerationRequest
 
 ```swift
-// File: Tiercade/State/Persistence/AIGenerationModels.swift
+// File: Tiercade/State/Wizard/AIGenerationModels.swift
 
 struct AIGenerationRequest: Sendable {
     let description: String
@@ -341,7 +351,7 @@ struct AIGenerationRequest: Sendable {
 ### AIGeneratedItemCandidate
 
 ```swift
-// File: Tiercade/State/Persistence/AIGenerationModels.swift
+// File: Tiercade/State/Wizard/AIGenerationModels.swift
 
 struct AIGeneratedItemCandidate: Identifiable, Hashable, Sendable {
     let id: UUID
@@ -562,19 +572,27 @@ func importSelectedCandidates(into draft: TierProjectDraft) {
 
 ---
 
-### Private Helper: generateUniqueItems(query:targetCount:)
+### Private Helper: generateUniqueListForWizard(query:count:)
 
 ```swift
-/// Reuse existing UniqueListCoordinator from AppleIntelligence
-private func generateUniqueItems(query: String, targetCount: Int) async throws -> [String] {
-    // TODO: Extract and refactor UniqueListCoordinator
-    // This is the same logic used in AppleIntelligence+UniqueListGeneration.swift
-    // Will need to:
-    // 1. Create standalone UniqueListGenerator
-    // 2. Accept progress callback
-    // 3. Remove chat-specific dependencies
-
-    fatalError("Implementation pending - see Phase 1, Task 1.1")
+/// Reuse existing UniqueListCoordinator from AppleIntelligence.
+/// Keep prototype surface small and reuse the existing session.
+private func generateUniqueListForWizard(query: String, count: Int) async throws -> [String] {
+    #if canImport(FoundationModels)
+    if #available(iOS 26.0, macOS 26.0, *) {
+        guard let session else {
+            throw NSError(domain: "AI", code: -1, userInfo: [NSLocalizedDescriptionKey: "No active session"])
+        }
+        let fm = FMClient(session: session, logger: { _ in })
+        let coordinator = UniqueListCoordinator(
+            fm: fm,
+            logger: { _ in },
+            useGuidedBackfill: true
+        )
+        return try await coordinator.uniqueList(query: query, targetCount: count, seed: nil)
+    }
+    #endif
+    throw NSError(domain: "AI", code: -2, userInfo: [NSLocalizedDescriptionKey: "AI generation is only available on macOS and iOS 26+"])
 }
 ```
 
@@ -586,95 +604,23 @@ private func generateUniqueItems(query: String, targetCount: Int) async throws -
 
 ### Phase 1: Core Infrastructure (4-6 hours)
 
-#### Task 1.1: Extract & Refactor AI Generation Logic
-
-**Files to Create:**
-- `Tiercade/State/AIItemGeneration/UniqueListGenerator.swift`
+#### Task 1.1: Wire Wizard to Existing UniqueListCoordinator
 
 **Files to Modify:**
-- `Tiercade/State/AppleIntelligence+UniqueListGeneration.swift`
+- `Tiercade/State/AppState+AppleIntelligence.swift` (optional, reuse `session`)
+- `Tiercade/State/AppState+AIGeneration.swift` (new)
 
 **Actions:**
-1. Create new `UniqueListGenerator` actor/class
-2. Extract coordinator initialization logic from `AppleIntelligence+UniqueListGeneration.swift`
-3. Add progress callback interface: `(current: Int, total: Int) -> Void`
-4. Remove chat-specific dependencies (message history, chat UI updates)
-5. Make it `@MainActor` compatible for AppState integration
-
-**Proposed Structure:**
-
-```swift
-// File: Tiercade/State/AIItemGeneration/UniqueListGenerator.swift
-
-@MainActor
-final class UniqueListGenerator {
-    private let session: LanguageModelSession?
-
-    init() {
-        // Initialize LanguageModelSession (platform-gated)
-        #if os(macOS) || os(iOS)
-        self.session = try? LanguageModelSession()
-        #else
-        self.session = nil
-        #endif
-    }
-
-    /// Generate unique list of items
-    /// - Parameters:
-    ///   - description: Natural language description
-    ///   - targetCount: Desired number of items
-    ///   - onProgress: Progress callback (current, total)
-    /// - Returns: Array of unique item names
-    /// - Throws: GenerationError if generation fails
-    func generate(
-        description: String,
-        targetCount: Int,
-        onProgress: @escaping (Int, Int) -> Void
-    ) async throws -> [String] {
-        guard let session = session else {
-            throw GenerationError.platformNotSupported
-        }
-
-        // Reuse existing UniqueListCoordinator logic:
-        // 1. Create FMClient wrapper
-        // 2. Initialize coordinator with progress callback
-        // 3. Generate → Dedup → Backfill loop
-        // 4. Return unique items
-
-        // TODO: Extract from AppleIntelligence+UniqueListGeneration.swift
-        fatalError("Implementation pending")
-    }
-}
-
-enum GenerationError: Error, LocalizedError {
-    case platformNotSupported
-    case exceededContextWindow
-    case invalidResponse
-    case timeout
-
-    var errorDescription: String? {
-        switch self {
-        case .platformNotSupported:
-            return "AI generation is only available on macOS and iOS"
-        case .exceededContextWindow:
-            return "Request exceeded AI context window"
-        case .invalidResponse:
-            return "AI returned invalid response"
-        case .timeout:
-            return "Generation timed out"
-        }
-    }
-}
-```
+1. Add `generateUniqueListForWizard(query:count:)` wrapper that instantiates `FMClient` with the existing `session` and calls `UniqueListCoordinator.uniqueList(...)`.
+2. Gate with `#if canImport(FoundationModels)` and `@available(iOS 26, macOS 26, *)`.
+3. Use existing progress helpers (`withLoadingIndicator`, `updateProgress`).
+4. Leverage existing telemetry; avoid introducing new retry state.
 
 **Acceptance Criteria:**
-- [ ] Generator can be instantiated outside AI chat context
-- [ ] Accepts progress callback: `(current: Int, total: Int) -> Void`
-- [ ] Returns `[String]` array of unique items
-- [ ] Handles errors with typed `GenerationError`
-- [ ] Works on macOS/iOS (platform-gated for tvOS)
-- [ ] Swift 6 strict concurrency compliant
-- [ ] SwiftLint clean (no warnings)
+- [ ] Wrapper calls `UniqueListCoordinator.uniqueList(query:targetCount:)`
+- [ ] Platform-gated for macOS/iOS only
+- [ ] Uses existing `session` to avoid duplicate session wiring
+- [ ] No new coordinator type introduced
 
 ---
 
@@ -826,7 +772,7 @@ TextField("Description", text: $description)
 **List Requirements:**
 - Bind to `Set<UUID>` for selection tracking
 - Show checkmark indicators when not in edit mode
-- Support EditMode for delete operations
+- Support EditMode for delete operations (iOS). On macOS, prefer context menu or a trailing destructive button because the `editMode` environment isn’t available.
 - Custom tap handler for checkbox toggle
 - `.onDelete` modifier for swipe-to-delete
 
@@ -876,7 +822,9 @@ List(selection: editMode?.wrappedValue.isEditing == true
     }
 }
 .toolbar {
+    #if !os(macOS)
     EditButton()
+    #endif
 }
 ```
 
@@ -2047,7 +1995,71 @@ private struct SearchBar: View {
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-10-31 | Claude (Sonnet 4.5) | Initial comprehensive plan |
+| 1.1 | 2025-10-31 | Codex | Corrections for tvOS input, Apple docs alignment, feature flags |
 
 ---
+
+
+---
+
+## Addendum (Codex Review)
+
+### Corrections and Alignments
+
+- tvOS number input: Stepper is not available on tvOS. Replace any tvOS Stepper examples with a glass-styled ± button pair and a monospaced count label inside a `.focusSection()`. Keep buttons `.focusable(interactions: .activate)`.
+- Search on iOS/macOS: prefer `View.searchable(text:)` instead of a custom SearchBar view.
+- Reuse existing AppleIntelligence UniqueListCoordinator: avoid creating a new generator type; add a thin wrapper that instantiates `FMClient` with the existing `session` and calls `uniqueList(query:targetCount:)` under `#if canImport(FoundationModels)`.
+- RetryState invariants: ensure no local variables shadow `RetryState` fields; let coordinator own per-attempt resets and telemetry.
+- Feature flags and gating: add SPM trait `ai-generation` (DEBUG default ON) and gate Apple Intelligence behind `#if canImport(FoundationModels)` on macOS/iOS only; keep tvOS UI independent.
+- Accessibility: on iOS/macOS overlays, use `AccessibilityBridgeView` to ensure immediate accessibility-tree presence; assign leaf-level accessibility identifiers only.
+- Glass effects: apply Liquid Glass to chrome (headers/buttons) only. Use solid backgrounds behind text fields to preserve tvOS focus overlays.
+
+### Reference Snippets
+
+tvOS count input (replace Stepper):
+
+```swift
+HStack(spacing: Metrics.padding) {
+    Button("-") { itemCount = max(5, itemCount - 5) }
+        .buttonStyle(.glass)
+        .focusable(interactions: .activate)
+    Text("\(itemCount)")
+        .font(.title2.monospacedDigit())
+        .frame(minWidth: 72)
+    Button("+") { itemCount = min(100, itemCount + 5) }
+        .buttonStyle(.glass)
+        .focusable(interactions: .activate)
+}
+.focusSection()
+```
+
+iOS/macOS searchable:
+
+```swift
+.searchable(text: $searchText, placement: .automatic)
+```
+
+Wizard generation wrapper:
+
+```swift
+#if canImport(FoundationModels)
+if #available(iOS 26.0, macOS 26.0, *) {
+    guard let session else { throw NSError(domain: "AI", code: -1) }
+    let fm = FMClient(session: session, logger: { _ in })
+    let coordinator = UniqueListCoordinator(fm: fm, logger: { _ in }, useGuidedBackfill: true)
+    let items = try await coordinator.uniqueList(query: topic, targetCount: count, seed: nil)
+}
+#endif
+```
+
+### Apple Documentation
+
+- TextField(value:format:) — https://developer.apple.com/documentation/swiftui/textfield/
+- IntegerFormatStyle — https://developer.apple.com/documentation/foundation/integerformatstyle/
+- focusSection() — https://developer.apple.com/documentation/swiftui/view/focussection()/
+- focusable(interactions:) — https://developer.apple.com/documentation/swiftui/view/focusable(_:interactions:)/
+- onExitCommand(perform:) — https://developer.apple.com/documentation/swiftui/view/onexitcommand(perform:)/
+- glassEffect(_:in:) — https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)/
+- Stepper — https://developer.apple.com/documentation/swiftui/stepper/
 
 **End of Plan Document**
