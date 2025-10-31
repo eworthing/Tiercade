@@ -165,6 +165,12 @@ struct TiercadeApp: App {
             runPromptTests()
         } else if CommandLine.arguments.contains("-runAcceptanceTests-legacy") {
             runAcceptanceTestsLegacy()
+        } else if CommandLine.arguments.contains("-runCoordinatorExperiments") {
+            runCoordinatorExperiments()
+        } else if CommandLine.arguments.contains("-runCoordinatorHybrid") {
+            runCoordinatorHybrid()
+        } else if CommandLine.arguments.contains("-runCoordinatorMediumGrid") {
+            runCoordinatorMediumGrid()
         } else if CommandLine.arguments.contains("-runPilotTests") {
             runPilotTests()
         } else if CommandLine.arguments.contains("-runDiagnostics") {
@@ -191,7 +197,17 @@ struct TiercadeApp: App {
 
         print("🧪 Starting unified test suite '\(suiteId)'...")
 
+        // Auto-open AI Chat to stream test progress
         Task { @MainActor in
+            // Open AI Chat overlay to display streaming progress
+            if !appState.showAIChat {
+                appState.showAIChat = true
+                print("🤖 Auto-opened AI Chat for test progress")
+            }
+
+            // Wait briefly for overlay to initialize
+            try? await Task.sleep(for: .milliseconds(500))
+
             if #available(iOS 26.0, macOS 26.0, *) {
                 await executeUnifiedTests(suiteId: suiteId)
             } else {
@@ -206,6 +222,10 @@ struct TiercadeApp: App {
         do {
             let report = try await UnifiedPromptTester.runSuite(suiteId: suiteId) { message in
                 print("🧪 \(message)")
+                // Stream progress to AI Chat overlay
+                Task { @MainActor in
+                    self.appState.appendTestMessage(message)
+                }
             }
 
             printUnifiedTestResults(report)
@@ -219,19 +239,33 @@ struct TiercadeApp: App {
             let data = try encoder.encode(report)
             try data.write(to: reportURL)
 
+            let summaryMessage = """
+            📊 UNIFIED TESTS COMPLETE!
+            Suite: \(report.suiteName)
+            Success rate: \(String(format: "%.1f%%", Double(report.successfulRuns) / Double(max(1, report.totalRuns)) * 100))
+            Report saved: \(reportURL.path)
+            """
+
             print("🧪 ========================================")
-            print("🧪 UNIFIED TESTS COMPLETE!")
-            print("🧪 Suite: \(report.suiteName)")
-            print("🧪 Success rate: \(String(format: "%.1f%%", Double(report.successfulRuns) / Double(max(1, report.totalRuns)) * 100))")
-            print("🧪 Report saved: \(reportURL.path)")
+            print(summaryMessage)
             print("🧪 ========================================")
+
+            // Show summary in AI Chat
+            await MainActor.run {
+                appState.appendTestMessage(summaryMessage)
+            }
 
             let allPassed = report.successfulRuns == report.totalRuns
             try? await Task.sleep(for: .seconds(2))
             exit(allPassed ? 0 : 1)
         } catch {
-            print("❌ Unified test error: \(error)")
+            let errorMsg = "❌ Unified test error: \(error)"
+            print(errorMsg)
             print("❌ Error details: \(String(describing: error))")
+
+            await MainActor.run {
+                appState.appendTestMessage(errorMsg)
+            }
             exit(2)
         }
     }
@@ -246,6 +280,24 @@ struct TiercadeApp: App {
         print("  • Success rate: \(String(format: "%.1f%%", passRate))")
         print("  • Duration: \(String(format: "%.1f", report.totalDuration))s")
 
+        // Minimal N-bucket view (small/medium/large)
+        var byBucket: [String: (ok: Int, total: Int)] = [:]
+        for r in report.allResults {
+            var v = byBucket[r.nBucket] ?? (0, 0)
+            v.total += 1
+            if r.passAtN { v.ok += 1 }
+            byBucket[r.nBucket] = v
+        }
+        if !byBucket.isEmpty {
+            print("\n📈 N‑bucket success rates:")
+            for bucket in ["small", "medium", "large"] {
+                if let v = byBucket[bucket] {
+                    let rate = Double(v.ok) / Double(max(1, v.total)) * 100
+                    print("  • \(bucket): \(String(format: "%.1f%%", rate)) (")
+                }
+            }
+        }
+
         if let top = topPrompt {
             print("\n🏆 TOP PROMPT:")
             print("  • #1: \(top.promptName)")
@@ -256,6 +308,113 @@ struct TiercadeApp: App {
         print("\n🖥️  ENVIRONMENT:")
         print("  • OS: \(report.environment.osVersion)")
         print("  • Top-P: \(report.environment.hasTopP ? "Available" : "N/A")")
+    }
+
+    private func runCoordinatorExperiments() {
+        print("🔧 Detected -runCoordinatorExperiments launch argument")
+        print("🔧 Starting coordinator experiments (baseline)…")
+
+        Task { @MainActor in
+            if #available(iOS 26.0, macOS 26.0, *) {
+                if !appState.showAIChat {
+                    appState.showAIChat = true
+                    print("🤖 Auto-opened AI Chat for experiment progress")
+                }
+                try? await Task.sleep(for: .milliseconds(400))
+
+                let runner = CoordinatorExperimentRunner { print("🔧 \($0)") }
+                let report = await runner.runDefaultSuite()
+
+                print("🔧 ========================================")
+                print("🔧 COORDINATOR EXPERIMENTS COMPLETE!")
+                print("🔧 Results: \(report.successfulRuns)/\(report.totalRuns) runs passed")
+                print("🔧 Report saved: \(NSTemporaryDirectory())coordinator_experiments_report.json")
+                print("🔧 ========================================")
+
+                let ok = report.successfulRuns == report.totalRuns
+                try? await Task.sleep(for: .seconds(2))
+                exit(ok ? 0 : 1)
+            } else {
+                print("❌ Coordinator experiments require iOS 26.0+ or macOS 26.0+")
+                exit(1)
+            }
+        }
+    }
+
+    private func runCoordinatorHybrid() {
+        print("🔧 Detected -runCoordinatorHybrid launch argument")
+        print("🔧 Starting coordinator HYBRID comparison…")
+
+        Task { @MainActor in
+            if #available(iOS 26.0, macOS 26.0, *) {
+                if !appState.showAIChat {
+                    appState.showAIChat = true
+                    print("🤖 Auto-opened AI Chat for experiment progress")
+                }
+                try? await Task.sleep(for: .milliseconds(400))
+
+                let runner = CoordinatorExperimentRunner { print("🔧 \($0)") }
+                let report = await runner.runHybridComparisonSuite()
+
+                // Save separate file for clarity
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                encoder.dateEncodingStrategy = .iso8601
+                let url = URL(fileURLWithPath: NSTemporaryDirectory())
+                    .appendingPathComponent("coordinator_experiments_hybrid_report.json")
+                if let data = try? encoder.encode(report) { try? data.write(to: url) }
+
+                print("🔧 ========================================")
+                print("🔧 COORDINATOR HYBRID COMPARISON COMPLETE!")
+                print("🔧 Results: \(report.successfulRuns)/\(report.totalRuns) runs passed")
+                print("🔧 Report saved: \(url.path)")
+                print("🔧 ========================================")
+
+                let ok = report.successfulRuns == report.totalRuns
+                try? await Task.sleep(for: .seconds(2))
+                exit(ok ? 0 : 1)
+            } else {
+                print("❌ Coordinator experiments require iOS 26.0+ or macOS 26.0+")
+                exit(1)
+            }
+        }
+    }
+
+    private func runCoordinatorMediumGrid() {
+        print("🔧 Detected -runCoordinatorMediumGrid launch argument")
+        print("🔧 Starting coordinator medium‑N micro‑grid…")
+
+        Task { @MainActor in
+            if #available(iOS 26.0, macOS 26.0, *) {
+                if !appState.showAIChat {
+                    appState.showAIChat = true
+                    print("🤖 Auto-opened AI Chat for experiment progress")
+                }
+                try? await Task.sleep(for: .milliseconds(400))
+
+                let runner = CoordinatorExperimentRunner { print("🔧 \($0)") }
+                let report = await runner.runMediumNMicroGrid()
+
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                encoder.dateEncodingStrategy = .iso8601
+                let url = URL(fileURLWithPath: NSTemporaryDirectory())
+                    .appendingPathComponent("coordinator_experiments_medium_grid_report.json")
+                if let data = try? encoder.encode(report) { try? data.write(to: url) }
+
+                print("🔧 ========================================")
+                print("🔧 COORDINATOR MEDIUM‑N GRID COMPLETE!")
+                print("🔧 Results: \(report.successfulRuns)/\(report.totalRuns) runs passed")
+                print("🔧 Report saved: \(url.path)")
+                print("🔧 ========================================")
+
+                try? await Task.sleep(for: .seconds(2))
+                exit(0)
+            } else {
+                print("❌ Coordinator experiments require iOS 26.0+ or macOS 26.0+")
+                exit(1)
+            }
+        }
     }
 
     private func runEnhancedPromptTests() {

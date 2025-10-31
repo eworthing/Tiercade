@@ -2,8 +2,8 @@
   "version": "1.0",
   "metadata": {
     "description": "Predefined test suite configurations for various testing scenarios",
-    "lastUpdated": "2025-10-26",
-    "totalSuites": 5
+    "lastUpdated": "2025-10-28",
+    "totalSuites": 11
   },
   "suites": [
     {
@@ -15,7 +15,7 @@
         "queryIds": ["fruits-15"],
         "decoderIds": ["greedy"],
         "seeds": [42],
-        "guidedModes": [false]
+        "guidedModes": [false, true]
       },
       "metadata": {
         "estimatedDuration": 60,
@@ -24,6 +24,109 @@
         "runWhen": "Before every commit, after small changes",
         "dateAdded": "2025-10-26",
         "tags": ["quick", "smoke", "ci"]
+      }
+    },
+    {
+      "id": "n50-focused",
+      "name": "N=50 Focused",
+      "description": "Small unified suite focused on N=50 to pair with coordinator medium‑grid",
+      "config": {
+        "promptIds": ["G0-Minimal", "G2-LightUnique", "G3-Diversity"],
+        "queryIds": ["us-places-50"],
+        "decoderIds": ["topk50-t08", "topp92-t08"],
+        "seeds": [42, 1337],
+        "guidedModes": [false, true],
+        "timeoutSeconds": 60
+      },
+      "metadata": {
+        "estimatedDuration": 180,
+        "totalRuns": 24,
+        "purpose": "Track unified improvements at N=50 alongside coordinator medium‑N grid",
+        "runWhen": "Before tuning decisions affecting N=50",
+        "dateAdded": "2025-10-28",
+        "tags": ["n50", "focused", "grid-pair"]
+      }
+    },
+    {
+      "id": "hybrid-switch-eval",
+      "name": "Hybrid Switch Evaluation",
+      "description": "Compare guided vs unguided behaviors across N=50/150 (proxy for hybrid switch)",
+      "config": {
+        "promptIds": ["G0-Minimal", "G2-LightUnique", "G3-Diversity", "G9-NoNearVariants"],
+        "queryIds": ["us-places-50", "video-games-150"],
+        "decoderIds": ["topk50-t08", "topp92-t08"],
+        "seeds": [42, 1337, 9999],
+        "guidedModes": [true, false]
+      },
+      "metadata": {
+        "estimatedDuration": 900,
+        "totalRuns": 48,
+        "purpose": "Evaluate guided vs. unguided output quality at medium/large N",
+        "runWhen": "When tuning hybrid backfill switch criteria",
+        "dateAdded": "2025-10-28",
+        "tags": ["hybrid", "guided-vs-unguided", "switch"]
+      }
+    },
+    {
+      "id": "temperature-ramp-study",
+      "name": "Temperature Ramp Study",
+      "description": "Sensitivity analysis across decoders with higher temperatures",
+      "config": {
+        "promptIds": ["G0-Minimal", "G3-Diversity"],
+        "queryIds": ["fruits-15", "us-places-50"],
+        "decoderIds": ["topk40-t07", "topk50-t08", "topp92-t08", "topp95-t09"],
+        "seeds": [42, 1337],
+        "guidedModes": [false, true]
+      },
+      "metadata": {
+        "estimatedDuration": 600,
+        "totalRuns": 32,
+        "purpose": "Explore diversity vs. JSON validity trade-offs with temp ramp",
+        "runWhen": "During diversity tuning",
+        "dateAdded": "2025-10-28",
+        "tags": ["temperature", "diversity", "sensitivity"]
+      }
+    },
+    {
+      "id": "lenient-parse-stress",
+      "name": "Lenient Parse Stress Test",
+      "description": "Unguided only; tests tolerant JSON array parsing at larger N",
+      "config": {
+        "promptIds": ["G0-Minimal", "G2-LightUnique"],
+        "queryIds": ["video-games-150"],
+        "decoderIds": ["topk50-t08", "topp92-t08"],
+        "seeds": [42, 1337],
+        "guidedModes": [false],
+        "maxTokensOverride": 3000,
+        "timeoutSeconds": 90
+      },
+      "metadata": {
+        "estimatedDuration": 480,
+        "totalRuns": 8,
+        "purpose": "Exercise fallback parsing and token budgets at scale",
+        "runWhen": "After parser/IO changes and retry/budget tweaks",
+        "dateAdded": "2025-10-28",
+        "tags": ["unguided", "parsing", "stress"]
+      }
+    },
+    {
+      "id": "seed-rotation-study",
+      "name": "Seed Rotation Study",
+      "description": "Evaluate variance and stability across an expanded seed set",
+      "config": {
+        "promptIds": ["G0-Minimal", "G2-LightUnique"],
+        "queryIds": ["animated-series-25", "us-places-50"],
+        "decoderIds": ["greedy", "topk50-t08"],
+        "seeds": [42, 1337, 9999, 123456, 987654],
+        "guidedModes": [false, true]
+      },
+      "metadata": {
+        "estimatedDuration": 720,
+        "totalRuns": 40,
+        "purpose": "Quantify seed variance and select canonical seeds for CI",
+        "runWhen": "Before updating default seeds",
+        "dateAdded": "2025-10-28",
+        "tags": ["seeds", "variance", "stability"]
       }
     },
     {
@@ -85,6 +188,26 @@
         "runWhen": "When tuning diversity parameters",
         "dateAdded": "2025-10-26",
         "tags": ["diversity", "tuning", "analysis"]
+      }
+    },
+    {
+      "id": "n50-validation",
+      "name": "N=50 Validation Test",
+      "description": "Quick validation of N=50 guided generation fix (1-2 min)",
+      "config": {
+        "promptIds": ["G0-Minimal", "G2-LightUnique"],
+        "queryIds": ["us-places-50"],
+        "decoderIds": ["greedy", "topk50-t08"],
+        "seeds": [42],
+        "guidedModes": [false, true]
+      },
+      "metadata": {
+        "estimatedDuration": 120,
+        "totalRuns": 8,
+        "purpose": "Validate token cap fix for N=50 guided generation",
+        "runWhen": "After retry logic changes",
+        "dateAdded": "2025-10-27",
+        "tags": ["validation", "debug", "n50"]
       }
     },
     {

@@ -68,6 +68,7 @@ Carthage/
 fastlane/report.xml
 
 # Temporary test outputs
+test-results/
 *test_report*.json
 test_configs.json
 *.jsonl

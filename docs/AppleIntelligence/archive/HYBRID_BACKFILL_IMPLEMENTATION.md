@@ -1,9 +1,8 @@
-# Hybrid Backfill Implementation Plan
+# Hybrid Backfill Implementation Plan (Archived)
 
-## Summary
+## Summary (Archived; Empirical Policy)
 
-Switch backfill from guided generation (which ignores avoid-list) to
-**unguided text generation** (which should respect semantic constraints).
+This document captures an early, empirical plan for switching backfill from guided generation (schema-constrained) to **unguided text generation** (semantic prompt, tolerant parsing). It reflects a prototype approach, not an Apple guarantee. All thresholds (dup-rate, no-progress counts), token budgets, and retry behavior must be validated against telemetry and the Foundation Models instrument.
 
 **Files to modify:** `Tiercade/State/AppleIntelligence+UniqueListGeneration.swift`
 
@@ -13,7 +12,7 @@ Switch backfill from guided generation (which ignores avoid-list) to
 
 **Location:** Inside `FMClient` class, **before line 521** (before the closing brace)
 
-**Add this new method:**
+**Add this new method (prototype; reflect 4096-token envelope):**
 
 ```swift
     /// Unguided generation that returns [String] by parsing JSON text array.
@@ -69,7 +68,9 @@ Switch backfill from guided generation (which ignores avoid-list) to
                 // Adaptive boost on first failure
                 if attempt == 0 {
                     let currentMax = currentOptions.maximumResponseTokens ?? 256
-                    let boosted = min(512, Int(Double(currentMax) * 1.8))
+                    // Updated guidance: respect the 4096-token envelope per TN3193.
+                    // Prototype fix raised the retry cap from 512 → 4096.
+                    let boosted = min(4096, Int(Double(currentMax) * 1.8))
                     if boosted > currentMax {
                         logger("🔁 Boosting maxTokens → \(boosted) for unguided parse retry")
                         currentOptions = profile.options(
@@ -200,7 +201,8 @@ Switch backfill from guided generation (which ignores avoid-list) to
                         profile: .topK(40),
                         initialSeed: UInt64.random(in: 0...UInt64.max),
                         temperature: 0.55,
-                        maxTokens: min(maxTok * 18 / 10, 512),
+                        // Updated: allow increased budgets up to 4096 when safe.
+                        maxTokens: min(maxTok * 18 / 10, 4096),
                         telemetry: &localTelemetry
                     )
                     absorb(itemsRetry)

@@ -1,4 +1,4 @@
-# Acceptance Test Results - 2025-10-24
+# Acceptance Test Results - 2025-10-24 (Negation Backfill Failure)
 
 ## Summary
 

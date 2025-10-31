@@ -168,6 +168,9 @@ final class AppState {
     var showAnalyticsSidebar: Bool = false
     var showingTierListBrowser: Bool = false
     var showAIChat: Bool = false
+    #if DEBUG
+    var testConsoleMessages: [AIChatMessage] = []
+    #endif
     let bundledProjects: [BundledProject] = BundledProjects.all
     var activeTierList: TierListHandle?
     var recentTierLists: [TierListHandle] = []

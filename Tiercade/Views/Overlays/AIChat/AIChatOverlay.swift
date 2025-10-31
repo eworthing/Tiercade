@@ -21,6 +21,10 @@ internal struct AIChatOverlay: View {
     @State var showImagePreview = false
     @State var generatedImage: Image?
     @State var isGeneratingImage = false
+    @State var showTestSuitePicker = false
+    @State var useLeadingToolchain = false
+    @State var showSteps = false
+    @State var useMinimalPrompt = false
 
     internal var body: some View {
         VStack(spacing: 0) {
@@ -43,6 +47,14 @@ internal struct AIChatOverlay: View {
                 ImagePreviewSheet(image: generatedImage, onDismiss: { showImagePreview = false })
             }
         }
+        #if DEBUG && os(macOS)
+        .sheet(isPresented: $showTestSuitePicker) {
+            TestSuitePickerSheet(onSelectSuite: { suiteId in
+                showTestSuitePicker = false
+                runUnifiedTestSuite(suiteId: suiteId)
+            }, onDismiss: { showTestSuitePicker = false })
+        }
+        #endif
     }
 
     @ViewBuilder
@@ -60,6 +72,14 @@ internal struct AIChatOverlay: View {
             Spacer()
 
             #if DEBUG
+            Button(action: { showTestSuitePicker = true }) {
+                Image(systemName: "list.bullet.rectangle")
+                    .foregroundStyle(.blue)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Select test suite")
+            .accessibilityIdentifier("AIChat_TestSuitePicker")
+
             Button(action: runUnifiedTests) {
                 Image(systemName: "sparkles.rectangle.stack")
                     .foregroundStyle(.purple)
@@ -67,6 +87,63 @@ internal struct AIChatOverlay: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Run unified test suite")
             .accessibilityIdentifier("AIChat_UnifiedTests")
+
+            Toggle(isOn: $useMinimalPrompt) {
+                Text("A/B Prompt")
+                    .font(.caption)
+                    .foregroundStyle(useMinimalPrompt ? .green : .secondary)
+            }
+            #if !os(tvOS)
+            .toggleStyle(.switch)
+            #endif
+            .onChange(of: useMinimalPrompt) { _, newValue in
+                aiService.promptStyle = newValue ? .minimal : .strict
+                aiService.messages.append(AIChatMessage(content: newValue ? "🧪 Prompt style: Minimal JSON" : "🧪 Prompt style: Strict JSON", isUser: false))
+            }
+            .accessibilityIdentifier("AIChat_PromptABToggle")
+            .accessibilityLabel("Toggle A/B prompt style")
+
+            Toggle(isOn: $useLeadingToolchain) {
+                Image(systemName: useLeadingToolchain ? "bolt.fill" : "bolt")
+                    .foregroundStyle(useLeadingToolchain ? .yellow : .secondary)
+            }
+            #if !os(tvOS)
+            .toggleStyle(.button)
+            #endif
+            .onChange(of: useLeadingToolchain) { _, newValue in
+                aiService.useLeadingToolchain = newValue
+                if newValue {
+                    aiService.hybridSwitchEnabled = false
+                    aiService.guidedBudgetBumpFirst = true
+                    aiService.messages.append(AIChatMessage(content: "⚙️ Leading toolchain enabled (guided + budget bump; hybrid off ≤50)", isUser: false))
+                } else {
+                    aiService.messages.append(AIChatMessage(content: "⚙️ Leading toolchain disabled (standard chat)", isUser: false))
+                }
+            }
+            .accessibilityIdentifier("AIChat_ToolchainToggle")
+            .accessibilityLabel("Toggle leading toolchain")
+
+            Toggle(isOn: $showSteps) {
+                Image(systemName: "list.bullet.rectangle")
+                    .foregroundStyle(showSteps ? .green : .secondary)
+            }
+            #if !os(tvOS)
+            .toggleStyle(.button)
+            #endif
+            .onChange(of: showSteps) { _, newValue in
+                aiService.showStepByStep = newValue
+                aiService.messages.append(AIChatMessage(content: newValue ? "🔎 Step‑by‑step logging enabled" : "🔎 Step‑by‑step logging disabled", isUser: false))
+            }
+            .accessibilityIdentifier("AIChat_StepToggle")
+            .accessibilityLabel("Toggle step-by-step logging")
+
+            Button(action: runCoordinatorExperiments) {
+                Image(systemName: "wrench.and.screwdriver")
+                    .foregroundStyle(.teal)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Run coordinator experiments")
+            .accessibilityIdentifier("AIChat_CoordinatorExperiments")
 
             Button(action: runAcceptanceTests) {
                 Image(systemName: "checkmark.circle")
@@ -145,15 +222,29 @@ internal struct AIChatOverlay: View {
                 guard let last = aiService.messages.last else { return }
                 withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
             }
+            #if DEBUG
+            .onChange(of: app.testConsoleMessages.count) { _, _ in
+                guard let last = app.testConsoleMessages.last else { return }
+                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+            }
+            #endif
         }
     }
 
     @ViewBuilder
     private var messagesContent: some View {
-        if aiService.messages.isEmpty {
+        let allMessages: [AIChatMessage] = {
+            #if DEBUG
+            return aiService.messages + app.testConsoleMessages
+            #else
+            return aiService.messages
+            #endif
+        }()
+
+        if allMessages.isEmpty {
             emptyState
         } else {
-            ForEach(aiService.messages) { message in
+            ForEach(allMessages) { message in
                 HStack {
                     if message.isUser { Spacer(minLength: 0) }
                     HStack(spacing: 8) {
@@ -335,6 +426,39 @@ internal struct AIChatOverlay: View {
         ))
     }
 
+    internal func runCoordinatorExperiments() {
+        #if DEBUG && canImport(FoundationModels)
+        print("🔧 [Coordinator] Experiments button clicked!")
+
+        if #available(iOS 26.0, macOS 26.0, *) {
+            aiService.messages.append(AIChatMessage(
+                content: "🔧 Starting Coordinator Experiments (baseline)…",
+                isUser: false
+            ))
+
+            Task {
+                let runner = CoordinatorExperimentRunner { message in
+                    Task { @MainActor in
+                        aiService.messages.append(AIChatMessage(content: message, isUser: false))
+                    }
+                }
+                let report = await runner.runDefaultSuite()
+                await MainActor.run {
+                    aiService.messages.append(AIChatMessage(
+                        content: "📊 Coordinator experiments complete: \(report.successfulRuns)/\(report.totalRuns) passed. Report saved to temp directory.",
+                        isUser: false
+                    ))
+                }
+            }
+        } else {
+            aiService.messages.append(AIChatMessage(
+                content: "⚠️ Coordinator experiments require iOS 26.0+ or macOS 26.0+",
+                isUser: false
+            ))
+        }
+        #endif
+    }
+
     internal func runAcceptanceTests() {
         #if DEBUG && canImport(FoundationModels)
         print("🧪 [AcceptanceTest] Checkmark button clicked!")
@@ -430,5 +554,121 @@ internal struct AIChatOverlay: View {
         #endif
     }
 }
+
+// MARK: - Test Suite Picker Sheet
+
+#if DEBUG && os(macOS)
+@MainActor
+private struct TestSuitePickerSheet: View {
+    struct TestSuiteInfo {
+        let id: String
+        let name: String
+        let description: String
+        let duration: Int
+        let runs: Int
+    }
+
+    let onSelectSuite: (String) -> Void
+    let onDismiss: () -> Void
+
+    private let testSuites: [TestSuiteInfo] = [
+        TestSuiteInfo(id: "quick-smoke", name: "Quick Smoke Test",
+                      description: "Fast validation (1-2 min)", duration: 60, runs: 4),
+        TestSuiteInfo(id: "n50-validation", name: "N=50 Validation",
+                      description: "Validate N=50 generation (2 min)", duration: 120, runs: 8),
+        TestSuiteInfo(id: "n50-focused", name: "N=50 Focused",
+                      description: "Unified N=50 (24 runs)", duration: 180, runs: 24),
+        TestSuiteInfo(id: "standard-prompt-test", name: "Standard Prompt Test",
+                      description: "Baseline prompt testing (8 min)", duration: 480, runs: 8),
+        TestSuiteInfo(id: "hybrid-switch-eval", name: "Hybrid Switch Evaluation",
+                      description: "Guided vs. unguided at N=50/150", duration: 900, runs: 48),
+        TestSuiteInfo(id: "temperature-ramp-study", name: "Temperature Ramp Study",
+                      description: "Diversity vs. JSON validity", duration: 600, runs: 32),
+        TestSuiteInfo(id: "lenient-parse-stress", name: "Lenient Parse Stress Test",
+                      description: "Unguided parsing at large N", duration: 480, runs: 8),
+        TestSuiteInfo(id: "seed-rotation-study", name: "Seed Rotation Study",
+                      description: "Variance across seed set", duration: 720, runs: 40),
+        TestSuiteInfo(id: "diversity-comparison", name: "Diversity Comparison",
+                      description: "Compare diversity strategies (10 min)", duration: 600, runs: 72),
+        TestSuiteInfo(id: "enhanced-pilot", name: "Enhanced Pilot Test",
+                      description: "Multi-dimensional testing (15 min)", duration: 900, runs: 192),
+        TestSuiteInfo(id: "full-acceptance", name: "Full Acceptance Test",
+                      description: "Comprehensive suite (30 min)", duration: 1800, runs: 432)
+    ]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("Select Test Suite")
+                    .font(.headline)
+                Spacer()
+                Button("Cancel") {
+                    onDismiss()
+                }
+            }
+            .padding()
+            .background(Color(.windowBackgroundColor))
+
+            Divider()
+
+            // Test suite list
+            ScrollView {
+                VStack(spacing: 8) {
+                    ForEach(testSuites, id: \.id) { suite in
+                        Button {
+                            onSelectSuite(suite.id)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(suite.name)
+                                        .font(.headline)
+                                        .foregroundStyle(.primary)
+
+                                    Text(suite.description)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+
+                                    HStack(spacing: 12) {
+                                        Label("\(suite.runs) runs", systemImage: "number")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+
+                                        Label(formatDuration(suite.duration), systemImage: "clock")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding()
+                            .background(Color(.controlBackgroundColor))
+                            .cornerRadius(8)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding()
+            }
+        }
+        .frame(width: 500, height: 400)
+    }
+
+    private func formatDuration(_ seconds: Int) -> String {
+        if seconds < 60 {
+            return "\(seconds)s"
+        } else if seconds < 3600 {
+            let minutes = seconds / 60
+            return "\(minutes)m"
+        } else {
+            let hours = seconds / 3600
+            let minutes = (seconds % 3600) / 60
+            return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h"
+        }
+    }
+}
+#endif
 
 // Preview intentionally omitted to keep compile times fast

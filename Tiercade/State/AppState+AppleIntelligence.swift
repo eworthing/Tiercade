@@ -47,6 +47,18 @@ internal extension AppState {
         showAIChat = false
         logEvent("🤖 Apple Intelligence chat closed")
     }
+
+    #if DEBUG
+    /// Add a test console message (for streaming test progress)
+    internal func appendTestMessage(_ content: String) {
+        testConsoleMessages.append(AIChatMessage(content: content, isUser: false))
+    }
+
+    /// Clear test console messages
+    internal func clearTestMessages() {
+        testConsoleMessages.removeAll()
+    }
+    #endif
 }// MARK: - Chat Message Model
 internal struct AIChatMessage: Identifiable, Sendable {
     let id = UUID()
@@ -68,6 +80,20 @@ final class AppleIntelligenceService {
     var messages: [AIChatMessage] = []
     var isProcessing = false
     var estimatedTokenCount: Int = 0
+
+    // DEBUG/runtime toggles for advanced list generation (coordinator-based)
+    var useLeadingToolchain: Bool = false
+    var hybridSwitchEnabled: Bool = false
+    var guidedBudgetBumpFirst: Bool = true
+    var showStepByStep: Bool = false
+    // Prompt A/B style for UniqueListCoordinator
+    enum PromptAB: String { case strict, minimal }
+    var promptStyle: PromptAB = .strict
+
+    // Last-run context for rating/export
+    var lastGeneratedItems: [String]? = nil
+    var lastRunDiagnosticsJSON: String? = nil
+    var lastUserQuery: String? = nil
 
     internal static let maxContextTokens = 4096
     internal static let instructionsTokenEstimate = 100 // Estimated tokens for our strong anti-duplicate instructions
@@ -170,6 +196,7 @@ final class AppleIntelligenceService {
 
     /// Send a message to Apple Intelligence
     internal func sendMessage(_ text: String) async {
+        lastUserQuery = text
         logSendMessageStart()
 
         // Append user message immediately
@@ -190,7 +217,8 @@ final class AppleIntelligenceService {
         // Try advanced list generation if enabled (POC)
         if await tryAdvancedListGeneration(text: text) { return }
 
-        // Standard response path
+        // Standard response path (re-ensure session in case advanced path reset it)
+        _ = ensureSessionAvailable()
         await executeStandardResponse(text: text)
         print("🤖 [AI] ===== sendMessage END =====")
         #else
@@ -245,12 +273,20 @@ final class AppleIntelligenceService {
         // EXPERIMENTAL: Try advanced list generation if enabled (POC)
         if #available(iOS 26.0, macOS 26.0, *),
            UniqueListGenerationFlags.enableAdvancedGeneration {
-            let detection = detectListRequest(text)
-            if detection.isListRequest, let count = detection.count {
+            var detection = detectListRequest(text)
+            // If user toggled leading toolchain, default to N=50 when no explicit count
+            if useLeadingToolchain, detection.count == nil {
+                detection = (isListRequest: true, count: 50)
+            }
+            if (useLeadingToolchain || detection.isListRequest), let count = detection.count {
                 print("🤖 [AI] 🧪 POC: Detected list request for \(count) items")
                 print("🤖 [AI] 🧪 POC: Using advanced UniqueListCoordinator")
 
                 do {
+                    // Start a fresh session to avoid transcript bloat/hangs between runs
+                    resetSessionWithSummary()
+                    // Recreate session immediately after reset so advanced path has an active session
+                    ensureSession()
                     let result = try await generateUniqueList(query: text, count: count)
                     messages.append(AIChatMessage(content: result, isUser: false))
                     updateTokenEstimate()
@@ -428,18 +464,59 @@ final class AppleIntelligenceService {
         }
 
         let fm = FMClient(session: session) { message in
-            if UniqueListGenerationFlags.verboseLogging {
+            if self.showStepByStep {
+                self.messages.append(AIChatMessage(content: message, isUser: false))
+            } else if UniqueListGenerationFlags.verboseLogging {
                 print("🤖 [UniqueList] \(message)")
             }
         }
 
-        let coordinator = UniqueListCoordinator(fm: fm) { message in
-            if UniqueListGenerationFlags.verboseLogging {
-                print("🤖 [Coordinator] \(message)")
-            }
+        // Choose coordinator options based on desired count and runtime toggles
+        var enableHybrid = hybridSwitchEnabled
+        var bumpFirst = guidedBudgetBumpFirst
+        if count <= 50 {
+            // For medium-N, prefer guided + budget bump, hybrid off by default
+            enableHybrid = false
+            bumpFirst = true
+        } else if count > 50 {
+            // For large-N, allow hybrid switch with budget bump
+            enableHybrid = true
+            bumpFirst = true
         }
 
+        let coordinator = UniqueListCoordinator(
+            fm: fm,
+            logger: { message in
+                if self.showStepByStep {
+                    self.messages.append(AIChatMessage(content: message, isUser: false))
+                } else if UniqueListGenerationFlags.verboseLogging {
+                    print(message)
+                }
+            },
+            useGuidedBackfill: true,
+            hybridSwitchEnabled: enableHybrid,
+            guidedBudgetBumpFirst: bumpFirst,
+            promptStyle: (self.promptStyle == .minimal ? .minimal : .strict)
+        )
+
         let items = try await coordinator.uniqueList(query: query, targetCount: count, seed: nil)
+        // Capture last-run context for rating/export
+        self.lastGeneratedItems = items
+        let d = coordinator.getDiagnostics()
+        let diagDict: [String: Any?] = [
+            "totalGenerated": d.totalGenerated,
+            "dupCount": d.dupCount,
+            "dupRate": d.dupRate,
+            "backfillRounds": d.backfillRounds,
+            "circuitBreakerTriggered": d.circuitBreakerTriggered,
+            "passCount": d.passCount,
+            "failureReason": d.failureReason,
+            "topDuplicates": d.topDuplicates
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: diagDict.compactMapValues { $0 }, options: []),
+           let s = String(data: data, encoding: .utf8) {
+            self.lastRunDiagnosticsJSON = s
+        }
 
         // Format as numbered list for chat display
         let formatted = items.enumerated()
@@ -447,6 +524,37 @@ final class AppleIntelligenceService {
             .joined(separator: "\n")
 
         return formatted
+    }
+
+    // MARK: - Ratings
+    internal func rateLastRun(upvote: Bool) {
+        guard let items = lastGeneratedItems, let query = lastUserQuery else {
+            messages.append(AIChatMessage(content: "⚠️ No recent run to rate.", isUser: false))
+            return
+        }
+        let payload: [String: Any] = [
+            "timestamp": Date().timeIntervalSince1970,
+            "upvote": upvote,
+            "query": query,
+            "items": items,
+            "promptStyle": promptStyle.rawValue,
+            "diagnostics": lastRunDiagnosticsJSON ?? "{}"
+        ]
+        do {
+            let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("ai_quality_ratings.jsonl")
+            let data = try JSONSerialization.data(withJSONObject: payload)
+            if let fh = try? FileHandle(forWritingTo: url) {
+                try fh.seekToEnd()
+                try fh.write(data)
+                try fh.write(Data("\n".utf8))
+                try fh.close()
+            } else {
+                try (data + Data("\n".utf8)).write(to: url)
+            }
+            messages.append(AIChatMessage(content: upvote ? "👍 Rated this run as GOOD" : "👎 Rated this run as NEEDS WORK", isUser: false))
+        } catch {
+            messages.append(AIChatMessage(content: "⚠️ Failed to save rating: \(error.localizedDescription)", isUser: false))
+        }
     }
 
     /// Detect if user message is requesting a list and extract count

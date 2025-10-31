@@ -222,13 +222,13 @@ Initial implementation captured diagnostics but didn't display them in test outp
 
 - `docs/AppleIntelligence/UNIQUE_LIST_GENERATION_SPEC.md` - Full specification
 - `docs/AppleIntelligence/FEATURE_FLAG_USAGE.md` - Build flag usage
-- `docs/AppleIntelligence/HYBRID_BACKFILL_IMPLEMENTATION.md` - Backfill strategy
+- `docs/AppleIntelligence/archive/HYBRID_BACKFILL_IMPLEMENTATION.md` - Backfill strategy (archived RFC)
 
 ### Test Outputs
 
 - `/tmp/tiercade_acceptance_test_report.json` - Acceptance test results
 - `/tmp/unique_list_runs.jsonl` - Telemetry data
-- `docs/AppleIntelligence/TEST_RESULTS_2025-10-24.md` - Latest test run analysis
+- `docs/AppleIntelligence/archive/test-results-2025-10-24-negation-backfill-failure.md` - Latest test run analysis
 
 ---
 

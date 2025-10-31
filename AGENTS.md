@@ -18,6 +18,15 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 
 - Target tvOS-first SwiftUI app (iOS/iPadOS/macOS 26+) using Swift 6 strict concurrency. Keep `.enableUpcomingFeature("StrictConcurrency")` and Xcode `-default-isolation MainActor` flags intact.
 
+## Apple Intelligence Prototype Scope (Read Me First)
+
+- Prototype-only: All Apple Intelligence list-generation, prompt testing, and chat integrations are for testing and evaluation. Do not ship this code path to production as-is.
+- Reference: See `docs/AppleIntelligence/DEEP_RESEARCH_2025-10.md` for the consolidated research plan and experiment matrix.
+- Cross-domain prompts: Techniques must remain domain-agnostic. We cannot tailor prompts to specific item types because end-user requests may ask for any kind of list.
+- Winning-method handoff: The final product will be re-architected using the best-performing approach discovered here. Treat current algorithms, prompts, and testers as disposable scaffolding.
+- Feature-gated: Keep advanced generation behind compile-time flags and DEBUG defaults. Maintain platform gating (macOS/iOS only) and keep tvOS UI independent.
+- Agent guidance: If you are an LLM modifying this repo, prefer improving test coverage, diagnostics, and documentation over deepening prototype coupling with production surfaces. Avoid migrating experimental code into main app flows.
+
 ## Architecture snapshot
 
 - `Tiercade/State/AppState.swift` is the only source of truth (`@MainActor @Observable`). Every mutation lives in `AppState+*.swift` extensions and calls TiercadeCore helpers—never mutate `tiers` or `selection` directly inside views.

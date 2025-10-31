@@ -216,7 +216,7 @@ extension FMClient {
         // ADAPTIVE RETRY: Boost tokens before seed rotation on first failure
         if attempt == 0 {
             let currentMax = retryState.options.maximumResponseTokens ?? 0
-            let boosted = min(512, Int(Double(currentMax) * 1.8))
+            let boosted = min(4096, Int(Double(currentMax) * 1.8))
             if boosted > currentMax {
                 logger("🔁 Boosting maxTokens → \(boosted) with same seed/profile")
                 retryState.options = params.profile.options(
@@ -471,7 +471,7 @@ extension FMClient {
         // Adaptive boost on first failure
         if attempt == 0 {
             let currentMax = currentOptions.maximumResponseTokens ?? 256
-            let boosted = min(512, Int(Double(currentMax) * 1.8))
+            let boosted = min(4096, Int(Double(currentMax) * 1.8))
             if boosted > currentMax {
                 logger("🔁 Boosting maxTokens → \(boosted) for unguided parse retry")
                 currentOptions = params.profile.options(
