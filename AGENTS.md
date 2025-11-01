@@ -20,7 +20,10 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 
 ## Apple Intelligence Prototype Scope (Read Me First)
 
-- Prototype-only: All Apple Intelligence list-generation, prompt testing, and chat integrations are for testing and evaluation. Do not ship this code path to production as-is.
+**📚 AI Documentation Hub**: All AI-related specs, diagnostics, and testing docs → `docs/AppleIntelligence/README.md`
+
+- Prototype-only: All Apple Intelligence list-generation, **item generation**, prompt testing, and chat integrations are for testing and evaluation. Do not ship this code path to production as-is.
+- **Platform gating**: AI item generation (AIItemGeneratorOverlay) is **macOS/iOS-only**. tvOS displays a platform notice and cannot invoke FoundationModels.
 - Reference: See `docs/AppleIntelligence/DEEP_RESEARCH_2025-10.md` for the consolidated research plan and experiment matrix.
 - Cross-domain prompts: Techniques must remain domain-agnostic. We cannot tailor prompts to specific item types because end-user requests may ask for any kind of list.
 - Winning-method handoff: The final product will be re-architected using the best-performing approach discovered here. Treat current algorithms, prompts, and testers as disposable scaffolding.
@@ -124,7 +127,11 @@ UI automation relies on accessibility IDs and short paths—prefer existence che
 
 - Asset refresh: manage bundled artwork directly in `Tiercade/Assets.xcassets` and keep paths aligned with `AppState+BundledProjects`.
 - Debug logging: `AppState.appendDebugFile` writes to `/tmp/tiercade_debug.log`; the CI pipeline emits `tiercade_build_and_test.log` plus before/after screenshots under `pipeline-artifacts/`. Attach those files when filing issues.
-- SourceKit often flags “No such module 'TiercadeCore'”; defer to `xcodebuild` results before debugging module wiring.
+- **Build script feature flags**: `./build_install_launch.sh macos --enable-advanced-generation` (see `docs/AppleIntelligence/FEATURE_FLAG_USAGE.md`)
+- **AI test runner**: `./run_all_ai_tests.sh` with result analysis via `python3 analyze_test_results.py results/run-<TIMESTAMP>/`
+  - Test suite configs: `Tiercade/TestConfigs/TestSuites.json`
+  - Framework docs: `Tiercade/TestConfigs/TESTING_FRAMEWORK.md`
+- SourceKit often flags "No such module 'TiercadeCore'"; defer to `xcodebuild` results before debugging module wiring.
 
 ## Collaboration norms
 
@@ -151,12 +158,13 @@ A SwiftUI tier list management app targeting tvOS 26+/iOS 26+ with Swift 6 stric
 
 **Migration priorities:** `ObservableObject`→`@Observable` | Combine→`AsyncSequence` | `NavigationView`→`NavigationStack` | Core Data→SwiftData | XCTest→Swift Testing | callbacks→`async/await` | queues→actors | String `+`→String interpolation | Test RTL text handling
 
-## Platform Strategy: Native macOS
+## Platform Strategy: Native macOS ✅ (Completed Oct 2025)
 
-**Platforms:** tvOS 26+ (primary) | iOS/iPadOS 26+ | macOS 26+ (native, not Catalyst)
+**Platforms:** tvOS 26+ (primary) | iOS/iPadOS 26+ | macOS 26+ (native)
 - Mac runs as **native macOS** app using AppKit/SwiftUI
-- **Mac Catalyst is no longer supported** - removed completely
-- Benefits: Native macOS experience, proper menu bar integration, AppKit APIs available
+- **Mac Catalyst removed** - Migration completed in #59 (Oct 27, 2025)
+- Native AppKit APIs: NSWorkspace, NSPasteboard, NSImage
+- Menu bar commands: TiercadeCommands.swift (⌘N, ⌘⇧H, ⌘A, ⌘E, ⌘I)
 - tvOS remains primary focus (fundamentally different UX paradigm)
 
 ### Native macOS Patterns
@@ -316,6 +324,7 @@ await withLoadingIndicator(message: "Loading...") {
 | `ActionBar_MoveBatch` | Batch move button in selection mode |
 | `QuickMove_Overlay` | tvOS quick-move overlay root – ensures UI tests can wait for presentation |
 | `MatchupOverlay_Apply` | Commit action for head-to-head queue |
+| `AIGenerator_Overlay` | AI item generation overlay (macOS/iOS only; tvOS shows platform notice) |
 - **tvOS 26 interactions:** Use `.focusable(interactions: .activate)` for action-only surfaces and opt into additional interactions (text entry, directional input) only when needed so the new multi-mode focus model stays predictable on remote hardware.
 - **Default focus:** Use `.prefersDefaultFocus(true, in:)` and a scoped `@FocusState` to land on the primary control when overlays appear.
 

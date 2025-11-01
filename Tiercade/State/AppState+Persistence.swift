@@ -217,7 +217,8 @@ internal extension AppState {
             fileName: currentFileName,
             cardDensityRaw: cardDensityPreference.rawValue,
             selectedThemeID: selectedThemeID,
-            customThemesData: encodedCustomThemesData()
+            customThemesData: encodedCustomThemesData(),
+            globalSortModeData: encodedGlobalSortMode()
         )
         modelContext.insert(newEntity)
         activeTierListEntity = newEntity
@@ -232,6 +233,7 @@ internal extension AppState {
         entity.selectedThemeID = selectedThemeID
         entity.updatedAt = Date()
         entity.customThemesData = encodedCustomThemesData()
+        entity.globalSortModeData = encodedGlobalSortMode()
 
         let allTierKeys = tierOrder + ["unranked"]
         var existing = Dictionary(uniqueKeysWithValues: entity.tiers.map { ($0.normalizedKey, $0) })
@@ -351,6 +353,7 @@ internal extension AppState {
         lockedTiers = newLocked
         restoreTheme(themeID: entity.selectedThemeID)
         restoreCustomThemes(decodeCustomThemes(from: entity.customThemesData))
+        restoreGlobalSortMode(from: entity.globalSortModeData)
         restoreCardDensityPreference(rawValue: entity.cardDensityRaw)
         currentFileName = entity.fileName
         hasUnsavedChanges = false
@@ -400,5 +403,24 @@ internal extension AppState {
 
     internal func encodedCustomThemesData() -> Data? {
         try? JSONEncoder().encode(customThemes.map(CodableTheme.init))
+    }
+
+    internal func encodedGlobalSortMode() -> Data? {
+        try? JSONEncoder().encode(globalSortMode)
+    }
+
+    private func restoreGlobalSortMode(from data: Data?) {
+        guard let data else {
+            // Default to alphabetical A-Z if no saved sort mode
+            globalSortMode = .alphabetical(ascending: true)
+            return
+        }
+
+        if let decoded = try? JSONDecoder().decode(GlobalSortMode.self, from: data) {
+            globalSortMode = decoded
+        } else {
+            // Fallback to alphabetical A-Z if decoding fails
+            globalSortMode = .alphabetical(ascending: true)
+        }
     }
 }

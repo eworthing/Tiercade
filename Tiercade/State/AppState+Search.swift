@@ -7,6 +7,11 @@ internal extension AppState {
     internal func filteredItems(for tier: String) -> [Item] {
         var items = tiers[tier] ?? []
 
+        // Apply global sort mode first (if not .custom, items will be sorted)
+        if !globalSortMode.isCustom {
+            items = Sorting.sortItems(items, by: globalSortMode)
+        }
+
         switch activeFilter {
         case .all:
             break

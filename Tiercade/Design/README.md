@@ -2,7 +2,7 @@
 
 <!-- markdownlint-disable MD013 -->
 
-Design tokens and SwiftUI styles for Tiercade on the OS 26 baseline. Tokens are authored tvOS-first and fall back to adaptive system materials on iOS, iPadOS, and Mac Catalyst so a single definitions file supports every platform we ship.
+Design tokens and SwiftUI styles for Tiercade on the OS 26 baseline. Tokens are authored tvOS-first and fall back to adaptive system materials on iOS, iPadOS, and native macOS so a single definitions file supports every platform we ship.
 
 ## Files
 
@@ -10,13 +10,13 @@ Design tokens and SwiftUI styles for Tiercade on the OS 26 baseline. Tokens are 
 - **Styles.swift** – `card()`, `panel()`, `PrimaryButtonStyle`, `GhostButtonStyle`, `CardButtonStyle`, and `TVRemoteButtonStyle`.
 - **GlassEffects.swift** – `tvGlassRounded`, `tvGlassCapsule`, and `tvGlassContainer` wrappers for [`glassEffect(_:in:)`](https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)).
 - **TVMetrics.swift** – tvOS spacing, layout, and card density helpers.
-- **PlatformCardLayout.swift** – adaptive grid sizing and spacing for iOS, iPadOS, and Mac Catalyst cards.
+- **PlatformCardLayout.swift** – adaptive grid sizing and spacing for iOS, iPadOS, and macOS cards.
 - **VibrantDesign.swift** – tier badge utilities and `punchyFocus` modifier (colors sourced from `Palette`).
 - **ThemeManager.swift** – user theme preference (`system`, `light`, `dark`) surfaced to the app shell.
 
 ## Surface Support Matrix
 
-| Surface | Primary (tvOS 26+) | Fallback (iOS / iPadOS / Mac Catalyst) | Notes |
+| Surface | Primary (tvOS 26+) | Fallback (iOS / iPadOS / macOS native) | Notes |
 | --- | --- | --- | --- |
 | Cards & collection cells | `.card()` + `tvGlassRounded()` or `GlassEffectContainer` when elevated | `.card()` + `.background(.ultraThinMaterial, in: RoundedRectangle)` | Avoid Liquid Glass on high-frequency scroll regions; default to `Palette.surface` for pagination-heavy grids. |
 | Toolbars & overlays | `tvGlassContainer(spacing:)` + `.buttonStyle(.glass)` or custom `glassEffect` **ONLY on chrome** | Material stack (`.ultraThinMaterial`) matching the same shape | **⚠️ CRITICAL:** Apply glass to toolbar chrome ONLY, never to section backgrounds or containers. See warning below. |

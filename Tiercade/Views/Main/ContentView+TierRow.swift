@@ -1,5 +1,6 @@
 import SwiftUI
 import TiercadeCore
+import UniformTypeIdentifiers
 
 #if !os(tvOS)
 internal struct CardFocus: Hashable {
@@ -47,18 +48,24 @@ internal struct TierRowWrapper: View {
                 )
             }
             #if !os(tvOS)
-            .dropDestination(
-                for: String.self,
-                action: { items, _ in
-                    if let id = items.first { app.move(id, to: tier) }
+            .onDrop(of: [.text], isTargeted: nil, perform: { providers in
+                // Load NSItemProvider inside closure per security rules
+                guard let provider = providers.first else {
                     app.setDragTarget(nil)
-                    app.setDragging(nil)
-                    return true
-                },
-                isTargeted: { isTargeted in
-                    app.setDragTarget(isTargeted ? tier : nil)
+                    return false
                 }
-            )
+
+                provider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { item, error in
+                    if let data = item as? Data, let id = String(data: data, encoding: .utf8) {
+                        Task { @MainActor in
+                            app.move(id, to: tier)
+                            app.setDragTarget(nil)
+                            app.setDragging(nil)
+                        }
+                    }
+                }
+                return true
+            })
             #endif
         }
     }
@@ -148,6 +155,9 @@ internal struct TierRowWrapper: View {
                 ForEach(filteredCards, id: \.id) { item in
                     CardView(item: item, layout: layout)
                         .focused($focusedItemId, equals: item.id)
+                        .onMoveCommand { direction in
+                            handleMoveCommand(for: item.id, in: tier, direction: direction)
+                        }
                 }
             }
             .padding(.horizontal, layout.contentPadding)
@@ -199,6 +209,61 @@ internal struct TierRowWrapper: View {
         default: return "#808080"
         }
     }
+
+    #if os(tvOS)
+    /// Handle move command for both single item and block moves
+    private func handleMoveCommand(for itemId: String, in tierName: String, direction: MoveCommandDirection) {
+        // Check if item is selected and we're in multi-select mode with multiple items
+        #if os(tvOS)
+        // tvOS doesn't have editMode, check selection directly
+        if app.isSelected(itemId) && app.selection.count > 1 {
+            handleBlockMove(tierName: tierName, direction: direction)
+        } else {
+            // Single item move
+            switch direction {
+            case .left:
+                app.moveItemLeft(itemId, in: tierName)
+            case .right:
+                app.moveItemRight(itemId, in: tierName)
+            default:
+                break
+            }
+        }
+        #endif
+    }
+
+    /// Handle block move for multi-select: move all selected items in a tier together
+    private func handleBlockMove(tierName: String, direction: MoveCommandDirection) {
+        guard let items = app.tiers[tierName] else { return }
+
+        // Get indices of all selected items in this tier
+        let selectedIndices = IndexSet(
+            items.enumerated()
+                .filter { app.selection.contains($0.element.id) }
+                .map { $0.offset }
+        )
+
+        guard !selectedIndices.isEmpty else { return }
+
+        // Calculate destination index based on direction
+        let minIndex = selectedIndices.min() ?? 0
+        let maxIndex = selectedIndices.max() ?? (items.count - 1)
+
+        let destination: Int
+        switch direction {
+        case .left:
+            // Move block one position to the left
+            destination = max(0, minIndex - 1)
+        case .right:
+            // Move block one position to the right
+            destination = min(items.count, maxIndex + 2)
+        default:
+            return
+        }
+
+        app.reorderBlock(in: tierName, from: selectedIndices, to: destination)
+    }
+    #endif
 }
 
 // MARK: - Contrast Helpers
