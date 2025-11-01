@@ -167,7 +167,9 @@ TiercadeCore Logic → State Update → UI Refresh
 
 ## 🧪 Testing
 
-TiercadeCore now ships with a Swift Testing target (`TiercadeCoreTests`) covering the critical logic surface:
+### Core Package Tests
+
+TiercadeCore ships with Swift Testing coverage for critical logic:
 
 - Core tier manipulation (`TierLogic`, `QuickRankLogic`)
 - Head-to-head quick pass, refinement heuristics, and warm-start queueing
@@ -181,13 +183,30 @@ cd TiercadeCore
 swift test --enable-code-coverage
 ```
 
-The command emits coverage data to `.build/debug/codecov/default.profdata`; inspect it with:
+Coverage inspection:
 
 ```bash
 xcrun llvm-cov report \
   --instr-profile .build/debug/codecov/default.profdata \
   .build/debug/TiercadeCorePackageTests.xctest/Contents/MacOS/TiercadeCorePackageTests
 ```
+
+### AI Testing Framework
+
+Comprehensive testing for Apple Intelligence features:
+
+```bash
+# Run all test suites
+./run_all_ai_tests.sh
+
+# Analyze results
+python3 analyze_test_results.py results/run-<TIMESTAMP>/
+```
+
+**Configuration files:**
+- Test suites: `Tiercade/TestConfigs/TestSuites.json`
+- Framework docs: `Tiercade/TestConfigs/TESTING_FRAMEWORK.md`
+- Feature flags: `docs/AppleIntelligence/FEATURE_FLAG_USAGE.md`
 
 We keep tvOS UI automation lean and accessibility-driven; add high-value Swift Testing coverage before considering UI scripts.
 
@@ -209,7 +228,11 @@ We keep tvOS UI automation lean and accessibility-driven; add high-value Swift T
   - **Note**: `AGENTS.md` is the source file with symlinks:
     - `CLAUDE.md` → `AGENTS.md` (for Claude Code compatibility)
     - `.github/copilot-instructions.md` → `../AGENTS.md` (for GitHub Copilot)
-- **macOS** - Development platform
+- **Apple Intelligence features**: [`docs/AppleIntelligence/README.md`](docs/AppleIntelligence/README.md)
+  - Item generation spec: [`AI_ITEM_GENERATION_PLAN.md`](docs/AppleIntelligence/AI_ITEM_GENERATION_PLAN.md)
+  - Research plan: [`DEEP_RESEARCH_2025-10.md`](docs/AppleIntelligence/DEEP_RESEARCH_2025-10.md)
+  - Feature flags: [`FEATURE_FLAG_USAGE.md`](docs/AppleIntelligence/FEATURE_FLAG_USAGE.md)
+- **Native macOS migration**: [`CATALYST_TO_NATIVE_MACOS_MIGRATION.md`](CATALYST_TO_NATIVE_MACOS_MIGRATION.md)
 - **SwiftLint** - Enforce cyclomatic complexity thresholds (warning 8, error 12) as part of pre-commit checks
 
 ### **Project Setup**

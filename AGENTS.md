@@ -151,12 +151,13 @@ A SwiftUI tier list management app targeting tvOS 26+/iOS 26+ with Swift 6 stric
 
 **Migration priorities:** `ObservableObject`→`@Observable` | Combine→`AsyncSequence` | `NavigationView`→`NavigationStack` | Core Data→SwiftData | XCTest→Swift Testing | callbacks→`async/await` | queues→actors | String `+`→String interpolation | Test RTL text handling
 
-## Platform Strategy: Native macOS
+## Platform Strategy: Native macOS ✅ (Completed Oct 2025)
 
-**Platforms:** tvOS 26+ (primary) | iOS/iPadOS 26+ | macOS 26+ (native, not Catalyst)
+**Platforms:** tvOS 26+ (primary) | iOS/iPadOS 26+ | macOS 26+ (native)
 - Mac runs as **native macOS** app using AppKit/SwiftUI
-- **Mac Catalyst is no longer supported** - removed completely
-- Benefits: Native macOS experience, proper menu bar integration, AppKit APIs available
+- **Mac Catalyst removed** - Migration completed in #59 (Oct 27, 2025)
+- Native AppKit APIs: NSWorkspace, NSPasteboard, NSImage
+- Menu bar commands: TiercadeCommands.swift (⌘N, ⌘⇧H, ⌘A, ⌘E, ⌘I)
 - tvOS remains primary focus (fundamentally different UX paradigm)
 
 ### Native macOS Patterns
@@ -316,6 +317,7 @@ await withLoadingIndicator(message: "Loading...") {
 | `ActionBar_MoveBatch` | Batch move button in selection mode |
 | `QuickMove_Overlay` | tvOS quick-move overlay root – ensures UI tests can wait for presentation |
 | `MatchupOverlay_Apply` | Commit action for head-to-head queue |
+| `AIGenerator_Overlay` | AI item generation overlay (macOS/iOS only; tvOS shows platform notice) |
 - **tvOS 26 interactions:** Use `.focusable(interactions: .activate)` for action-only surfaces and opt into additional interactions (text entry, directional input) only when needed so the new multi-mode focus model stays predictable on remote hardware.
 - **Default focus:** Use `.prefersDefaultFocus(true, in:)` and a scoped `@FocusState` to land on the primary control when overlays appear.
 

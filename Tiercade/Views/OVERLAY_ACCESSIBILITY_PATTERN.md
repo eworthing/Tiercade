@@ -1,8 +1,8 @@
-# Overlay Accessibility Pattern for Mac Catalyst
+# Overlay Accessibility Pattern for iOS/macOS
 
 ## Problem
 
-When SwiftUI overlays appear in response to state changes on Mac Catalyst, there
+When SwiftUI overlays appear in response to state changes on iOS and macOS, there
 is an **architectural timing gap** between:
 
 1. `@Observable` state mutation (e.g., `app.quickRankTarget = item`)
@@ -10,15 +10,14 @@ is an **architectural timing gap** between:
 3. Accessibility tree registration
 
 On tvOS, this pipeline is optimized and happens within a single run loop. On
-Mac Catalyst (and sometimes iOS), accessibility registration can lag by 1-2 run
-loops. This causes:
+iOS and macOS, accessibility registration can lag by 1-2 run loops. This causes:
 
 - UI tests that wait for overlay elements to timeout
 - VoiceOver announcements to be delayed
 - Flaky behavior in automated testing
 
 **This is not a bug in our code**—it's an inherent timing characteristic of how
-SwiftUI + Catalyst handle accessibility updates.
+SwiftUI on iOS/macOS handles accessibility updates.
 
 ## Solution: AccessibilityBridgeView
 
@@ -61,7 +60,7 @@ if app.quickRankTarget != nil {
         .zIndex(40)
 }
 
-// ❌ INCORRECT: No bridge, UI tests will timeout
+// ❌ INCORRECT: No bridge, macOS/iOS UI tests will timeout
 QuickRankOverlay(app: app)  // Has internal `if let` check
     .zIndex(40)
 ```
@@ -97,7 +96,7 @@ QuickRankOverlay(app: app)  // Has internal `if let` check
 1. **Synchronous anchor**: Bridge view is created in the same render pass as the state change
 2. **Minimal overhead**: 1×1 transparent element with no interaction
 3. **Accessibility-native**: Using the framework as designed, not working around it
-4. **Cross-platform safe**: Works identically on iOS, iPadOS, Catalyst, and tvOS
+4. **Cross-platform safe**: Works identically on iOS, iPadOS, macOS, and tvOS
 
 ## Proven Overlays
 
@@ -124,7 +123,7 @@ func openQuickRankOverlay(in app: XCUIApplication, window: XCUIElement) {
 ## Performance Characteristics
 
 - **tvOS**: No observable difference (already fast)
-- **Catalyst**: Eliminates 10-50ms accessibility tree wait
+- **macOS**: Eliminates 10-50ms accessibility tree wait
 - **iOS/iPadOS**: Eliminates occasional 1-2 frame lag
 
 ## Alternative Approaches Considered (and Rejected)
