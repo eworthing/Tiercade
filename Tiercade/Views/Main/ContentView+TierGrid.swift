@@ -29,7 +29,7 @@ internal struct TierGridView: View {
                 .padding(Metrics.grid * 2)
                 .frame(maxWidth: .infinity, alignment: .top)
             }
-            .background(Palette.appBackground.ignoresSafeArea())
+            .background(Palette.appBackground.ignoresSafeArea(edges: .bottom))
         }
         .focusable()
         .focused($gridHasFocus)

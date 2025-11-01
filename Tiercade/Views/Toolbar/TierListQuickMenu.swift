@@ -37,12 +37,26 @@ internal struct TierListQuickMenu: View {
 
     @ViewBuilder
     private var menuContent: some View {
-        if app.quickPickTierLists.isEmpty {
+        if app.quickPickTierListsDeduped.isEmpty {
             Text("No tier lists available")
         } else {
-            ForEach(app.quickPickTierLists) { handle in
-                quickPickButton(for: handle)
+            // Use Picker for selection with checkmark pattern (Apple HIG)
+            Picker("Tier List", selection: Binding(
+                get: { app.activeTierList },
+                set: { newValue in
+                    guard let newValue, newValue != app.activeTierList else { return }
+                    Task { await app.selectTierList(newValue) }
+                }
+            )) {
+                ForEach(app.quickPickTierListsDeduped) { handle in
+                    Label(handle.displayName, systemImage: iconName(for: handle))
+                        .tag(handle as TierListHandle?)
+                }
             }
+            .pickerStyle(.inline)
+            #if os(iOS)
+            .menuOrder(.fixed)
+            #endif
         }
 
         Divider()
@@ -102,36 +116,6 @@ internal struct TierListQuickMenu: View {
                 )
         )
         #endif
-    }
-
-    private func quickPickButton(for handle: TierListHandle) -> some View {
-        Button {
-            guard handle != app.activeTierList else { return }
-            Task { await app.selectTierList(handle) }
-        } label: {
-            quickPickLabel(for: handle)
-        }
-        .disabled(handle == app.activeTierList)
-    }
-
-    private func quickPickLabel(for handle: TierListHandle) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: iconName(for: handle))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(handle.displayName)
-                    .font(.body.weight(handle == app.activeTierList ? .semibold : .regular))
-                if let subtitle = handle.subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            if handle == app.activeTierList {
-                Image(systemName: "checkmark")
-                    .foregroundStyle(Color.accentColor)
-            }
-        }
     }
 
     private func iconName(for handle: TierListHandle) -> String {

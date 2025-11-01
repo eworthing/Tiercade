@@ -77,7 +77,9 @@ struct AIItemGeneratorOverlay: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        appState.dismissAIItemGenerator()
+                        appState.aiGenerationRequest = nil
+                        appState.aiGeneratedCandidates = []
+                        appState.aiGenerationInProgress = false
                     }
                 }
 
@@ -93,7 +95,9 @@ struct AIItemGeneratorOverlay: View {
         .accessibilityIdentifier("AIGenerator_Overlay")
         #if os(tvOS)
         .onExitCommand {
-            appState.dismissAIItemGenerator()
+            appState.aiGenerationRequest = nil
+            appState.aiGeneratedCandidates = []
+            appState.aiGenerationInProgress = false
         }
         #endif
     }
@@ -128,6 +132,7 @@ struct AIItemGeneratorOverlay: View {
                     }
                     .buttonStyle(.glass)
                     .focusable(interactions: .activate)
+                    .accessibilityIdentifier("AIGenerator_CountMinus")
 
                     Text("\(itemCount)")
                         .font(.title2.monospacedDigit())
@@ -140,6 +145,7 @@ struct AIItemGeneratorOverlay: View {
                     }
                     .buttonStyle(.glass)
                     .focusable(interactions: .activate)
+                    .accessibilityIdentifier("AIGenerator_CountPlus")
                 }
                 .focusSection()
                 #else
@@ -203,11 +209,6 @@ struct AIItemGeneratorOverlay: View {
                 Text(appState.loadingMessage)
                     .font(.body)
                     .foregroundStyle(.secondary)
-            }
-
-            if appState.operationProgress > 0 {
-                ProgressView(value: appState.operationProgress)
-                    .frame(width: 200)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -89,7 +89,8 @@ internal struct ToolbarView: ToolbarContent {
         }
         #endif
 
-        // Secondary actions menu (all platforms)
+        // Secondary actions menu (macOS/tvOS only - iOS uses trailing Actions menu)
+        #if os(macOS) || os(tvOS)
         SecondaryToolbarActions(
             app: app,
             onShowSave: { showingSaveDialog = true },
@@ -99,6 +100,7 @@ internal struct ToolbarView: ToolbarContent {
             onImportCSV: { showingImportSheet = true },
             onShowSettings: { showingSettings = true }
         )
+        #endif
 
         // Sheet presentations (iOS-specific vs macOS/tvOS)
         #if os(iOS)
@@ -129,6 +131,7 @@ internal struct ToolbarView: ToolbarContent {
 
     @ViewBuilder
     private var primaryActionButtons: some View {
+        // 1. New Tier List (all platforms)
         Button {
             app.presentTierListCreator()
         } label: {
@@ -139,29 +142,78 @@ internal struct ToolbarView: ToolbarContent {
         .help("Create a new tier list (⇧⌘N)")
         #endif
 
+        // 2. Card Size Menu (all platforms - Label for Icon+Text support)
+        #if !os(tvOS)
+        Menu {
+            ForEach(CardDensityPreference.allCases, id: \.self) { density in
+                Button {
+                    print("🔍 [Toolbar] Card Size handler: \(density.displayName)")
+                    app.setCardDensityPreference(density)
+                } label: {
+                    Label(
+                        density.displayName,
+                        systemImage: app.cardDensityPreference == density ? "checkmark" : ""
+                    )
+                }
+            }
+        } label: {
+            Label("Card Size", systemImage: app.cardDensityPreference.symbolName)
+        }
+        .accessibilityIdentifier("Toolbar_CardSize")
+        #if os(macOS)
+        .help("Card Size")
+        #endif
+        #endif
+
+        // 3. Head-to-Head (iOS/macOS)
+        #if !os(tvOS)
+        Button {
+            print("🔍 [Toolbar] H2H handler triggered")
+            app.startH2H()
+        } label: {
+            Label("Head-to-Head", systemImage: "person.line.dotted.person.fill")
+        }
+        .disabled(!app.canStartHeadToHead)
+        .accessibilityIdentifier("Toolbar_H2H")
+        #if os(macOS)
+        .keyboardShortcut("h", modifiers: [.command, .shift])
+        .help("Start head-to-head ranking (⇧⌘H)")
+        #endif
+        #endif
+
+        // 4. Analysis (iOS/macOS)
+        #if !os(tvOS)
         Button {
             app.toggleAnalysis()
         } label: {
-            Image(systemName: app.showingAnalysis ? "chart.bar.fill" : "chart.bar")
-                .accessibilityLabel(app.showingAnalysis ? "Close Analysis" : "Open Analysis")
+            Label(
+                "Analysis",
+                systemImage: app.showingAnalysis ? "chart.bar.fill" : "chart.bar"
+            )
         }
         .disabled(!app.canShowAnalysis && !app.showingAnalysis)
         .accessibilityIdentifier("Toolbar_Analysis")
         #if os(macOS)
-        .help(app.showingAnalysis ? "Close analysis (⌘A)" : "Open analysis (⌘A)")
+        .keyboardShortcut("a", modifiers: [.command, .option])
+        .help(app.showingAnalysis ? "Hide Analysis (⌥⌘A)" : "Show Analysis (⌥⌘A)")
+        #endif
         #endif
 
+        // 5. Themes (iOS/macOS)
+        #if !os(tvOS)
         Button {
             app.toggleThemePicker()
         } label: {
-            Image(systemName: "paintpalette")
-                .accessibilityLabel("Themes")
+            Label("Themes", systemImage: "paintpalette")
         }
         .accessibilityIdentifier("Toolbar_Themes")
         #if os(macOS)
-        .help("Browse themes (⌘T)")
+        .keyboardShortcut("t", modifiers: [.command, .option])
+        .help("Browse tier themes (⌥⌘T)")
+        #endif
         #endif
 
+        // 6. Apple Intelligence (all platforms)
         if AppleIntelligenceService.isSupportedOnCurrentPlatform {
             Button {
                 app.toggleAIChat()
@@ -174,18 +226,7 @@ internal struct ToolbarView: ToolbarContent {
             #endif
         }
 
-        Button {
-            app.startH2H()
-        } label: {
-            Image(systemName: "rectangle.grid.2x2")
-                .accessibilityLabel("Head-to-Head")
-        }
-        .disabled(!app.canStartHeadToHead)
-        .accessibilityIdentifier("Toolbar_H2H")
-        #if os(macOS)
-        .help("Start head-to-head (⌘H)")
-        #endif
-
+        // 7. Multi-Select (iOS only)
         #if os(iOS)
         let multiSelectActive = editMode?.wrappedValue == .active
         Button {
@@ -198,7 +239,7 @@ internal struct ToolbarView: ToolbarContent {
             }
         } label: {
             Label(
-                multiSelectActive ? "Done" : "Multi-Select",
+                multiSelectActive ? "Done" : "Select",
                 systemImage: multiSelectActive ? "checkmark.rectangle.stack.fill" : "rectangle.stack.badge.plus"
             )
             .symbolRenderingMode(.hierarchical)
@@ -206,10 +247,56 @@ internal struct ToolbarView: ToolbarContent {
         .buttonStyle(.borderedProminent)
         .tint(multiSelectActive ? Color.accentColor : Color.secondary.opacity(0.35))
         .accessibilityIdentifier("Toolbar_MultiSelect")
-        .accessibilityLabel(multiSelectActive ? "Finish Multi-Select" : "Start Multi-Select")
+        .accessibilityLabel(multiSelectActive ? "Finish selection" : "Start selection")
         .accessibilityValue(multiSelectActive ? "\(app.selection.count) items selected" : "")
         #endif
     }
+
+    #if os(iOS)
+    // iOS title menu content (tap navigation title to reveal)
+    @ViewBuilder
+    internal var titleMenuContent: some View {
+        Button {
+            app.startH2H()
+        } label: {
+            Label("Head-to-Head", systemImage: "person.line.dotted.person.fill")
+        }
+        .disabled(!app.canStartHeadToHead)
+        .accessibilityIdentifier("TitleMenu_H2H")
+
+        Button {
+            app.toggleAnalysis()
+        } label: {
+            Label(
+                app.showingAnalysis ? "Hide Analysis" : "Show Analysis",
+                systemImage: app.showingAnalysis ? "chart.bar.fill" : "chart.bar"
+            )
+        }
+        .disabled(!app.canShowAnalysis && !app.showingAnalysis)
+        .accessibilityIdentifier("TitleMenu_Analysis")
+
+        Button {
+            app.toggleThemePicker()
+        } label: {
+            Label("Themes", systemImage: "paintpalette")
+        }
+        .accessibilityIdentifier("TitleMenu_Themes")
+
+        Menu("Card Size") {
+            ForEach(CardDensityPreference.allCases, id: \.self) { density in
+                Button {
+                    app.setCardDensityPreference(density)
+                } label: {
+                    Label(
+                        density.displayName,
+                        systemImage: app.cardDensityPreference == density ? "checkmark" : ""
+                    )
+                }
+            }
+        }
+        .accessibilityIdentifier("TitleMenu_CardSize")
+    }
+    #endif
 
     private func handleExportFormatSelection(_ format: ExportFormat) {
         selectedExportFormat = format
@@ -272,25 +359,7 @@ internal struct SecondaryToolbarActions: ToolbarContent {
                 Divider()
                 fileOperationsMenu
                 exportImportMenu
-                Button("Head-to-Head") { app.startH2H() }
-                    .disabled(!app.canStartHeadToHead)
-                    #if !os(tvOS)
-                    .keyboardShortcut("h", modifiers: [.command])
-                #endif
-                Button("Analysis") { app.toggleAnalysis() }
-                    .disabled(!app.showingAnalysis && !app.canShowAnalysis)
-                    #if !os(tvOS)
-                    .keyboardShortcut("a", modifiers: [.command])
-                #endif
                 Divider()
-                Button("Tier Themes...") { app.toggleThemePicker() }
-                    #if !os(tvOS)
-                    .keyboardShortcut("t", modifiers: [.command])
-                #endif
-                Button("New Tier List...") { app.presentTierListCreator() }
-                    #if !os(tvOS)
-                    .keyboardShortcut("n", modifiers: [.command, .shift])
-                #endif
                 Button("Settings") { onShowSettings() }
             }
         }

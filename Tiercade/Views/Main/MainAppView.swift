@@ -308,6 +308,15 @@ internal struct MainAppView: View {
         }
         .navigationSplitViewStyle(.balanced)
         .toolbarRole(.editor)
+        #if DEBUG
+        .overlay(alignment: .bottomTrailing) {
+            BuildInfoView()
+                .padding(.trailing, 16)
+                .padding(.bottom, 16)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+        #endif
     }
     #endif
 
@@ -320,11 +329,24 @@ internal struct MainAppView: View {
                 .navigationSplitViewColumnWidth(min: 280, ideal: 320, max: 360)
         } detail: {
             tierGridLayer(modalBlockingFocus: modalBlockingFocus)
-                .toolbar { ToolbarView(app: app) }
                 .navigationTitle("Tiercade")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarView(app: app) }
+                .toolbarTitleMenu {
+                    ToolbarView(app: app).titleMenuContent
+                }
         }
         .navigationSplitViewStyle(.balanced)
         .toolbarRole(.editor)
+        #if DEBUG
+        .overlay(alignment: .bottomTrailing) {
+            BuildInfoView()
+                .padding(.trailing, 16)
+                .padding(.bottom, 16)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+        #endif
     }
 
     @ViewBuilder
@@ -332,9 +354,22 @@ internal struct MainAppView: View {
         NavigationStack {
             tierGridLayer(modalBlockingFocus: modalBlockingFocus)
                 .navigationTitle("Tiercade")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { ToolbarView(app: app) }
+                .toolbarTitleMenu {
+                    ToolbarView(app: app).titleMenuContent
+                }
+                .toolbarRole(.automatic)
         }
-        .toolbarRole(.automatic)
-        .toolbar { ToolbarView(app: app) }
+        #if DEBUG
+        .overlay(alignment: .bottomTrailing) {
+            BuildInfoView()
+                .padding(.trailing, 16)
+                .padding(.bottom, 16)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+        #endif
     }
     #endif
 
@@ -342,52 +377,48 @@ internal struct MainAppView: View {
 
     @ViewBuilder
     private func tierGridLayer(modalBlockingFocus: Bool) -> some View {
-        ZStack {
-            TierGridView(tierOrder: app.tierOrder)
-                .environment(app)
-                #if os(iOS)
-                .environment(\.editMode, $editMode)
-                #endif
-                // Add content padding to avoid overlay bars overlap
-                #if os(tvOS)
-                .padding(.top, TVMetrics.contentTopInset)
-                .padding(.bottom, TVMetrics.contentBottomInset)
-                #else
-                .padding(.top, Metrics.grid * 6)
-                .padding(.bottom, Metrics.grid * 3)
-                #endif
-                .allowsHitTesting(!modalBlockingFocus)
+        TierGridView(tierOrder: app.tierOrder)
+            .environment(app)
+            #if os(iOS)
+            .environment(\.editMode, $editMode)
+            .padding(.top, Metrics.grid * 2)  // Reduced for iOS to avoid nav bar overlap
+            .padding(.bottom, Metrics.grid * 3)
+            #elseif os(tvOS)
+            .padding(.top, TVMetrics.contentTopInset)
+            .padding(.bottom, TVMetrics.contentBottomInset)
+            #else
+            .padding(.top, Metrics.grid * 2)
+            .padding(.bottom, Metrics.grid * 3)
+            #endif
+            .allowsHitTesting(!modalBlockingFocus)
             // Note: Don't use .disabled() as it removes elements from accessibility tree
             // Only block hit testing when modals are active
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .frame(maxWidth: .infinity, alignment: .top)  // Removed maxHeight to let NavigationStack manage sizing
     }
 
     #if os(tvOS)
     @ViewBuilder
     private func tvOSPrimaryContent(modalBlockingFocus: Bool) -> some View {
         ZStack {
-            // Grid content - no focus section on Catalyst for keyboard navigation
-            #if os(tvOS)
+            // Grid content with focus section
             tierGridLayer(modalBlockingFocus: modalBlockingFocus)
                 .focusSection()
-            #else
-            tierGridLayer(modalBlockingFocus: modalBlockingFocus)
-            #endif
-
-            // Toolbar overlay (already has its own focus section)
+        }
+        .overlay(alignment: .top) {
+            // Toolbar pinned to top edge
             TVToolbarView(
                 app: app,
                 modalActive: modalBlockingFocus,
                 editMode: $editMode,
                 glassNamespace: glassNamespace
             )
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity)
             .frame(height: TVMetrics.topBarHeight)
             .allowsHitTesting(!modalBlockingFocus)
             .accessibilityElement(children: .contain)
-
-            // Action bar - only show on tvOS (iOS and macOS use different toolbar)
+        }
+        .overlay(alignment: .bottom) {
+            // Action bar pinned to bottom edge (shown in edit mode)
             TVActionBar(app: app, glassNamespace: glassNamespace)
                 .environment(\.editMode, $editMode)
                 .allowsHitTesting(!modalBlockingFocus)

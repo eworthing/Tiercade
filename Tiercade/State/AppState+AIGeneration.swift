@@ -11,63 +11,6 @@ import FoundationModels
 
 @MainActor
 internal extension AppState {
-    // MARK: - State Properties
-
-    /// Whether the AI item generator overlay is visible
-    internal var showAIItemGenerator: Bool {
-        get { _showAIItemGenerator }
-        set { _showAIItemGenerator = newValue }
-    }
-
-    /// Current generation request (preserves parameters for regeneration)
-    internal var aiGenerationRequest: AIGenerationRequest? {
-        get { _aiGenerationRequest }
-        set { _aiGenerationRequest = newValue }
-    }
-
-    /// Generated item candidates awaiting review
-    internal var aiGeneratedCandidates: [AIGeneratedItemCandidate] {
-        get { _aiGeneratedCandidates }
-        set { _aiGeneratedCandidates = newValue }
-    }
-
-    /// Whether generation is in progress
-    internal var aiGenerationInProgress: Bool {
-        get { _aiGenerationInProgress }
-        set { _aiGenerationInProgress = newValue }
-    }
-
-    // MARK: - Overlay Management
-
-    /// Present the AI item generator overlay.
-    ///
-    /// Resets any previous generation state and shows the overlay.
-    /// On tvOS, this does nothing as AI generation is only available on macOS/iOS.
-    internal func presentAIItemGenerator() {
-        #if os(macOS) || os(iOS)
-        showAIItemGenerator = true
-        aiGenerationRequest = nil
-        aiGeneratedCandidates = []
-        #else
-        // tvOS: Show informative message via toast
-        showToast(
-            type: .info,
-            title: "Unavailable",
-            message: "AI generation requires macOS or iOS"
-        )
-        #endif
-    }
-
-    /// Dismiss the AI item generator overlay.
-    ///
-    /// Clears all generation state and hides the overlay.
-    internal func dismissAIItemGenerator() {
-        showAIItemGenerator = false
-        aiGenerationRequest = nil
-        aiGeneratedCandidates = []
-        aiGenerationInProgress = false
-    }
-
     // MARK: - Generation
 
     /// Generate items using Apple Intelligence.
@@ -104,17 +47,8 @@ internal extension AppState {
             do {
                 #if canImport(FoundationModels)
                 // Create a fresh session locally to avoid cross-file #if and access-level coupling
-                // Use strong anti-duplicate instructions like the chat service
-                let instructions = Instructions("""
-                You are a helpful assistant. Answer questions clearly and concisely.
-
-                CRITICAL RULES FOR LISTS:
-                - NEVER repeat any item in a list
-                - ALWAYS check if an item was already mentioned before adding it
-                - If asked for N items, provide EXACTLY N UNIQUE items
-                - Stop immediately after reaching the requested number
-                - Do NOT continue generating after the list is complete
-                """)
+                // Use shared anti-duplicate instructions
+                let instructions = makeAntiDuplicateInstructions()
                 let session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
                 let fm = FMClient(session: session, logger: { _ in })
                 let coordinator = UniqueListCoordinator(
@@ -126,7 +60,12 @@ internal extension AppState {
                     promptStyle: .strict
                 )
 
-                let items = try await coordinator.uniqueList(query: description, targetCount: count, seed: nil)
+                let items: [String]
+                do {
+                    items = try await coordinator.uniqueList(query: description, targetCount: count, seed: nil)
+                } catch {
+                    throw AIGenerationError.generationFailed(underlyingError: error)
+                }
 
                 // Convert to candidates (all selected by default)
                 aiGeneratedCandidates = items.map {
@@ -140,18 +79,23 @@ internal extension AppState {
                     message: "Generated \(items.count) items"
                 )
                 #else
-                throw NSError(
-                    domain: "AIGeneration",
-                    code: -3,
-                    userInfo: [NSLocalizedDescriptionKey: "AI generation not available on this platform"]
-                )
+                throw AIGenerationError.platformNotSupported
                 #endif
-            } catch {
-                print("❌ [AIGeneration] AI generation failed: \(error.localizedDescription)")
+            } catch let error as AIGenerationError {
+                print("❌ [AIGeneration] AI generation failed: \(error.userMessage)")
                 showToast(
                     type: .error,
                     title: "Generation Failed",
-                    message: error.localizedDescription
+                    message: error.userMessage
+                )
+                aiGeneratedCandidates = []
+            } catch {
+                // Fallback for unexpected errors
+                print("❌ [AIGeneration] Unexpected error: \(error)")
+                showToast(
+                    type: .error,
+                    title: "Generation Failed",
+                    message: "An unexpected error occurred. Please try again."
                 )
                 aiGeneratedCandidates = []
             }
@@ -242,13 +186,10 @@ internal extension AppState {
         }
 
         print("✅ [AIGeneration] Imported \(uniqueCandidates.count) items to draft '\(draft.title)'")
-        dismissAIItemGenerator()
+        // Clear state after successful import
+        aiGenerationRequest = nil
+        aiGeneratedCandidates = []
+        aiGenerationInProgress = false
     }
 }
 
-// MARK: - Private Storage
-
-private var _showAIItemGenerator = false
-private var _aiGenerationRequest: AIGenerationRequest?
-private var _aiGeneratedCandidates: [AIGeneratedItemCandidate] = []
-private var _aiGenerationInProgress = false

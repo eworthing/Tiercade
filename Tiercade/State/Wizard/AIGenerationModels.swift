@@ -1,5 +1,31 @@
 import Foundation
 
+// MARK: - AI Generation Error
+
+/// Typed errors for AI item generation failures.
+enum AIGenerationError: Error, Sendable {
+    /// The current platform doesn't support Apple Intelligence features
+    case platformNotSupported
+
+    /// The generation request has invalid parameters
+    case invalidRequest(reason: String)
+
+    /// The AI generation process failed
+    case generationFailed(underlyingError: Error)
+
+    /// User-friendly error message for toast display
+    var userMessage: String {
+        switch self {
+        case .platformNotSupported:
+            return "AI generation requires macOS 26+ or iOS 26+"
+        case .invalidRequest(let reason):
+            return reason
+        case .generationFailed:
+            return "Failed to generate items. Please try again."
+        }
+    }
+}
+
 // MARK: - AI Generation Request
 
 /// Captures user input for an AI item generation request.
