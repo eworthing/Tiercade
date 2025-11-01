@@ -20,7 +20,10 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 
 ## Apple Intelligence Prototype Scope (Read Me First)
 
-- Prototype-only: All Apple Intelligence list-generation, prompt testing, and chat integrations are for testing and evaluation. Do not ship this code path to production as-is.
+**📚 AI Documentation Hub**: All AI-related specs, diagnostics, and testing docs → `docs/AppleIntelligence/README.md`
+
+- Prototype-only: All Apple Intelligence list-generation, **item generation**, prompt testing, and chat integrations are for testing and evaluation. Do not ship this code path to production as-is.
+- **Platform gating**: AI item generation (AIItemGeneratorOverlay) is **macOS/iOS-only**. tvOS displays a platform notice and cannot invoke FoundationModels.
 - Reference: See `docs/AppleIntelligence/DEEP_RESEARCH_2025-10.md` for the consolidated research plan and experiment matrix.
 - Cross-domain prompts: Techniques must remain domain-agnostic. We cannot tailor prompts to specific item types because end-user requests may ask for any kind of list.
 - Winning-method handoff: The final product will be re-architected using the best-performing approach discovered here. Treat current algorithms, prompts, and testers as disposable scaffolding.
@@ -124,7 +127,11 @@ UI automation relies on accessibility IDs and short paths—prefer existence che
 
 - Asset refresh: manage bundled artwork directly in `Tiercade/Assets.xcassets` and keep paths aligned with `AppState+BundledProjects`.
 - Debug logging: `AppState.appendDebugFile` writes to `/tmp/tiercade_debug.log`; the CI pipeline emits `tiercade_build_and_test.log` plus before/after screenshots under `pipeline-artifacts/`. Attach those files when filing issues.
-- SourceKit often flags “No such module 'TiercadeCore'”; defer to `xcodebuild` results before debugging module wiring.
+- **Build script feature flags**: `./build_install_launch.sh macos --enable-advanced-generation` (see `docs/AppleIntelligence/FEATURE_FLAG_USAGE.md`)
+- **AI test runner**: `./run_all_ai_tests.sh` with result analysis via `python3 analyze_test_results.py results/run-<TIMESTAMP>/`
+  - Test suite configs: `Tiercade/TestConfigs/TestSuites.json`
+  - Framework docs: `Tiercade/TestConfigs/TESTING_FRAMEWORK.md`
+- SourceKit often flags "No such module 'TiercadeCore'"; defer to `xcodebuild` results before debugging module wiring.
 
 ## Collaboration norms
 
