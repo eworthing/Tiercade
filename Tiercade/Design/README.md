@@ -10,7 +10,7 @@ Design tokens and SwiftUI styles for Tiercade on the OS 26 baseline. Tokens are 
 - **Styles.swift** – `card()`, `panel()`, `PrimaryButtonStyle`, `GhostButtonStyle`, `CardButtonStyle`, and `TVRemoteButtonStyle`.
 - **GlassEffects.swift** – `tvGlassRounded`, `tvGlassCapsule`, and `tvGlassContainer` wrappers for [`glassEffect(_:in:)`](https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)).
 - **TVMetrics.swift** – tvOS spacing, layout, and card density helpers.
-- **PlatformCardLayout.swift** – adaptive grid sizing and spacing for iOS, iPadOS, and Mac Catalyst cards.
+- **PlatformCardLayout.swift** – adaptive grid sizing and spacing for iOS, iPadOS, and macOS cards.
 - **VibrantDesign.swift** – tier badge utilities and `punchyFocus` modifier (colors sourced from `Palette`).
 - **ThemeManager.swift** – user theme preference (`system`, `light`, `dark`) surfaced to the app shell.
 

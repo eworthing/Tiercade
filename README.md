@@ -438,7 +438,7 @@ This project is currently unlicensed. This is a personal project developed with 
 
 - **Core Package**: [TiercadeCore/README.md](TiercadeCore/README.md) - Platform-agnostic logic and models
 - **Design System**: [Tiercade/Design/README.md](Tiercade/Design/README.md) - Design tokens and styles
-- **Tools & Testing**: [tools/README.md](tools/README.md) - tvOS debugging and automation
+- **Apple Intelligence**: [docs/AppleIntelligence/README.md](docs/AppleIntelligence/README.md) - AI features, testing, and research
 - **Copilot Instructions**: [.github/copilot-instructions.md](.github/copilot-instructions.md) - Development guidance for AI assistance
 
 ## 📞 Support
