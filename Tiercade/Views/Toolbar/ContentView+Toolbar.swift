@@ -213,7 +213,81 @@ internal struct ToolbarView: ToolbarContent {
         #endif
         #endif
 
-        // 6. Apple Intelligence (all platforms)
+        // 6. Sort Menu (iOS/macOS)
+        #if !os(tvOS)
+        Menu {
+            Section {
+                Label("Current: \(app.globalSortMode.displayName)", systemImage: "checkmark.circle")
+            }
+
+            Divider()
+
+            Button {
+                app.setGlobalSortMode(.custom)
+            } label: {
+                Label("Manual Order", systemImage: app.globalSortMode.isCustom ? "checkmark" : "")
+            }
+
+            Menu("Alphabetical") {
+                Button {
+                    app.setGlobalSortMode(.alphabetical(ascending: true))
+                } label: {
+                    Label("A → Z", systemImage: matchesMode(.alphabetical(ascending: true)) ? "checkmark" : "")
+                }
+                Button {
+                    app.setGlobalSortMode(.alphabetical(ascending: false))
+                } label: {
+                    Label("Z → A", systemImage: matchesMode(.alphabetical(ascending: false)) ? "checkmark" : "")
+                }
+            }
+
+            let discovered = app.discoverSortableAttributes()
+            if !discovered.isEmpty {
+                Divider()
+                ForEach(Array(discovered.keys.sorted()), id: \.self) { key in
+                    Menu(key.capitalized) {
+                        Button {
+                            if let type = discovered[key] {
+                                app.setGlobalSortMode(.byAttribute(key: key, ascending: true, type: type))
+                            }
+                        } label: {
+                            Label("Ascending ↑", systemImage: matchesAttributeMode(key: key, ascending: true) ? "checkmark" : "")
+                        }
+                        Button {
+                            if let type = discovered[key] {
+                                app.setGlobalSortMode(.byAttribute(key: key, ascending: false, type: type))
+                            }
+                        } label: {
+                            Label("Descending ↓", systemImage: matchesAttributeMode(key: key, ascending: false) ? "checkmark" : "")
+                        }
+                    }
+                }
+            }
+        } label: {
+            Label("Sort", systemImage: "arrow.up.arrow.down")
+        }
+        .accessibilityIdentifier("Toolbar_Sort")
+        #if os(macOS)
+        .help("Sort items")
+        #endif
+        #endif
+
+        // 7. Apply Sort Button (iOS/macOS - shows when sort is active)
+        #if !os(tvOS)
+        if !app.globalSortMode.isCustom {
+            Button {
+                app.applyGlobalSortToCustom()
+            } label: {
+                Label("Apply Sort", systemImage: "checkmark.circle.fill")
+            }
+            .accessibilityIdentifier("Toolbar_ApplySort")
+            #if os(macOS)
+            .help("Apply current sort to manual order")
+            #endif
+        }
+        #endif
+
+        // 8. Apple Intelligence (all platforms)
         if AppleIntelligenceService.isSupportedOnCurrentPlatform {
             Button {
                 app.toggleAIChat()
@@ -250,6 +324,25 @@ internal struct ToolbarView: ToolbarContent {
         .accessibilityLabel(multiSelectActive ? "Finish selection" : "Start selection")
         .accessibilityValue(multiSelectActive ? "\(app.selection.count) items selected" : "")
         #endif
+    }
+
+    // Helper methods for sort mode matching
+    private func matchesMode(_ mode: GlobalSortMode) -> Bool {
+        switch (app.globalSortMode, mode) {
+        case (.custom, .custom):
+            return true
+        case (.alphabetical(let asc1), .alphabetical(let asc2)):
+            return asc1 == asc2
+        default:
+            return false
+        }
+    }
+
+    private func matchesAttributeMode(key: String, ascending: Bool) -> Bool {
+        if case .byAttribute(let k, let asc, _) = app.globalSortMode {
+            return k == key && asc == ascending
+        }
+        return false
     }
 
     #if os(iOS)

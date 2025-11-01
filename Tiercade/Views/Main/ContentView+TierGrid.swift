@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import TiercadeCore
+import UniformTypeIdentifiers
 
 // MARK: - Tier grid
 internal struct TierGridView: View {
@@ -147,18 +148,24 @@ internal struct UnrankedView: View {
                 )
             }
             #if !os(tvOS)
-            .dropDestination(
-                for: String.self,
-                action: { items, _ in
-                    if let id = items.first { app.move(id, to: "unranked") }
+            .onDrop(of: [.text], isTargeted: nil, perform: { providers in
+                // Load NSItemProvider inside closure per security rules
+                guard let provider = providers.first else {
                     app.setDragTarget(nil)
-                    app.setDragging(nil)
-                    return true
-                },
-                isTargeted: { isTargeted in
-                    app.setDragTarget(isTargeted ? "unranked" : nil)
+                    return false
                 }
-            )
+
+                provider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { item, error in
+                    if let data = item as? Data, let id = String(data: data, encoding: .utf8) {
+                        Task { @MainActor in
+                            app.move(id, to: "unranked")
+                            app.setDragTarget(nil)
+                            app.setDragging(nil)
+                        }
+                    }
+                }
+                return true
+            })
             #endif
         }
     }
