@@ -121,3 +121,39 @@ public struct TierConfigEntry: Codable, Sendable, Equatable {
 
 public typealias Items = [String: [Item]]
 public typealias TierConfig = [String: TierConfigEntry]
+
+// MARK: - Sorting
+
+/// Defines the type of a sortable attribute discovered at runtime
+public enum AttributeType: String, Codable, Sendable, Hashable {
+    case string
+    case number
+    case bool
+    case date
+}
+
+/// Global sort mode applied across all tiers
+public enum GlobalSortMode: Codable, Sendable, Hashable, Equatable {
+    case custom  // Manual user-defined order (array index)
+    case alphabetical(ascending: Bool)
+    case byAttribute(key: String, ascending: Bool, type: AttributeType)
+
+    public var displayName: String {
+        switch self {
+        case .custom:
+            return "Manual Order"
+        case .alphabetical(let ascending):
+            return ascending ? "A → Z" : "Z → A"
+        case .byAttribute(let key, let ascending, _):
+            let arrow = ascending ? "↑" : "↓"
+            return "\(key.capitalized) \(arrow)"
+        }
+    }
+
+    public var isCustom: Bool {
+        if case .custom = self {
+            return true
+        }
+        return false
+    }
+}

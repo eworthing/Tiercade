@@ -112,6 +112,8 @@ final class AppState {
     // Tier display overrides (rename/recolor without core model changes)
     var tierLabels: [String: String] = [:] // tierId -> display label
     var tierColors: [String: String] = [:] // tierId -> hex color
+    // Global sort mode for all tiers (default: alphabetical A-Z)
+    var globalSortMode: GlobalSortMode = .alphabetical(ascending: true)
     // Layout preferences
     var cardDensityPreference: CardDensityPreference = .compact
     // Theme selection

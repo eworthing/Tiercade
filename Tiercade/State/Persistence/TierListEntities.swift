@@ -12,6 +12,7 @@ final class TierListEntity {
     var cardDensityRaw: String
     var selectedThemeID: UUID?
     var customThemesData: Data?
+    var globalSortModeData: Data?
     var sourceRaw: String
     var externalIdentifier: String?
     var subtitle: String?
@@ -31,6 +32,7 @@ final class TierListEntity {
         cardDensityRaw: String,
         selectedThemeID: UUID?,
         customThemesData: Data? = nil,
+        globalSortModeData: Data? = nil,
         sourceRaw: String = AppState.TierListSource.bundled.rawValue,
         externalIdentifier: String? = nil,
         subtitle: String? = nil,
@@ -48,6 +50,7 @@ final class TierListEntity {
         self.cardDensityRaw = cardDensityRaw
         self.selectedThemeID = selectedThemeID
         self.customThemesData = customThemesData
+        self.globalSortModeData = globalSortModeData
         self.sourceRaw = sourceRaw
         self.externalIdentifier = externalIdentifier
         self.subtitle = subtitle
