@@ -115,8 +115,8 @@ internal struct TiercadeCommands: Commands {
             } label: {
                 Label("Head-to-Head Ranking", systemImage: "person.line.dotted.person.fill")
             }
-            .keyboardShortcut("h", modifiers: [.command, .shift])
-            .help("Start head-to-head ranking (⇧⌘H)")
+            .keyboardShortcut("h", modifiers: [.control, .command])
+            .help("Start head-to-head ranking (⌃⌘H)")
             .disabled(!appState.canStartHeadToHead)
 
             Divider()

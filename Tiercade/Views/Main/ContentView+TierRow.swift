@@ -184,7 +184,6 @@ internal struct TierRowWrapper: View {
                     // Update hardware focus when card is clicked
                     hardwareFocus.wrappedValue = focusID
                 })
-                .draggable(item.id)
                 .focused(hardwareFocus, equals: focusID)
                 .overlay {
                     if hardwareFocus.wrappedValue == focusID {
@@ -213,6 +212,9 @@ internal struct TierRowWrapper: View {
     #if os(tvOS)
     /// Handle move command for both single item and block moves
     private func handleMoveCommand(for itemId: String, in tierName: String, direction: MoveCommandDirection) {
+        // Don't reorder if not in custom sort mode - let focus navigate
+        guard app.globalSortMode.isCustom else { return }
+
         // Check if item is selected and we're in multi-select mode with multiple items
         #if os(tvOS)
         // tvOS doesn't have editMode, check selection directly
