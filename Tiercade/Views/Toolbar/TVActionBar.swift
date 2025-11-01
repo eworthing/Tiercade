@@ -83,9 +83,6 @@ internal struct TVActionBar: View {
                 .defaultFocus($focusedControl, defaultFocus)
                 .onAppear { focusedControl = defaultFocus }
                 .onDisappear { focusedControl = nil }
-                .onChange(of: app.selection.count) { _, _ in
-                    focusedControl = app.selection.count > 0 ? .move : .clear
-                }
                 .onExitCommand {
                     guard editMode != nil else { return }
                     withAnimation(.easeInOut(duration: 0.2)) {

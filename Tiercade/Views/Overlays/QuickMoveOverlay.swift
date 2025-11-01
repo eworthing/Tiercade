@@ -68,6 +68,7 @@ internal struct QuickMoveOverlay: View {
                         .padding(.horizontal, 24)
                     }
                     .frame(maxHeight: 600)
+                    .focusSection()
 
                     Divider()
                         .opacity(0.3)
@@ -229,8 +230,7 @@ private struct TierButton: View {
             }
         )
         .buttonStyle(.plain)
-        .focusable(interactions: .activate)
-        .disabled(isCurrentTier)
+        .focusable(!isCurrentTier, interactions: .activate)
         .accessibilityLabel(isCurrentTier ? "Current tier: \(displayLabel)" : "Move to \(displayLabel)")
     }
 }

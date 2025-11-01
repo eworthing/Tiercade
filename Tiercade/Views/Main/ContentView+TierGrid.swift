@@ -120,7 +120,6 @@ internal struct UnrankedView: View {
                             // Update hardware focus when card is clicked
                             hardwareFocus.wrappedValue = focusID
                         })
-                        .draggable(item.id)
                         .focused(hardwareFocus, equals: focusID)
                         .overlay {
                             if hardwareFocus.wrappedValue == focusID {
@@ -191,6 +190,9 @@ internal struct UnrankedView: View {
     #if os(tvOS)
     /// Handle move command for both single item and block moves in unranked tier
     private func handleUnrankedMoveCommand(for itemId: String, direction: MoveCommandDirection) {
+        // Don't reorder if not in custom sort mode - let focus navigate
+        guard app.globalSortMode.isCustom else { return }
+
         // Check if item is selected and we're in multi-select mode with multiple items
         if app.isSelected(itemId) && app.selection.count > 1 {
             handleUnrankedBlockMove(direction: direction)
@@ -245,7 +247,7 @@ internal struct CardView: View {
     internal let item: Item
     @Environment(AppState.self) var app
     @Environment(\.isFocused) var isFocused: Bool
-    #if os(iOS)
+    #if os(iOS) || os(tvOS)
     @Environment(\.editMode) private var editMode
     #endif
     #if os(tvOS)
@@ -256,7 +258,7 @@ internal struct CardView: View {
     #endif
 
     private var isMultiSelectActive: Bool {
-        #if os(iOS)
+        #if os(iOS) || os(tvOS)
         return editMode?.wrappedValue == .active
         #else
         return false
@@ -336,6 +338,9 @@ internal struct CardView: View {
             }
         }
         .onMoveCommand { direction in
+            // Don't reorder if not in custom sort mode - let focus navigate
+            guard app.globalSortMode.isCustom else { return }
+
             // Get current tier for this item
             guard let tierName = app.currentTier(of: item.id) else { return }
 

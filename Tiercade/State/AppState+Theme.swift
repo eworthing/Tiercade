@@ -30,6 +30,14 @@ internal extension AppState {
 
     /// Toggles the theme picker overlay visibility
     internal func toggleThemePicker() {
+        // Close analysis when opening theme picker
+        if !showThemePicker {
+            showingAnalysis = false
+            #if os(tvOS)
+            showAnalyticsSidebar = false
+            #endif
+        }
+
         showThemePicker.toggle()
         // Ensure the active flag mirrors the requested visibility immediately
         // to avoid races where other views read `themePickerActive` before

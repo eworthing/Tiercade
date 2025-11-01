@@ -27,6 +27,10 @@ internal extension AppState {
             return
         }
 
+        // Close theme picker when opening analysis
+        showThemePicker = false
+        themePickerActive = false
+
         showingAnalysis = true
         if analysisData == nil {
             Task { await generateAnalysis() }

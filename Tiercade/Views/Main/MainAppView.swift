@@ -65,6 +65,9 @@ internal struct MainAppView: View {
             platformPrimaryContent(modalBlockingFocus: modalBlockingFocus)
             #endif
         }
+        #if os(iOS) || os(tvOS)
+        .environment(\.editMode, $editMode)
+        #endif
         #if os(tvOS)
         .task { FocusUtils.seedFocus() }
         .onChange(of: scenePhase) { _, newPhase in

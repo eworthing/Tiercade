@@ -25,6 +25,9 @@ internal struct ToolbarView: ToolbarContent {
     @State private var showingSaveDialog = false
     @State private var showingLoadDialog = false
     @State private var saveFileName = ""
+    #if os(tvOS)
+    @State private var showingSortPicker = false
+    #endif
 
     internal var body: some ToolbarContent {
         // Quick menu - iOS uses leading position, macOS uses principal
@@ -142,6 +145,19 @@ internal struct ToolbarView: ToolbarContent {
         .help("Create a new tier list (⇧⌘N)")
         #endif
 
+        // 1b. Sort (tvOS only - for discoverability)
+        #if os(tvOS)
+        Button {
+            showingSortPicker = true
+        } label: {
+            Label("Sort: \(app.globalSortMode.displayName)", systemImage: "arrow.up.arrow.down")
+        }
+        .accessibilityIdentifier("Toolbar_Sort")
+        .sheet(isPresented: $showingSortPicker) {
+            TVSortPickerOverlay(app: app, isPresented: $showingSortPicker)
+        }
+        #endif
+
         // 2. Card Size Menu (all platforms - Label for Icon+Text support)
         #if !os(tvOS)
         Menu {
@@ -175,9 +191,11 @@ internal struct ToolbarView: ToolbarContent {
         }
         .disabled(!app.canStartHeadToHead)
         .accessibilityIdentifier("Toolbar_H2H")
-        #if os(macOS)
-        .keyboardShortcut("h", modifiers: [.command, .shift])
-        .help("Start head-to-head ranking (⇧⌘H)")
+        #if os(iOS)
+        .keyboardShortcut("r", modifiers: [.command])
+        #elseif os(macOS)
+        .keyboardShortcut("h", modifiers: [.control, .command])
+        .help("Start head-to-head ranking (⌃⌘H)")
         #endif
         #endif
 
@@ -193,7 +211,9 @@ internal struct ToolbarView: ToolbarContent {
         }
         .disabled(!app.canShowAnalysis && !app.showingAnalysis)
         .accessibilityIdentifier("Toolbar_Analysis")
-        #if os(macOS)
+        #if os(iOS)
+        .keyboardShortcut("i", modifiers: [.command])
+        #elseif os(macOS)
         .keyboardShortcut("a", modifiers: [.command, .option])
         .help(app.showingAnalysis ? "Hide Analysis (⌥⌘A)" : "Show Analysis (⌥⌘A)")
         #endif
@@ -207,9 +227,11 @@ internal struct ToolbarView: ToolbarContent {
             Label("Themes", systemImage: "paintpalette")
         }
         .accessibilityIdentifier("Toolbar_Themes")
-        #if os(macOS)
+        #if !os(tvOS)
         .keyboardShortcut("t", modifiers: [.command, .option])
+        #if os(macOS)
         .help("Browse tier themes (⌥⌘T)")
+        #endif
         #endif
         #endif
 
@@ -323,6 +345,7 @@ internal struct ToolbarView: ToolbarContent {
         .accessibilityIdentifier("Toolbar_MultiSelect")
         .accessibilityLabel(multiSelectActive ? "Finish selection" : "Start selection")
         .accessibilityValue(multiSelectActive ? "\(app.selection.count) items selected" : "")
+        .keyboardShortcut("e", modifiers: [.command])
         #endif
     }
 
