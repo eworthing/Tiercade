@@ -91,6 +91,9 @@ internal struct UnrankedView: View {
                         ForEach(filteredItems, id: \.id) { item in
                             CardView(item: item, layout: layout)
                                 .focused($focusedItemId, equals: item.id)
+                                .onMoveCommand { direction in
+                                    handleUnrankedMoveCommand(for: item.id, direction: direction)
+                                }
                         }
                     }
                     .padding(.horizontal, layout.contentPadding)
@@ -177,6 +180,58 @@ internal struct UnrankedView: View {
             }
         }
     }
+
+    #if os(tvOS)
+    /// Handle move command for both single item and block moves in unranked tier
+    private func handleUnrankedMoveCommand(for itemId: String, direction: MoveCommandDirection) {
+        // Check if item is selected and we're in multi-select mode with multiple items
+        if app.isSelected(itemId) && app.selection.count > 1 {
+            handleUnrankedBlockMove(direction: direction)
+        } else {
+            // Single item move
+            switch direction {
+            case .left:
+                app.moveItemLeft(itemId, in: "unranked")
+            case .right:
+                app.moveItemRight(itemId, in: "unranked")
+            default:
+                break
+            }
+        }
+    }
+
+    /// Handle block move for multi-select in unranked tier
+    private func handleUnrankedBlockMove(direction: MoveCommandDirection) {
+        guard let items = app.tiers["unranked"] else { return }
+
+        // Get indices of all selected items in unranked tier
+        let selectedIndices = IndexSet(
+            items.enumerated()
+                .filter { app.selection.contains($0.element.id) }
+                .map { $0.offset }
+        )
+
+        guard !selectedIndices.isEmpty else { return }
+
+        // Calculate destination index based on direction
+        let minIndex = selectedIndices.min() ?? 0
+        let maxIndex = selectedIndices.max() ?? (items.count - 1)
+
+        let destination: Int
+        switch direction {
+        case .left:
+            // Move block one position to the left
+            destination = max(0, minIndex - 1)
+        case .right:
+            // Move block one position to the right
+            destination = min(items.count, maxIndex + 2)
+        default:
+            return
+        }
+
+        app.reorderBlock(in: "unranked", from: selectedIndices, to: destination)
+    }
+    #endif
 }
 
 internal struct CardView: View {
@@ -271,6 +326,26 @@ internal struct CardView: View {
                 app.toggleSelection(item.id)
             } else {
                 app.beginQuickMove(item)
+            }
+        }
+        .onMoveCommand { direction in
+            // Get current tier for this item
+            guard let tierName = app.currentTier(of: item.id) else { return }
+
+            // Check if we're in multi-select mode with selected items
+            if isMultiSelectActive && app.isSelected(item.id) && app.selection.count > 1 {
+                // Block move: move all selected items in this tier together
+                handleBlockMove(tierName: tierName, direction: direction)
+            } else {
+                // Single item move
+                switch direction {
+                case .left:
+                    app.moveItemLeft(item.id, in: tierName)
+                case .right:
+                    app.moveItemRight(item.id, in: tierName)
+                default:
+                    break
+                }
             }
         }
         .contextMenu {
@@ -420,6 +495,40 @@ internal struct CardView: View {
             .offset(x: layout.contentPadding * 0.2, y: -layout.contentPadding * 0.2)
         #endif
     }
+
+    #if os(tvOS)
+    /// Handle block move for multi-select: move all selected items in a tier together
+    private func handleBlockMove(tierName: String, direction: MoveCommandDirection) {
+        guard let items = app.tiers[tierName] else { return }
+
+        // Get indices of all selected items in this tier
+        let selectedIndices = IndexSet(
+            items.enumerated()
+                .filter { app.selection.contains($0.element.id) }
+                .map { $0.offset }
+        )
+
+        guard !selectedIndices.isEmpty else { return }
+
+        // Calculate destination index based on direction
+        let minIndex = selectedIndices.min() ?? 0
+        let maxIndex = selectedIndices.max() ?? (items.count - 1)
+
+        let destination: Int
+        switch direction {
+        case .left:
+            // Move block one position to the left
+            destination = max(0, minIndex - 1)
+        case .right:
+            // Move block one position to the right
+            destination = min(items.count, maxIndex + 2)
+        default:
+            return
+        }
+
+        app.reorderBlock(in: tierName, from: selectedIndices, to: destination)
+    }
+    #endif
 }
 
 private struct ThumbnailView: View {

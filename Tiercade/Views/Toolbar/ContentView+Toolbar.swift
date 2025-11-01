@@ -346,6 +346,22 @@ internal struct SecondaryToolbarActions: ToolbarContent {
 
     internal var body: some ToolbarContent {
         ToolbarItemGroup(placement: toolbarPlacement) {
+            // Sort menu - appears first for prominence
+            sortMenu
+
+            // Apply Global Sort button (only when sort is active)
+            if !app.globalSortMode.isCustom {
+                Button {
+                    app.applyGlobalSortToCustom()
+                } label: {
+                    Label("Apply Global Sort", systemImage: "checkmark.circle.fill")
+                }
+                .accessibilityIdentifier("Toolbar_ApplySort")
+                #if os(macOS)
+                .help("Save current sort order as custom order")
+                #endif
+            }
+
             Menu("Actions") {
                 ForEach(["S", "A", "B", "C", "D", "F"], id: \.self) { tier in
                     let isTierEmpty = (app.tiers[tier]?.isEmpty ?? true)
@@ -416,6 +432,91 @@ internal struct SecondaryToolbarActions: ToolbarContent {
             }
             #endif
         }
+    }
+
+    private var sortMenu: some View {
+        Menu {
+            // Current sort mode indicator
+            Section {
+                Label(
+                    "Current: \(app.globalSortMode.displayName)",
+                    systemImage: "checkmark.circle"
+                )
+            }
+
+            Divider()
+
+            // Manual order
+            Button {
+                app.setGlobalSortMode(.custom)
+            } label: {
+                Label(
+                    "Manual Order",
+                    systemImage: app.globalSortMode.isCustom ? "checkmark" : ""
+                )
+            }
+
+            // Alphabetical
+            Button {
+                app.setGlobalSortMode(.alphabetical(ascending: true))
+            } label: {
+                let isSelected = {
+                    if case .alphabetical(let asc) = app.globalSortMode, asc { return true }
+                    return false
+                }()
+                Label("A → Z", systemImage: isSelected ? "checkmark" : "")
+            }
+
+            Button {
+                app.setGlobalSortMode(.alphabetical(ascending: false))
+            } label: {
+                let isSelected = {
+                    if case .alphabetical(let asc) = app.globalSortMode, !asc { return true }
+                    return false
+                }()
+                Label("Z → A", systemImage: isSelected ? "checkmark" : "")
+            }
+
+            // Discovered attributes
+            let discovered = app.discoverSortableAttributes()
+            if !discovered.isEmpty {
+                Divider()
+
+                ForEach(Array(discovered.keys.sorted()), id: \.self) { key in
+                    if let type = discovered[key] {
+                        Menu(key.capitalized) {
+                            Button {
+                                app.setGlobalSortMode(.byAttribute(key: key, ascending: true, type: type))
+                            } label: {
+                                let isSelected = {
+                                    if case .byAttribute(let k, let asc, _) = app.globalSortMode,
+                                       k == key, asc { return true }
+                                    return false
+                                }()
+                                Label("\(key.capitalized) ↑", systemImage: isSelected ? "checkmark" : "")
+                            }
+
+                            Button {
+                                app.setGlobalSortMode(.byAttribute(key: key, ascending: false, type: type))
+                            } label: {
+                                let isSelected = {
+                                    if case .byAttribute(let k, let asc, _) = app.globalSortMode,
+                                       k == key, !asc { return true }
+                                    return false
+                                }()
+                                Label("\(key.capitalized) ↓", systemImage: isSelected ? "checkmark" : "")
+                            }
+                        }
+                    }
+                }
+            }
+        } label: {
+            Label("Sort", systemImage: "arrow.up.arrow.down")
+        }
+        .accessibilityIdentifier("Toolbar_Sort")
+        #if os(macOS)
+        .help("Sort items by different criteria")
+        #endif
     }
 }
 
