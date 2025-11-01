@@ -56,6 +56,20 @@ internal extension AppState {
         return picks
     }
 
+    /// Deduped quick pick list - fixes duplicate entries from different sources
+    /// by comparing source+identifier only (ignoring entityID differences)
+    var quickPickTierListsDeduped: [TierListHandle] {
+        var seen = Set<String>()
+        var result: [TierListHandle] = []
+        for handle in quickPickTierLists {
+            let key = "\(handle.source.rawValue)::\(handle.identifier)"
+            if seen.insert(key).inserted {
+                result.append(handle)
+            }
+        }
+        return result
+    }
+
     internal func selectTierList(_ handle: TierListHandle) async {
         switch handle.source {
         case .bundled:

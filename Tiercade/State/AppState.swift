@@ -130,6 +130,10 @@ final class AppState {
     var tierListCreatorDraft: TierProjectDraft?
     var tierListCreatorIssues: [TierListDraftValidationIssue] = []
     var tierListCreatorExportPayload: String?
+    // AI Item Generation (Wizard)
+    var aiGenerationRequest: AIGenerationRequest?
+    var aiGeneratedCandidates: [AIGeneratedItemCandidate] = []
+    var aiGenerationInProgress: Bool = false
     // Head-to-Head
     var h2hActive: Bool = false
     enum H2HSessionPhase: Sendable {

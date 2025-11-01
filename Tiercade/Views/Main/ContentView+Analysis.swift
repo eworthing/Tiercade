@@ -55,14 +55,6 @@ internal struct AnalysisView: View {
                         dismiss()
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Refresh") {
-                        Task {
-                            await app.generateAnalysis()
-                        }
-                    }
-                    .disabled(app.isLoading)
-                }
             }
             #endif
         }

@@ -13,6 +13,7 @@ internal struct ItemsWizardPage: View, WizardPage {
     // Use parent wizard's state for item selection
     @State private var selectedItemID: UUID?
     @State private var showingItemEditor = false
+    @State private var showAIGenerator = false
 
     internal let pageTitle = "Items"
     internal let pageDescription = "Add and configure items for your tier list"
@@ -75,6 +76,34 @@ internal struct ItemsWizardPage: View, WizardPage {
             }
         }
         #endif
+        .sheet(isPresented: $showAIGenerator) {
+            #if os(macOS) || os(iOS)
+            AIItemGeneratorOverlay(appState: appState, draft: draft)
+            #else
+            // tvOS: Show informative message
+            VStack(spacing: Metrics.grid * 4) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 60))
+                    .foregroundStyle(.orange)
+
+                Text("AI Generation Requires macOS or iOS")
+                    .font(.title2)
+                    .multilineTextAlignment(.center)
+
+                Text("Please use the companion iOS or macOS app to generate items with AI.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, Metrics.grid * 8)
+
+                Button("OK") {
+                    showAIGenerator = false
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(Metrics.grid * 8)
+            #endif
+        }
         #if os(tvOS)
         .onAppear { focusedField = .search }
         #endif
@@ -108,7 +137,21 @@ internal struct ItemsWizardPage: View, WizardPage {
 
     private var addItemBar: some View {
         HStack {
+            // AI Generation button
+            Button {
+                showAIGenerator = true
+            } label: {
+                Label("Generate with AI", systemImage: "sparkles.rectangle.stack")
+            }
+            #if os(tvOS)
+            .buttonStyle(.glass)
+            #else
+            .buttonStyle(.bordered)
+            #endif
+            .accessibilityIdentifier("ItemsPage_GenerateAI")
+
             Spacer()
+
             Button {
                 let newItem = appState.addItem(to: draft)
                 selectedItemID = newItem.identifier

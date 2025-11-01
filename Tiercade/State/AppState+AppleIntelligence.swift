@@ -11,6 +11,38 @@ import FoundationModels
 import AppIntents
 #endif
 
+// MARK: - Shared Instructions Factory
+
+#if canImport(FoundationModels)
+/// Create instructions with strong anti-duplicate rules for list generation.
+///
+/// These instructions are used across all AI generation contexts (wizard, chat)
+/// to ensure consistent duplicate prevention behavior.
+@available(iOS 26.0, macOS 26.0, *)
+internal func makeAntiDuplicateInstructions() -> Instructions {
+    Instructions("""
+    You are a helpful assistant. Answer questions clearly and concisely.
+
+    CRITICAL RULES FOR LISTS:
+    - NEVER repeat any item in a list
+    - ALWAYS check if an item was already mentioned before adding it
+    - If asked for N items, provide EXACTLY N UNIQUE items
+    - Stop immediately after reaching the requested number
+    - Do NOT continue generating after the list is complete
+
+    Example of CORRECT list (no repeats):
+    1. Item A
+    2. Item B
+    3. Item C
+
+    Example of INCORRECT list (has repeats - NEVER DO THIS):
+    1. Item A
+    2. Item B
+    3. Item A ← WRONG! Already listed
+    """)
+}
+#endif
+
 // MARK: - Apple Intelligence Chat State
 @MainActor
 internal extension AppState {
@@ -130,26 +162,7 @@ final class AppleIntelligenceService {
 
     private func ensureSession() {
         if session == nil {
-            let instructions = Instructions("""
-            You are a helpful assistant. Answer questions clearly and concisely.
-
-            CRITICAL RULES FOR LISTS:
-            - NEVER repeat any item in a list
-            - ALWAYS check if an item was already mentioned before adding it
-            - If asked for N items, provide EXACTLY N UNIQUE items
-            - Stop immediately after reaching the requested number
-            - Do NOT continue generating after the list is complete
-
-            Example of CORRECT list (no repeats):
-            1. Item A
-            2. Item B
-            3. Item C
-
-            Example of INCORRECT list (has repeats - NEVER DO THIS):
-            1. Item A
-            2. Item B
-            3. Item A ← WRONG! Already listed
-            """)
+            let instructions = makeAntiDuplicateInstructions()
             session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
             print("🤖 [AI] Created new LanguageModelSession with STRONG anti-duplicate instructions")
         }
@@ -579,6 +592,53 @@ final class AppleIntelligenceService {
         }
 
         return (false, nil)
+    }
+
+    // MARK: - Wizard List Generation
+
+    /// Reuse existing UniqueListCoordinator for tier list wizard item generation.
+    ///
+    /// This wrapper instantiates the coordinator with the existing session and calls
+    /// `uniqueList(query:targetCount:)` to generate unique items. Progress updates
+    /// are handled by the caller via `withLoadingIndicator`.
+    ///
+    /// - Parameters:
+    ///   - query: Natural language description of items to generate
+    ///   - count: Target number of items (5-100)
+    /// - Returns: Array of unique item names
+    /// - Throws: Error if generation fails or platform is unsupported
+    ///
+    /// - Note: Only available on macOS/iOS 26+ with FoundationModels framework
+    @available(iOS 26.0, macOS 26.0, *)
+    internal func generateUniqueListForWizard(query: String, count: Int) async throws -> [String] {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            ensureSession()
+            guard let session else {
+                throw NSError(
+                    domain: "AIGeneration",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "No active AI session"]
+                )
+            }
+
+            let fm = FMClient(session: session, logger: { _ in })
+            let coordinator = UniqueListCoordinator(
+                fm: fm,
+                logger: { _ in },
+                useGuidedBackfill: true,
+                hybridSwitchEnabled: false,
+                guidedBudgetBumpFirst: false,
+                promptStyle: .strict
+            )
+
+            return try await coordinator.uniqueList(query: query, targetCount: count, seed: nil)
+        } else {
+            throw NSError(
+                domain: "AIGeneration",
+                code: -2,
+                userInfo: [NSLocalizedDescriptionKey: "AI generation requires macOS or iOS 26+"]
+            )
+        }
     }
     #endif
 }

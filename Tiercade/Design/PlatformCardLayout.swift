@@ -32,7 +32,7 @@ internal struct PlatformCardLayout {
                     maximum: cardWidth + interItemSpacing
                 ),
                 spacing: interItemSpacing,
-                alignment: .top
+                alignment: .topLeading
             )
         ]
     }

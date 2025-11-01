@@ -9,66 +9,74 @@ internal struct TiercadeCommands: Commands {
     internal var body: some Commands {
         // File menu commands
         CommandGroup(replacing: .newItem) {
-            Button("New Tier List") {
+            Button {
                 appState.showTierListCreator = true
+            } label: {
+                Label("New Tier List…", systemImage: "square.and.pencil")
             }
             .keyboardShortcut("n", modifiers: [.shift, .command])
             .help("Create a new tier list")
 
             Divider()
 
-            Button("Save") {
+            Button {
                 Task {
                     try? await appState.saveAsync()
                 }
+            } label: {
+                Label("Save", systemImage: "square.and.arrow.down")
             }
             .keyboardShortcut("s", modifiers: .command)
             .help("Save the current tier list")
 
-            Button("Tier List Browser") {
+            Button {
                 appState.showingTierListBrowser.toggle()
+            } label: {
+                Label("Tier List Browser…", systemImage: "list.bullet.rectangle")
             }
             .keyboardShortcut("o", modifiers: .command)
             .help("Browse and load saved tier lists")
         }
 
         CommandGroup(after: .newItem) {
-            Menu("Export") {
-                Button("Export as Text") {
-                    Task {
-                        await exportToFormat(.text)
-                    }
+            Menu {
+                Button {
+                    Task { await exportToFormat(.text) }
+                } label: {
+                    Label("Text", systemImage: "doc.text")
                 }
 
-                Button("Export as JSON") {
-                    Task {
-                        await exportToFormat(.json)
-                    }
+                Button {
+                    Task { await exportToFormat(.json) }
+                } label: {
+                    Label("JSON", systemImage: "curlybraces.square")
                 }
 
-                Button("Export as Markdown") {
-                    Task {
-                        await exportToFormat(.markdown)
-                    }
+                Button {
+                    Task { await exportToFormat(.markdown) }
+                } label: {
+                    Label("Markdown", systemImage: "doc.plaintext")
                 }
 
-                Button("Export as CSV") {
-                    Task {
-                        await exportToFormat(.csv)
-                    }
+                Button {
+                    Task { await exportToFormat(.csv) }
+                } label: {
+                    Label("CSV", systemImage: "tablecells")
                 }
 
-                Button("Export as PNG") {
-                    Task {
-                        await exportToFormat(.png)
-                    }
+                Button {
+                    Task { await exportToFormat(.png) }
+                } label: {
+                    Label("PNG", systemImage: "photo")
                 }
 
-                Button("Export as PDF") {
-                    Task {
-                        await exportToFormat(.pdf)
-                    }
+                Button {
+                    Task { await exportToFormat(.pdf) }
+                } label: {
+                    Label("PDF", systemImage: "doc.richtext")
                 }
+            } label: {
+                Label("Export", systemImage: "square.and.arrow.up")
             }
             .keyboardShortcut("e", modifiers: [.shift, .command])
             .help("Export tier list to various formats")
@@ -76,33 +84,47 @@ internal struct TiercadeCommands: Commands {
 
         // View menu commands
         CommandGroup(after: .sidebar) {
-            Button(appState.showThemePicker ? "Close Theme Picker" : "Theme Picker") {
+            Button {
                 appState.showThemePicker.toggle()
+            } label: {
+                Label(
+                    appState.showThemePicker ? "Hide Themes" : "Show Themes",
+                    systemImage: "paintpalette"
+                )
             }
-            .keyboardShortcut("t", modifiers: .command)
-            .help("Open theme picker")
+            .keyboardShortcut("t", modifiers: [.command, .option])
+            .help("Toggle tier themes (⌥⌘T)")
 
-            Button(appState.showingAnalysis ? "Close Analysis" : "Analysis") {
+            Button {
                 appState.showingAnalysis.toggle()
+            } label: {
+                Label(
+                    appState.showingAnalysis ? "Hide Analysis" : "Show Analysis",
+                    systemImage: appState.showingAnalysis ? "chart.bar.fill" : "chart.bar"
+                )
             }
-            .keyboardShortcut("a", modifiers: [.shift, .command])
-            .help("Show tier list analysis")
-            .disabled(!appState.canShowAnalysis)
+            .keyboardShortcut("a", modifiers: [.command, .option])
+            .help("Toggle analysis (⌥⌘A)")
+            .disabled(!appState.canShowAnalysis && !appState.showingAnalysis)
         }
 
         // Tier menu commands (custom menu)
         CommandMenu("Tier") {
-            Button("Head-to-Head Ranking") {
+            Button {
                 appState.startH2H()
+            } label: {
+                Label("Head-to-Head Ranking", systemImage: "person.line.dotted.person.fill")
             }
-            .keyboardShortcut("h", modifiers: .command)
-            .help("Compare items head-to-head")
+            .keyboardShortcut("h", modifiers: [.command, .shift])
+            .help("Start head-to-head ranking (⇧⌘H)")
             .disabled(!appState.canStartHeadToHead)
 
             Divider()
 
-            Button("Randomize") {
+            Button {
                 appState.randomize()
+            } label: {
+                Label("Randomize", systemImage: "shuffle")
             }
             .keyboardShortcut("r", modifiers: [.shift, .command])
             .help("Randomly assign all items to tiers")
