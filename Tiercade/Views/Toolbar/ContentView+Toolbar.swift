@@ -25,9 +25,6 @@ internal struct ToolbarView: ToolbarContent {
     @State private var showingSaveDialog = false
     @State private var showingLoadDialog = false
     @State private var saveFileName = ""
-    #if os(tvOS)
-    @State private var showingSortPicker = false
-    #endif
 
     internal var body: some ToolbarContent {
         // Quick menu - iOS uses leading position, macOS uses principal
@@ -143,19 +140,6 @@ internal struct ToolbarView: ToolbarContent {
         .accessibilityIdentifier("Toolbar_NewTierList")
         #if os(macOS)
         .help("Create a new tier list (⇧⌘N)")
-        #endif
-
-        // 1b. Sort (tvOS only - for discoverability)
-        #if os(tvOS)
-        Button {
-            showingSortPicker = true
-        } label: {
-            Label("Sort: \(app.globalSortMode.displayName)", systemImage: "arrow.up.arrow.down")
-        }
-        .accessibilityIdentifier("Toolbar_Sort")
-        .sheet(isPresented: $showingSortPicker) {
-            TVSortPickerOverlay(app: app, isPresented: $showingSortPicker)
-        }
         #endif
 
         // 2. Card Size Menu (all platforms - Label for Icon+Text support)

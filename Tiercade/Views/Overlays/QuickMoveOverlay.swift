@@ -230,8 +230,9 @@ private struct TierButton: View {
             }
         )
         .buttonStyle(.plain)
-        .focusable(!isCurrentTier, interactions: .activate)
+        .focusable(interactions: .activate)
         .accessibilityLabel(isCurrentTier ? "Current tier: \(displayLabel)" : "Move to \(displayLabel)")
+        .accessibilityHint(isCurrentTier ? "Already in this tier" : "Select to move")
     }
 }
 #endif

@@ -8,9 +8,10 @@ internal struct TVToolbarView: View {
     internal var glassNamespace: Namespace.ID
     // Seed and manage initial focus for tvOS toolbar controls
     @FocusState private var focusedControl: Control?
+    @State private var showingSortPicker = false
 
     private enum Control: Hashable {
-        case undo, redo, randomize, reset, library, newTierList, multiSelect, h2h, analytics, density, theme, aiChat
+        case undo, redo, randomize, reset, library, newTierList, multiSelect, h2h, analytics, sort, density, theme, aiChat
     }
 
     internal var body: some View {
@@ -178,6 +179,19 @@ internal struct TVToolbarView: View {
             .accessibilityHint(analyticsHint)
             .focusTooltip(analyticsTooltip)
 
+            Button(action: { showingSortPicker = true }, label: {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.system(size: Metrics.toolbarIconSize))
+                    .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
+            })
+            .buttonStyle(.tvRemote(.primary))
+            .accessibilityIdentifier("Toolbar_Sort")
+            .focused($focusedControl, equals: .sort)
+            .accessibilityLabel("Sort")
+            .accessibilityValue(app.globalSortMode.displayName)
+            .accessibilityHint("Change sort order")
+            .focusTooltip("Sort: \(app.globalSortMode.displayName)")
+
             Button(action: { app.cycleCardDensityPreference() }, label: {
                 Image(systemName: cardDensityValue.symbolName)
                     .font(.system(size: Metrics.toolbarIconSize))
@@ -249,6 +263,9 @@ internal struct TVToolbarView: View {
             if ProcessInfo.processInfo.arguments.contains("-uiTest") {
                 focusedControl = .theme
             }
+        }
+        .sheet(isPresented: $showingSortPicker) {
+            TVSortPickerOverlay(app: app, isPresented: $showingSortPicker)
         }
     }
 }
