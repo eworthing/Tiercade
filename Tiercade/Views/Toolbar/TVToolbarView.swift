@@ -11,7 +11,7 @@ internal struct TVToolbarView: View {
     @State private var showingSortPicker = false
 
     private enum Control: Hashable {
-        case undo, redo, randomize, reset, library, newTierList, multiSelect, h2h, analytics, sort, density, theme, aiChat
+        case undo, redo, randomize, reset, library, newTierList, multiSelect, h2h, analytics, sort, applySort, density, theme, aiChat
     }
 
     internal var body: some View {
@@ -144,6 +144,10 @@ internal struct TVToolbarView: View {
             .accessibilityLabel(editMode == .active ? "Exit Selection Mode" : "Multi-Select")
             .accessibilityValue(editMode == .active ? "\(app.selection.count) items selected" : "")
             .focusTooltip(editMode == .active ? "Exit Selection" : "Multi-Select")
+            .onChange(of: editMode) { _, _ in
+                // Keep focus on multi-select button for ANY mode change
+                focusedControl = .multiSelect
+            }
 
             Button(action: { app.startH2H() }, label: {
                 Image(systemName: "person.line.dotted.person.fill")
@@ -191,6 +195,23 @@ internal struct TVToolbarView: View {
             .accessibilityValue(app.globalSortMode.displayName)
             .accessibilityHint("Change sort order")
             .focusTooltip("Sort: \(app.globalSortMode.displayName)")
+
+            // Apply Sort button (conditional - only when sort is active)
+            if !app.globalSortMode.isCustom {
+                Button(action: {
+                    app.applyGlobalSortToCustom()
+                }, label: {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: Metrics.toolbarIconSize))
+                        .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
+                })
+                .buttonStyle(.tvRemote(.primary))
+                .accessibilityIdentifier("Toolbar_ApplySort")
+                .focused($focusedControl, equals: .applySort)
+                .accessibilityLabel("Apply Sort")
+                .accessibilityValue("Save \(app.globalSortMode.displayName) order as custom")
+                .focusTooltip("Apply: \(app.globalSortMode.displayName)")
+            }
 
             Button(action: { app.cycleCardDensityPreference() }, label: {
                 Image(systemName: cardDensityValue.symbolName)

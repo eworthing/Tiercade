@@ -61,6 +61,13 @@ internal struct TierListQuickMenu: View {
 
         Divider()
 
+        Button("Create New Tier List…") {
+            app.presentTierListCreator()
+        }
+        #if !os(tvOS)
+        .keyboardShortcut("n", modifiers: [.command, .shift])
+        #endif
+
         Button("Browse All Lists…") {
             app.presentTierListBrowser()
         }

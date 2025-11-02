@@ -176,8 +176,7 @@ private struct SortOptionButton: View {
                     )
             )
         }
-        .buttonStyle(.plain)
-        .focusable(interactions: .activate)
+        .buttonStyle(.tvRemote(.secondary))
     }
 }
 #endif
