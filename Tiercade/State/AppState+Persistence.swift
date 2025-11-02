@@ -83,7 +83,12 @@ internal extension AppState {
 
     internal func autoSaveAsync() async {
         guard hasUnsavedChanges else { return }
-        try? save()
+        do {
+            try save()
+        } catch {
+            Logger.persistence.error("Auto-save failed: \(error.localizedDescription)")
+            // Note: Silent failure acceptable for auto-save, but logged for debugging
+        }
     }
 
     @discardableResult
@@ -362,7 +367,12 @@ internal extension AppState {
 
     private func decodeCustomThemes(from data: Data?) -> [CodableTheme] {
         guard let data else { return [] }
-        return (try? JSONDecoder().decode([CodableTheme].self, from: data)) ?? []
+        do {
+            return try JSONDecoder().decode([CodableTheme].self, from: data)
+        } catch {
+            Logger.persistence.error("Failed to decode custom themes: \(error.localizedDescription)")
+            return []
+        }
     }
 
     private func makeItem(from entity: TierItemEntity) -> Item {

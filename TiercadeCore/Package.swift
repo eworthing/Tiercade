@@ -14,6 +14,10 @@ let package = Package(
     targets: [
         .target(
             name: "TiercadeCore",
+            resources: [
+                // Explicitly declare README.md as resource to avoid build warnings
+                .process("Bundled/README.md")
+            ],
             swiftSettings: [
                 // Strict concurrency checking for data-race safety
                 .enableUpcomingFeature("StrictConcurrency"),

@@ -1,0 +1,27 @@
+/* 
+   Localizable.strings
+   Tiercade
+   
+   English (Base) localization
+   Created: November 2025
+   
+   NOTE: This is a foundation file. Strings should be migrated from hardcoded text
+   throughout the codebase. See LOCALIZATION.md for migration guide.
+*/
+
+// MARK: - Common Actions
+"action.cancel" = "Cancel";
+"action.save" = "Save";
+"action.delete" = "Delete";
+"action.edit" = "Edit";
+"action.done" = "Done";
+
+// MARK: - Export Formats
+"export.format.text" = "Plain Text";
+"export.format.json" = "JSON";
+"export.format.markdown" = "Markdown";
+"export.format.csv" = "CSV";
+"export.format.png" = "PNG Image";
+"export.format.pdf" = "PDF";
+
+// Add more strings as they are migrated from code
