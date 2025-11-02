@@ -87,7 +87,7 @@ internal extension AppState {
             try save()
         } catch {
             Logger.persistence.error("Auto-save failed: \(error.localizedDescription)")
-            // Note: Silent failure acceptable for auto-save, but logged for debugging
+            // Silent failure is acceptable for auto-save in this context: auto-save is non-blocking and frequent, so user interruption is avoided. Errors are logged for debugging, and users can manually save to ensure data persistence.
         }
     }
 
