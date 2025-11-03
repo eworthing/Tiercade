@@ -21,5 +21,5 @@ internal enum PersistenceIntervals {
     /// **Testing considerations:**
     /// - Validated with rapid editing sessions (50+ items moved in < 60s)
     /// - Ensures autosave completes before app enters background (iOS/tvOS)
-    internal static let autosave: TimeInterval = 30.0
+    static let autosave: TimeInterval = 30.0
 }

@@ -7,18 +7,18 @@ import FoundationModels
 
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
-internal extension AcceptanceTestSuite {
+extension AcceptanceTestSuite {
 static func median(_ xs: [Double]) -> Double {
     guard !xs.isEmpty else { return 0 }
-    internal let s = xs.sorted()
-    internal let n = s.count
+    let s = xs.sorted()
+    let n = s.count
     return n % 2 == 1 ? s[n/2] : 0.5 * (s[n/2 - 1] + s[n/2])
 }
 
 internal struct SeedRunResults {
-    internal let passAtN: Double
-    internal let medianIPS: Double
-    internal let runs: [SeedRun]
+    let passAtN: Double
+    let medianIPS: Double
+    let runs: [SeedRun]
 }
 
 /// Run test across seed ring with telemetry export
@@ -29,20 +29,20 @@ static func runAcrossSeeds(
     logger: @escaping (String) -> Void,
     makeCoordinator: () async throws -> UniqueListCoordinator
 ) async -> SeedRunResults {
-    internal var runs: [SeedRun] = []
+    var runs: [SeedRun] = []
 
     for seed in seedRing {
         do {
-            internal let coordinator = try await makeCoordinator()
-            internal let t0 = Date()
-            internal let items = (try? await coordinator.uniqueList(query: query, targetCount: targetN, seed: seed)) ?? []
-            internal let elapsed = Date().timeIntervalSince(t0)
-            internal let ips = Double(items.count) / max(elapsed, 0.001)
-            internal let ok = items.count >= targetN
+            let coordinator = try await makeCoordinator()
+            let t0 = Date()
+            let items = (try? await coordinator.uniqueList(query: query, targetCount: targetN, seed: seed)) ?? []
+            let elapsed = Date().timeIntervalSince(t0)
+            let ips = Double(items.count) / max(elapsed, 0.001)
+            let ok = items.count >= targetN
             runs.append(SeedRun(seed: seed, ok: ok, ips: ips))
 
             // Capture diagnostics before export
-            internal let diagnostics = coordinator.getDiagnostics()
+            let diagnostics = coordinator.getDiagnostics()
 
             // Per-run telemetry export (append JSONL)
             coordinator.exportRunTelemetry(
@@ -73,10 +73,10 @@ static func runAcrossSeeds(
         }
     }
 
-    internal let passAtN = Double(runs.filter { $0.ok }.count) / Double(seedRing.count)
-    internal let medianIPS = median(runs.map { $0.ips })
+    let passAtN = Double(runs.filter { $0.ok }.count) / Double(seedRing.count)
+    let medianIPS = median(runs.map { $0.ips })
 
-    internal let seedResults = runs.map { $0.ok }
+    let seedResults = runs.map { $0.ok }
     logger(
         "🔎 \(testId): pass@N=\(String(format: "%.2f", passAtN))  " +
         "per-seed=\(seedResults)  median ips=\(String(format: "%.2f", medianIPS))"
@@ -86,7 +86,7 @@ static func runAcrossSeeds(
 }
 
 static func createTestSession() async throws -> LanguageModelSession {
-    internal let instructions = Instructions("""
+    let instructions = Instructions("""
     You are a helpful assistant that generates lists.
     Always return valid JSON matching the requested schema.
     Ensure items are distinct and diverse.

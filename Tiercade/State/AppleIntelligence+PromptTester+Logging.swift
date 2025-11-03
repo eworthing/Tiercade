@@ -6,7 +6,7 @@ import FoundationModels
 // MARK: - Logging & Reporting
 
 @MainActor
-internal extension SystemPromptTester {
+extension SystemPromptTester {
 static func logTestHeader(testQuery: String, onProgress: @MainActor @escaping (String) -> Void) {
     onProgress("🧪 Starting automated test of \(prompts.count) system prompts...")
     onProgress("Test query: '\(testQuery)'")
@@ -26,7 +26,7 @@ static func logPromptStart(
 }
 
 static func savePartialResults(results: [TestResult]) {
-    internal let partialPath = "/tmp/tiercade_prompt_test_PARTIAL.txt"
+    let partialPath = "/tmp/tiercade_prompt_test_PARTIAL.txt"
     writeDetailedLog(results: results, to: partialPath)
     print("🧪 💾 Saved partial results (\(results.count) tests) to: \(partialPath)")
 }
@@ -69,7 +69,7 @@ static func reportTestResult(
     }
 
     // Show analysis results
-    internal let summaryMessage = """
+    let summaryMessage = """
 
     📊 ANALYSIS:
     • Status: \(status)
@@ -93,17 +93,17 @@ static func reportTestResult(
 
 static func printTestSummary(results: [TestResult], onProgress: @MainActor @escaping (String) -> Void) {
     print("\n🧪 ========== TEST SUMMARY ==========")
-    internal let successful = results.filter { !$0.hasDuplicates && !$0.insufficient }
-    internal let onlyDuplicates = results.filter { $0.hasDuplicates && !$0.insufficient }
-    internal let onlyInsufficient = results.filter { !$0.hasDuplicates && $0.insufficient }
-    internal let bothFailures = results.filter { $0.hasDuplicates && $0.insufficient }
+    let successful = results.filter { !$0.hasDuplicates && !$0.insufficient }
+    let onlyDuplicates = results.filter { $0.hasDuplicates && !$0.insufficient }
+    let onlyInsufficient = results.filter { !$0.hasDuplicates && $0.insufficient }
+    let bothFailures = results.filter { $0.hasDuplicates && $0.insufficient }
 
     print("🧪 Successful prompts: \(successful.count)/\(results.count)")
     print("🧪 Only duplicates: \(onlyDuplicates.count)")
     print("🧪 Only insufficient: \(onlyInsufficient.count)")
     print("🧪 Both failures: \(bothFailures.count)")
 
-    internal let summaryMessage = """
+    let summaryMessage = """
 
     📊 RESULTS: \(successful.count) of \(results.count) prompts fully passed
     • ✅ Passed: \(successful.count) (no duplicates, sufficient items)
@@ -117,7 +117,7 @@ static func printTestSummary(results: [TestResult], onProgress: @MainActor @esca
         print("\n✅ WORKING PROMPTS:")
         onProgress("\n✅ WORKING PROMPTS:")
         for result in successful {
-            internal let msg = "  • Prompt #\(result.promptNumber): \(result.uniqueItems) unique items"
+            let msg = "  • Prompt #\(result.promptNumber): \(result.uniqueItems) unique items"
             onProgress(msg)
             print("   Prompt #\(result.promptNumber): \(result.uniqueItems) unique items")
         }
@@ -127,9 +127,9 @@ static func printTestSummary(results: [TestResult], onProgress: @MainActor @esca
 }
 
 static func saveCompleteLogs(results: [TestResult], onProgress: @MainActor @escaping (String) -> Void) {
-    internal let sandboxTemp = FileManager.default.temporaryDirectory
-    internal let logPath = sandboxTemp.appendingPathComponent("tiercade_prompt_test_results.txt").path
-    internal let outputLogPath = sandboxTemp.appendingPathComponent("tiercade_test_output.log").path
+    let sandboxTemp = FileManager.default.temporaryDirectory
+    let logPath = sandboxTemp.appendingPathComponent("tiercade_prompt_test_results.txt").path
+    let outputLogPath = sandboxTemp.appendingPathComponent("tiercade_test_output.log").path
     writeDetailedLog(results: results, to: logPath)
     onProgress("\n📁 Detailed results saved to: \(logPath)")
     onProgress("📁 Output log at: \(outputLogPath)")

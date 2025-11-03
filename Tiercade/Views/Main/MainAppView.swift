@@ -17,7 +17,7 @@ internal struct MainAppView: View {
     #if os(tvOS)
     @Environment(\.scenePhase) private var scenePhase
     @FocusState private var detailFocus: DetailFocus?
-    internal enum DetailFocus: Hashable { case close }
+    enum DetailFocus: Hashable { case close }
     @Namespace private var glassNamespace
     #endif
     #if os(iOS)
@@ -26,16 +26,16 @@ internal struct MainAppView: View {
 
     internal var body: some View {
         @Bindable var app = app
-        internal let detailPresented = app.overlays.detailItem != nil
-        internal let headToHeadPresented = app.headToHead.isActive
-        internal let themeCreatorPresented = app.overlays.showThemeCreator
-        internal let tierCreatorPresented = app.overlays.showTierListCreator
-        internal let quickMovePresented = app.overlays.quickMoveTarget != nil
-        internal let aiChatPresented = app.aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform
+        let detailPresented = app.overlays.detailItem != nil
+        let headToHeadPresented = app.headToHead.isActive
+        let themeCreatorPresented = app.overlays.showThemeCreator
+        let tierCreatorPresented = app.overlays.showTierListCreator
+        let quickMovePresented = app.overlays.quickMoveTarget != nil
+        let aiChatPresented = app.aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform
         // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
         // which provides automatic focus containment via separate presentation context
         // Use centralized overlay blocking check from AppState
-        internal let modalBlockingFocus = app.blocksBackgroundFocus
+        let modalBlockingFocus = app.blocksBackgroundFocus
 
         return Group {
             #if os(tvOS)
@@ -439,7 +439,7 @@ internal struct MainAppView: View {
 }
 
 private extension MainAppView {
-    internal func handleBackCommand() {
+    func handleBackCommand() {
         if handleOverlayDismissals() { return }
         if handleQuickActionDismissals() { return }
         if handleCreatorDismissals() { return }

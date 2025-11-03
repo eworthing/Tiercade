@@ -13,81 +13,81 @@ import Foundation
 // MARK: - Test Configuration Types
 
 internal struct TestConfiguration: Codable {
-    internal let name: String
-    internal let description: String
-    internal let tokenPerItem: Int
-    internal let minTokens: Int
-    internal let tokenMultiplier: Double
-    internal let maxChunkSize: Int?
-    internal let promptTemplate: String
+    let name: String
+    let description: String
+    let tokenPerItem: Int
+    let minTokens: Int
+    let tokenMultiplier: Double
+    let maxChunkSize: Int?
+    let promptTemplate: String
 
-    internal enum CodingKeys: String, CodingKey {
-        internal case name
-        internal case description
-        internal case tokenPerItem = "token_per_item"
-        internal case minTokens = "min_tokens"
-        internal case tokenMultiplier = "token_multiplier"
-        internal case maxChunkSize = "max_chunk_size"
-        internal case promptTemplate = "prompt_template"
+    enum CodingKeys: String, CodingKey {
+        case name
+        case description
+        case tokenPerItem = "token_per_item"
+        case minTokens = "min_tokens"
+        case tokenMultiplier = "token_multiplier"
+        case maxChunkSize = "max_chunk_size"
+        case promptTemplate = "prompt_template"
     }
 }
 
 internal struct SamplingProfile: Codable {
-    internal let name: String
-    internal let type: String
-    internal let value: Double?
-    internal let temperature: Double
+    let name: String
+    let type: String
+    let value: Double?
+    let temperature: Double
 }
 
 internal struct TestScenario: Codable {
-    internal let name: String
-    internal let config: String
-    internal let sampling: String
-    internal let targetCount: Int
-    internal let query: String
+    let name: String
+    let config: String
+    let sampling: String
+    let targetCount: Int
+    let query: String
 
-    internal enum CodingKeys: String, CodingKey {
-        internal case name
-        internal case config
-        internal case sampling
-        internal case targetCount = "target_count"
-        internal case query
+    enum CodingKeys: String, CodingKey {
+        case name
+        case config
+        case sampling
+        case targetCount = "target_count"
+        case query
     }
 }
 
 internal struct TestConfigFile: Codable {
-    internal let configurations: [TestConfiguration]
-    internal let samplingProfiles: [SamplingProfile]
-    internal let testScenarios: [TestScenario]
+    let configurations: [TestConfiguration]
+    let samplingProfiles: [SamplingProfile]
+    let testScenarios: [TestScenario]
 
-    internal enum CodingKeys: String, CodingKey {
-        internal case configurations
-        internal case samplingProfiles = "sampling_profiles"
-        internal case testScenarios = "test_scenarios"
+    enum CodingKeys: String, CodingKey {
+        case configurations
+        case samplingProfiles = "sampling_profiles"
+        case testScenarios = "test_scenarios"
     }
 }
 
-internal extension UniqueListCoordinator {
+extension UniqueListCoordinator {
 
     /// Load test configurations from file
     internal static func loadTestConfigurations() -> TestConfigFile? {
         // First try project directory
-        internal let projectPath = URL(fileURLWithPath: #file)
+        let projectPath = URL(fileURLWithPath: #file)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("test_configs.json")
 
         // Also try Documents directory
-        internal let docsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
+        let docsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
             .appendingPathComponent("test_configs.json")
 
         // Try /tmp as fallback
-        internal let tmpPath = URL(fileURLWithPath: "/tmp/test_configs.json")
+        let tmpPath = URL(fileURLWithPath: "/tmp/test_configs.json")
 
         for path in [projectPath, docsPath, tmpPath].compactMap({ $0 }) {
             if let data = try? Data(contentsOf: path),
-               internal let config = try? JSONDecoder().decode(TestConfigFile.self, from: data) {
+               let config = try? JSONDecoder().decode(TestConfigFile.self, from: data) {
                 print("📋 Loaded test configurations from: \(path.path)")
                 return config
             }
@@ -102,7 +102,7 @@ internal extension UniqueListCoordinator {
         print("🔧 Applying configuration: \(config.name) - \(config.description)")
 
         // Store configuration in UserDefaults for the actual generation code to use
-        internal let defaults = UserDefaults.standard
+        let defaults = UserDefaults.standard
         defaults.set(config.tokenPerItem, forKey: "test_config_token_per_item")
         defaults.set(config.minTokens, forKey: "test_config_min_tokens")
         defaults.set(config.tokenMultiplier, forKey: "test_config_token_multiplier")
@@ -111,17 +111,17 @@ internal extension UniqueListCoordinator {
         defaults.synchronize()
     }
 
-    internal struct ConfigOverrides {
-        internal let tokenPerItem: Int?
-        internal let minTokens: Int?
-        internal let tokenMultiplier: Double?
-        internal let maxChunkSize: Int?
-        internal let promptTemplate: String?
+    struct ConfigOverrides {
+        let tokenPerItem: Int?
+        let minTokens: Int?
+        let tokenMultiplier: Double?
+        let maxChunkSize: Int?
+        let promptTemplate: String?
     }
 
     /// Get current configuration overrides
     internal static func getCurrentConfigOverrides() -> ConfigOverrides {
-        internal let defaults = UserDefaults.standard
+        let defaults = UserDefaults.standard
 
         // Clean up old values if test is not active
         if !CommandLine.arguments.contains("-testConfig") {
@@ -150,7 +150,7 @@ internal extension UniqueListCoordinator {
         query: String,
         avoidList: [String]
     ) -> String {
-        internal let avoidJSON = avoidList.map { "\"\($0)\"" }.joined(separator: ", ")
+        let avoidJSON = avoidList.map { "\"\($0)\"" }.joined(separator: ", ")
 
         return template
             .replacingOccurrences(of: "{count}", with: "\(count)")
@@ -160,7 +160,7 @@ internal extension UniqueListCoordinator {
 
     /*
      /// Run a specific test scenario (future enhancement - requires generate method)
-     internal func runTestScenario(_ scenario: TestScenario) async throws {
+     func runTestScenario(_ scenario: TestScenario) async throws {
      guard let configs = Self.loadTestConfigurations() else {
      throw NSError(domain: "TestConfig", code: -1, userInfo: [
      NSLocalizedDescriptionKey: "Failed to load test configurations"
@@ -189,20 +189,20 @@ internal extension UniqueListCoordinator {
      applyConfiguration(config)
 
      // Create appropriate DecoderProfile
-     internal let profile: DecoderProfile
+     let profile: DecoderProfile
      switch sampling.type {
-     internal case "topK":
+     case "topK":
      profile = .topK(Int(sampling.value ?? 40))
-     internal case "topP":
+     case "topP":
      profile = .topP(sampling.value ?? 0.92)
-     internal case "greedy":
+     case "greedy":
      profile = .greedy
      default:
      profile = .topK(40)
      }
 
      // Run the generation
-     internal let result = try await self.generate(
+     let result = try await self.generate(
      N: scenario.targetCount,
      query: scenario.query,
      budget: 3600,  // Max tokens
@@ -217,14 +217,14 @@ internal extension UniqueListCoordinator {
 
 // Extension to use configuration in generation
 @available(iOS 26.0, macOS 26.0, *)
-internal extension FMClient {
+extension FMClient {
 
-    internal struct GenerateWithConfigParameters {
-        internal let prompt: String
-        internal let profile: DecoderProfile
-        internal let initialSeed: UInt64?
-        internal let temperature: Double?
-        internal let maxTokens: Int?
+    struct GenerateWithConfigParameters {
+        let prompt: String
+        let profile: DecoderProfile
+        let initialSeed: UInt64?
+        let temperature: Double?
+        let maxTokens: Int?
     }
 
     /// Generate with configuration overrides
@@ -233,11 +233,11 @@ internal extension FMClient {
         telemetry: inout [AttemptMetrics]
     ) async throws -> [String] {
         // Check for configuration overrides
-        internal let overrides = UniqueListCoordinator.getCurrentConfigOverrides()
+        let overrides = UniqueListCoordinator.getCurrentConfigOverrides()
 
         // Use overridden values if available
-        internal let actualMaxTokens = overrides.minTokens ?? params.maxTokens
-        internal let actualPrompt: String
+        let actualMaxTokens = overrides.minTokens ?? params.maxTokens
+        let actualPrompt: String
 
         if overrides.promptTemplate != nil {
             // Parse the prompt to extract count, query, and avoid list

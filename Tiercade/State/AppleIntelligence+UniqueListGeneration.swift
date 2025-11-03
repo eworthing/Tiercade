@@ -10,9 +10,9 @@ import FoundationModels
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
 final class FMClient {
-    internal var session: LanguageModelSession
-    internal let logger: (String) -> Void
-    internal let sessionFactory: (() async throws -> LanguageModelSession)?
+    var session: LanguageModelSession
+    let logger: (String) -> Void
+    let sessionFactory: (() async throws -> LanguageModelSession)?
 
     // Deterministic seed ring for reproducible retries
     internal static let seedRing: [UInt64] = [42, 1337, 9999, 123456, 987654]
@@ -27,13 +27,13 @@ final class FMClient {
         self.sessionFactory = sessionFactory
     }
 
-    internal struct GenerateParameters {
-        internal let prompt: String
-        internal let profile: DecoderProfile
-        internal let initialSeed: UInt64?
-        internal let temperature: Double?
-        internal let maxTokens: Int?
-        internal let maxRetries: Int
+    struct GenerateParameters {
+        let prompt: String
+        let profile: DecoderProfile
+        let initialSeed: UInt64?
+        let temperature: Double?
+        let maxTokens: Int?
+        let maxRetries: Int
     }
 
     /// Generate using guided schema with automatic retry on seed-dependent failures
@@ -41,13 +41,13 @@ final class FMClient {
         _ params: GenerateParameters,
         telemetry: inout [AttemptMetrics]
     ) async throws -> [String] {
-        internal let start = Date()
-        internal var retryState = initializeRetryState(params: params)
+        let start = Date()
+        var retryState = initializeRetryState(params: params)
 
         logGenerationStart(params: params)
 
         for attempt in 0..<params.maxRetries {
-            internal let attemptStart = Date()
+            let attemptStart = Date()
             // INVARIANT: Reset per-attempt flags to preserve telemetry accuracy (see 1c5d26b).
             // This flag is scoped per attempt; handleAttemptFailure may set it to true during
             // session recreation, but it must start false each iteration for accurate reporting.
@@ -56,7 +56,7 @@ final class FMClient {
             logAttemptDetails(attempt: attempt, maxRetries: params.maxRetries, options: retryState.options)
 
             do {
-                internal let response = try await executeGuidedGeneration(
+                let response = try await executeGuidedGeneration(
                     prompt: params.prompt,
                     options: retryState.options
                 )
@@ -100,53 +100,53 @@ final class FMClient {
         throw buildRetryExhaustedError(lastError: retryState.lastError)
     }
 
-    internal struct RetryState {
-        internal var options: GenerationOptions
-        internal var seed: UInt64?
-        internal var lastError: Error?
-        internal var sessionRecreated: Bool = false
+    struct RetryState {
+        var options: GenerationOptions
+        var seed: UInt64?
+        var lastError: Error?
+        var sessionRecreated: Bool = false
     }
 
     public struct AttemptContext: Sendable {
-        internal let attempt: Int
-        internal let seed: UInt64?
-        internal let profile: DecoderProfile
-        internal let options: GenerationOptions
-        internal let sessionRecreated: Bool
-        internal let elapsed: Double
+        let attempt: Int
+        let seed: UInt64?
+        let profile: DecoderProfile
+        let options: GenerationOptions
+        let sessionRecreated: Bool
+        let elapsed: Double
     }
 
     public struct ResponseContext {
-        internal let response: LanguageModelSession.Response<UniqueListResponse>
-        internal let attempt: Int
-        internal let attemptStart: Date
-        internal let totalStart: Date
-        internal let currentSeed: UInt64?
-        internal let sessionRecreated: Bool
-        internal let params: GenerateParameters
+        let response: LanguageModelSession.Response<UniqueListResponse>
+        let attempt: Int
+        let attemptStart: Date
+        let totalStart: Date
+        let currentSeed: UInt64?
+        let sessionRecreated: Bool
+        let params: GenerateParameters
     }
 
     public struct UnguidedAttemptContext: Sendable {
-        internal let attempt: Int
-        internal let params: GenerateTextArrayParameters
-        internal let options: GenerationOptions
-        internal let sessionRecreated: Bool
-        internal let elapsed: Double
+        let attempt: Int
+        let params: GenerateTextArrayParameters
+        let options: GenerationOptions
+        let sessionRecreated: Bool
+        let elapsed: Double
     }
 
-    internal struct UnguidedRetryState {
-        internal var options: GenerationOptions
-        internal var lastError: Error?
-        internal var sessionRecreated: Bool = false
+    struct UnguidedRetryState {
+        var options: GenerationOptions
+        var lastError: Error?
+        var sessionRecreated: Bool = false
     }
 
-    internal struct GenerateTextArrayParameters {
-        internal let prompt: String
-        internal let profile: DecoderProfile
-        internal let initialSeed: UInt64?
-        internal let temperature: Double?
-        internal let maxTokens: Int?
-        internal let maxRetries: Int
+    struct GenerateTextArrayParameters {
+        let prompt: String
+        let profile: DecoderProfile
+        let initialSeed: UInt64?
+        let temperature: Double?
+        let maxTokens: Int?
+        let maxRetries: Int
     }
 
     /// Unguided generation that returns [String] by parsing JSON text array.
@@ -155,8 +155,8 @@ final class FMClient {
         _ params: GenerateTextArrayParameters,
         telemetry: inout [AttemptMetrics]
     ) async throws -> [String] {
-        internal let start = Date()
-        internal var retryState = UnguidedRetryState(
+        let start = Date()
+        var retryState = UnguidedRetryState(
             options: params.profile.options(
                 seed: params.initialSeed,
                 temp: params.temperature,
@@ -166,14 +166,14 @@ final class FMClient {
         )
 
         for attempt in 0..<params.maxRetries {
-            internal let attemptStart = Date()
+            let attemptStart = Date()
             // INVARIANT: Reset per-attempt flags to preserve telemetry accuracy (see 1c5d26b).
             // This flag is scoped per attempt; handleUnguidedError may set it to true during
             // session recreation, but it must start false each iteration for accurate reporting.
             retryState.sessionRecreated = false
 
             do {
-                internal let response = try await session.respond(
+                let response = try await session.respond(
                     to: Prompt(params.prompt),
                     options: retryState.options
                 )
@@ -219,12 +219,12 @@ final class FMClient {
 // MARK: - Token Chunking Helper
 
 private func chunkByTokens(_ keys: [String], budget: Int = AIChunkingLimits.tokenBudget) -> [[String]] {
-    internal var chunks: [[String]] = []
-    internal var cur: [String] = []
-    internal var used = 2  // Account for [ ]
+    var chunks: [[String]] = []
+    var cur: [String] = []
+    var used = 2  // Account for [ ]
 
     for k in keys {
-        internal let t = (k.count + 3) / 4 + 3  // Rough: text + quotes/comma
+        let t = (k.count + 3) / 4 + 3  // Rough: text + quotes/comma
         if used + t > budget, !cur.isEmpty {
             chunks.append(cur)
             cur = []
@@ -247,27 +247,27 @@ private func chunkByTokens(_ keys: [String], budget: Int = AIChunkingLimits.toke
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
 final class UniqueListCoordinator {
-    internal let fm: FMClient
-    internal let logger: (String) -> Void
-    internal var telemetry: [AttemptMetrics] = []
-    internal let useGuidedBackfill: Bool
+    let fm: FMClient
+    let logger: (String) -> Void
+    var telemetry: [AttemptMetrics] = []
+    let useGuidedBackfill: Bool
     // DEBUG: Proactively boost first guided backfill round (no hybrid switch)
-    internal var guidedBudgetBumpFirst: Bool = false
+    var guidedBudgetBumpFirst: Bool = false
     // DEBUG-only: Hybrid switch from guided→unguided backfill by heuristic
-    internal var hybridSwitchEnabled: Bool = false
-    internal var hybridDupThreshold: Double = 0.70  // 70% round dup-rate
-    internal enum PromptStyle: String, Sendable { case strict, minimal }
-    internal var promptStyle: PromptStyle = .strict
+    var hybridSwitchEnabled: Bool = false
+    var hybridDupThreshold: Double = 0.70  // 70% round dup-rate
+    enum PromptStyle: String, Sendable { case strict, minimal }
+    var promptStyle: PromptStyle = .strict
 
     // Run diagnostics (populated by uniqueList())
-    internal var lastRunTotalGenerated: Int?
-    internal var lastRunDupCount: Int?
-    internal var lastRunDupRate: Double?
-    internal var lastRunBackfillRounds: Int?
-    internal var lastRunCircuitBreakerTriggered: Bool?
-    internal var lastRunPassCount: Int?
-    internal var lastRunFailureReason: String?
-    internal var lastRunTopDuplicates: [String: Int]?
+    var lastRunTotalGenerated: Int?
+    var lastRunDupCount: Int?
+    var lastRunDupRate: Double?
+    var lastRunBackfillRounds: Int?
+    var lastRunCircuitBreakerTriggered: Bool?
+    var lastRunPassCount: Int?
+    var lastRunFailureReason: String?
+    var lastRunTopDuplicates: [String: Int]?
 
     internal init(
         fm: FMClient,
@@ -287,8 +287,8 @@ final class UniqueListCoordinator {
 
     /// Generate N unique items using Generate → Dedup → Fill architecture
     internal func uniqueList(query: String, targetCount: Int, seed: UInt64? = nil) async throws -> [String] {
-        internal let startTime = Date()
-        internal var state = GenerationState(targetCount: targetCount)
+        let startTime = Date()
+        var state = GenerationState(targetCount: targetCount)
 
         try await executePass1(query: query, targetCount: targetCount, seed: seed, state: &state)
 
@@ -304,17 +304,17 @@ final class UniqueListCoordinator {
         return Array(state.ordered.prefix(targetCount))
     }
 
-    internal struct GenerationState {
-        internal var ordered: [String] = []
-        internal var seen = Set<String>()
-        internal var totalGeneratedCount = 0
-        internal var duplicatesFound = 0
-        internal var passCount = 0
-        internal var localTelemetry: [AttemptMetrics] = []
-        internal var dupFrequency: [String: Int] = [:]
-        internal var backfillRoundsTotal = 0
-        internal var circuitBreakerTriggered = false
-        internal let targetCount: Int
+    struct GenerationState {
+        var ordered: [String] = []
+        var seen = Set<String>()
+        var totalGeneratedCount = 0
+        var duplicatesFound = 0
+        var passCount = 0
+        var localTelemetry: [AttemptMetrics] = []
+        var dupFrequency: [String: Int] = [:]
+        var backfillRoundsTotal = 0
+        var circuitBreakerTriggered = false
+        let targetCount: Int
 
         mutating func absorb(
             _ items: [String],
@@ -322,7 +322,7 @@ final class UniqueListCoordinator {
         ) {
             totalGeneratedCount += items.count
             for s in items {
-                internal let k = s.normKey
+                let k = s.normKey
                 if seen.insert(k).inserted {
                     ordered.append(s)
                 } else {
@@ -339,7 +339,7 @@ final class UniqueListCoordinator {
 
 // MARK: - Diagnostic Helpers
 
-internal func looksLikeJSON5(_ s: String) -> Bool {
+func looksLikeJSON5(_ s: String) -> Bool {
     s.range(of: #"//|/\*|\*/"#, options: .regularExpression) != nil ||
         s.range(of: #",\s*[}\]]"#, options: .regularExpression) != nil
 }

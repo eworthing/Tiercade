@@ -11,13 +11,13 @@ public enum FilterType: String, CaseIterable {
 
 // MARK: - Toast System
 
-internal enum ToastType {
+enum ToastType {
     case success
     case error
     case info
     case warning
 
-    internal var color: Color {
+    var color: Color {
         switch self {
         case .success:
             return .green
@@ -30,7 +30,7 @@ internal enum ToastType {
         }
     }
 
-    internal var icon: String {
+    var icon: String {
         switch self {
         case .success:
             return "checkmark.circle.fill"
@@ -44,14 +44,14 @@ internal enum ToastType {
     }
 }
 
-internal struct ToastMessage: Identifiable {
-    internal let id = UUID()
-    internal let type: ToastType
-    internal let title: String
-    internal let message: String?
-    internal let duration: TimeInterval
-    internal let actionTitle: String?
-    internal let action: (() -> Void)?
+struct ToastMessage: Identifiable {
+    let id = UUID()
+    let type: ToastType
+    let title: String
+    let message: String?
+    let duration: TimeInterval
+    let actionTitle: String?
+    let action: (() -> Void)?
 
     init(
         type: ToastType,
@@ -84,14 +84,14 @@ internal struct ToastMessage: Identifiable {
 
 // MARK: - Color helpers
 // Note: Basic hex parsing for backward compatibility. Full color utilities in ColorUtilities.swift
-internal extension Color {
+extension Color {
     init?(hex: String) {
-        internal var s = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         if s.hasPrefix("#") { s.removeFirst() }
         guard s.count == 6, let v = Int(s, radix: 16) else { return nil }
-        internal let r = Double((v >> 16) & 0xFF) / 255.0
-        internal let g = Double((v >> 8) & 0xFF) / 255.0
-        internal let b = Double(v & 0xFF) / 255.0
+        let r = Double((v >> 16) & 0xFF) / 255.0
+        let g = Double((v >> 8) & 0xFF) / 255.0
+        let b = Double(v & 0xFF) / 255.0
         self = Color(red: r, green: g, blue: b)
     }
 }

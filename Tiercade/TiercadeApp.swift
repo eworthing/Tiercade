@@ -20,9 +20,9 @@ private let bootLogURL: URL = {
 }()
 
 private func bootLog(_ s: String) {
-    internal let line = "[\(ISO8601DateFormatter().string(from: Date()))] \(s)\n"
+    let line = "[\(ISO8601DateFormatter().string(from: Date()))] \(s)\n"
     if let d = line.data(using: .utf8) {
-        internal let path = bootLogURL.path
+        let path = bootLogURL.path
         if FileManager.default.fileExists(atPath: path) {
             if let h = try? FileHandle(forWritingTo: bootLogURL) {
                 _ = try? h.seekToEnd()
@@ -40,17 +40,17 @@ private func bootLog(_ s: String) {
 }
 
 @main
-internal struct TiercadeApp: App {
+struct TiercadeApp: App {
     @AppStorage("ui.theme") private var themeRaw: String = ThemePreference.system.rawValue
     private let modelContainer: ModelContainer
     @State private var appState: AppState
     @State private var kicked = false
 
     init() {
-        internal let args = ProcessInfo.processInfo.arguments
+        let args = ProcessInfo.processInfo.arguments
         bootLog("🚀 TiercadeApp init, args=\(args)")
 
-        internal let container: ModelContainer
+        let container: ModelContainer
         do {
             container = try ModelContainer(
                 for: TierListEntity.self,
@@ -77,7 +77,7 @@ internal struct TiercadeApp: App {
         ThemePreference(rawValue: themeRaw)?.colorScheme
     }
 
-    internal var body: some Scene {
+    var body: some Scene {
         WindowGroup {
             ZStack {
                 Palette.bg.ignoresSafeArea()
@@ -104,7 +104,7 @@ internal struct TiercadeApp: App {
         guard !kicked else { return }
         kicked = true
 
-        internal let args = ProcessInfo.processInfo.arguments
+        let args = ProcessInfo.processInfo.arguments
         bootLog("🔎 body.task fired, args=\(args)")
 
         guard args.contains(acceptanceTestFlag) else {
@@ -130,13 +130,13 @@ internal struct TiercadeApp: App {
             bootLog("✅ Runtime version check passed (iOS 26.0+/macOS 26.0+)")
             do {
                 bootLog("🧪 Calling AcceptanceTestSuite.runAll()...")
-                internal let report = try await AcceptanceTestSuite.runAll { message in
+                let report = try await AcceptanceTestSuite.runAll { message in
                     bootLog("🧪 \(message)")
                 }
 
-                internal let reportPath = URL(fileURLWithPath: NSTemporaryDirectory())
+                let reportPath = URL(fileURLWithPath: NSTemporaryDirectory())
                     .appendingPathComponent("tiercade_acceptance_test_report.json").path
-                internal let telemetryPath = URL(fileURLWithPath: NSTemporaryDirectory())
+                let telemetryPath = URL(fileURLWithPath: NSTemporaryDirectory())
                     .appendingPathComponent("unique_list_runs.jsonl").path
 
                 try? AcceptanceTestSuite.saveReport(report, to: reportPath)
@@ -188,12 +188,12 @@ internal struct TiercadeApp: App {
         print("🧪 Detected -runUnifiedTests launch argument")
 
         // Check for optional suite ID argument
-        internal let args = CommandLine.arguments
-        internal var suiteId = "quick-smoke"  // Default to quick smoke test
+        let args = CommandLine.arguments
+        var suiteId = "quick-smoke"  // Default to quick smoke test
 
         if let flagIndex = args.firstIndex(of: "-runUnifiedTests"),
            flagIndex + 1 < args.count {
-            internal let nextArg = args[flagIndex + 1]
+            let nextArg = args[flagIndex + 1]
             // Only use it if it's not another flag
             if !nextArg.hasPrefix("-") {
                 suiteId = nextArg
@@ -226,7 +226,7 @@ internal struct TiercadeApp: App {
     @available(iOS 26.0, macOS 26.0, *)
     private func executeUnifiedTests(suiteId: String) async {
         do {
-            internal let report = try await UnifiedPromptTester.runSuite(suiteId: suiteId) { message in
+            let report = try await UnifiedPromptTester.runSuite(suiteId: suiteId) { message in
                 print("🧪 \(message)")
                 // Stream progress to AI Chat overlay
                 Task { @MainActor in
@@ -237,15 +237,15 @@ internal struct TiercadeApp: App {
             printUnifiedTestResults(report)
 
             // Use NSTemporaryDirectory for sandbox compatibility
-            internal let reportURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            let reportURL = URL(fileURLWithPath: NSTemporaryDirectory())
                 .appendingPathComponent("tiercade_unified_test_report.json")
-            internal let encoder = JSONEncoder()
+            let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            internal let data = try encoder.encode(report)
+            let data = try encoder.encode(report)
             try data.write(to: reportURL)
 
-            internal let summaryMessage = """
+            let summaryMessage = """
             📊 UNIFIED TESTS COMPLETE!
             Suite: \(report.suiteName)
             Success rate: \(String(format: "%.1f%%", Double(report.successfulRuns) / Double(max(1, report.totalRuns)) * 100))
@@ -261,11 +261,11 @@ internal struct TiercadeApp: App {
                 appState.appendTestMessage(summaryMessage)
             }
 
-            internal let allPassed = report.successfulRuns == report.totalRuns
+            let allPassed = report.successfulRuns == report.totalRuns
             try? await Task.sleep(for: .seconds(2))
             exit(allPassed ? 0 : 1)
         } catch {
-            internal let errorMsg = "❌ Unified test error: \(error)"
+            let errorMsg = "❌ Unified test error: \(error)"
             print(errorMsg)
             print("❌ Error details: \(String(describing: error))")
 
@@ -277,8 +277,8 @@ internal struct TiercadeApp: App {
     }
 
     private func printUnifiedTestResults(_ report: UnifiedPromptTester.TestReport) {
-        internal let passRate = Double(report.successfulRuns) / Double(max(1, report.totalRuns)) * 100
-        internal let topPrompt = report.rankings.byPassRate.first
+        let passRate = Double(report.successfulRuns) / Double(max(1, report.totalRuns)) * 100
+        let topPrompt = report.rankings.byPassRate.first
 
         print("\n📊 RESULTS:")
         print("  • Total runs: \(report.totalRuns)")
@@ -287,9 +287,9 @@ internal struct TiercadeApp: App {
         print("  • Duration: \(String(format: "%.1f", report.totalDuration))s")
 
         // Minimal N-bucket view (small/medium/large)
-        internal var byBucket: [String: (ok: Int, total: Int)] = [:]
+        var byBucket: [String: (ok: Int, total: Int)] = [:]
         for r in report.allResults {
-            internal var v = byBucket[r.nBucket] ?? (0, 0)
+            var v = byBucket[r.nBucket] ?? (0, 0)
             v.total += 1
             if r.passAtN { v.ok += 1 }
             byBucket[r.nBucket] = v
@@ -298,7 +298,7 @@ internal struct TiercadeApp: App {
             print("\n📈 N‑bucket success rates:")
             for bucket in ["small", "medium", "large"] {
                 if let v = byBucket[bucket] {
-                    internal let rate = Double(v.ok) / Double(max(1, v.total)) * 100
+                    let rate = Double(v.ok) / Double(max(1, v.total)) * 100
                     print("  • \(bucket): \(String(format: "%.1f%%", rate)) (")
                 }
             }
@@ -328,8 +328,8 @@ internal struct TiercadeApp: App {
                 }
                 try? await Task.sleep(for: .milliseconds(400))
 
-                internal let runner = CoordinatorExperimentRunner { print("🔧 \($0)") }
-                internal let report = await runner.runDefaultSuite()
+                let runner = CoordinatorExperimentRunner { print("🔧 \($0)") }
+                let report = await runner.runDefaultSuite()
 
                 print("🔧 ========================================")
                 print("🔧 COORDINATOR EXPERIMENTS COMPLETE!")
@@ -337,7 +337,7 @@ internal struct TiercadeApp: App {
                 print("🔧 Report saved: \(NSTemporaryDirectory())coordinator_experiments_report.json")
                 print("🔧 ========================================")
 
-                internal let ok = report.successfulRuns == report.totalRuns
+                let ok = report.successfulRuns == report.totalRuns
                 try? await Task.sleep(for: .seconds(2))
                 exit(ok ? 0 : 1)
             } else {
@@ -359,14 +359,14 @@ internal struct TiercadeApp: App {
                 }
                 try? await Task.sleep(for: .milliseconds(400))
 
-                internal let runner = CoordinatorExperimentRunner { print("🔧 \($0)") }
-                internal let report = await runner.runHybridComparisonSuite()
+                let runner = CoordinatorExperimentRunner { print("🔧 \($0)") }
+                let report = await runner.runHybridComparisonSuite()
 
                 // Save separate file for clarity
-                internal let encoder = JSONEncoder()
+                let encoder = JSONEncoder()
                 encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                 encoder.dateEncodingStrategy = .iso8601
-                internal let url = URL(fileURLWithPath: NSTemporaryDirectory())
+                let url = URL(fileURLWithPath: NSTemporaryDirectory())
                     .appendingPathComponent("coordinator_experiments_hybrid_report.json")
                 if let data = try? encoder.encode(report) { try? data.write(to: url) }
 
@@ -376,7 +376,7 @@ internal struct TiercadeApp: App {
                 print("🔧 Report saved: \(url.path)")
                 print("🔧 ========================================")
 
-                internal let ok = report.successfulRuns == report.totalRuns
+                let ok = report.successfulRuns == report.totalRuns
                 try? await Task.sleep(for: .seconds(2))
                 exit(ok ? 0 : 1)
             } else {
@@ -398,13 +398,13 @@ internal struct TiercadeApp: App {
                 }
                 try? await Task.sleep(for: .milliseconds(400))
 
-                internal let runner = CoordinatorExperimentRunner { print("🔧 \($0)") }
-                internal let report = await runner.runMediumNMicroGrid()
+                let runner = CoordinatorExperimentRunner { print("🔧 \($0)") }
+                let report = await runner.runMediumNMicroGrid()
 
-                internal let encoder = JSONEncoder()
+                let encoder = JSONEncoder()
                 encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
                 encoder.dateEncodingStrategy = .iso8601
-                internal let url = URL(fileURLWithPath: NSTemporaryDirectory())
+                let url = URL(fileURLWithPath: NSTemporaryDirectory())
                     .appendingPathComponent("coordinator_experiments_medium_grid_report.json")
                 if let data = try? encoder.encode(report) { try? data.write(to: url) }
 
@@ -428,7 +428,7 @@ internal struct TiercadeApp: App {
         print("🧪 Starting ENHANCED multi-run prompt testing...")
 
         Task { @MainActor in
-            internal let results = await EnhancedPromptTester.testPrompts { print("🧪 \($0)") }
+            let results = await EnhancedPromptTester.testPrompts { print("🧪 \($0)") }
             printEnhancedTestResults(results)
             try? await Task.sleep(for: .seconds(2))
             exit(0)
@@ -441,11 +441,11 @@ internal struct TiercadeApp: App {
         print("🧪 Total prompts tested: \(results.count)")
         print("🧪 Total runs: \(results.reduce(0) { $0 + $1.totalRuns })")
 
-        internal let sorted = results.sorted { $0.meanDupRate < $1.meanDupRate }
+        let sorted = results.sorted { $0.meanDupRate < $1.meanDupRate }
         print("\n🏆 TOP 3 PROMPTS:")
         for (idx, result) in sorted.prefix(3).enumerated() {
             print("  \(idx + 1). Prompt #\(result.promptNumber)")
-            internal let dupRate = String(format: "%.1f±%.1f%%", result.meanDupRate * 100, result.stdevDupRate * 100)
+            let dupRate = String(format: "%.1f±%.1f%%", result.meanDupRate * 100, result.stdevDupRate * 100)
             print("     DupRate: \(dupRate)")
             print("     Insufficient: \(String(format: "%.1f%%", result.insufficientRate * 100))")
         }
@@ -459,7 +459,7 @@ internal struct TiercadeApp: App {
         print("🧪 Starting automated prompt testing...")
 
         Task { @MainActor in
-            internal let results = await SystemPromptTester.testPrompts { print("🧪 \($0)") }
+            let results = await SystemPromptTester.testPrompts { print("🧪 \($0)") }
 
             print("🧪 ========================================")
             print("🧪 Testing complete!")
@@ -490,7 +490,7 @@ internal struct TiercadeApp: App {
     @available(iOS 26.0, macOS 26.0, *)
     private func executeAcceptanceTests() async {
         do {
-            internal let report = try await AcceptanceTestSuite.runAll { print("🧪 \($0)") }
+            let report = try await AcceptanceTestSuite.runAll { print("🧪 \($0)") }
             try? AcceptanceTestSuite.saveReport(report, to: "/tmp/tiercade_acceptance_test_report.json")
 
             print("🧪 ========================================")
@@ -523,10 +523,10 @@ internal struct TiercadeApp: App {
 
     @available(iOS 26.0, macOS 26.0, *)
     private func executePilotTests() async {
-        internal let runner = PilotTestRunner { print("🧪 \($0)") }
-        internal let report = await runner.runPilot()
+        let runner = PilotTestRunner { print("🧪 \($0)") }
+        let report = await runner.runPilot()
 
-        internal let textReport = runner.generateTextReport(report)
+        let textReport = runner.generateTextReport(report)
         try? textReport.write(toFile: "/tmp/tiercade_pilot_test_report.txt", atomically: true, encoding: .utf8)
 
         print("🧪 ========================================")
@@ -557,10 +557,10 @@ internal struct TiercadeApp: App {
 
     @available(iOS 26.0, macOS 26.0, *)
     private func executeDiagnostics() async {
-        internal let diagnostics = ModelDiagnostics { print("🔬 \($0)") }
-        internal let report = await diagnostics.runAll()
+        let diagnostics = ModelDiagnostics { print("🔬 \($0)") }
+        let report = await diagnostics.runAll()
 
-        internal let encoder = JSONEncoder()
+        let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
         if let data = try? encoder.encode(report) {

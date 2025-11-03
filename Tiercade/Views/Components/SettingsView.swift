@@ -98,7 +98,7 @@ private struct CloseButton: View {
 #endif
 
 private extension ThemePreference {
-    internal var displayName: String { rawValue.capitalized }
+    var displayName: String { rawValue.capitalized }
 }
 
 private struct CardDensityOptionRow: View {
@@ -144,10 +144,10 @@ private struct CardDensityOptionRow: View {
 }
 
 private extension SettingsView {
-    internal var versionString: String {
-        internal let bundle = Bundle.main
-        internal let short = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-        internal let build = bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+    var versionString: String {
+        let bundle = Bundle.main
+        let short = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        let build = bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String
         switch (short, build) {
         case let (s?, b?): return "\(s) (\(b))"
         case let (s?, nil): return s

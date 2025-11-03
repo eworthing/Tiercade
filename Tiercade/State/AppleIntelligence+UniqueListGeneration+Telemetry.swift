@@ -6,7 +6,7 @@ import FoundationModels
 // MARK: - UniqueListCoordinator Telemetry & Diagnostics
 
 @available(iOS 26.0, macOS 26.0, *)
-internal extension UniqueListCoordinator {
+extension UniqueListCoordinator {
     /// Export telemetry for a test run
     internal func exportRunTelemetry(
         testId: String,
@@ -23,13 +23,13 @@ internal extension UniqueListCoordinator {
     ) {
         guard !telemetry.isEmpty else { return }
 
-        internal let osVersion: String = {
-            internal let version = ProcessInfo.processInfo.operatingSystemVersion
+        let osVersion: String = {
+            let version = ProcessInfo.processInfo.operatingSystemVersion
             return "\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
         }()
 
-        internal var records: [RunTelemetry] = []
-        internal var passIndex = 1
+        var records: [RunTelemetry] = []
+        var passIndex = 1
 
         for metric in telemetry {
             records.append(RunTelemetry(
@@ -61,15 +61,15 @@ internal extension UniqueListCoordinator {
     }
 
     /// Diagnostics snapshot from the last uniqueList() run
-    internal struct RunDiagnostics {
-        internal let totalGenerated: Int?
-        internal let dupCount: Int?
-        internal let dupRate: Double?
-        internal let backfillRounds: Int?
-        internal let circuitBreakerTriggered: Bool?
-        internal let passCount: Int?
-        internal let failureReason: String?
-        internal let topDuplicates: [String: Int]?
+    struct RunDiagnostics {
+        let totalGenerated: Int?
+        let dupCount: Int?
+        let dupRate: Double?
+        let backfillRounds: Int?
+        let circuitBreakerTriggered: Bool?
+        let passCount: Int?
+        let failureReason: String?
+        let topDuplicates: [String: Int]?
     }
 
     /// Retrieve diagnostics from the last uniqueList() run
@@ -87,8 +87,8 @@ internal extension UniqueListCoordinator {
     }
 
     internal func finalizeGeneration(state: GenerationState, targetCount: Int, startTime: Date) {
-        internal let elapsed = Date().timeIntervalSince(startTime)
-        internal let success = state.ordered.count >= targetCount
+        let elapsed = Date().timeIntervalSince(startTime)
+        let success = state.ordered.count >= targetCount
 
         telemetry = state.localTelemetry
 
@@ -98,7 +98,7 @@ internal extension UniqueListCoordinator {
             logger("⚠️ Incomplete: \(state.ordered.count)/\(targetCount) after \(state.passCount) passes")
         }
 
-        internal let dupRatePercent = Double(state.duplicatesFound) / Double(state.totalGeneratedCount) * 100
+        let dupRatePercent = Double(state.duplicatesFound) / Double(state.totalGeneratedCount) * 100
         logger(
             "📊 Stats: \(state.totalGeneratedCount) total generated, \(state.duplicatesFound) filtered " +
             "(\(String(format: "%.1f", dupRatePercent))% dup rate)"
@@ -117,12 +117,12 @@ internal extension UniqueListCoordinator {
         lastRunBackfillRounds = state.backfillRoundsTotal
         lastRunCircuitBreakerTriggered = state.circuitBreakerTriggered
 
-        internal let topDups = state.dupFrequency.sorted { $0.value > $1.value }.prefix(5)
+        let topDups = state.dupFrequency.sorted { $0.value > $1.value }.prefix(5)
         lastRunTopDuplicates = topDups.isEmpty ? nil : Dictionary(uniqueKeysWithValues: Array(topDups))
 
         if !success {
             if state.circuitBreakerTriggered {
-                internal let failureMsg =
+                let failureMsg =
                     "Circuit breaker: 2 consecutive rounds with no progress at \(state.ordered.count)/\(targetCount)"
                 lastRunFailureReason = failureMsg
             } else if lastRunFailureReason == nil {
@@ -140,11 +140,11 @@ internal extension UniqueListCoordinator {
         seed: UInt64? = nil,
         decoderProfile: String = "diverse"
     ) async throws -> (items: [String], metrics: RunMetrics) {
-        internal let startTime = Date()
-        internal let items = try await uniqueList(query: query, targetCount: targetCount, seed: seed)
-        internal let elapsed = Date().timeIntervalSince(startTime)
+        let startTime = Date()
+        let items = try await uniqueList(query: query, targetCount: targetCount, seed: seed)
+        let elapsed = Date().timeIntervalSince(startTime)
 
-        internal let metrics = RunMetrics(
+        let metrics = RunMetrics(
             passAtN: items.count >= targetCount,
             uniqueAtN: items.count,
             jsonStrictSuccess: true,

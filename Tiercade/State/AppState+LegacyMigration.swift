@@ -15,15 +15,15 @@ internal extension AppState {
 
     /// Save file structure for migration
     private struct AppSaveFile: Codable {
-        internal let tiers: Items
-        internal let createdDate: Date
-        internal let appVersion: String
+        let tiers: Items
+        let createdDate: Date
+        let appVersion: String
     }
 
     /// One-time migration utility for pre-1.0 save files
     /// Converts legacy flat JSON format to modern Items structure
     internal func migrateLegacySaveFile(at url: URL) async throws -> Items {
-        internal let data = try Data(contentsOf: url)
+        let data = try Data(contentsOf: url)
 
         // Try modern format first
         if let saveData = try? JSONDecoder().decode(AppSaveFile.self, from: data) {
@@ -55,7 +55,7 @@ internal extension AppState {
 
     /// Migrate legacy tier-based structure
     private func migrateLegacyTierStructure(_ tierData: [String: [[String: Any]]]) throws -> Items {
-        internal var migratedTiers: Items = [:]
+        var migratedTiers: Items = [:]
 
         for (tierName, itemData) in tierData {
             migratedTiers[tierName] = try itemData.map { dict in
@@ -64,7 +64,7 @@ internal extension AppState {
                 }
 
                 // Extract attributes from remaining fields
-                internal var attributes: [String: String] = [:]
+                var attributes: [String: String] = [:]
                 for (key, value) in dict where key != "id" {
                     attributes[key] = String(describing: value)
                 }
@@ -78,7 +78,7 @@ internal extension AppState {
 
     /// Migrate flat item array (legacy export format)
     private func migrateFlatItemStructure(_ items: [[String: Any]]) throws -> Items {
-        internal var migratedTiers: Items = [
+        var migratedTiers: Items = [
             "S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []
         ]
 
@@ -87,14 +87,14 @@ internal extension AppState {
                 throw MigrationError.missingRequiredField("id")
             }
 
-            internal let tier = (itemDict["tier"] as? String) ?? "unranked"
-            internal var attributes: [String: String] = [:]
+            let tier = (itemDict["tier"] as? String) ?? "unranked"
+            var attributes: [String: String] = [:]
 
             for (key, value) in itemDict where key != "id" && key != "tier" {
                 attributes[key] = String(describing: value)
             }
 
-            internal let item = Item(id: id, attributes: attributes.isEmpty ? nil : attributes)
+            let item = Item(id: id, attributes: attributes.isEmpty ? nil : attributes)
             migratedTiers[tier, default: []].append(item)
         }
 
@@ -104,7 +104,7 @@ internal extension AppState {
     /// Save migrated file in modern format with backup
     internal func saveMigratedFile(_ tiers: Items, originalURL: URL) async throws {
         // Create backup of original file
-        internal let backupURL = originalURL.deletingPathExtension()
+        let backupURL = originalURL.deletingPathExtension()
             .appendingPathExtension("legacy.backup.json")
 
         if !FileManager.default.fileExists(atPath: backupURL.path) {
@@ -112,15 +112,15 @@ internal extension AppState {
         }
 
         // Save in modern format
-        internal let saveData = AppSaveFile(
+        let saveData = AppSaveFile(
             tiers: tiers,
             createdDate: Date(),
             appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.0-migrated"
         )
 
-        internal let encoder = JSONEncoder()
+        let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-        internal let data = try encoder.encode(saveData)
+        let data = try encoder.encode(saveData)
         try data.write(to: originalURL)
 
         showSuccessToast("Migration Complete", message: "Legacy save file upgraded. Backup saved.")
@@ -151,18 +151,18 @@ internal extension AppState {
     }
 
     /// Migration errors
-    internal enum MigrationError: LocalizedError {
-        internal case unrecognizedFormat
-        internal case missingRequiredField(String)
-        internal case corruptedData
+    enum MigrationError: LocalizedError {
+        case unrecognizedFormat
+        case missingRequiredField(String)
+        case corruptedData
 
-        internal var errorDescription: String? {
+        var errorDescription: String? {
             switch self {
-        case .unrecognizedFormat:
+            case .unrecognizedFormat:
                 return "Unrecognized save file format. Please contact support with your backup file."
-        case .missingRequiredField(let field):
+            case .missingRequiredField(let field):
                 return "Save file is missing required field: \(field)"
-        case .corruptedData:
+            case .corruptedData:
                 return "Save file data is corrupted and cannot be migrated."
             }
         }
@@ -173,13 +173,13 @@ internal extension AppState {
 
 internal struct LegacyMigrationView: View {
     @Bindable var app: AppState
-    internal let fileURL: URL
+    let fileURL: URL
     @Environment(\.dismiss) private var dismiss
 
     @State private var isLoading = false
     @State private var migrationError: Error?
 
-    internal var body: some View {
+    var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "arrow.triangle.2.circlepath")
                 .font(.system(size: 60))
@@ -228,7 +228,7 @@ internal struct LegacyMigrationView: View {
         migrationError = nil
 
         do {
-            internal let migratedTiers = try await app.migrateLegacySaveFile(at: fileURL)
+            let migratedTiers = try await app.migrateLegacySaveFile(at: fileURL)
             try await app.saveMigratedFile(migratedTiers, originalURL: fileURL)
             app.tiers = migratedTiers
 

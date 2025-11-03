@@ -15,13 +15,13 @@ internal final class ProgressState {
     // MARK: - Loading State
 
     /// Whether a long-running operation is currently in progress
-    internal var isLoading: Bool = false
+    var isLoading: Bool = false
 
     /// Message describing the current loading operation
-    internal var loadingMessage: String = ""
+    var loadingMessage: String = ""
 
     /// Progress of the current operation (0.0 to 1.0)
-    internal var operationProgress: Double = 0.0
+    var operationProgress: Double = 0.0
 
     // MARK: - Initialization
 

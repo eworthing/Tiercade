@@ -18,36 +18,36 @@ internal final class TierListState {
     // MARK: - Tier Data
 
     /// Core tier structure: tier name -> array of items
-    internal var tiers: Items = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
+    var tiers: Items = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
 
     /// Order of tiers for display (excludes "unranked")
-    internal var tierOrder: [String] = ["S", "A", "B", "C", "D", "F"]
+    var tierOrder: [String] = ["S", "A", "B", "C", "D", "F"]
 
     // MARK: - Selection
 
     /// Set of selected item IDs for batch operations
-    internal var selection: Set<String> = []
+    var selection: Set<String> = []
 
     // MARK: - Tier Metadata
 
     /// Locked tiers that cannot receive items
-    internal var lockedTiers: Set<String> = []
+    var lockedTiers: Set<String> = []
 
     /// Tier display label overrides (tierId -> display label)
-    internal var tierLabels: [String: String] = [:]
+    var tierLabels: [String: String] = [:]
 
     /// Tier color overrides (tierId -> hex color)
-    internal var tierColors: [String: String] = [:]
+    var tierColors: [String: String] = [:]
 
     // MARK: - Sort & Layout
 
     /// Global sort mode for all tiers (default: alphabetical A-Z)
-    internal var globalSortMode: GlobalSortMode = .alphabetical(ascending: true)
+    var globalSortMode: GlobalSortMode = .alphabetical(ascending: true)
 
     // MARK: - Undo/Redo
 
     /// Undo manager for tier operations
-    internal var undoManager: UndoManager?
+    var undoManager: UndoManager?
 
     /// Flag to prevent undo registration during undo/redo operations
     private var isPerformingUndoRedo = false
@@ -56,11 +56,11 @@ internal final class TierListState {
 
     /// Snapshot of tier state for undo/redo
     internal struct TierStateSnapshot: Sendable {
-        internal var tiers: Items
-        internal var tierOrder: [String]
-        internal var tierLabels: [String: String]
-        internal var tierColors: [String: String]
-        internal var lockedTiers: Set<String>
+        var tiers: Items
+        var tierOrder: [String]
+        var tierLabels: [String: String]
+        var tierColors: [String: String]
+        var lockedTiers: Set<String>
     }
 
     // MARK: - Initialization
@@ -99,7 +99,7 @@ internal final class TierListState {
     /// Finalize a change by registering undo and marking as changed
     internal func finalizeChange(action: String, undoSnapshot: TierStateSnapshot, markChanged: @escaping () -> Void) {
         if !isPerformingUndoRedo {
-            internal let redoSnapshot = captureTierSnapshot()
+            let redoSnapshot = captureTierSnapshot()
             registerUndo(action: action, undoSnapshot: undoSnapshot, redoSnapshot: redoSnapshot, isRedo: false, markChanged: markChanged)
         }
         markChanged()
@@ -134,7 +134,7 @@ internal final class TierListState {
     ) {
         isPerformingUndoRedo = true
         defer { isPerformingUndoRedo = false }
-        internal let inverseSnapshot = captureTierSnapshot()
+        let inverseSnapshot = captureTierSnapshot()
         restore(from: undoSnapshot)
         markChanged()
         undoManager?.registerUndo(withTarget: self) { target in

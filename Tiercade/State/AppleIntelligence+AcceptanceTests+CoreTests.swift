@@ -7,11 +7,11 @@ import FoundationModels
 
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
-internal extension AcceptanceTestSuite {
+extension AcceptanceTestSuite {
 static func testStructure(logger: @escaping (String) -> Void) async -> TestResult {
     logger("\n[Test 1/7] Structure - JSON decoding across seed ring...")
 
-    internal let result = await runAcrossSeeds(
+    let result = await runAcrossSeeds(
         testId: "T1_Structure",
         query: "science fiction TV series captains",
         targetN: 10,
@@ -24,14 +24,14 @@ static func testStructure(logger: @escaping (String) -> Void) async -> TestResul
                 userInfo: [NSLocalizedDescriptionKey: "Failed to create session"]
             )
         }
-        internal let fm = FMClient(session: session, logger: logger)
+        let fm = FMClient(session: session, logger: logger)
         return UniqueListCoordinator(fm: fm, logger: logger)
     }
 
-    internal let passedCount = result.runs.filter { $0.ok }.count
-    internal let success = result.passAtN >= 0.6  // 60% pass rate threshold
+    let passedCount = result.runs.filter { $0.ok }.count
+    let success = result.passAtN >= 0.6  // 60% pass rate threshold
 
-    internal let message = success
+    let message = success
         ? "JSON decoding successful: \(passedCount)/\(seedRing.count) seeds passed, " +
           "median ips=\(String(format: "%.2f", result.medianIPS))"
         : "JSON decoding inconsistent: only \(passedCount)/\(seedRing.count) seeds passed"
@@ -55,7 +55,7 @@ static func testStructure(logger: @escaping (String) -> Void) async -> TestResul
 static func testUniqueness(logger: @escaping (String) -> Void) async -> TestResult {
     logger("\n[Test 2/7] Uniqueness - normKey deduplication across seed ring...")
 
-    internal let result = await runAcrossSeeds(
+    let result = await runAcrossSeeds(
         testId: "T2_Uniqueness",
         query: "famous scientists throughout history",
         targetN: 25,
@@ -68,14 +68,14 @@ static func testUniqueness(logger: @escaping (String) -> Void) async -> TestResu
                 userInfo: [NSLocalizedDescriptionKey: "Failed to create session"]
             )
         }
-        internal let fm = FMClient(session: session, logger: logger)
+        let fm = FMClient(session: session, logger: logger)
         return UniqueListCoordinator(fm: fm, logger: logger)
     }
 
-    internal let passedCount = result.runs.filter { $0.ok }.count
-    internal let success = result.passAtN >= 0.6  // 60% pass rate threshold
+    let passedCount = result.runs.filter { $0.ok }.count
+    let success = result.passAtN >= 0.6  // 60% pass rate threshold
 
-    internal let message = success
+    let message = success
         ? "Uniqueness validated: \(passedCount)/\(seedRing.count) seeds passed, " +
           "median ips=\(String(format: "%.2f", result.medianIPS))"
         : "Uniqueness inconsistent: only \(passedCount)/\(seedRing.count) seeds passed"
@@ -99,7 +99,7 @@ static func testUniqueness(logger: @escaping (String) -> Void) async -> TestResu
 static func testBackfill(logger: @escaping (String) -> Void) async -> TestResult {
     logger("\n[Test 3/8] Backfill - verify unguided fill mechanism across seed ring...")
 
-    internal let result = await runAcrossSeeds(
+    let result = await runAcrossSeeds(
         testId: "T3_Backfill",
         query: "programming languages",
         targetN: 50,
@@ -112,14 +112,14 @@ static func testBackfill(logger: @escaping (String) -> Void) async -> TestResult
                 userInfo: [NSLocalizedDescriptionKey: "Failed to create session"]
             )
         }
-        internal let fm = FMClient(session: session, logger: logger)
+        let fm = FMClient(session: session, logger: logger)
         return UniqueListCoordinator(fm: fm, logger: logger)
     }
 
-    internal let passedCount = result.runs.filter { $0.ok }.count
-    internal let success = result.passAtN >= 0.6  // 60% pass rate threshold
+    let passedCount = result.runs.filter { $0.ok }.count
+    let success = result.passAtN >= 0.6  // 60% pass rate threshold
 
-    internal let message = success
+    let message = success
         ? "Backfill validated: \(passedCount)/\(seedRing.count) seeds passed, " +
           "median ips=\(String(format: "%.2f", result.medianIPS))"
         : "Backfill unreliable: only \(passedCount)/\(seedRing.count) seeds passed"
@@ -143,7 +143,7 @@ static func testBackfill(logger: @escaping (String) -> Void) async -> TestResult
 static func testGuidedBackfill(logger: @escaping (String) -> Void) async -> TestResult {
     logger("\n[Test 4/8] Guided Backfill - verify guided fill mechanism across seed ring...")
 
-    internal let result = await runAcrossSeeds(
+    let result = await runAcrossSeeds(
         testId: "T4_GuidedBackfill",
         query: "programming languages",
         targetN: 50,
@@ -156,14 +156,14 @@ static func testGuidedBackfill(logger: @escaping (String) -> Void) async -> Test
                 userInfo: [NSLocalizedDescriptionKey: "Failed to create session"]
             )
         }
-        internal let fm = FMClient(session: session, logger: logger)
+        let fm = FMClient(session: session, logger: logger)
         return UniqueListCoordinator(fm: fm, logger: logger, useGuidedBackfill: true)
     }
 
-    internal let passedCount = result.runs.filter { $0.ok }.count
-    internal let success = result.passAtN >= 0.6  // 60% pass rate threshold
+    let passedCount = result.runs.filter { $0.ok }.count
+    let success = result.passAtN >= 0.6  // 60% pass rate threshold
 
-    internal let message = success
+    let message = success
         ? "Guided backfill validated: \(passedCount)/\(seedRing.count) seeds passed, " +
           "median ips=\(String(format: "%.2f", result.medianIPS))"
         : "Guided backfill unreliable: only \(passedCount)/\(seedRing.count) seeds passed"

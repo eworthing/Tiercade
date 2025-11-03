@@ -17,23 +17,23 @@ internal final class ThemeState {
     // MARK: - Selected Theme
 
     /// Currently selected theme ID
-    internal var selectedThemeID: UUID = TierThemeCatalog.defaultTheme.id
+    var selectedThemeID: UUID = TierThemeCatalog.defaultTheme.id
 
     /// Currently selected theme
-    internal var selectedTheme: TierTheme = TierThemeCatalog.defaultTheme
+    var selectedTheme: TierTheme = TierThemeCatalog.defaultTheme
 
     // MARK: - Custom Themes
 
     /// User-created custom themes
-    internal var customThemes: [TierTheme] = []
+    var customThemes: [TierTheme] = []
 
     /// Set of custom theme IDs for quick lookup
-    internal var customThemeIDs: Set<UUID> = []
+    var customThemeIDs: Set<UUID> = []
 
     // MARK: - UI State
 
     /// Draft theme being edited in the theme creator
-    internal var themeDraft: ThemeDraft?
+    var themeDraft: ThemeDraft?
 
     // MARK: - Dependencies
 
@@ -65,7 +65,7 @@ internal final class ThemeState {
         selectedTheme = theme
         selectedThemeID = theme.id
 
-        internal var colors: [String: String] = [:]
+        var colors: [String: String] = [:]
         for (index, tierId) in tierOrder.enumerated() {
             colors[tierId] = theme.colorHex(forRank: tierId, fallbackIndex: index)
         }

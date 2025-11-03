@@ -28,5 +28,5 @@ internal enum FocusWorkarounds {
     /// ```
     ///
     /// See: `OVERLAY_ACCESSIBILITY_PATTERN.md` for full pattern documentation.
-    internal static let reassertDelay: Duration = .milliseconds(50)
+    static let reassertDelay: Duration = .milliseconds(50)
 }

@@ -7,14 +7,14 @@ import TiercadeCore
 /// Focus on snapshot/restore logic for undo/redo and computed properties
 /// for item counting and validation.
 @MainActor
-internal struct TierListStateTests {
+struct TierListStateTests {
     // MARK: - Test Helpers
 
-    internal func makeTestItem(_ id: String, _ name: String) -> Item {
+    func makeTestItem(_ id: String, _ name: String) -> Item {
         Item(id: id, attributes: ["name": name])
     }
 
-    internal func populateState(_ state: TierListState) {
+    func populateState(_ state: TierListState) {
         state.tiers["S"] = [makeTestItem("item1", "Item 1")]
         state.tiers["A"] = [makeTestItem("item2", "Item 2"), makeTestItem("item3", "Item 3")]
         state.tiers["B"] = []
@@ -26,11 +26,11 @@ internal struct TierListStateTests {
     // MARK: - Snapshot & Restore Tests
 
     @Test("captureTierSnapshot captures all state")
-    internal func captureTierSnapshot() {
-        internal let state = TierListState()
+    func captureTierSnapshot() {
+        let state = TierListState()
         populateState(state)
 
-        internal let snapshot = state.captureTierSnapshot()
+        let snapshot = state.captureTierSnapshot()
 
         #expect(snapshot.tiers["S"]?.count == 1)
         #expect(snapshot.tiers["A"]?.count == 2)
@@ -41,11 +41,11 @@ internal struct TierListStateTests {
     }
 
     @Test("restore applies snapshot state")
-    internal func restore() {
-        internal let state = TierListState()
+    func restore() {
+        let state = TierListState()
         populateState(state)
 
-        internal let snapshot = state.captureTierSnapshot()
+        let snapshot = state.captureTierSnapshot()
 
         // Modify state
         state.tiers["S"] = []
@@ -64,11 +64,11 @@ internal struct TierListStateTests {
     }
 
     @Test("restore preserves exact tier structure")
-    internal func restore_preservesStructure() {
-        internal let state = TierListState()
+    func restore_preservesStructure() {
+        let state = TierListState()
         populateState(state)
 
-        internal let snapshot = state.captureTierSnapshot()
+        let snapshot = state.captureTierSnapshot()
 
         // Clear and add different data
         state.tiers.removeAll()
@@ -85,8 +85,8 @@ internal struct TierListStateTests {
     // MARK: - Selection Tests
 
     @Test("isSelected returns correct value")
-    internal func isSelected() {
-        internal let state = TierListState()
+    func isSelected() {
+        let state = TierListState()
         state.selection.insert("item1")
 
         #expect(state.isSelected("item1") == true)
@@ -94,8 +94,8 @@ internal struct TierListStateTests {
     }
 
     @Test("toggleSelection adds and removes items")
-    internal func toggleSelection() {
-        internal let state = TierListState()
+    func toggleSelection() {
+        let state = TierListState()
 
         state.toggleSelection("item1")
         #expect(state.isSelected("item1") == true)
@@ -105,8 +105,8 @@ internal struct TierListStateTests {
     }
 
     @Test("clearSelection removes all items")
-    internal func clearSelection() {
-        internal let state = TierListState()
+    func clearSelection() {
+        let state = TierListState()
         state.selection = ["item1", "item2", "item3"]
 
         state.clearSelection()
@@ -116,36 +116,36 @@ internal struct TierListStateTests {
     // MARK: - Computed Properties Tests
 
     @Test("totalItemCount sums all tiers")
-    internal func totalItemCount() {
-        internal let state = TierListState()
+    func totalItemCount() {
+        let state = TierListState()
         populateState(state)
 
         #expect(state.totalItemCount == 3)  // 1 in S, 2 in A
     }
 
     @Test("totalItemCount handles empty tiers")
-    internal func totalItemCount_empty() {
-        internal let state = TierListState()
+    func totalItemCount_empty() {
+        let state = TierListState()
         #expect(state.totalItemCount == 0)
     }
 
     @Test("hasAnyItems returns true when items exist")
-    internal func hasAnyItems_true() {
-        internal let state = TierListState()
+    func hasAnyItems_true() {
+        let state = TierListState()
         populateState(state)
 
         #expect(state.hasAnyItems == true)
     }
 
     @Test("hasAnyItems returns false when no items")
-    internal func hasAnyItems_false() {
-        internal let state = TierListState()
+    func hasAnyItems_false() {
+        let state = TierListState()
         #expect(state.hasAnyItems == false)
     }
 
     @Test("hasEnoughForPairing requires at least 2 items")
-    internal func hasEnoughForPairing() {
-        internal let state = TierListState()
+    func hasEnoughForPairing() {
+        let state = TierListState()
 
         #expect(state.hasEnoughForPairing == false)
 
@@ -157,8 +157,8 @@ internal struct TierListStateTests {
     }
 
     @Test("canRandomizeItems requires more than 1 item")
-    internal func canRandomizeItems() {
-        internal let state = TierListState()
+    func canRandomizeItems() {
+        let state = TierListState()
 
         #expect(state.canRandomizeItems == false)
 
@@ -172,8 +172,8 @@ internal struct TierListStateTests {
     // MARK: - Display Helpers Tests
 
     @Test("displayLabel returns custom label or fallback")
-    internal func displayLabel() {
-        internal let state = TierListState()
+    func displayLabel() {
+        let state = TierListState()
         state.tierLabels["S"] = "Best"
 
         #expect(state.displayLabel(for: "S") == "Best")
@@ -181,8 +181,8 @@ internal struct TierListStateTests {
     }
 
     @Test("displayColorHex returns custom color or nil")
-    internal func displayColorHex() {
-        internal let state = TierListState()
+    func displayColorHex() {
+        let state = TierListState()
         state.tierColors["S"] = "#FF0000"
 
         #expect(state.displayColorHex(for: "S") == "#FF0000")
@@ -192,21 +192,21 @@ internal struct TierListStateTests {
     // MARK: - Undo/Redo Tests
 
     @Test("canUndo returns false without undo manager")
-    internal func canUndo_noManager() {
-        internal let state = TierListState()
+    func canUndo_noManager() {
+        let state = TierListState()
         #expect(state.canUndo == false)
     }
 
     @Test("canRedo returns false without undo manager")
-    internal func canRedo_noManager() {
-        internal let state = TierListState()
+    func canRedo_noManager() {
+        let state = TierListState()
         #expect(state.canRedo == false)
     }
 
     @Test("updateUndoManager sets the undo manager")
-    internal func updateUndoManager() {
-        internal let state = TierListState()
-        internal let manager = UndoManager()
+    func updateUndoManager() {
+        let state = TierListState()
+        let manager = UndoManager()
 
         state.updateUndoManager(manager)
         #expect(state.undoManager != nil)

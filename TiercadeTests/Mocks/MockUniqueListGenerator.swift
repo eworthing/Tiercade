@@ -10,20 +10,20 @@ final class MockUniqueListGenerator: UniqueListGenerating {
     // MARK: - Configuration
 
     /// Whether the generator should report as available
-    internal var isAvailable: Bool = true
+    var isAvailable: Bool = true
 
     /// Items to return from generateUniqueList
-    internal var itemsToReturn: [AIGeneratedItemCandidate] = []
+    var itemsToReturn: [AIGeneratedItemCandidate] = []
 
     /// Error to throw from generateUniqueList
-    internal var errorToThrow: Error?
+    var errorToThrow: Error?
 
     /// Tracks all generation calls for verification
     private(set) var generateCalls: [(topic: String, count: Int)] = []
 
     // MARK: - UniqueListGenerating
 
-    internal func generateUniqueList(topic: String, count: Int) async throws -> [AIGeneratedItemCandidate] {
+    func generateUniqueList(topic: String, count: Int) async throws -> [AIGeneratedItemCandidate] {
         generateCalls.append((topic, count))
 
         if let error = errorToThrow {
@@ -36,7 +36,7 @@ final class MockUniqueListGenerator: UniqueListGenerating {
     // MARK: - Test Helpers
 
     /// Reset the mock to its initial state
-    internal func reset() {
+    func reset() {
         isAvailable = true
         itemsToReturn = []
         errorToThrow = nil
@@ -44,12 +44,12 @@ final class MockUniqueListGenerator: UniqueListGenerating {
     }
 
     /// Configure the mock to return specific items
-    internal func mockGeneration(items: [AIGeneratedItemCandidate]) {
+    func mockGeneration(items: [AIGeneratedItemCandidate]) {
         itemsToReturn = items
     }
 
     /// Configure the mock to throw an error
-    internal func mockError(_ error: Error) {
+    func mockError(_ error: Error) {
         errorToThrow = error
     }
 }

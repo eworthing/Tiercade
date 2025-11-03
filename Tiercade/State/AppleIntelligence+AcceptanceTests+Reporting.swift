@@ -7,15 +7,15 @@ import FoundationModels
 
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
-internal extension AcceptanceTestSuite {
+extension AcceptanceTestSuite {
 static func saveReport(
     _ report: TestReport,
     to path: String,
     logger: @escaping (String) -> Void = { print($0) }
 ) throws {
-    internal let encoder = JSONEncoder()
+    let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-    internal let data = try encoder.encode(report)
+    let data = try encoder.encode(report)
     try data.write(to: URL(fileURLWithPath: path))
     logger("📄 Test report saved: \(path)")
 }

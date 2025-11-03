@@ -4,23 +4,23 @@ import SwiftData
 @Model
 final class TierListEntity {
     @Attribute(.unique) var identifier: UUID
-    internal var title: String
-    internal var fileName: String?
-    internal var createdAt: Date
-    internal var updatedAt: Date
-    internal var isActive: Bool
-    internal var cardDensityRaw: String
-    internal var selectedThemeID: UUID?
-    internal var customThemesData: Data?
-    internal var globalSortModeData: Data?
-    internal var sourceRaw: String
-    internal var externalIdentifier: String?
-    internal var subtitle: String?
-    internal var iconSystemName: String?
-    internal var lastOpenedAt: Date
-    internal var projectData: Data?
+    var title: String
+    var fileName: String?
+    var createdAt: Date
+    var updatedAt: Date
+    var isActive: Bool
+    var cardDensityRaw: String
+    var selectedThemeID: UUID?
+    var customThemesData: Data?
+    var globalSortModeData: Data?
+    var sourceRaw: String
+    var externalIdentifier: String?
+    var subtitle: String?
+    var iconSystemName: String?
+    var lastOpenedAt: Date
+    var projectData: Data?
     @Relationship(deleteRule: .cascade, inverse: \TierEntity.list)
-    internal var tiers: [TierEntity]
+    var tiers: [TierEntity]
 
     internal init(
         identifier: UUID = UUID(),
@@ -64,13 +64,13 @@ final class TierListEntity {
 @Model
 final class TierEntity {
     @Attribute(.unique) var identifier: UUID
-    internal var key: String
-    internal var displayName: String
-    internal var colorHex: String?
-    internal var order: Int
-    internal var isLocked: Bool
+    var key: String
+    var displayName: String
+    var colorHex: String?
+    var order: Int
+    var isLocked: Bool
     @Relationship(deleteRule: .cascade, inverse: \TierItemEntity.tier)
-    internal var items: [TierItemEntity]
+    var items: [TierItemEntity]
     @Relationship var list: TierListEntity?
 
     internal init(
@@ -95,15 +95,15 @@ final class TierEntity {
 @Model
 final class TierItemEntity {
     @Attribute(.unique) var identifier: UUID
-    internal var itemID: String
-    internal var name: String?
-    internal var seasonString: String?
-    internal var seasonNumber: Int?
-    internal var status: String?
-    internal var details: String?
-    internal var imageUrl: String?
-    internal var videoUrl: String?
-    internal var position: Int
+    var itemID: String
+    var name: String?
+    var seasonString: String?
+    var seasonNumber: Int?
+    var status: String?
+    var details: String?
+    var imageUrl: String?
+    var videoUrl: String?
+    var position: Int
     @Relationship var tier: TierEntity?
 
     internal init(
@@ -133,8 +133,8 @@ final class TierItemEntity {
     }
 }
 
-internal extension TierEntity {
-    internal var normalizedKey: String {
+extension TierEntity {
+    var normalizedKey: String {
         key.lowercased() == "unranked" ? "unranked" : key
     }
 }

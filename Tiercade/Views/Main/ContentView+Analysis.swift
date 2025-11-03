@@ -219,7 +219,7 @@ internal struct TierBarView: View {
     }
 
     private func barWidth(in totalWidth: CGFloat) -> CGFloat {
-        internal let scaledWidth = totalWidth * CGFloat(clampedPercentage / 100)
+        let scaledWidth = totalWidth * CGFloat(clampedPercentage / 100)
         return max(scaledWidth, 4)
     }
 }

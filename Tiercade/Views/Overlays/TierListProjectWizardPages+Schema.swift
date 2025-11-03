@@ -248,7 +248,7 @@ internal struct SchemaWizardPage: View, WizardPage {
         }
 
         do {
-            internal let data = try TierListCreatorCodec.makeEncoder().encode(stored)
+            let data = try TierListCreatorCodec.makeEncoder().encode(stored)
             schemaFields = try TierListCreatorCodec.makeDecoder().decode([SchemaFieldDefinition].self, from: data)
         } catch {
             Logger.appState.error("Schema decode failed: \(error.localizedDescription, privacy: .public)")
@@ -258,13 +258,13 @@ internal struct SchemaWizardPage: View, WizardPage {
 
     private func saveSchema() {
         do {
-            internal var additional = draft.additional ?? [:]
+            var additional = draft.additional ?? [:]
             if schemaFields.isEmpty {
                 additional.removeValue(forKey: schemaAdditionalKey)
                 draft.additional = additional.isEmpty ? nil : additional
             } else {
-                internal let data = try TierListCreatorCodec.makeEncoder().encode(schemaFields)
-                internal let json = try TierListCreatorCodec.makeDecoder().decode(JSONValue.self, from: data)
+                let data = try TierListCreatorCodec.makeEncoder().encode(schemaFields)
+                let json = try TierListCreatorCodec.makeDecoder().decode(JSONValue.self, from: data)
                 additional[schemaAdditionalKey] = json
                 draft.additional = additional
             }

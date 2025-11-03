@@ -73,7 +73,7 @@ internal struct TVSortPickerOverlay: View {
                     .focused($focusedOption, equals: .alphabeticalDesc)
 
                     // Discovered attributes
-                    internal let discovered = app.discoverSortableAttributes()
+                    let discovered = app.discoverSortableAttributes()
                     if !discovered.isEmpty {
                         Divider()
                             .opacity(0.3)

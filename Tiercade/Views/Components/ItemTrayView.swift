@@ -34,14 +34,14 @@ internal struct ItemTrayView: View {
                                     .overlay(
                                         Group {
                                             // Use canonical imageUrl only (legacy thumbUri removed).
-                                            internal let thumbSrc = item.imageUrl
-                                            internal let titleText = String((item.name ?? item.id).prefix(18))
+                                            let thumbSrc = item.imageUrl
+                                            let titleText = String((item.name ?? item.id).prefix(18))
                                             if let thumb = thumbSrc, let url = URL(string: thumb) {
                                                 AsyncImage(url: url) { phase in
                                                     switch phase {
-        case .empty:
+                                                    case .empty:
                                                         ProgressView()
-        case .success(let img):
+                                                    case .success(let img):
                                                         img.resizable().scaledToFill()
                                                     default:
                                                         RoundedRectangle(cornerRadius: Metrics.rSm).fill(Palette.brand)
@@ -113,9 +113,9 @@ internal struct AddItemsView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        internal let finalId = id.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let finalId = id.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !finalId.isEmpty else { return }
-                        internal var attrs: [String: String] = [:]
+                        var attrs: [String: String] = [:]
                         if !name.isEmpty { attrs["name"] = name }
                         if !season.isEmpty { attrs["season"] = season }
                         app.addItem(id: finalId, attributes: attrs.isEmpty ? nil : attrs)

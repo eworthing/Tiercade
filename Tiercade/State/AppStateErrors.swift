@@ -4,13 +4,13 @@ import Foundation
 
 /// Errors that can occur during export operations
 internal enum ExportError: Error {
-    internal case formatNotSupported(ExportFormat)
-    internal case dataEncodingFailed(String)
-    internal case insufficientData
-    internal case renderingFailed(String)
-    internal case invalidConfiguration
+    case formatNotSupported(ExportFormat)
+    case dataEncodingFailed(String)
+    case insufficientData
+    case renderingFailed(String)
+    case invalidConfiguration
 
-    internal var localizedDescription: String {
+    var localizedDescription: String {
         switch self {
         case .formatNotSupported(let format):
             return "Export format '\(format.displayName)' is not supported on this platform"
@@ -28,14 +28,14 @@ internal enum ExportError: Error {
 
 /// Errors that can occur during import operations
 internal enum ImportError: Error {
-    internal case invalidFormat(String)
-    internal case invalidData(String)
-    internal case missingRequiredField(String)
-    internal case corruptedData
-    internal case unsupportedVersion
-    internal case parsingFailed(String)
+    case invalidFormat(String)
+    case invalidData(String)
+    case missingRequiredField(String)
+    case corruptedData
+    case unsupportedVersion
+    case parsingFailed(String)
 
-    internal var localizedDescription: String {
+    var localizedDescription: String {
         switch self {
         case .invalidFormat(let details):
             return "Invalid format: \(details)"
@@ -55,14 +55,14 @@ internal enum ImportError: Error {
 
 /// Errors that can occur during persistence operations
 internal enum PersistenceError: Error {
-    internal case encodingFailed(String)
-    internal case decodingFailed(String)
-    internal case fileSystemError(String)
-    internal case permissionDenied
-    internal case diskSpaceInsufficient
-    internal case corruptedStorage
+    case encodingFailed(String)
+    case decodingFailed(String)
+    case fileSystemError(String)
+    case permissionDenied
+    case diskSpaceInsufficient
+    case corruptedStorage
 
-    internal var localizedDescription: String {
+    var localizedDescription: String {
         switch self {
         case .encodingFailed(let reason):
             return "Encoding failed: \(reason)"

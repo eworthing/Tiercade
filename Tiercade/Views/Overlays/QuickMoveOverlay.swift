@@ -17,11 +17,11 @@ internal struct QuickMoveOverlay: View {
 
     internal var body: some View {
         if let item = app.overlays.quickMoveTarget {
-            internal let isBatchMode = app.batchQuickMoveActive
-            internal let title = isBatchMode ? "Move \(app.selection.count) Items" : (item.name ?? item.id)
-            internal let allTiers = app.tierOrder + [TierIdentifier.unranked.rawValue]
-            internal let currentTier = app.currentTier(of: item.id)
-            internal let isMultiSelectActive = editMode?.wrappedValue == .active
+            let isBatchMode = app.batchQuickMoveActive
+            let title = isBatchMode ? "Move \(app.selection.count) Items" : (item.name ?? item.id)
+            let allTiers = app.tierOrder + [TierIdentifier.unranked.rawValue]
+            let currentTier = app.currentTier(of: item.id)
+            let isMultiSelectActive = editMode?.wrappedValue == .active
 
             ZStack {
                 // Background dimming
@@ -174,7 +174,7 @@ internal struct QuickMoveOverlay: View {
         }
 
         if let currentTier,
-           internal let firstAlternative = allTiers.first(where: { $0 != currentTier }) {
+           let firstAlternative = allTiers.first(where: { $0 != currentTier }) {
             return .tier(firstAlternative)
         }
 
@@ -186,7 +186,7 @@ internal struct QuickMoveOverlay: View {
     }
 
     private func handleMoveCommand(_ direction: MoveCommandDirection) {
-        internal let allTiers = app.tierOrder + [TierIdentifier.unranked.rawValue]
+        let allTiers = app.tierOrder + [TierIdentifier.unranked.rawValue]
 
         // Trap up-arrow when at first tier
         if direction == .up {
@@ -217,15 +217,15 @@ internal struct QuickMoveOverlay: View {
 
 // Simplified tier button component
 private struct TierButton: View {
-    internal let tierName: String
-    internal let displayLabel: String
-    internal let tierColor: Color
-    internal let itemCount: Int
-    internal let isCurrentTier: Bool
-    internal let isFocused: Bool
-    internal let action: () -> Void
+    let tierName: String
+    let displayLabel: String
+    let tierColor: Color
+    let itemCount: Int
+    let isCurrentTier: Bool
+    let isFocused: Bool
+    let action: () -> Void
 
-    internal var body: some View {
+    var body: some View {
         Button(action: { if !isCurrentTier { action() } }) {
             HStack(spacing: 16) {
                 Text(displayLabel)

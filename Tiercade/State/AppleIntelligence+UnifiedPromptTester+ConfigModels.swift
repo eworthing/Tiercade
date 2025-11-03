@@ -8,53 +8,53 @@ import FoundationModels
 
 #if DEBUG && canImport(FoundationModels)
 @available(iOS 26.0, macOS 26.0, *)
-internal extension UnifiedPromptTester {
+extension UnifiedPromptTester {
 
 // MARK: - System Prompt Configuration
 
 /// Configuration for a system prompt loaded from SystemPrompts.json
 internal struct SystemPromptConfig: Codable, Identifiable, Sendable {
     /// Unique identifier (e.g., "G0-Minimal", "S01-UltraSimple")
-    internal let id: String
+    let id: String
 
     /// Human-readable name
-    internal let name: String
+    let name: String
 
     /// Category for grouping (e.g., "basic", "backfill", "advanced")
-    internal let category: String
+    let category: String
 
     /// Brief description of the prompt's purpose
-    internal let description: String
+    let description: String
 
     /// The actual prompt text (may contain {QUERY}, {DELTA}, {AVOID_LIST} placeholders)
-    internal let text: String
+    let text: String
 
     /// Optional metadata
-    internal let metadata: PromptMetadata?
+    let metadata: PromptMetadata?
 
     /// Metadata associated with a system prompt
-    internal struct PromptMetadata: Codable, Sendable {
-        internal let expectedDupRate: String?
-        internal let recommendedFor: [String]?
-        internal let requiresVariables: [String]?
-        internal let dateAdded: String?
-        internal let notes: String?
-        internal let author: String?
-        internal let tags: [String]?
-        internal let source: String?
+    struct PromptMetadata: Codable, Sendable {
+        let expectedDupRate: String?
+        let recommendedFor: [String]?
+        let requiresVariables: [String]?
+        let dateAdded: String?
+        let notes: String?
+        let author: String?
+        let tags: [String]?
+        let source: String?
     }
 }
 
 /// Container for SystemPrompts.json
 internal struct SystemPromptsLibrary: Codable, Sendable {
-    internal let version: String
-    internal let prompts: [SystemPromptConfig]
-    internal let metadata: LibraryMetadata?
+    let version: String
+    let prompts: [SystemPromptConfig]
+    let metadata: LibraryMetadata?
 
-    internal struct LibraryMetadata: Codable, Sendable {
-        internal let description: String?
-        internal let lastUpdated: String?
-        internal let totalPrompts: Int?
+    struct LibraryMetadata: Codable, Sendable {
+        let description: String?
+        let lastUpdated: String?
+        let totalPrompts: Int?
     }
 }
 
@@ -63,45 +63,45 @@ internal struct SystemPromptsLibrary: Codable, Sendable {
 /// Configuration for a test query loaded from TestQueries.json
 internal struct TestQueryConfig: Codable, Identifiable, Sendable {
     /// Unique identifier (e.g., "animated-series-25")
-    internal let id: String
+    let id: String
 
     /// The actual query text to send to the model
-    internal let query: String
+    let query: String
 
     /// Target count (null for open-ended queries, treated as 40)
-    internal let targetCount: Int?
+    let targetCount: Int?
 
     /// Domain category (e.g., "entertainment", "food")
-    internal let domain: String
+    let domain: String
 
     /// Difficulty level: "easy", "medium", "hard"
-    internal let difficulty: String
+    let difficulty: String
 
     /// Optional metadata
-    internal let metadata: QueryMetadata?
+    let metadata: QueryMetadata?
 
     /// Metadata associated with a test query
-    internal struct QueryMetadata: Codable, Sendable {
-        internal let expectedUniqueness: Double?
-        internal let notes: String?
-        internal let dateAdded: String?
-        internal let knownIssues: [String]?
-        internal let relatedQueries: [String]?
-        internal let tags: [String]?
-        internal let source: String?
+    struct QueryMetadata: Codable, Sendable {
+        let expectedUniqueness: Double?
+        let notes: String?
+        let dateAdded: String?
+        let knownIssues: [String]?
+        let relatedQueries: [String]?
+        let tags: [String]?
+        let source: String?
     }
 }
 
 /// Container for TestQueries.json
 internal struct TestQueriesLibrary: Codable, Sendable {
-    internal let version: String
-    internal let queries: [TestQueryConfig]
-    internal let metadata: LibraryMetadata?
+    let version: String
+    let queries: [TestQueryConfig]
+    let metadata: LibraryMetadata?
 
-    internal struct LibraryMetadata: Codable, Sendable {
-        internal let description: String?
-        internal let lastUpdated: String?
-        internal let totalQueries: Int?
+    struct LibraryMetadata: Codable, Sendable {
+        let description: String?
+        let lastUpdated: String?
+        let totalQueries: Int?
     }
 }
 
@@ -110,53 +110,53 @@ internal struct TestQueriesLibrary: Codable, Sendable {
 /// Configuration for decoding/sampling settings loaded from DecodingConfigs.json
 internal struct DecodingConfigDef: Codable, Identifiable, Sendable {
     /// Unique identifier (e.g., "greedy", "topk50-t08")
-    internal let id: String
+    let id: String
 
     /// Human-readable name
-    internal let name: String
+    let name: String
 
     /// Sampling configuration
-    internal let sampling: SamplingConfig
+    let sampling: SamplingConfig
 
     /// Temperature (0.0 to 2.0)
-    internal let temperature: Double
+    let temperature: Double
 
     /// Optional metadata
-    internal let metadata: DecodingMetadata?
+    let metadata: DecodingMetadata?
 
     /// Sampling configuration
-    internal struct SamplingConfig: Codable, Sendable {
+    struct SamplingConfig: Codable, Sendable {
         /// Sampling mode: "greedy", "topK", "topP"
-        internal let mode: String
+        let mode: String
 
         /// For topK: k value
-        internal let k: Int?
+        let k: Int?
 
         /// For topP: probability threshold
-        internal let threshold: Double?
+        let threshold: Double?
     }
 
     /// Metadata associated with a decoding config
-    internal struct DecodingMetadata: Codable, Sendable {
-        internal let description: String?
-        internal let recommendedFor: [String]?
-        internal let expectedDiversity: String?
-        internal let requiresOS: String?
-        internal let dateAdded: String?
-        internal let tags: [String]?
+    struct DecodingMetadata: Codable, Sendable {
+        let description: String?
+        let recommendedFor: [String]?
+        let expectedDiversity: String?
+        let requiresOS: String?
+        let dateAdded: String?
+        let tags: [String]?
     }
 
     #if canImport(FoundationModels)
     /// Convert to GenerationOptions for use with FoundationModels
     internal func toGenerationOptions(seed: UInt64, maxTokens: Int) -> GenerationOptions {
         switch sampling.mode {
-        internal case "greedy":
+        case "greedy":
             return GenerationOptions(
                 sampling: .greedy,
                 temperature: 0.0,
                 maximumResponseTokens: maxTokens
             )
-        internal case "topK":
+        case "topK":
             guard let k = sampling.k else {
                 fatalError("topK mode requires 'k' parameter")
             }
@@ -165,7 +165,7 @@ internal struct DecodingConfigDef: Codable, Identifiable, Sendable {
                 temperature: temperature,
                 maximumResponseTokens: maxTokens
             )
-        internal case "topP":
+        case "topP":
             guard let threshold = sampling.threshold else {
                 fatalError("topP mode requires 'threshold' parameter")
             }
@@ -183,14 +183,14 @@ internal struct DecodingConfigDef: Codable, Identifiable, Sendable {
 
 /// Container for DecodingConfigs.json
 internal struct DecodingConfigsLibrary: Codable, Sendable {
-    internal let version: String
-    internal let configs: [DecodingConfigDef]
-    internal let metadata: LibraryMetadata?
+    let version: String
+    let configs: [DecodingConfigDef]
+    let metadata: LibraryMetadata?
 
-    internal struct LibraryMetadata: Codable, Sendable {
-        internal let description: String?
-        internal let lastUpdated: String?
-        internal let totalConfigs: Int?
+    struct LibraryMetadata: Codable, Sendable {
+        let description: String?
+        let lastUpdated: String?
+        let totalConfigs: Int?
     }
 }
 
@@ -199,66 +199,66 @@ internal struct DecodingConfigsLibrary: Codable, Sendable {
 /// Configuration for a test suite loaded from TestSuites.json
 internal struct TestSuiteConfig: Codable, Identifiable, Sendable {
     /// Unique identifier (e.g., "quick-smoke")
-    internal let id: String
+    let id: String
 
     /// Human-readable name
-    internal let name: String
+    let name: String
 
     /// Description of what this suite tests
-    internal let description: String
+    let description: String
 
     /// Test configuration
-    internal let config: SuiteTestConfig
+    let config: SuiteTestConfig
 
     /// Optional metadata
-    internal let metadata: SuiteMetadata?
+    let metadata: SuiteMetadata?
 
     /// Configuration for what to test
-    internal struct SuiteTestConfig: Codable, Sendable {
+    struct SuiteTestConfig: Codable, Sendable {
         /// Prompt IDs to test (use ["*"] for all)
-        internal let promptIds: [String]
+        let promptIds: [String]
 
         /// Query IDs to test (use ["*"] for all)
-        internal let queryIds: [String]
+        let queryIds: [String]
 
         /// Decoder IDs to test (use ["*"] for all)
-        internal let decoderIds: [String]
+        let decoderIds: [String]
 
         /// Seeds to use for reproducibility
-        internal let seeds: [UInt64]
+        let seeds: [UInt64]
 
         /// Whether to test with guided schema
-        internal let guidedModes: [Bool]
+        let guidedModes: [Bool]
 
         /// Optional: Override max tokens per run
-        internal let maxTokensOverride: Int?
+        let maxTokensOverride: Int?
 
         /// Optional: Timeout per run (seconds)
-        internal let timeoutSeconds: Int?
+        let timeoutSeconds: Int?
     }
 
     /// Metadata about the test suite
-    internal struct SuiteMetadata: Codable, Sendable {
-        internal let estimatedDuration: Int?
-        internal let totalRuns: Int?
-        internal let purpose: String?
-        internal let runWhen: String?
-        internal let dateAdded: String?
-        internal let tags: [String]?
-        internal let notes: String?
+    struct SuiteMetadata: Codable, Sendable {
+        let estimatedDuration: Int?
+        let totalRuns: Int?
+        let purpose: String?
+        let runWhen: String?
+        let dateAdded: String?
+        let tags: [String]?
+        let notes: String?
     }
 }
 
 /// Container for TestSuites.json
 internal struct TestSuitesLibrary: Codable, Sendable {
-    internal let version: String
-    internal let suites: [TestSuiteConfig]
-    internal let metadata: LibraryMetadata?
+    let version: String
+    let suites: [TestSuiteConfig]
+    let metadata: LibraryMetadata?
 
-    internal struct LibraryMetadata: Codable, Sendable {
-        internal let description: String?
-        internal let lastUpdated: String?
-        internal let totalSuites: Int?
+    struct LibraryMetadata: Codable, Sendable {
+        let description: String?
+        let lastUpdated: String?
+        let totalSuites: Int?
     }
 }
 

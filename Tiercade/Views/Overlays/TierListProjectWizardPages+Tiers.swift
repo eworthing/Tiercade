@@ -36,7 +36,7 @@ internal struct TiersWizardPage: View, WizardPage {
             HStack {
                 Spacer()
                 Button {
-                    internal let newTier = appState.addTier(to: draft)
+                    let newTier = appState.addTier(to: draft)
                     selectedTierID = newTier.identifier
                     showingTierDetailsSheet = true
                 } label: {
@@ -71,9 +71,9 @@ internal struct TiersWizardPage: View, WizardPage {
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(Palette.text)
 
-            internal let assignedCount = draft.items.filter { $0.tier != nil }.count
-            internal let totalCount = draft.items.count
-            internal let percentage = totalCount > 0 ? Double(assignedCount) / Double(totalCount) * 100 : 0
+            let assignedCount = draft.items.filter { $0.tier != nil }.count
+            let totalCount = draft.items.count
+            let percentage = totalCount > 0 ? Double(assignedCount) / Double(totalCount) * 100 : 0
 
             HStack(spacing: Metrics.grid * 3) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -154,7 +154,7 @@ internal struct TiersWizardPage: View, WizardPage {
     }
 
     private func tierManagementCard(_ tier: TierDraftTier) -> some View {
-        internal let items = appState.orderedItems(for: tier)
+        let items = appState.orderedItems(for: tier)
 
         return HStack(spacing: 16) {
             Circle()

@@ -21,58 +21,58 @@ internal final class AIGenerationState {
     // MARK: - Chat Overlay State
 
     /// Whether the AI chat overlay is visible
-    internal var showAIChat: Bool = false
+    var showAIChat: Bool = false
 
     /// Chat messages history
-    internal var messages: [AIChatMessage] = []
+    var messages: [AIChatMessage] = []
 
     /// Whether the AI is currently processing a request
-    internal var isProcessing: Bool = false
+    var isProcessing: Bool = false
 
     /// Estimated token count for context management
-    internal var estimatedTokenCount: Int = 0
+    var estimatedTokenCount: Int = 0
 
     // MARK: - Wizard Integration State
 
     /// Current AI generation request from the wizard
-    internal var aiGenerationRequest: AIGenerationRequest?
+    var aiGenerationRequest: AIGenerationRequest?
 
     /// AI-generated item candidates awaiting user review
-    internal var aiGeneratedCandidates: [AIGeneratedItemCandidate] = []
+    var aiGeneratedCandidates: [AIGeneratedItemCandidate] = []
 
     /// Whether AI generation is in progress for the wizard
-    internal var aiGenerationInProgress: Bool = false
+    var aiGenerationInProgress: Bool = false
 
     // MARK: - Advanced Generation Settings (DEBUG/POC)
 
     #if DEBUG
     /// Test console messages for streaming test progress
-    internal var testConsoleMessages: [AIChatMessage] = []
+    var testConsoleMessages: [AIChatMessage] = []
 
     /// Use leading toolchain for advanced generation
-    internal var useLeadingToolchain: Bool = false
+    var useLeadingToolchain: Bool = false
 
     /// Enable hybrid switch for coordinator experiments
-    internal var hybridSwitchEnabled: Bool = false
+    var hybridSwitchEnabled: Bool = false
 
     /// Enable guided budget bump first strategy
-    internal var guidedBudgetBumpFirst: Bool = true
+    var guidedBudgetBumpFirst: Bool = true
 
     /// Show step-by-step generation progress
-    internal var showStepByStep: Bool = false
+    var showStepByStep: Bool = false
 
     /// Prompt style for UniqueListCoordinator
-    internal enum PromptAB: String { case strict, minimal }
-    internal var promptStyle: PromptAB = .strict
+    enum PromptAB: String { case strict, minimal }
+    var promptStyle: PromptAB = .strict
 
     /// Last generated items for rating/export
-    internal var lastGeneratedItems: [String]?
+    var lastGeneratedItems: [String]?
 
     /// Last run diagnostics JSON for debugging
-    internal var lastRunDiagnosticsJSON: String?
+    var lastRunDiagnosticsJSON: String?
 
     /// Last user query for reference
-    internal var lastUserQuery: String?
+    var lastUserQuery: String?
     #endif
 
     // MARK: - Dependencies
@@ -144,7 +144,7 @@ internal final class AIGenerationState {
 
     /// Update estimated token count based on current messages
     private func updateTokenEstimate() {
-        internal var total = Self.instructionsTokenEstimate // System instructions
+        var total = Self.instructionsTokenEstimate // System instructions
 
         for message in messages {
             total += estimateTokens(from: message.content)
@@ -159,7 +159,7 @@ internal final class AIGenerationState {
     #if canImport(FoundationModels)
     private func ensureSession() {
         if session == nil {
-            internal let instructions = makeAntiDuplicateInstructions()
+            let instructions = makeAntiDuplicateInstructions()
             session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
             Logger.aiGeneration.info("Created new LanguageModelSession")
         }
@@ -171,7 +171,7 @@ internal final class AIGenerationState {
     /// Send a message to Apple Intelligence
     internal func sendMessage(_ text: String) async {
         // Sanitize user input to mitigate prompt injection attacks
-        internal let sanitizedText = PromptValidator.sanitize(text)
+        let sanitizedText = PromptValidator.sanitize(text)
 
         #if DEBUG
         lastUserQuery = sanitizedText
@@ -235,10 +235,10 @@ internal final class AIGenerationState {
 
 /// Chat message model
 internal struct AIChatMessage: Identifiable, Sendable {
-    internal let id = UUID()
-    internal let content: String
-    internal let isUser: Bool
-    internal let timestamp: Date
+    let id = UUID()
+    let content: String
+    let isUser: Bool
+    let timestamp: Date
 
     internal init(content: String, isUser: Bool) {
         self.content = content

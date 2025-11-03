@@ -1,47 +1,47 @@
 import Foundation
 
-internal extension HeadToHeadLogic {
+extension HeadToHeadLogic {
     internal struct CandidatePair: Sendable {
-        internal let pair: (Item, Item)
-        internal let closeness: Double
-        internal let minComparisons: Int
+        let pair: (Item, Item)
+        let closeness: Double
+        let minComparisons: Int
     }
 
     internal struct RefinementCutContext {
-        internal let quantCuts: [Int]
-        internal let refinedCuts: [Int]
-        internal let primaryCuts: [Int]
-        internal let totalComparisons: Int
-        internal let requiredComparisons: Int
-        internal let churn: Double
-        internal let itemCount: Int
+        let quantCuts: [Int]
+        let refinedCuts: [Int]
+        let primaryCuts: [Int]
+        let totalComparisons: Int
+        let requiredComparisons: Int
+        let churn: Double
+        let itemCount: Int
     }
 
     internal struct RefinementLogContext {
-        internal let ordered: [Item]
-        internal let metrics: [String: HeadToHeadMetrics]
-        internal let averageComparisons: Double
-        internal let zRefine: Double
-        internal let overlapEps: Double
-        internal let totalComparisons: Int
-        internal let primaryCuts: [Int]
-        internal let refinedCuts: [Int]
-        internal let quantCuts: [Int]
-        internal let required: Int
+        let ordered: [Item]
+        let metrics: [String: HeadToHeadMetrics]
+        let averageComparisons: Double
+        let zRefine: Double
+        let overlapEps: Double
+        let totalComparisons: Int
+        let primaryCuts: [Int]
+        let refinedCuts: [Int]
+        let quantCuts: [Int]
+        let required: Int
     }
 
     internal struct RefinementComputation {
-        internal let metrics: [String: HeadToHeadMetrics]
-        internal let ordered: [Item]
-        internal let totalComparisons: Int
-        internal let quantCuts: [Int]
-        internal let refinedCuts: [Int]
-        internal let primaryCuts: [Int]
-        internal let overlapEps: Double
-        internal let averageComparisons: Double
-        internal let zRefine: Double
+        let metrics: [String: HeadToHeadMetrics]
+        let ordered: [Item]
+        let totalComparisons: Int
+        let quantCuts: [Int]
+        let refinedCuts: [Int]
+        let primaryCuts: [Int]
+        let overlapEps: Double
+        let averageComparisons: Double
+        let zRefine: Double
 
-        internal func logContext(required: Int) -> RefinementLogContext {
+        func logContext(required: Int) -> RefinementLogContext {
             RefinementLogContext(
                 ordered: ordered,
                 metrics: metrics,
@@ -56,7 +56,7 @@ internal extension HeadToHeadLogic {
             )
         }
 
-        internal func cutContext(churn: Double, requiredComparisons: Int) -> RefinementCutContext {
+        func cutContext(churn: Double, requiredComparisons: Int) -> RefinementCutContext {
             RefinementCutContext(
                 quantCuts: quantCuts,
                 refinedCuts: refinedCuts,
@@ -75,9 +75,9 @@ internal extension HeadToHeadLogic {
         limit: Int,
         seen: inout Set<PairKey>
     ) -> [(Item, Item)] {
-        internal var results: [(Item, Item)] = []
+        var results: [(Item, Item)] = []
 
-        internal func appendIfNew(_ pair: (Item, Item)) {
+        func appendIfNew(_ pair: (Item, Item)) {
             if seen.insert(PairKey(pair.0, pair.1)).inserted {
                 results.append(pair)
             }
@@ -101,21 +101,21 @@ internal extension HeadToHeadLogic {
         metrics: [String: HeadToHeadMetrics],
         seen: inout Set<PairKey>
     ) -> [CandidatePair] {
-        internal var candidates: [CandidatePair] = []
+        var candidates: [CandidatePair] = []
 
         for boundary in artifacts.frontier {
-            internal let upperBand = slice(artifacts.rankable, boundary.upperRange)
-            internal let lowerBand = slice(artifacts.rankable, boundary.lowerRange)
+            let upperBand = slice(artifacts.rankable, boundary.upperRange)
+            let lowerBand = slice(artifacts.rankable, boundary.lowerRange)
             guard !upperBand.isEmpty, !lowerBand.isEmpty else { continue }
 
             for upperItem in upperBand {
                 for lowerItem in lowerBand where upperItem.id != lowerItem.id {
                     guard let upperMetrics = metrics[upperItem.id],
-                          internal let lowerMetrics = metrics[lowerItem.id] else { continue }
-                    internal let key = PairKey(upperItem, lowerItem)
+                          let lowerMetrics = metrics[lowerItem.id] else { continue }
+                    let key = PairKey(upperItem, lowerItem)
                     guard seen.insert(key).inserted else { continue }
-                    internal let closeness = abs(upperMetrics.wilsonLB - lowerMetrics.wilsonUB)
-                    internal let minComparisons = min(upperMetrics.comparisons, lowerMetrics.comparisons)
+                    let closeness = abs(upperMetrics.wilsonLB - lowerMetrics.wilsonUB)
+                    let minComparisons = min(upperMetrics.comparisons, lowerMetrics.comparisons)
                     candidates.append(
                         CandidatePair(
                             pair: (upperItem, lowerItem),
@@ -135,7 +135,7 @@ internal extension HeadToHeadLogic {
         records: [String: H2HRecord]
     ) -> Double {
         guard !artifacts.rankable.isEmpty else { return 0 }
-        internal let total = artifacts.rankable.reduce(into: 0) { partial, item in
+        let total = artifacts.rankable.reduce(into: 0) { partial, item in
             partial += records[item.id]?.total ?? 0
         }
         return Double(total) / Double(artifacts.rankable.count)
@@ -159,7 +159,7 @@ internal extension HeadToHeadLogic {
     ) -> [Int] {
         guard !primaryCuts.isEmpty else { return quantCuts }
 
-        internal var refined = mergeCutsPreferRefined(
+        var refined = mergeCutsPreferRefined(
             primary: primaryCuts,
             tierCount: tierCount,
             itemCount: ordered.count,
@@ -168,9 +168,9 @@ internal extension HeadToHeadLogic {
         )
 
         if refined.count >= tierCount - 1,
-           internal let start = bottomClusterStart(ordered: ordered, metrics: metrics) {
-            internal let lastIndex = refined.count - 1
-            internal let previousCut = lastIndex > 0 ? refined[lastIndex - 1] : 0
+           let start = bottomClusterStart(ordered: ordered, metrics: metrics) {
+            let lastIndex = refined.count - 1
+            let previousCut = lastIndex > 0 ? refined[lastIndex - 1] : 0
             if start > previousCut && start < ordered.count {
                 refined[lastIndex] = start
                 refined = Array(Set(refined)).sorted()
@@ -186,20 +186,20 @@ internal extension HeadToHeadLogic {
         tierCount: Int,
         requiredComparisons: Int
     ) -> RefinementComputation {
-        internal let average = averageComparisons(for: artifacts, records: records)
-        internal let zRefine = average < 3.0 ? Tun.zRefineEarly : Tun.zStd
-        internal let metrics = metricsDictionary(for: artifacts.rankable, records: records, z: zRefine)
-        internal let ordered = orderedItems(artifacts.rankable, metrics: metrics)
-        internal let total = totalComparisons(ordered: ordered, metrics: metrics)
-        internal let quantCuts = quantileCuts(count: ordered.count, tierCount: tierCount)
-        internal let overlapEps = total >= requiredComparisons ? Tun.softOverlapEps : 0.0
-        internal let primary = dropCuts(
+        let average = averageComparisons(for: artifacts, records: records)
+        let zRefine = average < 3.0 ? Tun.zRefineEarly : Tun.zStd
+        let metrics = metricsDictionary(for: artifacts.rankable, records: records, z: zRefine)
+        let ordered = orderedItems(artifacts.rankable, metrics: metrics)
+        let total = totalComparisons(ordered: ordered, metrics: metrics)
+        let quantCuts = quantileCuts(count: ordered.count, tierCount: tierCount)
+        let overlapEps = total >= requiredComparisons ? Tun.softOverlapEps : 0.0
+        let primary = dropCuts(
             for: ordered,
             metrics: metrics,
             tierCount: tierCount,
             overlapEps: overlapEps
         )
-        internal let refined = adjustedRefinedCuts(
+        let refined = adjustedRefinedCuts(
             primaryCuts: primary,
             quantCuts: quantCuts,
             tierCount: tierCount,
@@ -221,18 +221,18 @@ internal extension HeadToHeadLogic {
     }
 
     internal static func selectRefinedCuts(_ context: RefinementCutContext) -> [Int] {
-        internal let decisionsSoFar = Double(context.totalComparisons)
-        internal let required = max(context.requiredComparisons, 1)
+        let decisionsSoFar = Double(context.totalComparisons)
+        let required = max(context.requiredComparisons, 1)
 
         guard decisionsSoFar >= Double(required) else {
             return context.quantCuts
         }
 
-        internal let ramp = min(1.0, decisionsSoFar / Double(required))
-        internal let softOK = context.churn <= Tun.hysteresisMaxChurnSoft
-        internal let hardOK = context.churn <= Tun.hysteresisMaxChurnHard * ramp
-        internal let smallN = context.itemCount <= 16
-        internal let canUseRefined = !context.primaryCuts.isEmpty && (smallN || softOK || hardOK)
+        let ramp = min(1.0, decisionsSoFar / Double(required))
+        let softOK = context.churn <= Tun.hysteresisMaxChurnSoft
+        let hardOK = context.churn <= Tun.hysteresisMaxChurnHard * ramp
+        let smallN = context.itemCount <= 16
+        let canUseRefined = !context.primaryCuts.isEmpty && (smallN || softOK || hardOK)
 
         guard canUseRefined, !context.refinedCuts.isEmpty else { return context.quantCuts }
         return context.refinedCuts
@@ -306,13 +306,13 @@ internal extension HeadToHeadLogic {
         guard context.ordered.count >= 2 else { return }
         for index in 0..<(context.ordered.count - 1) {
             guard let upper = context.metrics[context.ordered[index].id],
-                  internal let lower = context.metrics[context.ordered[index + 1].id] else { continue }
-            internal let delta = max(0, upper.wilsonLB - lower.wilsonUB)
+                  let lower = context.metrics[context.ordered[index + 1].id] else { continue }
+            let delta = max(0, upper.wilsonLB - lower.wilsonUB)
             guard delta > 0 else { continue }
-            internal let minComparisons = Double(min(upper.comparisons, lower.comparisons))
-            internal let maxComparisons = Double(max(upper.comparisons, lower.comparisons))
-            internal let confidence = minComparisons + Tun.confBonusBeta * maxComparisons
-            internal let score = delta * log1p(max(confidence, 0))
+            let minComparisons = Double(min(upper.comparisons, lower.comparisons))
+            let maxComparisons = Double(max(upper.comparisons, lower.comparisons))
+            let confidence = minComparisons + Tun.confBonusBeta * maxComparisons
+            let score = delta * log1p(max(confidence, 0))
             NSLog(
                 "[Tiering] gap idx=%d delta=%.4f conf=%.2f score=%.4f",
                 index + 1,
@@ -334,7 +334,7 @@ internal extension HeadToHeadLogic {
     #endif
 }
 
-internal extension HeadToHeadLogic.CandidatePair: Equatable {
+extension HeadToHeadLogic.CandidatePair: Equatable {
     internal static func == (lhs: HeadToHeadLogic.CandidatePair, rhs: HeadToHeadLogic.CandidatePair) -> Bool {
         lhs.pair.0.id == rhs.pair.0.id &&
             lhs.pair.1.id == rhs.pair.1.id &&
@@ -343,7 +343,7 @@ internal extension HeadToHeadLogic.CandidatePair: Equatable {
     }
 }
 
-internal extension HeadToHeadLogic.CandidatePair: Comparable {
+extension HeadToHeadLogic.CandidatePair: Comparable {
     internal static func < (lhs: HeadToHeadLogic.CandidatePair, rhs: HeadToHeadLogic.CandidatePair) -> Bool {
         if lhs.closeness != rhs.closeness {
             return lhs.closeness < rhs.closeness
@@ -351,8 +351,8 @@ internal extension HeadToHeadLogic.CandidatePair: Comparable {
         if lhs.minComparisons != rhs.minComparisons {
             return lhs.minComparisons < rhs.minComparisons
         }
-        internal let leftIds = lhs.pair.0.id + lhs.pair.1.id
-        internal let rightIds = rhs.pair.0.id + rhs.pair.1.id
+        let leftIds = lhs.pair.0.id + lhs.pair.1.id
+        let rightIds = rhs.pair.0.id + rhs.pair.1.id
         return leftIds < rightIds
     }
 }

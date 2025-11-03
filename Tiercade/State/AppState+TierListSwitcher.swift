@@ -6,21 +6,21 @@ import TiercadeCore
 
 // MARK: - Tier List Source & Handle Types
 
-internal enum TierListSource: String, Codable, Sendable {
-    internal case bundled
-    internal case file
-    internal case authored
+enum TierListSource: String, Codable, Sendable {
+    case bundled
+    case file
+    case authored
 }
 
-internal struct TierListHandle: Identifiable, Codable, Hashable, Sendable {
-    internal var source: TierListSource
-    internal var identifier: String
-    internal var displayName: String
-    internal var subtitle: String?
-    internal var iconSystemName: String?
-    internal var entityID: UUID?
+struct TierListHandle: Identifiable, Codable, Hashable, Sendable {
+    var source: TierListSource
+    var identifier: String
+    var displayName: String
+    var subtitle: String?
+    var iconSystemName: String?
+    var entityID: UUID?
 
-    internal var id: String {
+    var id: String {
         if let entityID {
             return "\(source.rawValue)::\(identifier)::\(entityID.uuidString)"
         }
@@ -33,21 +33,21 @@ internal struct TierListHandle: Identifiable, Codable, Hashable, Sendable {
 @MainActor
 internal extension AppState {
 
-    internal var activeTierDisplayName: String {
+    var activeTierDisplayName: String {
         persistence.activeTierList?.displayName ?? "Untitled Tier List"
     }
 
-    internal var quickPickTierLists: [TierListHandle] {
-        internal var picks: [TierListHandle] = []
+    var quickPickTierLists: [TierListHandle] {
+        var picks: [TierListHandle] = []
         if let activeTierList = persistence.activeTierList {
             picks.append(activeTierList)
         }
 
-        internal let recent = persistence.recentTierLists.filter { $0 != persistence.activeTierList }
+        let recent = persistence.recentTierLists.filter { $0 != persistence.activeTierList }
         picks.append(contentsOf: recent.prefix(max(0, persistence.quickPickMenuLimit - picks.count)))
 
         if picks.count < persistence.quickPickMenuLimit {
-            internal let additionalBundled = bundledProjects
+            let additionalBundled = bundledProjects
                 .map(TierListHandle.init(bundled:))
                 .filter { !picks.contains($0) }
                 .prefix(max(0, persistence.quickPickMenuLimit - picks.count))
@@ -63,11 +63,11 @@ internal extension AppState {
 
     /// Deduped quick pick list - fixes duplicate entries from different sources
     /// by comparing source+identifier only (ignoring entityID differences)
-    internal var quickPickTierListsDeduped: [TierListHandle] {
-        internal var seen = Set<String>()
-        internal var result: [TierListHandle] = []
+    var quickPickTierListsDeduped: [TierListHandle] {
+        var seen = Set<String>()
+        var result: [TierListHandle] = []
         for handle in quickPickTierLists {
-            internal let key = "\(handle.source.rawValue)::\(handle.identifier)"
+            let key = "\(handle.source.rawValue)::\(handle.identifier)"
             if seen.insert(key).inserted {
                 result.append(handle)
             }
@@ -107,7 +107,7 @@ internal extension AppState {
         persistence.activeTierList = handle
         do {
             try deactivateOtherLists(except: handle.entityID)
-            internal let entity = try ensureEntity(for: handle)
+            let entity = try ensureEntity(for: handle)
             entity.isActive = true
             entity.lastOpenedAt = Date()
             entity.title = handle.displayName
@@ -179,10 +179,10 @@ internal extension AppState {
 
     private func refreshRecentTierListsFromStore() {
         do {
-            internal let descriptor = FetchDescriptor<TierListEntity>(
+            let descriptor = FetchDescriptor<TierListEntity>(
                 sortBy: [SortDescriptor(\TierListEntity.lastOpenedAt, order: .reverse)]
             )
-            internal let entities = try modelContext.fetch(descriptor)
+            let entities = try modelContext.fetch(descriptor)
             persistence.recentTierLists = entities
                 .filter { !$0.isDeleted }
                 .prefix(persistence.maxRecentTierLists)
@@ -193,10 +193,10 @@ internal extension AppState {
     }
 
     private func deactivateOtherLists(except activeID: UUID?) throws {
-        internal let descriptor = FetchDescriptor<TierListEntity>(
+        let descriptor = FetchDescriptor<TierListEntity>(
             predicate: #Predicate { $0.isActive == true }
         )
-        internal let activeLists = try modelContext.fetch(descriptor)
+        let activeLists = try modelContext.fetch(descriptor)
         for entity in activeLists where entity.identifier != activeID {
             entity.isActive = false
         }
@@ -207,7 +207,7 @@ internal extension AppState {
             return entity
         }
 
-        internal let newEntity = TierListEntity(
+        let newEntity = TierListEntity(
             title: handle.displayName,
             fileName: handle.source == .file ? handle.identifier : nil,
             isActive: true,
@@ -226,23 +226,23 @@ internal extension AppState {
 
     private func fetchEntity(for handle: TierListHandle) throws -> TierListEntity? {
         if let entityID = handle.entityID {
-            internal let descriptor = FetchDescriptor<TierListEntity>(
+            let descriptor = FetchDescriptor<TierListEntity>(
                 predicate: #Predicate { $0.identifier == entityID }
             )
             if let entity = try modelContext.fetch(descriptor).first {
                 return entity
             }
         }
-        internal let sourceRaw = handle.source.rawValue
-        internal let descriptor = FetchDescriptor<TierListEntity>(
+        let sourceRaw = handle.source.rawValue
+        let descriptor = FetchDescriptor<TierListEntity>(
             predicate: #Predicate { $0.sourceRaw == sourceRaw }
         )
-        internal let candidates = try modelContext.fetch(descriptor)
+        let candidates = try modelContext.fetch(descriptor)
         return candidates.first { $0.externalIdentifier == handle.identifier }
     }
 }
 
-internal extension TierListHandle {
+extension TierListHandle {
     internal init(bundled project: BundledProject) {
         self.init(
             source: .bundled,

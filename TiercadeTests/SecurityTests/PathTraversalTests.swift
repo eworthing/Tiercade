@@ -4,13 +4,13 @@ import Foundation
 
 /// Security tests for path traversal prevention in file operations
 @Suite("Path Traversal Security Tests")
-internal struct PathTraversalTests {
+struct PathTraversalTests {
 
     // MARK: - Bundle Relative Path Validation
 
     @Test("Rejects paths with .. sequences")
-    internal func rejectParentDirectoryTraversal() throws {
-        internal let appState = createTestAppState()
+    func rejectParentDirectoryTraversal() throws {
+        let appState = createTestAppState()
 
         #expect(throws: PersistenceError.self) {
             try appState.bundleRelativePath(from: "file://../../../etc/passwd")
@@ -18,8 +18,8 @@ internal struct PathTraversalTests {
     }
 
     @Test("Rejects paths with ./ followed by .. ")
-    internal func rejectDotSlashTraversal() throws {
-        internal let appState = createTestAppState()
+    func rejectDotSlashTraversal() throws {
+        let appState = createTestAppState()
 
         #expect(throws: PersistenceError.self) {
             try appState.bundleRelativePath(from: "file://./../../sensitive.txt")
@@ -27,8 +27,8 @@ internal struct PathTraversalTests {
     }
 
     @Test("Rejects absolute paths")
-    internal func rejectAbsolutePaths() throws {
-        internal let appState = createTestAppState()
+    func rejectAbsolutePaths() throws {
+        let appState = createTestAppState()
 
         #expect(throws: PersistenceError.self) {
             try appState.bundleRelativePath(from: "file:///Users/Shared/sensitive.txt")
@@ -36,25 +36,25 @@ internal struct PathTraversalTests {
     }
 
     @Test("Accepts valid relative paths")
-    internal func acceptValidRelativePaths() throws {
-        internal let appState = createTestAppState()
+    func acceptValidRelativePaths() throws {
+        let appState = createTestAppState()
 
-        internal let result = try appState.bundleRelativePath(from: "file://media/image.jpg")
+        let result = try appState.bundleRelativePath(from: "file://media/image.jpg")
         #expect(result == "media/image.jpg")
     }
 
     @Test("Accepts paths without file:// prefix but validates them")
-    internal func handlesMissingPrefix() throws {
-        internal let appState = createTestAppState()
+    func handlesMissingPrefix() throws {
+        let appState = createTestAppState()
 
         // Should return nil for non-file:// URIs
-        internal let result = appState.bundleRelativePath(from: "https://example.com/image.jpg")
+        let result = appState.bundleRelativePath(from: "https://example.com/image.jpg")
         #expect(result == nil)
     }
 
     @Test("Handles encoded path traversal attempts")
-    internal func rejectEncodedTraversal() throws {
-        internal let appState = createTestAppState()
+    func rejectEncodedTraversal() throws {
+        let appState = createTestAppState()
 
         // URL-encoded .. is %2E%2E
         #expect(throws: PersistenceError.self) {
@@ -67,15 +67,15 @@ internal struct PathTraversalTests {
     private func createTestAppState() -> AppState {
         // Create a minimal AppState for testing
         // Note: In real implementation, you might need a proper test fixture
-        internal let modelContext = createTestModelContext()
+        let modelContext = createTestModelContext()
         return AppState(modelContext: modelContext)
     }
 
     private func createTestModelContext() -> ModelContext {
         // Create an in-memory ModelContext for testing
         // This is a placeholder - implement based on your SwiftData setup
-        internal let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        internal let container = try! ModelContainer(for: TierList.self, configurations: config)
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try! ModelContainer(for: TierList.self, configurations: config)
         return ModelContext(container)
     }
 }

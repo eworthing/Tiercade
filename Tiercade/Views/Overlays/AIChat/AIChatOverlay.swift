@@ -190,10 +190,10 @@ internal struct AIChatOverlay: View {
 
     @ViewBuilder
     private var tokenCounter: some View {
-        internal let current = ai.estimatedTokenCount
-        internal let max = AIGenerationState.maxContextTokens
-        internal let percentage = Double(current) / Double(max)
-        internal let color: Color = {
+        let current = ai.estimatedTokenCount
+        let max = AIGenerationState.maxContextTokens
+        let percentage = Double(current) / Double(max)
+        let color: Color = {
             if percentage < 0.5 { return .green }
             if percentage < 0.75 { return .yellow }
             if percentage < 0.9 { return .orange }
@@ -235,7 +235,7 @@ internal struct AIChatOverlay: View {
 
     @ViewBuilder
     private var messagesContent: some View {
-        internal let allMessages: [AIChatMessage] = {
+        let allMessages: [AIChatMessage] = {
             #if DEBUG
             return ai.messages + ai.testConsoleMessages
             #else
@@ -368,7 +368,7 @@ internal struct AIChatOverlay: View {
     }
 
     private func send() {
-        internal let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         inputText = ""
         Task { await ai.sendMessage(trimmed) }
@@ -387,7 +387,7 @@ internal struct AIChatOverlay: View {
     }
 
     private func generateImage() {
-        internal let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
         #if canImport(ImagePlayground)
@@ -439,12 +439,12 @@ internal struct AIChatOverlay: View {
             ))
 
             Task {
-                internal let runner = CoordinatorExperimentRunner { message in
+                let runner = CoordinatorExperimentRunner { message in
                     Task { @MainActor in
                         ai.messages.append(AIChatMessage(content: message, isUser: false))
                     }
                 }
-                internal let report = await runner.runDefaultSuite()
+                let report = await runner.runDefaultSuite()
                 await MainActor.run {
                     ai.messages.append(AIChatMessage(
                         content: "📊 Coordinator experiments complete: \(report.successfulRuns)/\(report.totalRuns) passed. Report saved to temp directory.",
@@ -508,13 +508,13 @@ internal struct AIChatOverlay: View {
         ai.messages.append(AIChatMessage(content: "🧪 Starting automated prompt tests...", isUser: false))
 
         Task {
-            internal let results = await SystemPromptTester.testPrompts { progressMessage in
+            let results = await SystemPromptTester.testPrompts { progressMessage in
                 // Post each progress update to the chat
                 ai.messages.append(AIChatMessage(content: progressMessage, isUser: false))
             }
 
             // Find the best prompt
-            internal let successful = results.filter { !$0.hasDuplicates }
+            let successful = results.filter { !$0.hasDuplicates }
 
             if let best = successful.first {
                 ai.messages.append(AIChatMessage(
@@ -562,16 +562,16 @@ internal struct AIChatOverlay: View {
 #if DEBUG && os(macOS)
 @MainActor
 private struct TestSuitePickerSheet: View {
-    internal struct TestSuiteInfo {
-        internal let id: String
-        internal let name: String
-        internal let description: String
-        internal let duration: Int
-        internal let runs: Int
+    struct TestSuiteInfo {
+        let id: String
+        let name: String
+        let description: String
+        let duration: Int
+        let runs: Int
     }
 
-    internal let onSelectSuite: (String) -> Void
-    internal let onDismiss: () -> Void
+    let onSelectSuite: (String) -> Void
+    let onDismiss: () -> Void
 
     private let testSuites: [TestSuiteInfo] = [
         TestSuiteInfo(id: "quick-smoke", name: "Quick Smoke Test",
@@ -598,7 +598,7 @@ private struct TestSuitePickerSheet: View {
                       description: "Comprehensive suite (30 min)", duration: 1800, runs: 432)
     ]
 
-    internal var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             // Header
             HStack {
@@ -662,11 +662,11 @@ private struct TestSuitePickerSheet: View {
         if seconds < 60 {
             return "\(seconds)s"
         } else if seconds < 3600 {
-            internal let minutes = seconds / 60
+            let minutes = seconds / 60
             return "\(minutes)m"
         } else {
-            internal let hours = seconds / 3600
-            internal let minutes = (seconds % 3600) / 60
+            let hours = seconds / 3600
+            let minutes = (seconds % 3600) / 60
             return minutes > 0 ? "\(hours)h \(minutes)m" : "\(hours)h"
         }
     }

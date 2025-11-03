@@ -2,21 +2,21 @@ import Foundation
 import SwiftUI
 
 internal struct ThemeTierDraft: Identifiable, Hashable, Sendable {
-    internal let id: UUID
-    internal let index: Int
-    internal let name: String
-    internal var colorHex: String
-    internal let isUnranked: Bool
+    let id: UUID
+    let index: Int
+    let name: String
+    var colorHex: String
+    let isUnranked: Bool
 }
 
 internal struct ThemeDraft: Identifiable, Hashable, Sendable {
-    internal var id: UUID = UUID()
-    internal var displayName: String
-    internal var slug: String
-    internal var shortDescription: String
-    internal var tiers: [ThemeTierDraft]
-    internal var activeTierID: UUID
-    internal var baseThemeID: UUID?
+    var id: UUID = UUID()
+    var displayName: String
+    var slug: String
+    var shortDescription: String
+    var tiers: [ThemeTierDraft]
+    var activeTierID: UUID
+    var baseThemeID: UUID?
 
     internal init(baseTheme: TierTheme, tierOrder: [String]) {
         displayName = "\(baseTheme.displayName) Variant"
@@ -27,12 +27,12 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
         activeTierID = tiers.first?.id ?? UUID()
     }
 
-    internal var activeTier: ThemeTierDraft? {
+    var activeTier: ThemeTierDraft? {
         tiers.first { $0.id == activeTierID }
     }
 
     mutating func setName(_ newName: String) {
-        internal let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
         displayName = trimmed
         if !trimmed.isEmpty {
             slug = ThemeDraft.slugify(trimmed)
@@ -51,7 +51,7 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
     mutating func assignColor(_ hex: String, to tierID: UUID) {
         tiers = tiers.map { tier in
             guard tier.id == tierID else { return tier }
-            internal var updated = tier
+            var updated = tier
             updated.colorHex = ThemeDraft.normalizeHex(hex)
             return updated
         }
@@ -62,8 +62,8 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
     }
 
     internal func buildTheme(withSlug slugOverride: String? = nil) -> TierTheme {
-        internal let finalSlug = slugOverride ?? slug
-        internal let tierModels = tiers.map { tier in
+        let finalSlug = slugOverride ?? slug
+        let tierModels = tiers.map { tier in
             TierTheme.Tier(
                 id: UUID(),
                 index: tier.index,
@@ -82,10 +82,10 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
     }
 
     internal static func buildTierDrafts(baseTheme: TierTheme, tierOrder: [String]) -> [ThemeTierDraft] {
-        internal var drafts: [ThemeTierDraft] = []
+        var drafts: [ThemeTierDraft] = []
 
         for (index, tierName) in tierOrder.enumerated() {
-            internal let hex = ThemeDraft.normalizeHex(
+            let hex = ThemeDraft.normalizeHex(
                 baseTheme.colorHex(forRank: tierName, fallbackIndex: index)
             )
 
@@ -138,22 +138,22 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
     }
 
     internal static func slugify(_ value: String) -> String {
-        internal let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return "custom-theme" }
-        internal let lowercase = trimmed.lowercased()
-        internal let allowed = lowercase.compactMap { character -> Character? in
+        let lowercase = trimmed.lowercased()
+        let allowed = lowercase.compactMap { character -> Character? in
             if character.isLetter || character.isNumber { return character }
             if character == " " || character == "-" || character == "_" { return "-" }
             return nil
         }
-        internal let collapsed = String(allowed)
+        let collapsed = String(allowed)
             .replacingOccurrences(of: "-+", with: "-", options: .regularExpression)
             .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
         return collapsed.isEmpty ? "custom-theme" : collapsed
     }
 
     internal static func normalizeHex(_ value: String) -> String {
-        internal let sanitized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sanitized = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if sanitized.hasPrefix("#") { return sanitized.uppercased() }
         return "#" + sanitized.uppercased()
     }
@@ -162,11 +162,11 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
 // MARK: - Theme Creation Workflow
 
 internal extension AppState {
-    internal var availableThemes: [TierTheme] {
-        internal let bundled = TierThemeCatalog.allThemes
+    var availableThemes: [TierTheme] {
+        let bundled = TierThemeCatalog.allThemes
         guard !theme.customThemes.isEmpty else { return bundled }
-        internal let bundledIDs = Set(bundled.map(\TierTheme.id))
-        internal let uniqueCustom = theme.customThemes.filter { !bundledIDs.contains($0.id) }
+        let bundledIDs = Set(bundled.map(\TierTheme.id))
+        let uniqueCustom = theme.customThemes.filter { !bundledIDs.contains($0.id) }
         return bundled + uniqueCustom.sorted { lhs, rhs in
             lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
         }
@@ -182,7 +182,7 @@ internal extension AppState {
     }
 
     internal func beginThemeCreation(baseTheme: TierTheme? = nil) {
-        internal let source = baseTheme ?? theme.selectedTheme
+        let source = baseTheme ?? theme.selectedTheme
         theme.themeDraft = ThemeDraft(baseTheme: source, tierOrder: tierOrder)
         overlays.showThemePicker = false
         overlays.presentThemeCreator()
@@ -224,7 +224,7 @@ internal extension AppState {
     internal func completeThemeCreation() {
         guard var draft = theme.themeDraft else { return }
 
-        internal let cleanedName = draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanedName = draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanedName.isEmpty else {
             showErrorToast("Add a name", message: "Give your theme a descriptive name before saving")
             return
@@ -232,11 +232,11 @@ internal extension AppState {
 
         draft.setName(cleanedName)
 
-        internal let desiredSlug = draft.slug
-        internal let uniqueSlug = makeUniqueSlug(from: desiredSlug)
-        internal let newTheme = draft.buildTheme(withSlug: uniqueSlug)
+        let desiredSlug = draft.slug
+        let uniqueSlug = makeUniqueSlug(from: desiredSlug)
+        let newTheme = draft.buildTheme(withSlug: uniqueSlug)
 
-        internal let duplicateNameExists = availableThemes.contains {
+        let duplicateNameExists = availableThemes.contains {
             $0.displayName.caseInsensitiveCompare(newTheme.displayName) == .orderedSame
         }
 
@@ -260,10 +260,10 @@ internal extension AppState {
     }
 
     private func makeUniqueSlug(from base: String) -> String {
-        internal let normalizedBase = base.isEmpty ? "custom-theme" : base
-        internal var candidate = normalizedBase
-        internal var index = 1
-        internal let existing = Set(availableThemes.map(\TierTheme.slug))
+        let normalizedBase = base.isEmpty ? "custom-theme" : base
+        var candidate = normalizedBase
+        var index = 1
+        let existing = Set(availableThemes.map(\TierTheme.slug))
         while existing.contains(candidate) {
             index += 1
             candidate = "\(normalizedBase)-\(index)"

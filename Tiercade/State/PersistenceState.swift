@@ -16,34 +16,34 @@ internal final class PersistenceState {
     // MARK: - Auto-Save State
 
     /// Whether there are unsaved changes to the current tier list
-    internal var hasUnsavedChanges: Bool = false
+    var hasUnsavedChanges: Bool = false
 
     /// Timestamp of the last successful save operation
-    internal var lastSavedTime: Date?
+    var lastSavedTime: Date?
 
     // MARK: - Active Tier List
 
     /// Handle for the currently active tier list (if any)
-    internal var activeTierList: TierListHandle?
+    var activeTierList: TierListHandle?
 
     /// Cached reference to the active SwiftData entity
-    internal var activeTierListEntity: TierListEntity?
+    var activeTierListEntity: TierListEntity?
 
     // MARK: - Recent Tier Lists
 
     /// Recently accessed tier lists (for quick access menu)
-    internal var recentTierLists: [TierListHandle] = []
+    var recentTierLists: [TierListHandle] = []
 
     /// Maximum number of recent tier lists to track
-    internal let maxRecentTierLists: Int = 6
+    let maxRecentTierLists: Int = 6
 
     /// Maximum number to show in quick pick menu
-    internal let quickPickMenuLimit: Int = 5
+    let quickPickMenuLimit: Int = 5
 
     // MARK: - File Management
 
     /// Current file name (for save/load operations)
-    internal var currentFileName: String?
+    var currentFileName: String?
 
     // MARK: - Dependencies
 

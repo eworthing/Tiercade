@@ -5,7 +5,7 @@ internal struct TierListQuickMenu: View {
 
     #if os(tvOS)
     private var tierTitleFont: Font {
-        internal let nameLength = app.activeTierDisplayName.count
+        let nameLength = app.activeTierDisplayName.count
         return nameLength <= 16 ? TypeScale.h2 : TypeScale.h3
     }
     #endif

@@ -99,13 +99,13 @@ internal struct NormConfig {
 
 // MARK: - String Normalization Extension
 
-internal extension String {
+extension String {
     /// Recursively trim leading articles with delimiter awareness
     private func trimLeadingArticlesRecursive() -> String {
-        internal let articles = Set(["a", "an", "the"])
+        let articles = Set(["a", "an", "the"])
 
-        internal func stripArticles(_ text: String) -> String {
-            internal var result = text.trimmingCharacters(in: .whitespaces)
+        func stripArticles(_ text: String) -> String {
+            var result = text.trimmingCharacters(in: .whitespaces)
             while let firstWord = result.split(separator: " ").first,
                   articles.contains(firstWord.lowercased()) {
                 result.removeFirst(firstWord.count)
@@ -115,14 +115,14 @@ internal extension String {
         }
 
         // Split on delimiters that start new segments (colon, hyphen)
-        internal let withSpacedHyphens = self.replacingOccurrences(of: "-", with: " ")
-        internal let segments = withSpacedHyphens.split(separator: ":").map { stripArticles(String($0)) }
+        let withSpacedHyphens = self.replacingOccurrences(of: "-", with: " ")
+        let segments = withSpacedHyphens.split(separator: ":").map { stripArticles(String($0)) }
         return segments.joined(separator: ":")
     }
 
     /// Compute deterministic normalization key for deduplication
-    internal var normKey: String {
-        internal var s = lowercased().folding(options: .diacriticInsensitive, locale: .current)
+    var normKey: String {
+        var s = lowercased().folding(options: .diacriticInsensitive, locale: .current)
 
         // Remove trademark symbols
         s = NormConfig.reMarks.stringByReplacingMatches(
@@ -164,7 +164,7 @@ internal extension String {
 
         // Optional plural trimming
         guard UniqueListGenerationFlags.pluralTrimEnabled else { return s }
-        internal var parts = s.split(separator: " ").map(String.init)
+        var parts = s.split(separator: " ").map(String.init)
         if var last = parts.last, last.count > 4 {
             if !NormConfig.pluralExceptions.contains(last) {
                 if last.hasSuffix("es") {
@@ -181,18 +181,18 @@ internal extension String {
 
 // MARK: - Array Token Budgeting Extension
 
-internal extension Array where Element == String {
+extension Array where Element == String {
     /// Chunk array by token budget for avoid-list management
     internal func chunkedByTokenBudget(
         maxTokens: Int,
         estimate: (String) -> Int = { ($0.count + 3) / 4 }
     ) -> [[String]] {
-        internal var chunks: [[String]] = []
-        internal var current: [String] = []
-        internal var tally = 0
+        var chunks: [[String]] = []
+        var current: [String] = []
+        var tally = 0
 
         for k in self {
-            internal let t = estimate(k) + 2 // quotes + comma
+            let t = estimate(k) + 2 // quotes + comma
             if tally + t > maxTokens, !current.isEmpty {
                 chunks.append(current)
                 current = [k]
@@ -215,7 +215,7 @@ internal extension Array where Element == String {
 
 #if canImport(FoundationModels)
 @available(iOS 26.0, macOS 26.0, *)
-internal extension GenerationOptions {
+extension GenerationOptions {
     /// Top-K sampling configuration
     nonisolated(unsafe) static func topK(_ k: Int, temp: Double, seed: UInt64?, maxTok: Int) -> Self {
         .init(
@@ -265,22 +265,22 @@ internal extension GenerationOptions {
 @available(iOS 26.0, macOS 26.0, *)
 @Generable
 internal struct UniqueListResponse: Decodable {
-    internal var items: [String]
+    var items: [String]
 }
 #endif
 
 // MARK: - Telemetry Structures
 
 internal struct RunEnv: Codable {
-    internal let osVersionString: String
-    internal let osVersion: String
-    internal let hasTopP: Bool
-    internal let deploymentTag: String?
+    let osVersionString: String
+    let osVersion: String
+    let hasTopP: Bool
+    let deploymentTag: String?
 
     internal init(deploymentTag: String? = nil) {
         self.osVersionString = ProcessInfo.processInfo.operatingSystemVersionString
 
-        internal let v = ProcessInfo.processInfo.operatingSystemVersion
+        let v = ProcessInfo.processInfo.operatingSystemVersion
         self.osVersion = "\(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
 
         if #available(iOS 26.0, macOS 26.0, *) {
@@ -294,16 +294,16 @@ internal struct RunEnv: Codable {
 }
 
 internal struct RunMetrics: Codable {
-    internal let passAtN: Bool
-    internal let uniqueAtN: Int
-    internal let jsonStrictSuccess: Bool
-    internal let itemsPerSecond: Double
-    internal let dupRatePreDedup: Double
-    internal let seed: UInt64?
-    internal let decoderProfile: String
-    internal let env: RunEnv
-    internal let generationTimeSeconds: Double
-    internal let totalPasses: Int
+    let passAtN: Bool
+    let uniqueAtN: Int
+    let jsonStrictSuccess: Bool
+    let itemsPerSecond: Double
+    let dupRatePreDedup: Double
+    let seed: UInt64?
+    let decoderProfile: String
+    let env: RunEnv
+    let generationTimeSeconds: Double
+    let totalPasses: Int
 }
 
 // MARK: - Decoder Profile
@@ -335,7 +335,7 @@ internal enum DecoderProfile {
         }
     }
 
-    internal var description: String {
+    var description: String {
         switch self {
         case .greedy: return "greedy"
         case .topK(let k): return "topK:\(k)"
@@ -347,62 +347,62 @@ internal enum DecoderProfile {
 
 /// Per-attempt telemetry for diagnostics
 internal struct AttemptMetrics: Codable {
-    internal let attemptIndex: Int
-    internal let seed: UInt64?
-    internal let sampling: String
-    internal let temperature: Double?
-    internal let sessionRecreated: Bool
-    internal let itemsReturned: Int?
-    internal let elapsedSec: Double?
+    let attemptIndex: Int
+    let seed: UInt64?
+    let sampling: String
+    let temperature: Double?
+    let sessionRecreated: Bool
+    let itemsReturned: Int?
+    let elapsedSec: Double?
 }
 
 /// Full run telemetry for export
 internal struct RunTelemetry: Codable {
-    internal let testId: String
-    internal let query: String
-    internal let targetN: Int
-    internal let passIndex: Int
-    internal let attemptIndex: Int
-    internal let seed: UInt64?
-    internal let sampling: String
-    internal let temperature: Double?
-    internal let sessionRecreated: Bool
-    internal let itemsReturned: Int
-    internal let elapsedSec: Double
-    internal let osVersion: String
+    let testId: String
+    let query: String
+    let targetN: Int
+    let passIndex: Int
+    let attemptIndex: Int
+    let seed: UInt64?
+    let sampling: String
+    let temperature: Double?
+    let sessionRecreated: Bool
+    let itemsReturned: Int
+    let elapsedSec: Double
+    let osVersion: String
 
     // Diagnostic fields (all optional for backward compatibility)
-    internal let totalGenerated: Int?
-    internal let dupCount: Int?
-    internal let dupRate: Double?
-    internal let backfillRounds: Int?
-    internal let circuitBreakerTriggered: Bool?
-    internal let passCount: Int?
-    internal let failureReason: String?
-    internal let topDuplicates: [String: Int]?  // Top 5 duplicate items with counts
+    let totalGenerated: Int?
+    let dupCount: Int?
+    let dupRate: Double?
+    let backfillRounds: Int?
+    let circuitBreakerTriggered: Bool?
+    let passCount: Int?
+    let failureReason: String?
+    let topDuplicates: [String: Int]?  // Top 5 duplicate items with counts
 }
 
 /// Export telemetry to JSONL
 @MainActor
-internal func exportTelemetryToJSONL(_ records: [RunTelemetry], to path: String? = nil) {
+func exportTelemetryToJSONL(_ records: [RunTelemetry], to path: String? = nil) {
     guard !records.isEmpty else { return }
 
     // Use sandbox temp directory for security
-    internal let defaultPath = FileManager.default.temporaryDirectory
+    let defaultPath = FileManager.default.temporaryDirectory
         .appendingPathComponent("unique_list_runs.jsonl").path
-    internal let targetPath = path ?? defaultPath
+    let targetPath = path ?? defaultPath
 
-    internal let encoder = JSONEncoder()
+    let encoder = JSONEncoder()
     encoder.outputFormatting = []  // Compact JSON for JSONL
 
     do {
-        internal let fileURL = URL(fileURLWithPath: targetPath)
+        let fileURL = URL(fileURLWithPath: targetPath)
 
         // CAP: Rotate file at 10MB to prevent unbounded growth
         if FileManager.default.fileExists(atPath: targetPath) {
-            internal let attrs = try FileManager.default.attributesOfItem(atPath: targetPath)
+            let attrs = try FileManager.default.attributesOfItem(atPath: targetPath)
             if let size = (attrs[.size] as? NSNumber)?.intValue, size > 10_000_000 {
-                internal let backupPath = targetPath.replacingOccurrences(
+                let backupPath = targetPath.replacingOccurrences(
                     of: ".jsonl",
                     with: "_\(Date().timeIntervalSince1970).jsonl"
                 )
@@ -411,7 +411,7 @@ internal func exportTelemetryToJSONL(_ records: [RunTelemetry], to path: String?
             }
         }
 
-        internal let fileHandle: FileHandle
+        let fileHandle: FileHandle
 
         // Create or append to file
         if FileManager.default.fileExists(atPath: targetPath) {
@@ -431,7 +431,7 @@ internal func exportTelemetryToJSONL(_ records: [RunTelemetry], to path: String?
         defer { try? fileHandle.close() }
 
         for record in records {
-            internal let data = try encoder.encode(record)
+            let data = try encoder.encode(record)
             fileHandle.write(data)
             fileHandle.write(Data("\n".utf8))
         }

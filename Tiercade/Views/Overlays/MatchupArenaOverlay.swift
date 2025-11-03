@@ -115,15 +115,15 @@ internal struct MatchupArenaOverlay: View {
 
     private func overlayMaxWidth(for proxy: GeometryProxy) -> CGFloat {
         #if os(tvOS)
-        internal let safeArea = proxy.safeAreaInsets
-        internal let available = max(proxy.size.width - safeArea.leading - safeArea.trailing, 0)
-        internal let horizontalMargin = Metrics.grid * 4
-        internal let desired = max(available - horizontalMargin, minOverlayWidth)
+        let safeArea = proxy.safeAreaInsets
+        let available = max(proxy.size.width - safeArea.leading - safeArea.trailing, 0)
+        let horizontalMargin = Metrics.grid * 4
+        let desired = max(available - horizontalMargin, minOverlayWidth)
         return min(desired, available)
         #else
-        internal let available = proxy.size.width
-        internal let horizontalMargin = Metrics.grid * 4
-        internal let desired = max(available - horizontalMargin, 860)
+        let available = proxy.size.width
+        let horizontalMargin = Metrics.grid * 4
+        let desired = max(available - horizontalMargin, 860)
         return min(desired, available)
         #endif
     }
@@ -277,7 +277,7 @@ internal struct MatchupArenaOverlay: View {
     }
 
     private var progressLabel: String {
-        internal let percentage = Int(round(app.headToHead.overallProgress * 100))
+        let percentage = Int(round(app.headToHead.overallProgress * 100))
         return "\(percentage)%"
     }
 
@@ -315,7 +315,7 @@ internal struct MatchupArenaOverlay: View {
 
     private func synchronizeFocus() {
         Task { @MainActor in
-            internal let target = defaultFocus
+            let target = defaultFocus
             focusAnchor = target
             lastFocus = target
         }
@@ -333,7 +333,7 @@ internal struct MatchupArenaOverlay: View {
         #if !os(tvOS)
         overlayHasFocus = true
         #endif
-        internal let current = focusAnchor ?? lastFocus
+        let current = focusAnchor ?? lastFocus
         guard let next = nextFocusAnchor(from: current, direction: move) else { return }
         focusAnchor = next
     }
@@ -389,7 +389,7 @@ internal struct MatchupArenaOverlay: View {
     }
 
     private func handlePrimaryAction() {
-        internal let anchor = focusAnchor ?? defaultFocus
+        let anchor = focusAnchor ?? defaultFocus
         switch anchor {
         case .primary:
             if let pair = app.headToHead.currentPair {
