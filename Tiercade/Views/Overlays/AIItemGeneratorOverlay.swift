@@ -10,9 +10,9 @@ import TiercadeCore
 ///
 /// - Note: Only available on macOS/iOS 26+. tvOS shows platform message.
 /// - Note: All items default to selected; users deselect unwanted items.
-struct AIItemGeneratorOverlay: View {
+internal struct AIItemGeneratorOverlay: View {
     @Bindable var appState: AppState
-    let draft: TierProjectDraft
+    internal let draft: TierProjectDraft
 
     @State private var itemDescription: String = ""
     @State private var itemCount: Int = 25
@@ -23,7 +23,7 @@ struct AIItemGeneratorOverlay: View {
     @FocusState private var focusedField: Field?
     @Namespace private var focusNamespace
 
-    enum Field: Hashable {
+    internal enum Field: Hashable {
         case description
         case count
     }
@@ -58,15 +58,15 @@ struct AIItemGeneratorOverlay: View {
         }
     }
 
-    var body: some View {
+    internal var body: some View {
         NavigationStack {
             Group {
                 switch stage {
-                case .input:
+        case .input:
                     inputForm
-                case .generating:
+        case .generating:
                     generatingView
-                case .review:
+        case .review:
                     reviewList
                 }
             }

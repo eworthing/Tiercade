@@ -18,31 +18,31 @@ internal final class OverlaysState {
     // MARK: - Item Detail & Quick Move
 
     /// Currently selected item for detail view (if any)
-    var detailItem: Item?
+    internal var detailItem: Item?
 
     /// Target item for quick move operation (if any)
-    var quickMoveTarget: Item?
+    internal var quickMoveTarget: Item?
 
     // MARK: - Tier List Management
 
     /// Whether the tier list creator wizard is visible
-    var showTierListCreator: Bool = false
+    internal var showTierListCreator: Bool = false
 
     /// Whether the tier list browser is visible
-    var showTierListBrowser: Bool = false
+    internal var showTierListBrowser: Bool = false
 
     // MARK: - Theme Management
 
     /// Whether the theme picker overlay is visible
-    var showThemePicker: Bool = false
+    internal var showThemePicker: Bool = false
 
     /// Whether the theme creator is visible
-    var showThemeCreator: Bool = false
+    internal var showThemeCreator: Bool = false
 
     // MARK: - Analytics
 
     /// Whether the analytics sidebar is visible (iOS/macOS sidebar or tvOS overlay)
-    var showAnalyticsSidebar: Bool = false
+    internal var showAnalyticsSidebar: Bool = false
 
     // MARK: - Computed State
 
@@ -66,13 +66,13 @@ internal final class OverlaysState {
     // MARK: - Overlay Type
 
     internal enum OverlayType {
-        case detail
-        case quickMove
-        case themePicker
-        case themeCreator
-        case tierListCreator
-        case tierListBrowser
-        case analytics
+        internal case detail
+        internal case quickMove
+        internal case themePicker
+        internal case themeCreator
+        internal case tierListCreator
+        internal case tierListBrowser
+        internal case analytics
     }
 
     // MARK: - Methods

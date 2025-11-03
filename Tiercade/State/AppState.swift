@@ -11,10 +11,10 @@ import TiercadeCore
 
 // MARK: - Export & Import System Types
 
-nonisolated enum ExportFormat: CaseIterable {
+internal nonisolated enum ExportFormat: CaseIterable {
     case text, json, markdown, csv, png, pdf
 
-    var fileExtension: String {
+    internal var fileExtension: String {
         switch self {
         case .text: return "txt"
         case .json: return "json"
@@ -25,7 +25,7 @@ nonisolated enum ExportFormat: CaseIterable {
         }
     }
 
-    var displayName: String {
+    internal var displayName: String {
         switch self {
         case .text: return "Plain Text"
         case .json: return "JSON"
@@ -40,20 +40,20 @@ nonisolated enum ExportFormat: CaseIterable {
 // MARK: - Analysis & Statistics Types
 
 internal struct TierDistributionData: Identifiable, Sendable {
-    let id = UUID()
-    let tier: String
-    let count: Int
-    let percentage: Double
+    internal let id = UUID()
+    internal let tier: String
+    internal let count: Int
+    internal let percentage: Double
 }
 
 internal struct TierAnalysisData: Sendable {
-    let totalItems: Int
-    let tierDistribution: [TierDistributionData]
-    let mostPopulatedTier: String?
-    let leastPopulatedTier: String?
-    let balanceScore: Double
-    let insights: [String]
-    let unrankedCount: Int
+    internal let totalItems: Int
+    internal let tierDistribution: [TierDistributionData]
+    internal let mostPopulatedTier: String?
+    internal let leastPopulatedTier: String?
+    internal let balanceScore: Double
+    internal let insights: [String]
+    internal let unrankedCount: Int
 
     internal static let empty = TierAnalysisData(
         totalItems: 0,
@@ -69,7 +69,7 @@ internal struct TierAnalysisData: Sendable {
 @MainActor
 @Observable
 final class AppState {
-    enum TierListDraftValidationCategory: String, Sendable {
+    internal enum TierListDraftValidationCategory: String, Sendable {
         case project
         case tier
         case item
@@ -78,14 +78,14 @@ final class AppState {
         case collaboration
     }
 
-    struct TierListDraftValidationIssue: Identifiable, Equatable, Sendable {
-        let id = UUID()
-        var category: TierListDraftValidationCategory
-        var message: String
-        var contextIdentifier: String?
+    internal struct TierListDraftValidationIssue: Identifiable, Equatable, Sendable {
+        internal let id = UUID()
+        internal var category: TierListDraftValidationCategory
+        internal var message: String
+        internal var contextIdentifier: String?
     }
 
-    let modelContext: ModelContext
+    internal let modelContext: ModelContext
 
     // MARK: - Injected Services (DI)
     internal let persistenceStore: TierPersistenceStore
@@ -94,63 +94,63 @@ final class AppState {
 
     // MARK: - Tier List State
     /// Consolidated state for tier list data and operations
-    var tierList = TierListState()
+    internal var tierList = TierListState()
 
-    var searchQuery: String = ""
-    var activeFilter: FilterType = .all
-    var currentToast: ToastMessage?
-    var quickRankTarget: Item?
-    var batchQuickMoveActive: Bool = false
+    internal var searchQuery: String = ""
+    internal var activeFilter: FilterType = .all
+    internal var currentToast: ToastMessage?
+    internal var quickRankTarget: Item?
+    internal var batchQuickMoveActive: Bool = false
     // Layout preferences
-    var cardDensityPreference: CardDensityPreference = .compact
+    internal var cardDensityPreference: CardDensityPreference = .compact
     // Tier List Creator state (active flags for focus management)
-    var tierListCreatorActive: Bool = false
-    var tierListWizardContext: TierListWizardContext = .create
-    var tierListCreatorDraft: TierProjectDraft?
-    var tierListCreatorIssues: [TierListDraftValidationIssue] = []
-    var tierListCreatorExportPayload: String?
+    internal var tierListCreatorActive: Bool = false
+    internal var tierListWizardContext: TierListWizardContext = .create
+    internal var tierListCreatorDraft: TierProjectDraft?
+    internal var tierListCreatorIssues: [TierListDraftValidationIssue] = []
+    internal var tierListCreatorExportPayload: String?
     // MARK: - AI Generation State
     /// Consolidated state for Apple Intelligence chat and AI generation
-    var aiGeneration: AIGenerationState
+    internal var aiGeneration: AIGenerationState
 
     // MARK: - Head-to-Head State
     /// Consolidated state for Head-to-Head ranking mode (replaces 17 scattered h2h* properties)
-    var headToHead = HeadToHeadState()
+    internal var headToHead = HeadToHeadState()
 
     // MARK: - Persistence State
     /// Consolidated state for tier list persistence and file management
-    var persistence: PersistenceState
+    internal var persistence: PersistenceState
 
     // MARK: - Overlays State
     /// Consolidated state for modal/overlay routing and visibility
-    var overlays = OverlaysState()
+    internal var overlays = OverlaysState()
 
     // MARK: - Theme State
     /// Consolidated state for theme selection and management
-    var theme: ThemeState
+    internal var theme: ThemeState
 
     // MARK: - Progress State
     /// Consolidated state for loading indicators and progress tracking
-    var progress = ProgressState()
+    internal var progress = ProgressState()
 
     // Progress Tracking & Visual Feedback
-    var dragTargetTier: String?
-    var draggingId: String?
-    var isProcessingSearch: Bool = false
-    let bundledProjects: [BundledProject] = BundledProjects.all
+    internal var dragTargetTier: String?
+    internal var draggingId: String?
+    internal var isProcessingSearch: Bool = false
+    internal let bundledProjects: [BundledProject] = BundledProjects.all
 
     // Confirmation alerts
-    var showRandomizeConfirmation: Bool = false
-    var showResetConfirmation: Bool = false
+    internal var showRandomizeConfirmation: Bool = false
+    internal var showResetConfirmation: Bool = false
 
-    let tierListStateKey = "Tiercade.tierlist.active.v1"
-    let tierListRecentsKey = "Tiercade.tierlist.recents.v1"
-    var autosaveTask: Task<Void, Never>?
-    let autosaveInterval: TimeInterval = PersistenceIntervals.autosave
+    internal let tierListStateKey = "Tiercade.tierlist.active.v1"
+    internal let tierListRecentsKey = "Tiercade.tierlist.recents.v1"
+    internal var autosaveTask: Task<Void, Never>?
+    internal let autosaveInterval: TimeInterval = PersistenceIntervals.autosave
 
     /// Centralized check for whether any overlay blocks background interaction
     /// Use with `.allowsHitTesting(!app.blocksBackgroundFocus)` on background content
-    var blocksBackgroundFocus: Bool {
+    internal var blocksBackgroundFocus: Bool {
         overlays.blocksBackgroundFocus
         || headToHead.isActive
         || (aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform)
@@ -178,24 +178,24 @@ final class AppState {
         // Initialize theme state with injected theme catalog
         self.theme = ThemeState(themeCatalog: self.themeCatalog)
 
-        let didLoad = load()
+        internal let didLoad = load()
         if !didLoad {
             seed()
         } else if isLegacyBundledListPlaceholder(tiers) {
             logEvent("init: detected legacy bundled list placeholder; reseeding default project")
-            let defaults = UserDefaults.standard
+            internal let defaults = UserDefaults.standard
             defaults.removeObject(forKey: tierListStateKey)
             defaults.removeObject(forKey: tierListRecentsKey)
             seed()
         }
         setupAutosave()
 
-        let tierSummary = tierOrder
+        internal let tierSummary = tierOrder
             .map { "\($0):\(tiers[$0]?.count ?? 0)" }
             .joined(separator: ", ")
-        let unrankedKey = TierIdentifier.unranked.rawValue
-        let unrankedCount = tiers[unrankedKey]?.count ?? 0
-        let initMsg = "init: tiers counts=\(tierSummary) unranked=\(unrankedCount)"
+        internal let unrankedKey = TierIdentifier.unranked.rawValue
+        internal let unrankedCount = tiers[unrankedKey]?.count ?? 0
+        internal let initMsg = "init: tiers counts=\(tierSummary) unranked=\(unrankedCount)"
         logEvent(initMsg)
         restoreTierListState()
         if !didLoad {
@@ -211,7 +211,7 @@ final class AppState {
 
     private func setupAutosave() {
         autosaveTask?.cancel()
-        let interval = autosaveInterval
+        internal let interval = autosaveInterval
         autosaveTask = Task { [weak self] in
             while !Task.isCancelled {
                 do {
@@ -236,73 +236,73 @@ final class AppState {
     // MARK: - Tier List Convenience Accessors
 
     /// Convenience accessor for tiers
-    var tiers: Items {
+    internal var tiers: Items {
         get { tierList.tiers }
         set { tierList.tiers = newValue }
     }
 
     /// Convenience accessor for tierOrder
-    var tierOrder: [String] {
+    internal var tierOrder: [String] {
         get { tierList.tierOrder }
         set { tierList.tierOrder = newValue }
     }
 
     /// Convenience accessor for selection
-    var selection: Set<String> {
+    internal var selection: Set<String> {
         get { tierList.selection }
         set { tierList.selection = newValue }
     }
 
     /// Convenience accessor for lockedTiers
-    var lockedTiers: Set<String> {
+    internal var lockedTiers: Set<String> {
         get { tierList.lockedTiers }
         set { tierList.lockedTiers = newValue }
     }
 
     /// Convenience accessor for tierLabels
-    var tierLabels: [String: String] {
+    internal var tierLabels: [String: String] {
         get { tierList.tierLabels }
         set { tierList.tierLabels = newValue }
     }
 
     /// Convenience accessor for tierColors
-    var tierColors: [String: String] {
+    internal var tierColors: [String: String] {
         get { tierList.tierColors }
         set { tierList.tierColors = newValue }
     }
 
     /// Convenience accessor for globalSortMode
-    var globalSortMode: GlobalSortMode {
+    internal var globalSortMode: GlobalSortMode {
         get { tierList.globalSortMode }
         set { tierList.globalSortMode = newValue }
     }
 
     /// Convenience accessor for displayLabel
-    func displayLabel(for tierId: String) -> String {
+    internal func displayLabel(for tierId: String) -> String {
         tierList.displayLabel(for: tierId)
     }
 
     /// Convenience accessor for displayColorHex
-    func displayColorHex(for tierId: String) -> String? {
+    internal func displayColorHex(for tierId: String) -> String? {
         tierList.displayColorHex(for: tierId)
     }
 
     // MARK: - Progress Convenience Accessors
 
     /// Convenience accessor for isLoading
-    var isLoading: Bool {
+    internal var isLoading: Bool {
         get { progress.isLoading }
         set { progress.isLoading = newValue }
     }
 
     /// Convenience accessor for loadingMessage
-    var loadingMessage: String {
+    internal var loadingMessage: String {
         get { progress.loadingMessage }
         set { progress.loadingMessage = newValue }
     }
 
     /// Convenience accessor for operationProgress
-    var operationProgress: Double {
+    internal var operationProgress: Double {
         get { progress.operationProgress }
         set { progress.operationProgress = newValue }
     }
@@ -351,7 +351,7 @@ final class AppState {
             return
         }
         applyBundledProject(defaultProject)
-        let fallbackTheme = TierThemeCatalog.defaultTheme
+        internal let fallbackTheme = TierThemeCatalog.defaultTheme
         theme.selectedTheme = fallbackTheme
         theme.selectedThemeID = fallbackTheme.id
         applyCurrentTheme()
@@ -368,13 +368,13 @@ final class AppState {
     }
 
     private func isLegacyBundledListPlaceholder(_ tiers: Items) -> Bool {
-        let placeholderIDs = Set(BundledProjects.all.map(\.id))
+        internal let placeholderIDs = Set(BundledProjects.all.map(\.id))
         guard !placeholderIDs.isEmpty else { return false }
 
-        let allItems = tiers.values.flatMap { $0 }
+        internal let allItems = tiers.values.flatMap { $0 }
         guard allItems.count == placeholderIDs.count else { return false }
 
-        let itemIDs = Set(allItems.map(\.id))
+        internal let itemIDs = Set(allItems.map(\.id))
         return itemIDs == placeholderIDs
     }
 
@@ -386,14 +386,14 @@ final class AppState {
         tierList.redo()
     }
 
-    var canUndo: Bool { tierList.canUndo }
-    var canRedo: Bool { tierList.canRedo }
-    var totalItemCount: Int { tierList.totalItemCount }
-    var hasAnyItems: Bool { tierList.hasAnyItems }
-    var hasEnoughForPairing: Bool { tierList.hasEnoughForPairing }
-    var canRandomizeItems: Bool { tierList.canRandomizeItems }
-    var canStartHeadToHead: Bool { !headToHead.isActive && hasEnoughForPairing }
-    var canShowAnalysis: Bool { hasAnyItems }
+    internal var canUndo: Bool { tierList.canUndo }
+    internal var canRedo: Bool { tierList.canRedo }
+    internal var totalItemCount: Int { tierList.totalItemCount }
+    internal var hasAnyItems: Bool { tierList.hasAnyItems }
+    internal var hasEnoughForPairing: Bool { tierList.hasEnoughForPairing }
+    internal var canRandomizeItems: Bool { tierList.canRandomizeItems }
+    internal var canStartHeadToHead: Bool { !headToHead.isActive && hasEnoughForPairing }
+    internal var canShowAnalysis: Bool { hasAnyItems }
 
     // MARK: - Enhanced Persistence
 
@@ -403,8 +403,8 @@ final class AppState {
 
     // MARK: - Analysis & Statistics System
 
-    var showingAnalysis = false
-    var analysisData: TierAnalysisData?
+    internal var showingAnalysis = false
+    internal var analysisData: TierAnalysisData?
 
     // MARK: - Accessibility
     internal func announce(_ message: String) {

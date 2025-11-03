@@ -4,31 +4,31 @@ import Foundation
 import FoundationModels
 
 @MainActor
-class SystemPromptTester {
-    struct TestResult {
-        let promptNumber: Int
-        let promptText: String
-        let hasDuplicates: Bool
-        let duplicateCount: Int
-        let uniqueItems: Int
-        let totalItems: Int
-        let insufficient: Bool
-        let wasJsonParsed: Bool
-        let response: String
-        let parsedItems: [String]
-        let normalizedItems: [String]
+internal class SystemPromptTester {
+    internal struct TestResult {
+        internal let promptNumber: Int
+        internal let promptText: String
+        internal let hasDuplicates: Bool
+        internal let duplicateCount: Int
+        internal let uniqueItems: Int
+        internal let totalItems: Int
+        internal let insufficient: Bool
+        internal let wasJsonParsed: Bool
+        internal let response: String
+        internal let parsedItems: [String]
+        internal let normalizedItems: [String]
     }
 
     internal static func testPrompts(onProgress: @MainActor @escaping (String) -> Void) async -> [TestResult] {
-        let testQuery = "What are the top 25 most popular animated series"
-        var results: [TestResult] = []
+        internal let testQuery = "What are the top 25 most popular animated series"
+        internal var results: [TestResult] = []
 
         logTestHeader(testQuery: testQuery, onProgress: onProgress)
 
         for (index, prompt) in prompts.enumerated() {
             logPromptStart(index: index, prompt: prompt, onProgress: onProgress)
 
-            let result = await testSinglePrompt(
+            internal let result = await testSinglePrompt(
                 promptNumber: index + 1,
                 systemPrompt: prompt,
                 testQuery: testQuery
@@ -37,7 +37,7 @@ class SystemPromptTester {
             results.append(result)
             savePartialResults(results: results)
 
-            let status = buildTestStatus(result: result)
+            internal let status = buildTestStatus(result: result)
             reportTestResult(result: result, status: status, onProgress: onProgress)
 
             // Short delay between tests
@@ -73,7 +73,7 @@ class SystemPromptTester {
         }
     }
 
-    struct TimeoutError: Error, Sendable {}
+    internal struct TimeoutError: Error, Sendable {}
 
     private static func testSinglePrompt(
         promptNumber: Int,
@@ -81,9 +81,9 @@ class SystemPromptTester {
         testQuery: String
     ) async -> TestResult {
         do {
-            let responseContent = try await executePromptGeneration(systemPrompt: systemPrompt, testQuery: testQuery)
+            internal let responseContent = try await executePromptGeneration(systemPrompt: systemPrompt, testQuery: testQuery)
             print("🧪   ✅ Generation completed successfully")
-            let analysis = analyzeDuplicates(responseContent)
+            internal let analysis = analyzeDuplicates(responseContent)
             return buildSuccessfulTestResult(
                 promptNumber: promptNumber,
                 systemPrompt: systemPrompt,
@@ -98,11 +98,11 @@ class SystemPromptTester {
     }
 
     private static func executePromptGeneration(systemPrompt: String, testQuery: String) async throws -> String {
-        let instructions = Instructions(systemPrompt)
-        let session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
+        internal let instructions = Instructions(systemPrompt)
+        internal let session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
 
         // Explicit generation options for reproducibility and control
-        let opts = GenerationOptions(
+        internal let opts = GenerationOptions(
             sampling: .random(top: 50, seed: UInt64.random(in: 0...UInt64.max)),
             temperature: 0.8,
             maximumResponseTokens: 1200

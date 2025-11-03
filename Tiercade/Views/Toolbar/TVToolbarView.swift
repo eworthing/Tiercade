@@ -15,19 +15,19 @@ internal struct TVToolbarView: View {
     }
 
     internal var body: some View {
-        let randomizeEnabled = app.canRandomizeItems
-        let headToHeadEnabled = app.canStartHeadToHead
-        let analyticsActive = app.overlays.showAnalyticsSidebar
-        let analyticsEnabled = analyticsActive || app.canShowAnalysis
-        let randomizeHint = randomizeEnabled
+        internal let randomizeEnabled = app.canRandomizeItems
+        internal let headToHeadEnabled = app.canStartHeadToHead
+        internal let analyticsActive = app.overlays.showAnalyticsSidebar
+        internal let analyticsEnabled = analyticsActive || app.canShowAnalysis
+        internal let randomizeHint = randomizeEnabled
             ? "Randomly distribute items across tiers"
             : "Add more items before randomizing tiers"
-        let randomizeTooltip = randomizeEnabled ? "Randomize" : "Add more items to randomize"
-        let headToHeadHint = headToHeadEnabled
+        internal let randomizeTooltip = randomizeEnabled ? "Randomize" : "Add more items to randomize"
+        internal let headToHeadHint = headToHeadEnabled
             ? "Start head-to-head comparisons"
             : "Add at least two items before starting head-to-head"
-        let headToHeadTooltip = headToHeadEnabled ? "Head to Head" : "Add two items to start"
-        let analyticsHint: String = {
+        internal let headToHeadTooltip = headToHeadEnabled ? "Head to Head" : "Add two items to start"
+        internal let analyticsHint: String = {
             if analyticsEnabled {
                 return analyticsActive
                     ? "Hide analytics"
@@ -35,12 +35,12 @@ internal struct TVToolbarView: View {
             }
             return "Add items before opening analytics"
         }()
-        let analyticsTooltip = analyticsActive ? "Hide Analytics" : "Show Analytics"
-        let cardDensityValue = app.cardDensityPreference
-        let undoEnabled = app.canUndo
-        let redoEnabled = app.canRedo
-        let undoHint = undoEnabled ? "Undo last change" : "Nothing to undo"
-        let redoHint = redoEnabled ? "Redo last change" : "Nothing to redo"
+        internal let analyticsTooltip = analyticsActive ? "Hide Analytics" : "Show Analytics"
+        internal let cardDensityValue = app.cardDensityPreference
+        internal let undoEnabled = app.canUndo
+        internal let redoEnabled = app.canRedo
+        internal let undoHint = undoEnabled ? "Undo last change" : "Nothing to undo"
+        internal let redoHint = redoEnabled ? "Redo last change" : "Nothing to redo"
         HStack(spacing: 16) {
             Button(action: { app.undo() }, label: {
                 Image(systemName: "arrow.uturn.backward")

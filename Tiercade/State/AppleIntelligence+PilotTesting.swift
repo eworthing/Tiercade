@@ -31,25 +31,25 @@ import FoundationModels
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
 internal struct PilotTestConfig {
-    let sizes: [Int] = [15, 50, 150]
-    let seeds: [UInt64] = [42, 123, 456, 789, 999]
-    let testQueries: [TestQuery] = [
+    internal let sizes: [Int] = [15, 50, 150]
+    internal let seeds: [UInt64] = [42, 123, 456, 789, 999]
+    internal let testQueries: [TestQuery] = [
         TestQuery(domain: "scientists", template: "famous scientists throughout history"),
         TestQuery(domain: "programming_languages", template: "programming languages"),
         TestQuery(domain: "sci_fi_shows", template: "science fiction TV series"),
         TestQuery(domain: "video_games", template: "classic video game titles")
     ]
 
-    struct TestQuery {
-        let domain: String
-        let template: String
+    internal struct TestQuery {
+        internal let domain: String
+        internal let template: String
     }
 
-    struct DecoderConfig: Sendable {
-        let name: String
-        let options: @Sendable (UInt64?, Int) -> GenerationOptions
+    internal struct DecoderConfig: Sendable {
+        internal let name: String
+        internal let options: @Sendable (UInt64?, Int) -> GenerationOptions
 
-        static let all: [DecoderConfig] = [
+        internal static let all: [DecoderConfig] = [
             DecoderConfig(name: "Greedy", options: { _, _ in .greedy }),
             DecoderConfig(
                 name: "TopK40_T0.7",
@@ -70,87 +70,87 @@ internal struct PilotTestConfig {
         ]
     }
 
-    var totalRuns: Int {
+    internal var totalRuns: Int {
         sizes.count * seeds.count * testQueries.count
     }
 }
 
 @available(iOS 26.0, macOS 26.0, *)
 internal struct PilotTestResult: Codable {
-    let runID: UUID
-    let timestamp: Date
-    let domain: String
-    let query: String
-    let requestedN: Int
-    let seed: UInt64
-    let decoderProfile: String
+    internal let runID: UUID
+    internal let timestamp: Date
+    internal let domain: String
+    internal let query: String
+    internal let requestedN: Int
+    internal let seed: UInt64
+    internal let decoderProfile: String
 
     // Results
-    let receivedN: Int
-    let uniqueN: Int
-    let passAtN: Bool
-    let dupRatePreDedup: Double
-    let generationTimeSeconds: Double
-    let itemsPerSecond: Double
+    internal let receivedN: Int
+    internal let uniqueN: Int
+    internal let passAtN: Bool
+    internal let dupRatePreDedup: Double
+    internal let generationTimeSeconds: Double
+    internal let itemsPerSecond: Double
 
     // Context
-    let environment: RunEnv
+    internal let environment: RunEnv
 }
 
 @available(iOS 26.0, macOS 26.0, *)
 internal struct PilotTestReport: Codable {
-    let timestamp: Date
-    let totalRuns: Int
-    let completedRuns: Int
-    let results: [PilotTestResult]
-    let summary: Summary
+    internal let timestamp: Date
+    internal let totalRuns: Int
+    internal let completedRuns: Int
+    internal let results: [PilotTestResult]
+    internal let summary: Summary
 
-    struct Summary: Codable {
-        let overallPassRate: Double
-        let meanDupRate: Double
-        let stdevDupRate: Double
-        let meanItemsPerSecond: Double
+    internal struct Summary: Codable {
+        internal let overallPassRate: Double
+        internal let meanDupRate: Double
+        internal let stdevDupRate: Double
+        internal let meanItemsPerSecond: Double
 
-        let passBySize: [String: Double] // "15" → 0.95
-        let passByDomain: [String: Double]
-        let passByDecoder: [String: Double]
+        internal let passBySize: [String: Double] // "15" → 0.95
+        internal let passByDomain: [String: Double]
+        internal let passByDecoder: [String: Double]
 
-        let topPerformers: [String] // "TopP92_T0.8: 98% pass"
+        internal let topPerformers: [String] // "TopP92_T0.8: 98% pass"
     }
 
     internal static func generate(from results: [PilotTestResult]) -> PilotTestReport {
-        let totalPassed = results.filter { $0.passAtN }.count
-        let overallPassRate = Double(totalPassed) / Double(max(1, results.count))
+        internal let totalPassed = results.filter { $0.passAtN }.count
+        internal let overallPassRate = Double(totalPassed) / Double(max(1, results.count))
 
-        let dupRates = results.map { $0.dupRatePreDedup }
-        let meanDupRate = dupRates.reduce(0, +) / Double(max(1, dupRates.count))
-        let variance = dupRates.map { pow($0 - meanDupRate, 2) }.reduce(0, +) / Double(max(1, dupRates.count))
-        let stdevDupRate = sqrt(variance)
+        internal let dupRates = results.map { $0.dupRatePreDedup }
+        internal let meanDupRate = dupRates.reduce(0, +) / Double(max(1, dupRates.count))
+        internal let variance = dupRates.map { pow($0 - meanDupRate, 2) }.reduce(0, +) / Double(max(1, dupRates.count))
+        internal let stdevDupRate = sqrt(variance)
 
-        let meanItemsPerSecond = results.map { $0.itemsPerSecond }.reduce(0, +) / Double(max(1, results.count))
+        internal let meanItemsPerSecond = results.map { $0.itemsPerSecond }.reduce(0, +) / Double(max(1, results.count))
 
         // Group by dimensions
-        let bySize = Dictionary(grouping: results) { "\($0.requestedN)" }
-        let passBySize = bySize.mapValues { group in
+        internal let bySize = Dictionary(grouping: results) { "\($0.requestedN)" }
+        internal let passBySize = bySize.mapValues { group in
             Double(group.filter { $0.passAtN }.count) / Double(group.count)
         }
 
-        let byDomain = Dictionary(grouping: results) { $0.domain }
-        let passByDomain = byDomain.mapValues { group in
+        internal let byDomain = Dictionary(grouping: results) { $0.domain }
+        internal let passByDomain = byDomain.mapValues { group in
             Double(group.filter { $0.passAtN }.count) / Double(group.count)
         }
 
-        let byDecoder = Dictionary(grouping: results) { $0.decoderProfile }
-        let passByDecoder = byDecoder.mapValues { group in
+        internal let byDecoder = Dictionary(grouping: results) { $0.decoderProfile }
+        internal let passByDecoder = byDecoder.mapValues { group in
             Double(group.filter { $0.passAtN }.count) / Double(group.count)
         }
 
-        let topPerformers = passByDecoder
+        internal let topPerformers = passByDecoder
             .sorted { $0.value > $1.value }
             .prefix(3)
             .map { "\($0.key): \(String(format: "%.0f", $0.value * 100))% pass" }
 
-        let summary = Summary(
+        internal let summary = Summary(
             overallPassRate: overallPassRate,
             meanDupRate: meanDupRate,
             stdevDupRate: stdevDupRate,
@@ -190,8 +190,8 @@ internal struct PilotTestRunner {
             return PilotTestReport.generate(from: [])
         }
 
-        let allResults = await executeTestRuns(session: session)
-        let report = PilotTestReport.generate(from: allResults)
+        internal let allResults = await executeTestRuns(session: session)
+        internal let report = PilotTestReport.generate(from: allResults)
 
         logPilotSummary(report: report)
 
@@ -213,8 +213,8 @@ internal struct PilotTestRunner {
     }
 
     private func executeTestRuns(session: LanguageModelSession) async -> [PilotTestResult] {
-        var allResults: [PilotTestResult] = []
-        var runIndex = 0
+        internal var allResults: [PilotTestResult] = []
+        internal var runIndex = 0
 
         for query in config.testQueries {
             for size in config.sizes {
@@ -244,8 +244,8 @@ internal struct PilotTestRunner {
     }
 
     private func logTestResult(result: PilotTestResult, requestedSize: Int) {
-        let status = result.passAtN ? "✅" : "⚠️"
-        let dupPercent = String(format: "%.1f", result.dupRatePreDedup * 100)
+        internal let status = result.passAtN ? "✅" : "⚠️"
+        internal let dupPercent = String(format: "%.1f", result.dupRatePreDedup * 100)
         onProgress("""
               \(status) Got \(result.receivedN)/\(requestedSize) unique \
             (\(dupPercent)% dup)
@@ -259,12 +259,12 @@ internal struct PilotTestRunner {
         onProgress("🧪 ========================================")
         onProgress("")
         onProgress("Summary:")
-        let passRate = String(format: "%.1f", report.summary.overallPassRate * 100)
+        internal let passRate = String(format: "%.1f", report.summary.overallPassRate * 100)
         onProgress("  • Overall pass@N: \(passRate)%")
-        let meanDup = String(format: "%.1f", report.summary.meanDupRate * 100)
-        let stdevDup = String(format: "%.1f", report.summary.stdevDupRate * 100)
+        internal let meanDup = String(format: "%.1f", report.summary.meanDupRate * 100)
+        internal let stdevDup = String(format: "%.1f", report.summary.stdevDupRate * 100)
         onProgress("  • Mean dup rate: \(meanDup)±\(stdevDup)%")
-        let throughput = String(format: "%.1f", report.summary.meanItemsPerSecond)
+        internal let throughput = String(format: "%.1f", report.summary.meanItemsPerSecond)
         onProgress("  • Mean throughput: \(throughput) items/sec")
         onProgress("")
         onProgress("Top performers:")
@@ -280,11 +280,11 @@ internal struct PilotTestRunner {
         seed: UInt64,
         decoder: String
     ) async -> PilotTestResult? {
-        let fm = FMClient(session: session, logger: { _ in })
-        let coordinator = UniqueListCoordinator(fm: fm, logger: { _ in })
+        internal let fm = FMClient(session: session, logger: { _ in })
+        internal let coordinator = UniqueListCoordinator(fm: fm, logger: { _ in })
 
-        let startTime = Date()
-        var receivedItems: [String] = []
+        internal let startTime = Date()
+        internal var receivedItems: [String] = []
 
         do {
             // Capture pre-dedup count by tracking the coordinator's generation
@@ -295,14 +295,14 @@ internal struct PilotTestRunner {
                 seed: seed
             )
 
-            let elapsed = Date().timeIntervalSince(startTime)
-            let normKeys = receivedItems.map { $0.normKey }
-            let uniqueKeys = Set(normKeys)
+            internal let elapsed = Date().timeIntervalSince(startTime)
+            internal let normKeys = receivedItems.map { $0.normKey }
+            internal let uniqueKeys = Set(normKeys)
 
             // Estimate pre-dedup count (simplified: assume over-gen factor)
-            let estimatedPreDedup = Int(ceil(Double(size) * Defaults.pass1OverGen))
-            let dupCount = max(0, Double(estimatedPreDedup - uniqueKeys.count))
-            let dupRatePreDedup = dupCount / Double(max(1, estimatedPreDedup))
+            internal let estimatedPreDedup = Int(ceil(Double(size) * Defaults.pass1OverGen))
+            internal let dupCount = max(0, Double(estimatedPreDedup - uniqueKeys.count))
+            internal let dupRatePreDedup = dupCount / Double(max(1, estimatedPreDedup))
 
             return PilotTestResult(
                 runID: UUID(),
@@ -327,7 +327,7 @@ internal struct PilotTestRunner {
     }
 
     private func createTestSession() async throws -> LanguageModelSession {
-        let instructions = Instructions("""
+        internal let instructions = Instructions("""
         You are a helpful assistant that generates lists.
         Always return valid JSON matching the requested schema.
         Ensure items are distinct and diverse.
@@ -342,17 +342,17 @@ internal struct PilotTestRunner {
 
     /// Save pilot report to file
     internal func saveReport(_ report: PilotTestReport, to path: String) throws {
-        let encoder = JSONEncoder()
+        internal let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(report)
+        internal let data = try encoder.encode(report)
         try data.write(to: URL(fileURLWithPath: path))
         onProgress("📄 Pilot report saved: \(path)")
     }
 
     /// Generate human-readable report
     internal func generateTextReport(_ report: PilotTestReport) -> String {
-        var lines: [String] = []
+        internal var lines: [String] = []
 
         lines.append("PILOT TEST REPORT")
         lines.append("================")
@@ -363,12 +363,12 @@ internal struct PilotTestRunner {
 
         lines.append("OVERALL METRICS")
         lines.append("---------------")
-        let passRate = String(format: "%.1f%%", report.summary.overallPassRate * 100)
+        internal let passRate = String(format: "%.1f%%", report.summary.overallPassRate * 100)
         lines.append("Pass@N rate: \(passRate)")
-        let meanDup = String(format: "%.1f", report.summary.meanDupRate * 100)
-        let stdevDup = String(format: "%.1f", report.summary.stdevDupRate * 100)
+        internal let meanDup = String(format: "%.1f", report.summary.meanDupRate * 100)
+        internal let stdevDup = String(format: "%.1f", report.summary.stdevDupRate * 100)
         lines.append("Mean duplicate rate: \(meanDup)±\(stdevDup)%%")
-        let throughput = String(format: "%.1f", report.summary.meanItemsPerSecond)
+        internal let throughput = String(format: "%.1f", report.summary.meanItemsPerSecond)
         lines.append("Mean throughput: \(throughput) items/sec")
         lines.append("")
 
@@ -396,8 +396,8 @@ internal struct PilotTestRunner {
         lines.append("DETAILED RESULTS")
         lines.append("----------------")
         for result in report.results.sorted(by: { $0.timestamp < $1.timestamp }) {
-            let status = result.passAtN ? "PASS" : "FAIL"
-            let dupPercent = String(format: "%.1f%%", result.dupRatePreDedup * 100)
+            internal let status = result.passAtN ? "PASS" : "FAIL"
+            internal let dupPercent = String(format: "%.1f%%", result.dupRatePreDedup * 100)
             lines.append("""
                 \(status) | \(result.domain) | N=\(result.requestedN) | \
                 seed=\(result.seed) | got=\(result.receivedN) | \

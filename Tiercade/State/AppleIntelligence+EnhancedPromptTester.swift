@@ -32,27 +32,27 @@ import Foundation
 import FoundationModels
 
 @MainActor
-class EnhancedPromptTester {
+internal class EnhancedPromptTester {
     // MARK: - Testing
 
     internal static func testPrompts(
         config: TestConfig = TestConfig(),
         onProgress: @MainActor @escaping (String) -> Void
     ) async -> [AggregateResult] {
-        var aggregateResults: [AggregateResult] = []
+        internal var aggregateResults: [AggregateResult] = []
 
         logTestHeader(config: config, onProgress: onProgress)
 
-        let totalRuns = calculateTotalRuns(config: config)
-        var completedTests = 0
+        internal let totalRuns = calculateTotalRuns(config: config)
+        internal var completedTests = 0
 
-        let pilotPrompts = selectPilotPrompts()
+        internal let pilotPrompts = selectPilotPrompts()
 
         for (promptIndex, (promptName, promptText)) in pilotPrompts {
-            let promptNumber = promptIndex + 1
+            internal let promptNumber = promptIndex + 1
             onProgress("\n📝 Testing Prompt: \(promptName)")
 
-            let runResults = await executePromptTestRuns(
+            internal let runResults = await executePromptTestRuns(
                 context: TestExecutionContext(
                     config: config,
                     promptNumber: promptNumber,
@@ -64,7 +64,7 @@ class EnhancedPromptTester {
                 onProgress: onProgress
             )
 
-            let aggregate = computeAggregate(
+            internal let aggregate = computeAggregate(
                 config: config,
                 promptNumber: promptNumber,
                 promptName: promptName,
@@ -82,41 +82,41 @@ class EnhancedPromptTester {
         return aggregateResults
     }
 
-    struct SingleRunParameters {
-        let config: TestConfig
-        let promptNumber: Int
-        let promptName: String
-        let promptText: String
-        let runNumber: Int
-        let query: String
-        let targetCount: Int?
-        let domain: String
-        let decodingConfig: DecodingConfig
-        let seed: UInt64
-        let useGuidedSchema: Bool
+    internal struct SingleRunParameters {
+        internal let config: TestConfig
+        internal let promptNumber: Int
+        internal let promptName: String
+        internal let promptText: String
+        internal let runNumber: Int
+        internal let query: String
+        internal let targetCount: Int?
+        internal let domain: String
+        internal let decodingConfig: DecodingConfig
+        internal let seed: UInt64
+        internal let useGuidedSchema: Bool
     }
 
     internal static func testSingleRun(_ params: SingleRunParameters) async -> SingleRunResult {
-        let startTime = Date()
+        internal let startTime = Date()
 
-        let effectiveTarget = params.targetCount ?? 40
-        let nBucket = params.config.nBucket(for: params.targetCount)
-        let overgenFactor = params.config.overgenFactor(for: effectiveTarget)
-        let maxTokens = params.config.dynamicMaxTokens(targetCount: effectiveTarget, overgenFactor: overgenFactor)
+        internal let effectiveTarget = params.targetCount ?? 40
+        internal let nBucket = params.config.nBucket(for: params.targetCount)
+        internal let overgenFactor = params.config.overgenFactor(for: effectiveTarget)
+        internal let maxTokens = params.config.dynamicMaxTokens(targetCount: effectiveTarget, overgenFactor: overgenFactor)
 
         logRunStart(params: params, effectiveTarget: effectiveTarget, maxTokens: maxTokens)
 
         do {
-            let response = try await executeLanguageModelRequest(
+            internal let response = try await executeLanguageModelRequest(
                 params: params,
                 maxTokens: maxTokens
             )
 
-            let duration = Date().timeIntervalSince(startTime)
-            let analysis = analyzeResponse(response.content, targetCount: effectiveTarget)
+            internal let duration = Date().timeIntervalSince(startTime)
+            internal let analysis = analyzeResponse(response.content, targetCount: effectiveTarget)
 
-            let surplusAtN = max(0, analysis.uniqueItems - effectiveTarget)
-            let timePerUnique = analysis.uniqueItems > 0 ? duration / Double(analysis.uniqueItems) : duration
+            internal let surplusAtN = max(0, analysis.uniqueItems - effectiveTarget)
+            internal let timePerUnique = analysis.uniqueItems > 0 ? duration / Double(analysis.uniqueItems) : duration
 
             logRunSuccess(
                 analysis: analysis, surplusAtN: surplusAtN, timePerUnique: timePerUnique,
@@ -136,7 +136,7 @@ class EnhancedPromptTester {
                 timePerUnique: timePerUnique
             ))
         } catch {
-            let duration = Date().timeIntervalSince(startTime)
+            internal let duration = Date().timeIntervalSince(startTime)
             logToFile("❌ ERROR: \(error.localizedDescription)")
 
             return buildErrorResult(context: ErrorResultContext(
@@ -158,53 +158,53 @@ class EnhancedPromptTester {
         )
     }
 
-    struct LanguageModelResponse: Sendable {
-        let content: String
-        let finishReason: String?
-        let wasTruncated: Bool
+    internal struct LanguageModelResponse: Sendable {
+        internal let content: String
+        internal let finishReason: String?
+        internal let wasTruncated: Bool
     }
 
-    struct SuccessResultContext: Sendable {
-        let params: SingleRunParameters
-        let nBucket: String
-        let responseContent: String
-        let analysis: ResponseAnalysis
-        let surplusAtN: Int
-        let finishReason: String?
-        let wasTruncated: Bool
-        let maxTokens: Int
-        let duration: TimeInterval
-        let timePerUnique: Double
+    internal struct SuccessResultContext: Sendable {
+        internal let params: SingleRunParameters
+        internal let nBucket: String
+        internal let responseContent: String
+        internal let analysis: ResponseAnalysis
+        internal let surplusAtN: Int
+        internal let finishReason: String?
+        internal let wasTruncated: Bool
+        internal let maxTokens: Int
+        internal let duration: TimeInterval
+        internal let timePerUnique: Double
     }
 
-    struct ErrorResultContext: Sendable {
-        let params: SingleRunParameters
-        let nBucket: String
-        let effectiveTarget: Int
-        let maxTokens: Int
-        let duration: TimeInterval
-        let error: Error
+    internal struct ErrorResultContext: Sendable {
+        internal let params: SingleRunParameters
+        internal let nBucket: String
+        internal let effectiveTarget: Int
+        internal let maxTokens: Int
+        internal let duration: TimeInterval
+        internal let error: Error
     }
 
-    struct TestExecutionContext: Sendable {
-        let config: TestConfig
-        let promptNumber: Int
-        let promptName: String
-        let promptText: String
-        let totalRuns: Int
+    internal struct TestExecutionContext: Sendable {
+        internal let config: TestConfig
+        internal let promptNumber: Int
+        internal let promptName: String
+        internal let promptText: String
+        internal let totalRuns: Int
     }
 
     internal static func executeLanguageModelRequest(
         params: SingleRunParameters,
         maxTokens: Int
     ) async throws -> LanguageModelResponse {
-        let finalPrompt = params.promptText.replacingOccurrences(of: "{QUERY}", with: params.query)
-        let instructions = Instructions(finalPrompt)
-        let session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
-        let opts = params.decodingConfig.generationOptions(seed: params.seed, maxTokens: maxTokens)
+        internal let finalPrompt = params.promptText.replacingOccurrences(of: "{QUERY}", with: params.query)
+        internal let instructions = Instructions(finalPrompt)
+        internal let session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
+        internal let opts = params.decodingConfig.generationOptions(seed: params.seed, maxTokens: maxTokens)
 
         if params.useGuidedSchema {
-            let stringList: StringList = try await withTimeout(seconds: 60) {
+            internal let stringList: StringList = try await withTimeout(seconds: 60) {
                 try await session.respond(
                     to: Prompt(params.query),
                     generating: StringList.self,
@@ -212,14 +212,14 @@ class EnhancedPromptTester {
                     options: opts
                 ).content
             }
-            let jsonData = try JSONEncoder().encode(stringList)
-            let content = String(data: jsonData, encoding: .utf8) ?? ""
+            internal let jsonData = try JSONEncoder().encode(stringList)
+            internal let content = String(data: jsonData, encoding: .utf8) ?? ""
             return LanguageModelResponse(content: content, finishReason: "guided-schema", wasTruncated: false)
         } else {
-            let content = try await withTimeout(seconds: 60) {
+            internal let content = try await withTimeout(seconds: 60) {
                 try await session.respond(to: Prompt(params.query), options: opts).content
             }
-            let charLimit = maxTokens * 4
+            internal let charLimit = maxTokens * 4
             if content.count >= charLimit {
                 return LanguageModelResponse(content: content, finishReason: "likely-truncated", wasTruncated: true)
             } else {

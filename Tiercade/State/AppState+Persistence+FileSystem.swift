@@ -8,8 +8,8 @@ import TiercadeCore
 internal extension AppState {
     internal func getAvailableSaveFiles() -> [String] {
         do {
-            let projects = try projectsDirectory()
-            let fileURLs = try FileManager.default.contentsOfDirectory(at: projects, includingPropertiesForKeys: nil)
+            internal let projects = try projectsDirectory()
+            internal let fileURLs = try FileManager.default.contentsOfDirectory(at: projects, includingPropertiesForKeys: nil)
             return fileURLs
                 .filter { $0.pathExtension == "tierproj" }
                 .map { $0.deletingPathExtension().lastPathComponent }
@@ -21,7 +21,7 @@ internal extension AppState {
     }
 
     internal func writeProjectBundle(_ artifacts: ProjectExportArtifacts, to destination: URL) throws(PersistenceError) {
-        let fileManager = FileManager.default
+        internal let fileManager = FileManager.default
 
         do {
             try ensureDirectoryExists(at: destination.deletingLastPathComponent())
@@ -31,11 +31,11 @@ internal extension AppState {
 
             try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
 
-            let projectURL = destination.appendingPathComponent("project.json")
-            let encoder = JSONEncoder()
+            internal let projectURL = destination.appendingPathComponent("project.json")
+            internal let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(artifacts.project)
+            internal let data = try encoder.encode(artifacts.project)
             try data.write(to: projectURL, options: .atomic)
 
             for exportFile in artifacts.files {
@@ -46,7 +46,7 @@ internal extension AppState {
                     )
                 }
 
-                let destinationURL = destination.appendingPathComponent(exportFile.relativePath)
+                internal let destinationURL = destination.appendingPathComponent(exportFile.relativePath)
                 try fileManager.createDirectory(
                     at: destinationURL.deletingLastPathComponent(),
                     withIntermediateDirectories: true
@@ -67,20 +67,20 @@ internal extension AppState {
     }
 
     internal func loadProjectBundle(from url: URL) throws -> Project {
-        let fileManager = FileManager.default
+        internal let fileManager = FileManager.default
 
         do {
             guard fileManager.fileExists(atPath: url.path) else {
                 throw PersistenceError.fileSystemError("Bundle not found at \(url.path)")
             }
 
-            let projectURL = url.appendingPathComponent("project.json")
+            internal let projectURL = url.appendingPathComponent("project.json")
             guard fileManager.fileExists(atPath: projectURL.path) else {
                 throw PersistenceError.fileSystemError("Missing project.json in \(url.path)")
             }
 
-            let data = try Data(contentsOf: projectURL)
-            let project = try ModelResolver.decodeProject(from: data)
+            internal let data = try Data(contentsOf: projectURL)
+            internal let project = try ModelResolver.decodeProject(from: data)
             return try relocateProject(project, extractedAt: url)
         } catch let error as PersistenceError {
             throw error
@@ -96,9 +96,9 @@ internal extension AppState {
     }
 
     internal func relocateProject(_ project: Project, extractedAt tempDirectory: URL) throws -> Project {
-        var updatedItems: [String: Project.Item] = [:]
+        internal var updatedItems: [String: Project.Item] = [:]
         for (id, item) in project.items {
-            var newItem = item
+            internal var newItem = item
             if let result = try relocateMediaList(item.media, extractedAt: tempDirectory) {
                 newItem.media = result.list
                 if var attributes = item.attributes {
@@ -111,11 +111,11 @@ internal extension AppState {
             updatedItems[id] = newItem
         }
 
-        var updatedOverrides = project.overrides
+        internal var updatedOverrides = project.overrides
         if let overrides = project.overrides {
-            var mapped: [String: Project.ItemOverride] = [:]
+            internal var mapped: [String: Project.ItemOverride] = [:]
             for (id, override) in overrides {
-                var newOverride = override
+                internal var newOverride = override
                 if let result = try relocateMediaList(override.media, extractedAt: tempDirectory) {
                     newOverride.media = result.list
                 }
@@ -124,15 +124,15 @@ internal extension AppState {
             updatedOverrides = mapped
         }
 
-        var output = project
+        internal var output = project
         output.items = updatedItems
         output.overrides = updatedOverrides
         return output
     }
 
-    struct MediaRelocationResult {
-        let list: [Project.Media]
-        let primaryThumb: String?
+    internal struct MediaRelocationResult {
+        internal let list: [Project.Media]
+        internal let primaryThumb: String?
     }
 
     internal func relocateMediaList(
@@ -140,11 +140,11 @@ internal extension AppState {
         extractedAt tempDirectory: URL
     ) throws -> MediaRelocationResult? {
         guard let mediaList else { return nil }
-        var relocated: [Project.Media] = []
-        var firstThumb: String?
+        internal var relocated: [Project.Media] = []
+        internal var firstThumb: String?
 
         for media in mediaList {
-            let updated = try relocateMedia(media, extractedAt: tempDirectory)
+            internal let updated = try relocateMedia(media, extractedAt: tempDirectory)
             if firstThumb == nil, let thumb = updated.thumbUri {
                 firstThumb = thumb
             }
@@ -155,15 +155,15 @@ internal extension AppState {
     }
 
     internal func relocateMedia(_ media: Project.Media, extractedAt tempDirectory: URL) throws -> Project.Media {
-        var updated = media
+        internal var updated = media
 
-        let uri = media.uri
+        internal let uri = media.uri
         if let destination = try relocateFile(fromBundleURI: uri, extractedAt: tempDirectory) {
             updated.uri = destination.absoluteString
         }
 
         if let thumb = media.thumbUri,
-           let destination = try relocateFile(fromBundleURI: thumb, extractedAt: tempDirectory) {
+           internal let destination = try relocateFile(fromBundleURI: thumb, extractedAt: tempDirectory) {
             updated.thumbUri = destination.absoluteString
         }
 
@@ -173,15 +173,15 @@ internal extension AppState {
     internal func relocateFile(fromBundleURI uri: String, extractedAt tempDirectory: URL) throws -> URL? {
         guard let relativePath = bundleRelativePath(from: uri) else { return nil }
 
-        let fileManager = FileManager.default
+        internal let fileManager = FileManager.default
         // Canonicalize and ensure the source lives under the extraction directory
-        let base = tempDirectory.resolvingSymlinksInPath()
-        let sourceURL = base.appendingPathComponent(relativePath).resolvingSymlinksInPath()
+        internal let base = tempDirectory.resolvingSymlinksInPath()
+        internal let sourceURL = base.appendingPathComponent(relativePath).resolvingSymlinksInPath()
         guard sourceURL.path.hasPrefix(base.path + "/"), fileManager.fileExists(atPath: sourceURL.path) else {
             throw PersistenceError.fileSystemError("Missing asset inside bundle at \(relativePath)")
         }
 
-        let destinationBase: URL
+        internal let destinationBase: URL
         if relativePath.hasPrefix("Media/") {
             destinationBase = try mediaStoreDirectory()
         } else if relativePath.hasPrefix("Thumbs/") {
@@ -190,43 +190,43 @@ internal extension AppState {
             destinationBase = try mediaStoreDirectory()
         }
 
-        let fileName = (relativePath as NSString).lastPathComponent
-        let destinationURL = destinationBase.appendingPathComponent(fileName)
+        internal let fileName = (relativePath as NSString).lastPathComponent
+        internal let destinationURL = destinationBase.appendingPathComponent(fileName)
         try copyReplacingItem(at: sourceURL, to: destinationURL)
         return destinationURL
     }
 
     internal func projectsDirectory() throws -> URL {
-        let root = try applicationSupportRoot()
-        let directory = root.appendingPathComponent("Projects", isDirectory: true)
+        internal let root = try applicationSupportRoot()
+        internal let directory = root.appendingPathComponent("Projects", isDirectory: true)
         try ensureDirectoryExists(at: directory)
         return directory
     }
 
     internal func mediaStoreDirectory() throws -> URL {
-        let root = try applicationSupportRoot()
-        let directory = root.appendingPathComponent("Media", isDirectory: true)
+        internal let root = try applicationSupportRoot()
+        internal let directory = root.appendingPathComponent("Media", isDirectory: true)
         try ensureDirectoryExists(at: directory)
         return directory
     }
 
     internal func thumbsStoreDirectory() throws -> URL {
-        let root = try applicationSupportRoot()
-        let directory = root.appendingPathComponent("Thumbs", isDirectory: true)
+        internal let root = try applicationSupportRoot()
+        internal let directory = root.appendingPathComponent("Thumbs", isDirectory: true)
         try ensureDirectoryExists(at: directory)
         return directory
     }
 
     internal func applicationSupportRoot() throws -> URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let root = base.appendingPathComponent("Tiercade", isDirectory: true)
+        internal let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        internal let root = base.appendingPathComponent("Tiercade", isDirectory: true)
         try ensureDirectoryExists(at: root)
         return root
     }
 
     internal func ensureDirectoryExists(at url: URL) throws {
-        var isDirectory: ObjCBool = false
-        let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+        internal var isDirectory: ObjCBool = false
+        internal let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
         if exists {
             if !isDirectory.boolValue {
                 throw PersistenceError.fileSystemError("Expected directory at \(url.path) but found a file.")
@@ -243,7 +243,7 @@ internal extension AppState {
     }
 
     internal func copyReplacingItem(at source: URL, to destination: URL) throws {
-        let fileManager = FileManager.default
+        internal let fileManager = FileManager.default
         try ensureDirectoryExists(at: destination.deletingLastPathComponent())
         if fileManager.fileExists(atPath: destination.path) {
             try fileManager.removeItem(at: destination)
@@ -259,8 +259,8 @@ internal extension AppState {
 
     internal func bundleRelativePath(from uri: String) -> String? {
         guard uri.hasPrefix("file://") else { return nil }
-        let trimmed = String(uri.dropFirst("file://".count))
-        let path = trimmed.hasPrefix("/") ? String(trimmed.dropFirst()) : trimmed
+        internal let trimmed = String(uri.dropFirst("file://".count))
+        internal let path = trimmed.hasPrefix("/") ? String(trimmed.dropFirst()) : trimmed
         // Reject attempts at path traversal or absolute paths
         if path.contains("..") || path.hasPrefix("/") { return nil }
         return path
@@ -276,8 +276,8 @@ internal extension AppState {
         guard !path.contains("..") else { return false }
 
         // Canonicalize and verify it stays relative
-        let components = path.split(separator: "/").map(String.init)
-        var normalized: [String] = []
+        internal let components = path.split(separator: "/").map(String.init)
+        internal var normalized: [String] = []
         for component in components {
             if component == ".." {
                 return false  // Reject any .. components
@@ -291,7 +291,7 @@ internal extension AppState {
     }
 
     internal func sanitizeFileName(_ fileName: String) -> String {
-        let sanitized = fileName
+        internal let sanitized = fileName
             .replacingOccurrences(of: "[^A-Za-z0-9-_]+", with: "-", options: .regularExpression)
             .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
         return sanitized.isEmpty ? "tiercade-project" : sanitized

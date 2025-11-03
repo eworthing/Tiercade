@@ -217,12 +217,12 @@ internal struct TierListProjectWizard: View {
     }
 
     private var displayedTitle: String {
-        let trimmed = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        internal let trimmed = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
         switch context {
         case .create:
             return trimmed.isEmpty ? "New Tier List" : trimmed
         case .edit(let handle):
-            let base = trimmed.isEmpty ? handle.displayName : trimmed
+            internal let base = trimmed.isEmpty ? handle.displayName : trimmed
             guard base.isEmpty == false else { return "Edit Tier List" }
             return "Edit \(base)"
         }

@@ -6,13 +6,13 @@ import TiercadeCore
 
 internal enum TierListCreatorCodec {
     nonisolated static func makeEncoder() -> JSONEncoder {
-        let encoder = JSONEncoder()
+        internal let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         return encoder
     }
 
     nonisolated static func makeDecoder() -> JSONDecoder {
-        let decoder = JSONDecoder()
+        internal let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }
@@ -33,26 +33,26 @@ internal enum TierListCreatorCodec {
 @Model
 final class TierProjectDraft {
     @Attribute(.unique) var identifier: UUID
-    var projectId: UUID
-    var schemaVersion: Int
-    var title: String
-    var summary: String
-    var themeToken: String
-    var tierSortOrder: String
-    var gridSnap: Bool
-    var showUnranked: Bool
-    var accessibilityVoiceOver: Bool
-    var accessibilityHighContrast: Bool
-    var visibility: String
-    var createdAt: Date
-    var updatedAt: Date
-    var createdBy: String?
-    var updatedBy: String?
-    var additionalData: Data?
-    var linksData: Data?
-    var storageData: Data?
-    var settingsData: Data?
-    var collaborationData: Data?
+    internal var projectId: UUID
+    internal var schemaVersion: Int
+    internal var title: String
+    internal var summary: String
+    internal var themeToken: String
+    internal var tierSortOrder: String
+    internal var gridSnap: Bool
+    internal var showUnranked: Bool
+    internal var accessibilityVoiceOver: Bool
+    internal var accessibilityHighContrast: Bool
+    internal var visibility: String
+    internal var createdAt: Date
+    internal var updatedAt: Date
+    internal var createdBy: String?
+    internal var updatedBy: String?
+    internal var additionalData: Data?
+    internal var linksData: Data?
+    internal var storageData: Data?
+    internal var settingsData: Data?
+    internal var collaborationData: Data?
     @Relationship(deleteRule: .cascade, inverse: \TierDraftTier.project) var tiers: [TierDraftTier]
     @Relationship(deleteRule: .cascade, inverse: \TierDraftItem.project) var items: [TierDraftItem]
     @Relationship(deleteRule: .cascade, inverse: \TierDraftOverride.project) var overrides: [TierDraftOverride]
@@ -112,18 +112,18 @@ final class TierProjectDraft {
     }
 }
 
-extension TierProjectDraft {
-    var links: Project.Links? {
+internal extension TierProjectDraft {
+    internal var links: Project.Links? {
         get { TierListCreatorCodec.decode(Project.Links.self, from: linksData) }
         set { linksData = TierListCreatorCodec.encode(newValue) }
     }
 
-    var storage: Project.Storage? {
+    internal var storage: Project.Storage? {
         get { TierListCreatorCodec.decode(Project.Storage.self, from: storageData) }
         set { storageData = TierListCreatorCodec.encode(newValue) }
     }
 
-    var settings: Project.Settings {
+    internal var settings: Project.Settings {
         get {
             TierListCreatorCodec.decode(Project.Settings.self, from: settingsData)
                 ?? Project.Settings(
@@ -140,12 +140,12 @@ extension TierProjectDraft {
         set { settingsData = TierListCreatorCodec.encode(newValue) }
     }
 
-    var additional: [String: JSONValue]? {
+    internal var additional: [String: JSONValue]? {
         get { TierListCreatorCodec.decode([String: JSONValue].self, from: additionalData) }
         set { additionalData = TierListCreatorCodec.encode(newValue) }
     }
 
-    var collaboration: Project.Collaboration? {
+    internal var collaboration: Project.Collaboration? {
         get { TierListCreatorCodec.decode(Project.Collaboration.self, from: collaborationData) }
         set { collaborationData = TierListCreatorCodec.encode(newValue) }
     }
@@ -156,14 +156,14 @@ extension TierProjectDraft {
 @Model
 final class TierDraftTier {
     @Attribute(.unique) var identifier: UUID
-    var tierId: String
-    var label: String
-    var colorHex: String
-    var order: Int
-    var locked: Bool
-    var collapsed: Bool
-    var rulesData: Data?
-    var additionalData: Data?
+    internal var tierId: String
+    internal var label: String
+    internal var colorHex: String
+    internal var order: Int
+    internal var locked: Bool
+    internal var collapsed: Bool
+    internal var rulesData: Data?
+    internal var additionalData: Data?
     @Relationship(deleteRule: .nullify, inverse: \TierDraftItem.tier) var items: [TierDraftItem]
     @Relationship var project: TierProjectDraft?
 
@@ -188,13 +188,13 @@ final class TierDraftTier {
     }
 }
 
-extension TierDraftTier {
-    var rules: [String: JSONValue] {
+internal extension TierDraftTier {
+    internal var rules: [String: JSONValue] {
         get { TierListCreatorCodec.decode([String: JSONValue].self, from: rulesData) ?? [:] }
         set { rulesData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
-    var additional: [String: JSONValue] {
+    internal var additional: [String: JSONValue] {
         get { TierListCreatorCodec.decode([String: JSONValue].self, from: additionalData) ?? [:] }
         set { additionalData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
@@ -205,20 +205,20 @@ extension TierDraftTier {
 @Model
 final class TierDraftItem {
     @Attribute(.unique) var identifier: UUID
-    var itemId: String
-    var title: String
-    var subtitle: String
-    var summary: String
-    var slug: String
-    var rating: Double?
-    var hidden: Bool
-    var ordinal: Int
-    var attributesData: Data?
-    var tags: [String]
-    var sourcesData: Data?
-    var localeData: Data?
-    var additionalData: Data?
-    var metaData: Data?
+    internal var itemId: String
+    internal var title: String
+    internal var subtitle: String
+    internal var summary: String
+    internal var slug: String
+    internal var rating: Double?
+    internal var hidden: Bool
+    internal var ordinal: Int
+    internal var attributesData: Data?
+    internal var tags: [String]
+    internal var sourcesData: Data?
+    internal var localeData: Data?
+    internal var additionalData: Data?
+    internal var metaData: Data?
     @Relationship(deleteRule: .cascade, inverse: \TierDraftMedia.item) var media: [TierDraftMedia]
     @Relationship(deleteRule: .nullify, inverse: \TierDraftOverride.item) var overrides: [TierDraftOverride]
     @Relationship var tier: TierDraftTier?
@@ -253,28 +253,28 @@ final class TierDraftItem {
     }
 }
 
-extension TierDraftItem {
-    var attributes: [String: JSONValue] {
+internal extension TierDraftItem {
+    internal var attributes: [String: JSONValue] {
         get { TierListCreatorCodec.decode([String: JSONValue].self, from: attributesData) ?? [:] }
         set { attributesData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
-    var sources: [[String: String]] {
+    internal var sources: [[String: String]] {
         get { TierListCreatorCodec.decode([[String: String]].self, from: sourcesData) ?? [] }
         set { sourcesData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
-    var locale: [String: [String: String]] {
+    internal var locale: [String: [String: String]] {
         get { TierListCreatorCodec.decode([String: [String: String]].self, from: localeData) ?? [:] }
         set { localeData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
-    var additional: [String: JSONValue] {
+    internal var additional: [String: JSONValue] {
         get { TierListCreatorCodec.decode([String: JSONValue].self, from: additionalData) ?? [:] }
         set { additionalData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
-    var meta: Project.Audit? {
+    internal var meta: Project.Audit? {
         get { TierListCreatorCodec.decode(Project.Audit.self, from: metaData) }
         set { metaData = TierListCreatorCodec.encode(newValue) }
     }
@@ -285,13 +285,13 @@ extension TierDraftItem {
 @Model
 final class TierDraftOverride {
     @Attribute(.unique) var identifier: UUID
-    var itemId: String
-    var displayTitle: String
-    var notes: String
-    var tags: [String]
-    var rating: Double?
-    var hidden: Bool
-    var additionalData: Data?
+    internal var itemId: String
+    internal var displayTitle: String
+    internal var notes: String
+    internal var tags: [String]
+    internal var rating: Double?
+    internal var hidden: Bool
+    internal var additionalData: Data?
     @Relationship(deleteRule: .cascade, inverse: \TierDraftMedia.override) var media: [TierDraftMedia]
     @Relationship var item: TierDraftItem?
     @Relationship var project: TierProjectDraft?
@@ -317,8 +317,8 @@ final class TierDraftOverride {
     }
 }
 
-extension TierDraftOverride {
-    var additional: [String: JSONValue] {
+internal extension TierDraftOverride {
+    internal var additional: [String: JSONValue] {
         get { TierListCreatorCodec.decode([String: JSONValue].self, from: additionalData) ?? [:] }
         set { additionalData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
@@ -329,18 +329,18 @@ extension TierDraftOverride {
 @Model
 final class TierDraftMedia {
     @Attribute(.unique) var identifier: UUID
-    var mediaId: String
-    var kindRaw: String
-    var uri: String
-    var mime: String
-    var width: Double?
-    var height: Double?
-    var durationMs: Double?
-    var posterUri: String?
-    var thumbUri: String?
-    var altText: String?
-    var attributionData: Data?
-    var additionalData: Data?
+    internal var mediaId: String
+    internal var kindRaw: String
+    internal var uri: String
+    internal var mime: String
+    internal var width: Double?
+    internal var height: Double?
+    internal var durationMs: Double?
+    internal var posterUri: String?
+    internal var thumbUri: String?
+    internal var altText: String?
+    internal var attributionData: Data?
+    internal var additionalData: Data?
     @Relationship var item: TierDraftItem?
     @Relationship var override: TierDraftOverride?
     @Relationship var project: TierProjectDraft?
@@ -372,18 +372,18 @@ final class TierDraftMedia {
     }
 }
 
-extension TierDraftMedia {
-    var attribution: [String: String] {
+internal extension TierDraftMedia {
+    internal var attribution: [String: String] {
         get { TierListCreatorCodec.decode([String: String].self, from: attributionData) ?? [:] }
         set { attributionData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
-    var additional: [String: JSONValue] {
+    internal var additional: [String: JSONValue] {
         get { TierListCreatorCodec.decode([String: JSONValue].self, from: additionalData) ?? [:] }
         set { additionalData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
-    var kind: ProjectMediaKind {
+    internal var kind: ProjectMediaKind {
         ProjectMediaKind(rawValue: kindRaw) ?? .image
     }
 
@@ -409,10 +409,10 @@ extension TierDraftMedia {
 
 @Model
 final class TierDraftAudit {
-    var createdAt: Date
-    var updatedAt: Date
-    var createdBy: String?
-    var updatedBy: String?
+    internal var createdAt: Date
+    internal var updatedAt: Date
+    internal var createdBy: String?
+    internal var updatedBy: String?
     @Relationship var project: TierProjectDraft?
 
     internal init(
@@ -428,8 +428,8 @@ final class TierDraftAudit {
     }
 }
 
-extension TierDraftAudit {
-    var projectAudit: Project.Audit {
+internal extension TierDraftAudit {
+    internal var projectAudit: Project.Audit {
         Project.Audit(
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -442,9 +442,9 @@ extension TierDraftAudit {
 @Model
 final class TierDraftCollabMember {
     @Attribute(.unique) var identifier: UUID
-    var userId: String
-    var role: String
-    var additionalData: Data?
+    internal var userId: String
+    internal var role: String
+    internal var additionalData: Data?
     @Relationship var project: TierProjectDraft?
 
     internal init(
@@ -460,13 +460,13 @@ final class TierDraftCollabMember {
     }
 }
 
-extension TierDraftCollabMember {
-    var additional: [String: JSONValue] {
+internal extension TierDraftCollabMember {
+    internal var additional: [String: JSONValue] {
         get { TierListCreatorCodec.decode([String: JSONValue].self, from: additionalData) ?? [:] }
         set { additionalData = TierListCreatorCodec.encode(newValue.isEmpty ? nil : newValue) }
     }
 
-    var member: Project.Member {
+    internal var member: Project.Member {
         Project.Member(userId: userId, role: role, additional: additional.isEmpty ? nil : additional)
     }
 }

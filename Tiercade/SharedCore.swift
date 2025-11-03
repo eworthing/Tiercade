@@ -11,13 +11,13 @@ public enum FilterType: String, CaseIterable {
 
 // MARK: - Toast System
 
-enum ToastType {
+internal enum ToastType {
     case success
     case error
     case info
     case warning
 
-    var color: Color {
+    internal var color: Color {
         switch self {
         case .success:
             return .green
@@ -30,7 +30,7 @@ enum ToastType {
         }
     }
 
-    var icon: String {
+    internal var icon: String {
         switch self {
         case .success:
             return "checkmark.circle.fill"
@@ -44,14 +44,14 @@ enum ToastType {
     }
 }
 
-struct ToastMessage: Identifiable {
-    let id = UUID()
-    let type: ToastType
-    let title: String
-    let message: String?
-    let duration: TimeInterval
-    let actionTitle: String?
-    let action: (() -> Void)?
+internal struct ToastMessage: Identifiable {
+    internal let id = UUID()
+    internal let type: ToastType
+    internal let title: String
+    internal let message: String?
+    internal let duration: TimeInterval
+    internal let actionTitle: String?
+    internal let action: (() -> Void)?
 
     init(
         type: ToastType,
@@ -84,14 +84,14 @@ struct ToastMessage: Identifiable {
 
 // MARK: - Color helpers
 // Note: Basic hex parsing for backward compatibility. Full color utilities in ColorUtilities.swift
-extension Color {
+internal extension Color {
     init?(hex: String) {
-        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        internal var s = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         if s.hasPrefix("#") { s.removeFirst() }
         guard s.count == 6, let v = Int(s, radix: 16) else { return nil }
-        let r = Double((v >> 16) & 0xFF) / 255.0
-        let g = Double((v >> 8) & 0xFF) / 255.0
-        let b = Double(v & 0xFF) / 255.0
+        internal let r = Double((v >> 16) & 0xFF) / 255.0
+        internal let g = Double((v >> 8) & 0xFF) / 255.0
+        internal let b = Double(v & 0xFF) / 255.0
         self = Color(red: r, green: g, blue: b)
     }
 }

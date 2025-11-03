@@ -19,8 +19,8 @@ internal struct TVActionBar: View {
 
     internal var body: some View {
         if isMultiSelectActive {
-            let hasSelection = app.selection.count > 0
-            let defaultFocus = hasSelection ? FocusTarget.move : .clear
+            internal let hasSelection = app.selection.count > 0
+            internal let defaultFocus = hasSelection ? FocusTarget.move : .clear
             ZStack {
                 // Explicit background for UI test visibility
                 Color.black.opacity(0.3)
@@ -52,7 +52,7 @@ internal struct TVActionBar: View {
 
                     // Move to Tier button (only show if items selected)
                     if app.selection.count > 0 {
-                        let selectionHint = "Open tier selection to move \(app.selection.count) item" +
+                        internal let selectionHint = "Open tier selection to move \(app.selection.count) item" +
                             (app.selection.count == 1 ? "" : "s")
                         Button("Move to Tier…") {
                             app.presentBatchQuickMove()

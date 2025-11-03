@@ -30,14 +30,14 @@ internal struct ItemsWizardPage: View, WizardPage {
         case unassigned
         case hidden
 
-        var id: String { rawValue }
+        internal var id: String { rawValue }
 
-        var label: String {
+        internal var label: String {
             switch self {
-            case .all: return "All"
-            case .assigned: return "Assigned"
-            case .unassigned: return "Unassigned"
-            case .hidden: return "Hidden"
+        case .all: return "All"
+        case .assigned: return "Assigned"
+        case .unassigned: return "Unassigned"
+        case .hidden: return "Hidden"
             }
         }
     }
@@ -153,7 +153,7 @@ internal struct ItemsWizardPage: View, WizardPage {
             Spacer()
 
             Button {
-                let newItem = appState.addItem(to: draft)
+                internal let newItem = appState.addItem(to: draft)
                 selectedItemID = newItem.identifier
                 showingItemEditor = true
             } label: {
@@ -279,9 +279,9 @@ internal struct ItemsWizardPage: View, WizardPage {
     // MARK: - Helpers
 
     private var filteredItems: [TierDraftItem] {
-        let trimmed = searchQuery.trimmingCharacters(in: .whitespaces)
+        internal let trimmed = searchQuery.trimmingCharacters(in: .whitespaces)
         return draft.items.filter { item in
-            let matchesSearch: Bool
+            internal let matchesSearch: Bool
             if trimmed.isEmpty {
                 matchesSearch = true
             } else {
@@ -290,15 +290,15 @@ internal struct ItemsWizardPage: View, WizardPage {
                     || item.slug.localizedCaseInsensitiveContains(trimmed)
             }
 
-            let matchesFilter: Bool
+            internal let matchesFilter: Bool
             switch itemFilter {
-            case .all:
+        case .all:
                 matchesFilter = true
-            case .assigned:
+        case .assigned:
                 matchesFilter = item.tier != nil
-            case .unassigned:
+        case .unassigned:
                 matchesFilter = item.tier == nil
-            case .hidden:
+        case .hidden:
                 matchesFilter = item.hidden
             }
 

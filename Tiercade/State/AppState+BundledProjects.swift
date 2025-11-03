@@ -6,8 +6,8 @@ import TiercadeCore
 @MainActor
 internal extension AppState {
     internal func applyBundledProject(_ bundled: BundledProject) {
-        let snapshot = captureTierSnapshot()
-        let state = resolvedTierState(from: bundled.project)
+        internal let snapshot = captureTierSnapshot()
+        internal let state = resolvedTierState(from: bundled.project)
         tierOrder = state.order
         tiers = state.items
         tierLabels = state.labels
@@ -16,7 +16,7 @@ internal extension AppState {
         finalizeChange(action: "Load Bundled Project", undoSnapshot: snapshot)
         persistence.currentFileName = bundled.id
         showSuccessToast("Loaded \(bundled.title)", message: "Bundled tier list ready to rank")
-        let counts = tierOrder
+        internal let counts = tierOrder
             .map { "\($0):\(tiers[$0]?.count ?? 0)" }
             .joined(separator: ", ")
         logEvent("applyBundledProject id=\(bundled.id) counts=\(counts)")
@@ -25,16 +25,16 @@ internal extension AppState {
 }
 
 internal extension AppState {
-    struct BundledTierState {
-        var order: [String]
-        var items: Items
-        var labels: [String: String]
-        var colors: [String: String]
-        var locked: Set<String>
+    internal struct BundledTierState {
+        internal var order: [String]
+        internal var items: Items
+        internal var labels: [String: String]
+        internal var colors: [String: String]
+        internal var locked: Set<String>
     }
 
     internal func resolvedTierState(from project: Project) -> BundledTierState {
-        var state = BundledTierState(
+        internal var state = BundledTierState(
             order: [],
             items: [:],
             labels: [:],
@@ -42,8 +42,8 @@ internal extension AppState {
             locked: []
         )
 
-        let metadata = Dictionary(uniqueKeysWithValues: project.tiers.map { ($0.id, $0) })
-        let resolvedTiers = ModelResolver.resolveTiers(from: project)
+        internal let metadata = Dictionary(uniqueKeysWithValues: project.tiers.map { ($0.id, $0) })
+        internal let resolvedTiers = ModelResolver.resolveTiers(from: project)
 
         populateState(with: resolvedTiers, metadata: metadata, state: &state)
         appendMissingTiers(from: project.tiers, state: &state)
@@ -61,7 +61,7 @@ internal extension AppState {
         state: inout BundledTierState
     ) {
         for resolved in resolvedTiers {
-            let normalizedLabel = normalizeTierName(resolved.label)
+            internal let normalizedLabel = normalizeTierName(resolved.label)
             appendTierToOrderIfNeeded(normalizedLabel, order: &state.order)
             applyTierMetadata(metadata[resolved.id], normalizedLabel: normalizedLabel, state: &state)
             state.items[normalizedLabel] = resolved.items.map(makeItem)
@@ -70,7 +70,7 @@ internal extension AppState {
 
     internal func appendMissingTiers(from tiers: [Project.Tier], state: inout BundledTierState) {
         for tier in tiers {
-            let normalizedLabel = normalizeTierName(tier.label)
+            internal let normalizedLabel = normalizeTierName(tier.label)
             guard state.items[normalizedLabel] == nil else { continue }
             appendTierToOrderIfNeeded(normalizedLabel, order: &state.order)
             state.items[normalizedLabel] = []
@@ -121,15 +121,15 @@ internal extension AppState {
 
     internal func prefillBundledProjectsIfNeeded() {
         do {
-            let bundledSource = TierListSource.bundled.rawValue
-            let descriptor = FetchDescriptor<TierListEntity>(
+            internal let bundledSource = TierListSource.bundled.rawValue
+            internal let descriptor = FetchDescriptor<TierListEntity>(
                 predicate: #Predicate { $0.sourceRaw == bundledSource }
             )
-            let existing = try modelContext.fetch(descriptor)
-            let existingIdentifiers = Set(existing.compactMap { $0.externalIdentifier })
-            var created = false
+            internal let existing = try modelContext.fetch(descriptor)
+            internal let existingIdentifiers = Set(existing.compactMap { $0.externalIdentifier })
+            internal var created = false
             for project in bundledProjects where !existingIdentifiers.contains(project.id) {
-                let entity = makeBundledTierListEntity(from: project, source: bundledSource)
+                internal let entity = makeBundledTierListEntity(from: project, source: bundledSource)
                 modelContext.insert(entity)
                 created = true
             }
@@ -142,8 +142,8 @@ internal extension AppState {
     }
 
     private func makeBundledTierListEntity(from project: BundledProject, source: String) -> TierListEntity {
-        let encodedProject = try? TierListCreatorCodec.makeEncoder().encode(project.project)
-        let entity = TierListEntity(
+        internal let encodedProject = try? TierListCreatorCodec.makeEncoder().encode(project.project)
+        internal let entity = TierListEntity(
             title: project.title,
             fileName: nil,
             createdAt: Date(),
@@ -161,11 +161,11 @@ internal extension AppState {
             tiers: []
         )
 
-        let metadata = Dictionary(uniqueKeysWithValues: project.project.tiers.map { ($0.id, $0) })
-        let resolvedTiers = ModelResolver.resolveTiers(from: project.project)
+        internal let metadata = Dictionary(uniqueKeysWithValues: project.project.tiers.map { ($0.id, $0) })
+        internal let resolvedTiers = ModelResolver.resolveTiers(from: project.project)
 
         for (index, resolvedTier) in resolvedTiers.enumerated() {
-            let tierEntity = createTierEntity(
+            internal let tierEntity = createTierEntity(
                 from: resolvedTier,
                 index: index,
                 totalTiers: resolvedTiers.count,
@@ -185,10 +185,10 @@ internal extension AppState {
         metadata: [String: Project.Tier],
         listEntity: TierListEntity
     ) -> TierEntity {
-        let normalizedKey = normalizeTierName(resolvedTier.label)
-        let tierMetadata = metadata[resolvedTier.id]
-        let order = normalizedKey == "unranked" ? totalTiers : index
-        let tierEntity = TierEntity(
+        internal let normalizedKey = normalizeTierName(resolvedTier.label)
+        internal let tierMetadata = metadata[resolvedTier.id]
+        internal let order = normalizedKey == "unranked" ? totalTiers : index
+        internal let tierEntity = TierEntity(
             key: normalizedKey,
             displayName: resolvedTier.label,
             colorHex: tierMetadata?.color,
@@ -198,8 +198,8 @@ internal extension AppState {
         tierEntity.list = listEntity
 
         for (position, item) in resolvedTier.items.enumerated() {
-            let (seasonString, seasonNumber) = seasonInfo(from: item.attributes)
-            let newItem = TierItemEntity(
+            internal let (seasonString, seasonNumber) = seasonInfo(from: item.attributes)
+            internal let newItem = TierItemEntity(
                 itemID: item.id,
                 name: item.title,
                 seasonString: seasonString,

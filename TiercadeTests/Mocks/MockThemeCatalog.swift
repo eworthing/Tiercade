@@ -6,17 +6,17 @@ import TiercadeCore
 ///
 /// Allows tests to inject predictable theme data without depending on
 /// actual SwiftData or bundled theme catalogs.
-actor MockThemeCatalog: ThemeCatalogProviding {
+internal actor MockThemeCatalog: ThemeCatalogProviding {
     // MARK: - Configuration
 
     /// Bundled themes to return
-    var bundledThemesData: [TierTheme] = []
+    internal var bundledThemesData: [TierTheme] = []
 
     /// Custom themes to return
-    var customThemesData: [TierTheme] = []
+    internal var customThemesData: [TierTheme] = []
 
     /// Error to throw from save/delete operations
-    var errorToThrow: Error?
+    internal var errorToThrow: Error?
 
     /// Tracks all save calls for verification
     private(set) var saveCalls: [TierTheme] = []
@@ -26,19 +26,19 @@ actor MockThemeCatalog: ThemeCatalogProviding {
 
     // MARK: - ThemeCatalogProviding
 
-    func allThemes() async -> [TierTheme] {
+    internal func allThemes() async -> [TierTheme] {
         bundledThemesData + customThemesData
     }
 
-    func bundledThemes() async -> [TierTheme] {
+    internal func bundledThemes() async -> [TierTheme] {
         bundledThemesData
     }
 
-    func customThemes() async -> [TierTheme] {
+    internal func customThemes() async -> [TierTheme] {
         customThemesData
     }
 
-    func saveCustomTheme(_ theme: TierTheme) async throws {
+    internal func saveCustomTheme(_ theme: TierTheme) async throws {
         saveCalls.append(theme)
 
         if let error = errorToThrow {
@@ -49,7 +49,7 @@ actor MockThemeCatalog: ThemeCatalogProviding {
         customThemesData.append(theme)
     }
 
-    func deleteCustomTheme(id: String) async throws {
+    internal func deleteCustomTheme(id: String) async throws {
         deleteCalls.append(id)
 
         if let error = errorToThrow {
@@ -60,15 +60,15 @@ actor MockThemeCatalog: ThemeCatalogProviding {
         customThemesData.removeAll { $0.id.uuidString == id }
     }
 
-    func findTheme(id: String) async -> TierTheme? {
-        let all = await allThemes()
+    internal func findTheme(id: String) async -> TierTheme? {
+        internal let all = await allThemes()
         return all.first { $0.id.uuidString == id }
     }
 
     // MARK: - Test Helpers
 
     /// Reset the mock to its initial state
-    func reset() {
+    internal func reset() {
         bundledThemesData = []
         customThemesData = []
         errorToThrow = nil
@@ -77,13 +77,13 @@ actor MockThemeCatalog: ThemeCatalogProviding {
     }
 
     /// Configure the mock with test themes
-    func mockThemes(bundled: [TierTheme], custom: [TierTheme]) {
+    internal func mockThemes(bundled: [TierTheme], custom: [TierTheme]) {
         bundledThemesData = bundled
         customThemesData = custom
     }
 
     /// Configure the mock to throw an error
-    func mockError(_ error: Error) {
+    internal func mockError(_ error: Error) {
         errorToThrow = error
     }
 }

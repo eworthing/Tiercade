@@ -6,9 +6,9 @@ import TiercadeCore
 
 @MainActor
 internal protocol ToolbarExportCoordinating: AnyObject, Observable {
-    var isLoading: Bool { get }
-    func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String)
-    func showToast(type: ToastType, title: String, message: String?)
+    internal var isLoading: Bool { get }
+    internal func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String)
+    internal func showToast(type: ToastType, title: String, message: String?)
 }
 
 internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
@@ -49,13 +49,13 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
             defaultFilename: exportFileName
         ) { result in
             switch result {
-            case .success:
+        case .success:
                 coordinator.showToast(
                     type: .success,
                     title: "Export Complete",
                     message: "File saved successfully"
                 )
-            case .failure(let error):
+        case .failure(let error):
                 coordinator.showToast(
                     type: .error,
                     title: "Export Failed",
@@ -148,7 +148,7 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
         defer { isExporting = false }
 
         do {
-            let (data, filename) = try await coordinator.exportToFormat(exportFormat)
+            internal let (data, filename) = try await coordinator.exportToFormat(exportFormat)
             await MainActor.run {
                 exportedData = data
                 exportFileName = filename
@@ -167,9 +167,9 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
         defer { isExporting = false }
 
         do {
-            let (data, filename) = try await coordinator.exportToFormat(exportFormat)
+            internal let (data, filename) = try await coordinator.exportToFormat(exportFormat)
             await MainActor.run {
-                let tempURL = FileManager.default
+                internal let tempURL = FileManager.default
                     .temporaryDirectory
                     .appendingPathComponent(filename)
                 do {

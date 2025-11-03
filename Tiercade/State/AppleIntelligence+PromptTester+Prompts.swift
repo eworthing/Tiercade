@@ -6,7 +6,7 @@ import FoundationModels
 // MARK: - Test Prompts
 
 @MainActor
-extension SystemPromptTester {
+internal extension SystemPromptTester {
 static let prompts = [
     // 1. Ultra-simple (baseline)
     """

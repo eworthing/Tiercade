@@ -6,10 +6,10 @@ import FoundationModels
 // MARK: - Analysis & Parsing
 
 @MainActor
-extension SystemPromptTester {
+internal extension SystemPromptTester {
 static func normalize(_ text: String) -> String {
     // Unicode folding (handles diacritics and case)
-    var normalized = text.folding(
+    internal var normalized = text.folding(
         options: [.diacriticInsensitive, .caseInsensitive],
         locale: .current
     )
@@ -47,40 +47,40 @@ static func normalize(_ text: String) -> String {
 }
 
 internal struct DuplicateAnalysisResult {
-    let hasDuplicates: Bool
-    let duplicateCount: Int
-    let uniqueItems: Int
-    let totalItems: Int
-    let insufficient: Bool
-    let wasJsonParsed: Bool
-    let parsedItems: [String]
-    let normalizedItems: [String]
+    internal let hasDuplicates: Bool
+    internal let duplicateCount: Int
+    internal let uniqueItems: Int
+    internal let totalItems: Int
+    internal let insufficient: Bool
+    internal let wasJsonParsed: Bool
+    internal let parsedItems: [String]
+    internal let normalizedItems: [String]
 }
 
 internal struct ParsedItems {
-    let items: [String]
-    let wasJsonParsed: Bool
+    internal let items: [String]
+    internal let wasJsonParsed: Bool
 }
 
 internal struct DuplicateDetectionResult {
-    let seenNormalized: Set<String>
-    let normalizedList: [String]
-    let duplicateCount: Int
+    internal let seenNormalized: Set<String>
+    internal let normalizedList: [String]
+    internal let duplicateCount: Int
 }
 
 internal struct AnalysisMetrics {
-    let totalItems: Int
-    let uniqueItems: Int
-    let insufficient: Bool
+    internal let totalItems: Int
+    internal let uniqueItems: Int
+    internal let insufficient: Bool
 }
 
 static func analyzeDuplicates(
     _ text: String,
     expectedCount: Int = 25
 ) -> DuplicateAnalysisResult {
-    let parsed = parseItems(from: text)
-    let duplicates = detectDuplicates(in: parsed.items)
-    let metrics = calculateMetrics(
+    internal let parsed = parseItems(from: text)
+    internal let duplicates = detectDuplicates(in: parsed.items)
+    internal let metrics = calculateMetrics(
         itemCount: parsed.items.count,
         uniqueCount: duplicates.seenNormalized.count,
         expectedCount: expectedCount
@@ -107,7 +107,7 @@ static func parseItems(from text: String) -> ParsedItems {
 
 static func tryParseAsJson(_ text: String) -> [String]? {
     guard let jsonData = text.data(using: .utf8),
-          let jsonArray = try? JSONSerialization.jsonObject(with: jsonData) as? [String] else {
+          internal let jsonArray = try? JSONSerialization.jsonObject(with: jsonData) as? [String] else {
         return nil
     }
     print("🧪   Parsed as JSON array")
@@ -115,7 +115,7 @@ static func tryParseAsJson(_ text: String) -> [String]? {
 }
 
 static func parseAsText(_ text: String) -> [String] {
-    let lines = text.components(separatedBy: .newlines)
+    internal let lines = text.components(separatedBy: .newlines)
     if let numberedItems = tryParseNumberedList(lines), !numberedItems.isEmpty {
         return numberedItems
     }
@@ -123,11 +123,11 @@ static func parseAsText(_ text: String) -> [String] {
 }
 
 static func tryParseNumberedList(_ lines: [String]) -> [String]? {
-    var items: [String] = []
+    internal var items: [String] = []
     for line in lines {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        internal let trimmed = line.trimmingCharacters(in: .whitespaces)
         if let range = trimmed.range(of: #"^\d+[\.)]\s*"#, options: .regularExpression) {
-            let content = String(trimmed[range.upperBound...])
+            internal let content = String(trimmed[range.upperBound...])
                 .trimmingCharacters(in: .whitespaces)
             items.append(content)
         }
@@ -136,10 +136,10 @@ static func tryParseNumberedList(_ lines: [String]) -> [String]? {
 }
 
 static func parseOnePerLine(_ lines: [String]) -> [String] {
-    var items: [String] = []
-    var lineCount = 0
+    internal var items: [String] = []
+    internal var lineCount = 0
     for line in lines {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        internal let trimmed = line.trimmingCharacters(in: .whitespaces)
         // Skip empty lines and lines that look like commentary or prose
         if !trimmed.isEmpty
             && !trimmed.hasPrefix("//")
@@ -154,12 +154,12 @@ static func parseOnePerLine(_ lines: [String]) -> [String] {
 }
 
 static func detectDuplicates(in items: [String]) -> DuplicateDetectionResult {
-    var seenNormalized = Set<String>()
-    var normalizedList: [String] = []
-    var duplicateCount = 0
+    internal var seenNormalized = Set<String>()
+    internal var normalizedList: [String] = []
+    internal var duplicateCount = 0
 
     for item in items {
-        let normalized = normalize(item)
+        internal let normalized = normalize(item)
         if seenNormalized.contains(normalized) {
             duplicateCount += 1
             print("🧪   Duplicate detected: '\(item)' (normalized: '\(normalized)')")
@@ -181,8 +181,8 @@ static func calculateMetrics(
     uniqueCount: Int,
     expectedCount: Int
 ) -> AnalysisMetrics {
-    let minimumRequired = Int(Double(expectedCount) * 0.8)
-    let insufficient = itemCount < minimumRequired
+    internal let minimumRequired = Int(Double(expectedCount) * 0.8)
+    internal let insufficient = itemCount < minimumRequired
     return AnalysisMetrics(
         totalItems: itemCount,
         uniqueItems: uniqueCount,

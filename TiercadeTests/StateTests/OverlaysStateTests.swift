@@ -8,70 +8,70 @@ import TiercadeCore
 /// These tests prevent regressions like the missing showThemeCreator check
 /// discovered in the refactor review.
 @MainActor
-struct OverlaysStateTests {
+internal struct OverlaysStateTests {
     // MARK: - activeOverlay Tests
 
     @Test("activeOverlay returns nil when no overlays are active")
-    func activeOverlay_noOverlays() {
-        let state = OverlaysState()
+    internal func activeOverlay_noOverlays() {
+        internal let state = OverlaysState()
         #expect(state.activeOverlay == nil)
     }
 
     @Test("activeOverlay returns detail when detailItem is set")
-    func activeOverlay_detail() {
-        let state = OverlaysState()
-        let item = Item(id: "test", attributes: ["name": "Test Item"])
+    internal func activeOverlay_detail() {
+        internal let state = OverlaysState()
+        internal let item = Item(id: "test", attributes: ["name": "Test Item"])
         state.detailItem = item
         #expect(state.activeOverlay == .detail)
     }
 
     @Test("activeOverlay returns quickMove when quickMoveTarget is set")
-    func activeOverlay_quickMove() {
-        let state = OverlaysState()
-        let item = Item(id: "test", attributes: ["name": "Test Item"])
+    internal func activeOverlay_quickMove() {
+        internal let state = OverlaysState()
+        internal let item = Item(id: "test", attributes: ["name": "Test Item"])
         state.quickMoveTarget = item
         #expect(state.activeOverlay == .quickMove)
     }
 
     @Test("activeOverlay returns themePicker when showThemePicker is true")
-    func activeOverlay_themePicker() {
-        let state = OverlaysState()
+    internal func activeOverlay_themePicker() {
+        internal let state = OverlaysState()
         state.showThemePicker = true
         #expect(state.activeOverlay == .themePicker)
     }
 
     @Test("activeOverlay returns themeCreator when showThemeCreator is true")
-    func activeOverlay_themeCreator() {
-        let state = OverlaysState()
+    internal func activeOverlay_themeCreator() {
+        internal let state = OverlaysState()
         state.showThemeCreator = true
         #expect(state.activeOverlay == .themeCreator)
     }
 
     @Test("activeOverlay returns tierListCreator when showTierListCreator is true")
-    func activeOverlay_tierListCreator() {
-        let state = OverlaysState()
+    internal func activeOverlay_tierListCreator() {
+        internal let state = OverlaysState()
         state.showTierListCreator = true
         #expect(state.activeOverlay == .tierListCreator)
     }
 
     @Test("activeOverlay returns tierListBrowser when showTierListBrowser is true")
-    func activeOverlay_tierListBrowser() {
-        let state = OverlaysState()
+    internal func activeOverlay_tierListBrowser() {
+        internal let state = OverlaysState()
         state.showTierListBrowser = true
         #expect(state.activeOverlay == .tierListBrowser)
     }
 
     @Test("activeOverlay returns analytics when showAnalyticsSidebar is true")
-    func activeOverlay_analytics() {
-        let state = OverlaysState()
+    internal func activeOverlay_analytics() {
+        internal let state = OverlaysState()
         state.showAnalyticsSidebar = true
         #expect(state.activeOverlay == .analytics)
     }
 
     @Test("activeOverlay priority: detail > quickMove > themePicker > themeCreator")
-    func activeOverlay_priority() {
-        let state = OverlaysState()
-        let item = Item(id: "test", attributes: ["name": "Test Item"])
+    internal func activeOverlay_priority() {
+        internal let state = OverlaysState()
+        internal let item = Item(id: "test", attributes: ["name": "Test Item"])
 
         // Set multiple overlays
         state.detailItem = item
@@ -98,58 +98,58 @@ struct OverlaysStateTests {
     // MARK: - blocksBackgroundFocus Tests
 
     @Test("blocksBackgroundFocus is false when no overlays are active")
-    func blocksBackgroundFocus_noOverlays() {
-        let state = OverlaysState()
+    internal func blocksBackgroundFocus_noOverlays() {
+        internal let state = OverlaysState()
         #expect(state.blocksBackgroundFocus == false)
     }
 
     @Test("blocksBackgroundFocus is true when detailItem is set")
-    func blocksBackgroundFocus_detail() {
-        let state = OverlaysState()
-        let item = Item(id: "test", attributes: ["name": "Test Item"])
+    internal func blocksBackgroundFocus_detail() {
+        internal let state = OverlaysState()
+        internal let item = Item(id: "test", attributes: ["name": "Test Item"])
         state.detailItem = item
         #expect(state.blocksBackgroundFocus == true)
     }
 
     @Test("blocksBackgroundFocus is true when quickMoveTarget is set")
-    func blocksBackgroundFocus_quickMove() {
-        let state = OverlaysState()
-        let item = Item(id: "test", attributes: ["name": "Test Item"])
+    internal func blocksBackgroundFocus_quickMove() {
+        internal let state = OverlaysState()
+        internal let item = Item(id: "test", attributes: ["name": "Test Item"])
         state.quickMoveTarget = item
         #expect(state.blocksBackgroundFocus == true)
     }
 
     @Test("blocksBackgroundFocus is true when showThemePicker is true")
-    func blocksBackgroundFocus_themePicker() {
-        let state = OverlaysState()
+    internal func blocksBackgroundFocus_themePicker() {
+        internal let state = OverlaysState()
         state.showThemePicker = true
         #expect(state.blocksBackgroundFocus == true)
     }
 
     @Test("blocksBackgroundFocus is true when showThemeCreator is true")
-    func blocksBackgroundFocus_themeCreator() {
-        let state = OverlaysState()
+    internal func blocksBackgroundFocus_themeCreator() {
+        internal let state = OverlaysState()
         state.showThemeCreator = true
         #expect(state.blocksBackgroundFocus == true)
     }
 
     @Test("blocksBackgroundFocus is true when showTierListCreator is true")
-    func blocksBackgroundFocus_tierListCreator() {
-        let state = OverlaysState()
+    internal func blocksBackgroundFocus_tierListCreator() {
+        internal let state = OverlaysState()
         state.showTierListCreator = true
         #expect(state.blocksBackgroundFocus == true)
     }
 
     @Test("blocksBackgroundFocus is true when showTierListBrowser is true")
-    func blocksBackgroundFocus_tierListBrowser() {
-        let state = OverlaysState()
+    internal func blocksBackgroundFocus_tierListBrowser() {
+        internal let state = OverlaysState()
         state.showTierListBrowser = true
         #expect(state.blocksBackgroundFocus == true)
     }
 
     @Test("blocksBackgroundFocus is true when showAnalyticsSidebar is true")
-    func blocksBackgroundFocus_analytics() {
-        let state = OverlaysState()
+    internal func blocksBackgroundFocus_analytics() {
+        internal let state = OverlaysState()
         state.showAnalyticsSidebar = true
         #expect(state.blocksBackgroundFocus == true)
     }
@@ -157,9 +157,9 @@ struct OverlaysStateTests {
     // MARK: - Helper Methods Tests
 
     @Test("dismissAllOverlays clears all overlay state")
-    func dismissAllOverlays() {
-        let state = OverlaysState()
-        let item = Item(id: "test", attributes: ["name": "Test Item"])
+    internal func dismissAllOverlays() {
+        internal let state = OverlaysState()
+        internal let item = Item(id: "test", attributes: ["name": "Test Item"])
 
         // Set all overlays
         state.detailItem = item
@@ -186,8 +186,8 @@ struct OverlaysStateTests {
     }
 
     @Test("presentThemeCreator sets showThemeCreator to true")
-    func presentThemeCreator() {
-        let state = OverlaysState()
+    internal func presentThemeCreator() {
+        internal let state = OverlaysState()
         #expect(state.showThemeCreator == false)
 
         state.presentThemeCreator()
@@ -196,8 +196,8 @@ struct OverlaysStateTests {
     }
 
     @Test("dismissThemeCreator sets showThemeCreator to false")
-    func dismissThemeCreator() {
-        let state = OverlaysState()
+    internal func dismissThemeCreator() {
+        internal let state = OverlaysState()
         state.showThemeCreator = true
 
         state.dismissThemeCreator()

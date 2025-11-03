@@ -5,36 +5,36 @@ import Foundation
 // MARK: - Error Handling & Validation
 
 @available(iOS 26.0, macOS 26.0, *)
-extension UnifiedPromptTester {
+internal extension UnifiedPromptTester {
 
 // MARK: - Testing Errors
 
 /// Errors that can occur during testing
 internal enum TestingError: Error, LocalizedError {
     // Configuration errors
-    case configurationNotFound(String)
-    case invalidConfiguration(String)
-    case missingRequiredField(String)
+    internal case configurationNotFound(String)
+    internal case invalidConfiguration(String)
+    internal case missingRequiredField(String)
 
     // Execution errors
-    case testExecutionFailed(String)
-    case timeout
-    case modelUnavailable
-    case sessionCreationFailed
+    internal case testExecutionFailed(String)
+    internal case timeout
+    internal case modelUnavailable
+    internal case sessionCreationFailed
 
     // Data errors
-    case invalidResponse(String)
-    case parsingFailed(String)
-    case validationFailed(String)
+    internal case invalidResponse(String)
+    internal case parsingFailed(String)
+    internal case validationFailed(String)
 
     // Prompt template errors
-    case promptTemplateError(PromptTemplateError)
+    internal case promptTemplateError(PromptTemplateError)
 
     // Resource errors
-    case insufficientMemory
-    case diskSpaceExhausted
+    internal case insufficientMemory
+    internal case diskSpaceExhausted
 
-    var errorDescription: String? {
+    internal var errorDescription: String? {
         switch self {
         case .configurationNotFound(let name):
             return "Configuration not found: \(name)"
@@ -65,7 +65,7 @@ internal enum TestingError: Error, LocalizedError {
         }
     }
 
-    var recoverySuggestion: String? {
+    internal var recoverySuggestion: String? {
         switch self {
         case .timeout:
             return "Try increasing the timeout duration or simplifying the test"
@@ -83,9 +83,9 @@ internal enum TestingError: Error, LocalizedError {
 
 /// Errors specific to prompt template processing
 internal enum PromptTemplateError: Error, LocalizedError {
-    case missingVariables([String])
+    internal case missingVariables([String])
 
-    var errorDescription: String? {
+    internal var errorDescription: String? {
         switch self {
         case .missingVariables(let vars):
             return "Missing required variables: \(vars.joined(separator: ", "))"
@@ -107,9 +107,9 @@ internal struct ConfigValidator {
         }
 
         // Check if required variables are documented
-        let template = PromptTemplate(raw: prompt.text)
-        let required = template.requiredVariables()
-        let documented = Set(prompt.metadata?.requiresVariables ?? [])
+        internal let template = PromptTemplate(raw: prompt.text)
+        internal let required = template.requiredVariables()
+        internal let documented = Set(prompt.metadata?.requiresVariables ?? [])
 
         if !required.isEmpty && documented.isEmpty {
             print("⚠️ Warning: Prompt '\(prompt.id)' has variables but none documented in metadata")
@@ -143,13 +143,13 @@ internal struct ConfigValidator {
         }
 
         switch decoder.sampling.mode {
-        case "greedy":
+        internal case "greedy":
             break
-        case "topK":
+        internal case "topK":
             guard let k = decoder.sampling.k, k > 0 else {
                 throw TestingError.validationFailed("topK mode requires positive k value")
             }
-        case "topP":
+        internal case "topP":
             guard let threshold = decoder.sampling.threshold,
                   threshold > 0.0 && threshold <= 1.0 else {
                 throw TestingError.validationFailed("topP mode requires threshold between 0.0 and 1.0")

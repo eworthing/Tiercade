@@ -6,7 +6,7 @@ import FoundationModels
 // MARK: - Helper Functions
 
 @available(iOS 26.0, macOS 26.0, *)
-extension EnhancedPromptTester {
+internal extension EnhancedPromptTester {
 static func logTestHeader(
     config: TestConfig,
     onProgress: @MainActor @escaping (String) -> Void
@@ -21,7 +21,7 @@ static func logTestHeader(
     onProgress("🧪 PILOT TEST (pass@N primary, stratified reporting)")
     onProgress("🧪 ========================================")
 
-    let totalRuns = calculateTotalRuns(config: config)
+    internal let totalRuns = calculateTotalRuns(config: config)
     onProgress("  • Prompts: 4 (G0, G2, G3, G6 - pilot subset)")
     onProgress("  • Queries: \(config.testQueries.count) (small/medium/large/open)")
     onProgress("  • Decoders: \(config.decodingConfigs.count) (Greedy, TopK, TopP)")
@@ -56,16 +56,16 @@ static func executePromptTestRuns(
     completedTests: inout Int,
     onProgress: @MainActor @escaping (String) -> Void
 ) async -> [SingleRunResult] {
-    var runResults: [SingleRunResult] = []
+    internal var runResults: [SingleRunResult] = []
 
     for testQuery in context.config.testQueries {
-        let query = testQuery.query
-        let target = testQuery.target
-        let domain = testQuery.domain
+        internal let query = testQuery.query
+        internal let target = testQuery.target
+        internal let domain = testQuery.domain
         for decodingConfig in context.config.decodingConfigs {
             for seed in context.config.seeds {
                 for guided in context.config.guidedModes {
-                    let result = await testSingleRun(SingleRunParameters(
+                    internal let result = await testSingleRun(SingleRunParameters(
                         config: context.config,
                         promptNumber: context.promptNumber,
                         promptName: context.promptName,
@@ -106,7 +106,7 @@ static func logProgressUpdate(
     domain: String,
     onProgress: @MainActor @escaping (String) -> Void
 ) {
-    let passIcon = result.passAtN ? "✅" : "❌"
+    internal let passIcon = result.passAtN ? "✅" : "❌"
     onProgress(
         "   [\(completedTests)/\(totalRuns)] \(passIcon) " +
         "\(result.nBucket)/\(domain), pass=\(result.passAtN), " +

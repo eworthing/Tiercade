@@ -7,40 +7,40 @@ import Foundation
 internal protocol ThemeCatalogProviding: Sendable {
     /// Get all available themes
     /// - Returns: Array of all themes (bundled + custom)
-    func allThemes() async -> [TierTheme]
+    internal func allThemes() async -> [TierTheme]
 
     /// Get only bundled system themes
     /// - Returns: Array of bundled themes
-    func bundledThemes() async -> [TierTheme]
+    internal func bundledThemes() async -> [TierTheme]
 
     /// Get only user-created custom themes
     /// - Returns: Array of custom themes
-    func customThemes() async -> [TierTheme]
+    internal func customThemes() async -> [TierTheme]
 
     /// Save a custom theme
     /// - Parameter theme: The theme to save
     /// - Throws: ThemeError if save fails
-    func saveCustomTheme(_ theme: TierTheme) async throws
+    internal func saveCustomTheme(_ theme: TierTheme) async throws
 
     /// Delete a custom theme
     /// - Parameter id: The theme ID to delete
     /// - Throws: ThemeError if delete fails or theme is not custom
-    func deleteCustomTheme(id: String) async throws
+    internal func deleteCustomTheme(id: String) async throws
 
     /// Find a theme by ID
     /// - Parameter id: The theme ID to find
     /// - Returns: The theme if found, nil otherwise
-    func findTheme(id: String) async -> TierTheme?
+    internal func findTheme(id: String) async -> TierTheme?
 }
 
 /// Errors specific to theme operations
 internal enum ThemeError: Error, CustomStringConvertible {
-    case themeNotFound(String)
-    case cannotDeleteBundledTheme
-    case saveFailed(String)
-    case invalidThemeData
+    internal case themeNotFound(String)
+    internal case cannotDeleteBundledTheme
+    internal case saveFailed(String)
+    internal case invalidThemeData
 
-    var description: String {
+    internal var description: String {
         switch self {
         case .themeNotFound(let id):
             return "Theme not found: \(id)"

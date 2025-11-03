@@ -1,19 +1,19 @@
 import Foundation
 
-extension HeadToHeadLogic {
+internal extension HeadToHeadLogic {
     internal struct HeadToHeadMetrics: Sendable {
-        let wins: Int
-        let comparisons: Int
-        let winRate: Double
-        let wilsonLB: Double
-        let wilsonUB: Double
-        let nameKey: String
-        let id: String
+        internal let wins: Int
+        internal let comparisons: Int
+        internal let winRate: Double
+        internal let wilsonLB: Double
+        internal let wilsonUB: Double
+        internal let nameKey: String
+        internal let id: String
     }
 
     internal struct Prior: Sendable {
-        let alpha: Double
-        let beta: Double
+        internal let alpha: Double
+        internal let beta: Double
     }
 
     /// Canonical representation of an unordered item pair for deduplication.
@@ -30,10 +30,10 @@ extension HeadToHeadLogic {
     /// ```
     internal struct PairKey: Hashable {
         /// Left-hand item ID (guaranteed lexicographically <= rhs)
-        let lhs: String
+        internal let lhs: String
 
         /// Right-hand item ID (guaranteed lexicographically >= lhs)
-        let rhs: String
+        internal let rhs: String
 
         /// Creates a canonical pair key ensuring lhs <= rhs invariant.
         ///
@@ -138,8 +138,8 @@ extension HeadToHeadLogic {
         records: [String: H2HRecord],
         minimumComparisons: Int
     ) -> (rankable: [Item], undersampled: [Item]) {
-        var rankable: [Item] = []
-        var undersampled: [Item] = []
+        internal var rankable: [Item] = []
+        internal var undersampled: [Item] = []
         for item in pool {
             if (records[item.id]?.total ?? 0) >= minimumComparisons {
                 rankable.append(item)
@@ -157,9 +157,9 @@ extension HeadToHeadLogic {
     }
 
     internal static func clearedTiers(_ base: Items, removing pool: [Item], tierNames: [String]) -> Items {
-        var updated = base
-        let poolIds = Set(pool.map(\.id))
-        let unrankedKey = TierIdentifier.unranked.rawValue
+        internal var updated = base
+        internal let poolIds = Set(pool.map(\.id))
+        internal let unrankedKey = TierIdentifier.unranked.rawValue
 
         for name in tierNames {
             updated[name] = []
@@ -186,13 +186,13 @@ extension HeadToHeadLogic {
         priors: [String: Prior]
     ) -> [String: HeadToHeadMetrics] {
         Dictionary(uniqueKeysWithValues: items.map { item in
-            let record = records[item.id] ?? H2HRecord()
-            let prior = priors[item.id] ?? Prior(alpha: 0, beta: 0)
-            let effectiveWins = Double(record.wins) + prior.alpha
-            let effectiveLosses = Double(record.losses) + prior.beta
-            let effectiveTotal = effectiveWins + effectiveLosses
-            let displayName = item.name?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let keySource = (displayName?.isEmpty == false ? displayName! : item.id)
+            internal let record = records[item.id] ?? H2HRecord()
+            internal let prior = priors[item.id] ?? Prior(alpha: 0, beta: 0)
+            internal let effectiveWins = Double(record.wins) + prior.alpha
+            internal let effectiveLosses = Double(record.losses) + prior.beta
+            internal let effectiveTotal = effectiveWins + effectiveLosses
+            internal let displayName = item.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+            internal let keySource = (displayName?.isEmpty == false ? displayName! : item.id)
             return (
                 item.id,
                 HeadToHeadMetrics(
@@ -214,9 +214,9 @@ extension HeadToHeadLogic {
         z: Double
     ) -> [String: HeadToHeadMetrics] {
         Dictionary(uniqueKeysWithValues: items.map { item in
-            let record = records[item.id] ?? H2HRecord()
-            let displayName = item.name?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let keySource = (displayName?.isEmpty == false ? displayName! : item.id)
+            internal let record = records[item.id] ?? H2HRecord()
+            internal let displayName = item.name?.trimmingCharacters(in: .whitespacesAndNewlines)
+            internal let keySource = (displayName?.isEmpty == false ? displayName! : item.id)
             return (
                 item.id,
                 HeadToHeadMetrics(
@@ -235,7 +235,7 @@ extension HeadToHeadLogic {
     internal static func orderedItems(_ items: [Item], metrics: [String: HeadToHeadMetrics]) -> [Item] {
         items.sorted { lhs, rhs in
             guard let leftMetrics = metrics[lhs.id],
-                  let rightMetrics = metrics[rhs.id] else { return lhs.id < rhs.id }
+                  internal let rightMetrics = metrics[rhs.id] else { return lhs.id < rhs.id }
             if leftMetrics.wilsonLB != rightMetrics.wilsonLB {
                 return leftMetrics.wilsonLB > rightMetrics.wilsonLB
             }
@@ -254,9 +254,9 @@ extension HeadToHeadLogic {
 
     internal static func quantileCuts(count n: Int, tierCount k: Int) -> [Int] {
         guard k > 1, n > 1 else { return [] }
-        var cuts: [Int] = []
+        internal var cuts: [Int] = []
         for i in 1..<k {
-            let position = Int(round(Double(i) * Double(n) / Double(k)))
+            internal let position = Int(round(Double(i) * Double(n) / Double(k)))
             if position > 0 && position < n {
                 cuts.append(position)
             }
@@ -266,16 +266,16 @@ extension HeadToHeadLogic {
 
     internal static func buildAudits(orderedCount n: Int, cuts: [Int], width w: Int) -> [H2HFrontier] {
         cuts.map { cut in
-            let upper = max(0, cut - w)..<cut
-            let lower = cut..<min(n, cut + w)
+            internal let upper = max(0, cut - w)..<cut
+            internal let lower = cut..<min(n, cut + w)
             return H2HFrontier(index: cut, upperRange: upper, lowerRange: lower)
         }
     }
 
     internal static func slice<T>(_ array: [T], _ range: Range<Int>) -> [T] {
         guard !array.isEmpty else { return [] }
-        let lower = max(0, range.lowerBound)
-        let upper = min(array.count, range.upperBound)
+        internal let lower = max(0, range.lowerBound)
+        internal let upper = min(array.count, range.upperBound)
         guard lower < upper else { return [] }
         return Array(array[lower..<upper])
     }
@@ -286,14 +286,14 @@ extension HeadToHeadLogic {
         tierNames: [String],
         into tiers: inout Items
     ) {
-        var tierIndex = 0
-        var cursor = 0
+        internal var tierIndex = 0
+        internal var cursor = 0
         for (index, item) in ordered.enumerated() {
             while cursor < cuts.count && index >= cuts[cursor] {
                 tierIndex += 1
                 cursor += 1
             }
-            let name = tierNames[min(tierIndex, tierNames.count - 1)]
+            internal let name = tierNames[min(tierIndex, tierNames.count - 1)]
             tiers[name, default: []].append(item)
         }
     }
@@ -317,23 +317,23 @@ extension HeadToHeadLogic {
         overlapEps: Double
     ) -> [Int] {
         guard tierCount > 1, ordered.count >= 2 else { return [] }
-        var scored: [(Int, Double)] = []
+        internal var scored: [(Int, Double)] = []
         for index in 0..<(ordered.count - 1) {
             guard let upper = metrics[ordered[index].id],
-                  let lower = metrics[ordered[index + 1].id] else { continue }
-            let raw = (upper.wilsonLB - lower.wilsonUB) + overlapEps
-            let delta = max(0, raw)
+                  internal let lower = metrics[ordered[index + 1].id] else { continue }
+            internal let raw = (upper.wilsonLB - lower.wilsonUB) + overlapEps
+            internal let delta = max(0, raw)
             if delta <= 0 { continue }
-            let minComparisons = Double(min(upper.comparisons, lower.comparisons))
-            let maxComparisons = Double(max(upper.comparisons, lower.comparisons))
-            let confidence = minComparisons + Tun.confBonusBeta * maxComparisons
-            let score = delta * log1p(max(confidence, 0))
+            internal let minComparisons = Double(min(upper.comparisons, lower.comparisons))
+            internal let maxComparisons = Double(max(upper.comparisons, lower.comparisons))
+            internal let confidence = minComparisons + Tun.confBonusBeta * maxComparisons
+            internal let score = delta * log1p(max(confidence, 0))
             if score > 0 {
                 scored.append((index + 1, score))
             }
         }
         guard !scored.isEmpty else { return [] }
-        let sorted = scored.sorted { $0.1 > $1.1 }
+        internal let sorted = scored.sorted { $0.1 > $1.1 }
         return Array(sorted.prefix(tierCount - 1)).map { $0.0 }.sorted()
     }
 
@@ -343,11 +343,11 @@ extension HeadToHeadLogic {
         metrics: [String: HeadToHeadMetrics]
     ) -> Double {
         guard !ordered.isEmpty, !range.isEmpty else { return 0 }
-        let lower = max(0, range.lowerBound)
-        let upper = min(ordered.count, range.upperBound)
+        internal let lower = max(0, range.lowerBound)
+        internal let upper = min(ordered.count, range.upperBound)
         guard lower < upper else { return 0 }
-        var minValue = 1.0
-        var maxValue = 0.0
+        internal var minValue = 1.0
+        internal var maxValue = 0.0
         for index in lower..<upper {
             if let metric = metrics[ordered[index].id] {
                 minValue = min(minValue, metric.wilsonLB)
@@ -365,16 +365,16 @@ extension HeadToHeadLogic {
         ordered: [Item]
     ) -> [Int] {
         guard tierCount > 1, itemCount > 1 else { return [] }
-        var picks = Set(primary).filter { $0 > 0 && $0 < itemCount }
+        internal var picks = Set(primary).filter { $0 > 0 && $0 < itemCount }
 
         while picks.count < tierCount - 1 {
-            let segments = contiguousSegments(n: itemCount, cuts: Array(picks))
+            internal let segments = contiguousSegments(n: itemCount, cuts: Array(picks))
             guard let largestSegment = segments.max(by: { $0.count < $1.count }) else { break }
             if largestSegment.count < TieringGuard.minSegmentSizeToSplit { break }
-            let spread = wilsonRange(ordered: ordered, range: largestSegment, metrics: metrics)
+            internal let spread = wilsonRange(ordered: ordered, range: largestSegment, metrics: metrics)
             if spread < Tun.minWilsonRangeForSplit { break }
 
-            let midpoint = largestSegment.lowerBound + largestSegment.count / 2
+            internal let midpoint = largestSegment.lowerBound + largestSegment.count / 2
             if midpoint > largestSegment.lowerBound && midpoint < largestSegment.upperBound {
                 picks.insert(midpoint)
             } else {
@@ -406,16 +406,16 @@ extension HeadToHeadLogic {
         metrics: [String: HeadToHeadMetrics]
     ) -> Int? {
         guard ordered.count >= 2,
-              let lastMetric = metrics[ordered.last!.id] else { return nil }
+              internal let lastMetric = metrics[ordered.last!.id] else { return nil }
 
-        let baseUB = lastMetric.wilsonUB
-        let lowerBound = max(0, ordered.count - Tun.maxBottomTieWidth)
-        var start = ordered.count - 1
+        internal let baseUB = lastMetric.wilsonUB
+        internal let lowerBound = max(0, ordered.count - Tun.maxBottomTieWidth)
+        internal var start = ordered.count - 1
 
         for index in stride(from: ordered.count - 2, through: lowerBound, by: -1) {
             guard let metric = metrics[ordered[index].id] else { break }
-            let closeUpper = abs(metric.wilsonUB - baseUB) <= Tun.epsTieBottom
-            let bothWeak = metric.wilsonUB <= Tun.ubBottomCeil && baseUB <= Tun.ubBottomCeil
+            internal let closeUpper = abs(metric.wilsonUB - baseUB) <= Tun.epsTieBottom
+            internal let bothWeak = metric.wilsonUB <= Tun.ubBottomCeil && baseUB <= Tun.ubBottomCeil
             if closeUpper || bothWeak {
                 start = index
             } else {
@@ -428,11 +428,11 @@ extension HeadToHeadLogic {
 
     internal static func contiguousSegments(n: Int, cuts: [Int]) -> [Range<Int>] {
         guard n > 0 else { return [] }
-        let sortedCuts = cuts.sorted()
-        var segments: [Range<Int>] = []
-        var start = 0
+        internal let sortedCuts = cuts.sorted()
+        internal var segments: [Range<Int>] = []
+        internal var start = 0
         for cut in sortedCuts {
-            let clamped = min(max(cut, 0), n)
+            internal let clamped = min(max(cut, 0), n)
             segments.append(start..<clamped)
             start = clamped
         }
@@ -447,15 +447,15 @@ extension HeadToHeadLogic {
     ) -> [(Item, Item)] {
         guard ordered.count >= 3, epsilon > 0 else { return [] }
         guard let second = metrics[ordered[1].id],
-              let third = metrics[ordered[2].id] else { return [] }
+              internal let third = metrics[ordered[2].id] else { return [] }
 
-        let delta23 = abs(second.wilsonLB - third.wilsonLB)
+        internal let delta23 = abs(second.wilsonLB - third.wilsonLB)
         guard delta23 <= epsilon else { return [] }
 
-        var results: [(Item, Item)] = [(ordered[1], ordered[2])]
+        internal var results: [(Item, Item)] = [(ordered[1], ordered[2])]
 
         if let first = metrics[ordered[0].id] {
-            let delta13 = abs(first.wilsonLB - third.wilsonLB)
+            internal let delta13 = abs(first.wilsonLB - third.wilsonLB)
             if delta13 <= epsilon {
                 results.append((ordered[0], ordered[2]))
             }
@@ -470,18 +470,18 @@ extension HeadToHeadLogic {
         epsilon: Double
     ) -> [(Item, Item)] {
         guard ordered.count >= 2 else { return [] }
-        let lastIndex = ordered.count - 1
+        internal let lastIndex = ordered.count - 1
         guard let last = metrics[ordered[lastIndex].id],
               metrics[ordered[lastIndex - 1].id] != nil else { return [] }
 
-        var results: [(Item, Item)] = [
+        internal var results: [(Item, Item)] = [
             (ordered[lastIndex - 1], ordered[lastIndex])
         ]
 
         if ordered.count >= 3,
-           let third = metrics[ordered[lastIndex - 2].id] {
-            let closeUpper = abs(third.wilsonUB - last.wilsonUB) <= Tun.epsTieBottom
-            let bothWeak = third.wilsonUB <= Tun.ubBottomCeil && last.wilsonUB <= Tun.ubBottomCeil
+           internal let third = metrics[ordered[lastIndex - 2].id] {
+            internal let closeUpper = abs(third.wilsonUB - last.wilsonUB) <= Tun.epsTieBottom
+            internal let bothWeak = third.wilsonUB <= Tun.ubBottomCeil && last.wilsonUB <= Tun.ubBottomCeil
             if closeUpper || bothWeak {
                 results.append((ordered[lastIndex - 2], ordered[lastIndex]))
             }
@@ -495,10 +495,10 @@ extension HeadToHeadLogic {
         cuts: [Int],
         tierCount: Int
     ) -> [String: Int] {
-        var map: [String: Int] = [:]
+        internal var map: [String: Int] = [:]
         map.reserveCapacity(ordered.count)
-        var tierIndex = 0
-        var cursor = 0
+        internal var tierIndex = 0
+        internal var cursor = 0
         for (index, item) in ordered.enumerated() {
             while cursor < cuts.count && index >= cuts[cursor] {
                 tierIndex += 1
@@ -515,7 +515,7 @@ extension HeadToHeadLogic {
         universe: [Item]
     ) -> Double {
         guard !universe.isEmpty else { return 0 }
-        var moved = 0
+        internal var moved = 0
         for item in universe where (old[item.id] ?? 0) != (new[item.id] ?? 0) {
             moved += 1
         }
@@ -535,7 +535,7 @@ extension HeadToHeadLogic {
     internal static func priorMeanForTier(_ name: String, index: Int, total: Int) -> Double {
         /// Standard letter-grade tier win-rate priors
         /// (same values as buildPriors for consistency)
-        let defaults: [String: Double] = [
+        internal let defaults: [String: Double] = [
             "S": 0.85,
             "A": 0.75,
             "B": 0.65,
@@ -545,9 +545,9 @@ extension HeadToHeadLogic {
             "F": 0.35
         ]
         if let value = defaults[name] { return value }
-        let top = 0.85
-        let bottom = 0.35
-        let denom = max(1, total - 1)
+        internal let top = 0.85
+        internal let bottom = 0.35
+        internal let denom = max(1, total - 1)
         return top - (top - bottom) * (Double(index) / Double(denom))
     }
 
@@ -556,12 +556,12 @@ extension HeadToHeadLogic {
         tierOrder: [String],
         strength: Double = 6.0
     ) -> [String: Prior] {
-        var output: [String: Prior] = [:]
+        internal var output: [String: Prior] = [:]
         for (index, name) in tierOrder.enumerated() {
             guard let members = currentTiers[name], !members.isEmpty else { continue }
-            let mean = priorMeanForTier(name, index: index, total: tierOrder.count)
-            let alpha = max(0, mean * strength)
-            let beta = max(0, (1.0 - mean) * strength)
+            internal let mean = priorMeanForTier(name, index: index, total: tierOrder.count)
+            internal let alpha = max(0, mean * strength)
+            internal let beta = max(0, (1.0 - mean) * strength)
             for item in members {
                 output[item.id] = Prior(alpha: alpha, beta: beta)
             }
@@ -571,41 +571,41 @@ extension HeadToHeadLogic {
 
     internal static func wilsonLowerBound(wins: Int, total: Int, z: Double) -> Double {
         guard total > 0 else { return 0 }
-        let p = Double(wins) / Double(total)
-        let z2 = z * z
-        let denominator = 1.0 + z2 / Double(total)
-        let center = p + z2 / (2.0 * Double(total))
-        let margin = z * sqrt((p * (1.0 - p) + z2 / (4.0 * Double(total))) / Double(total))
+        internal let p = Double(wins) / Double(total)
+        internal let z2 = z * z
+        internal let denominator = 1.0 + z2 / Double(total)
+        internal let center = p + z2 / (2.0 * Double(total))
+        internal let margin = z * sqrt((p * (1.0 - p) + z2 / (4.0 * Double(total))) / Double(total))
         return max(0, (center - margin) / denominator)
     }
 
     internal static func wilsonUpperBound(wins: Int, total: Int, z: Double) -> Double {
         guard total > 0 else { return 0 }
-        let p = Double(wins) / Double(total)
-        let z2 = z * z
-        let denominator = 1.0 + z2 / Double(total)
-        let center = p + z2 / (2.0 * Double(total))
-        let margin = z * sqrt((p * (1.0 - p) + z2 / (4.0 * Double(total))) / Double(total))
+        internal let p = Double(wins) / Double(total)
+        internal let z2 = z * z
+        internal let denominator = 1.0 + z2 / Double(total)
+        internal let center = p + z2 / (2.0 * Double(total))
+        internal let margin = z * sqrt((p * (1.0 - p) + z2 / (4.0 * Double(total))) / Double(total))
         return min(1, (center + margin) / denominator)
     }
 
     internal static func wilsonLowerBoundD(wins: Double, total: Double, z: Double) -> Double {
         guard total > 0 else { return 0 }
-        let p = wins / total
-        let z2 = z * z
-        let denominator = 1.0 + z2 / total
-        let center = p + z2 / (2.0 * total)
-        let margin = z * sqrt((p * (1.0 - p) + z2 / (4.0 * total)) / total)
+        internal let p = wins / total
+        internal let z2 = z * z
+        internal let denominator = 1.0 + z2 / total
+        internal let center = p + z2 / (2.0 * total)
+        internal let margin = z * sqrt((p * (1.0 - p) + z2 / (4.0 * total)) / total)
         return max(0, (center - margin) / denominator)
     }
 
     internal static func wilsonUpperBoundD(wins: Double, total: Double, z: Double) -> Double {
         guard total > 0 else { return 0 }
-        let p = wins / total
-        let z2 = z * z
-        let denominator = 1.0 + z2 / total
-        let center = p + z2 / (2.0 * total)
-        let margin = z * sqrt((p * (1.0 - p) + z2 / (4.0 * total)) / total)
+        internal let p = wins / total
+        internal let z2 = z * z
+        internal let denominator = 1.0 + z2 / total
+        internal let center = p + z2 / (2.0 * total)
+        internal let margin = z * sqrt((p * (1.0 - p) + z2 / (4.0 * total)) / total)
         return min(1, (center + margin) / denominator)
     }
 }

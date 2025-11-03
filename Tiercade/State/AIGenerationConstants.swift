@@ -26,5 +26,5 @@ internal enum AIChunkingLimits {
     /// - Smaller budget (500-): More API calls, slower total generation time
     ///
     /// See: `chunkByTokens(_:budget:)` in `AppleIntelligence+UniqueListGeneration.swift`
-    static let tokenBudget: Int = 800
+    internal static let tokenBudget: Int = 800
 }

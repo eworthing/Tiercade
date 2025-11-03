@@ -6,14 +6,14 @@ import FoundationModels
 // MARK: - File I/O
 
 @MainActor
-extension SystemPromptTester {
+internal extension SystemPromptTester {
 static func writeDetailedLog(results: [TestResult], to path: String) {
-    let log = buildLogContent(results: results)
+    internal let log = buildLogContent(results: results)
     writeLogToFile(log: log, path: path)
 }
 
 static func buildLogContent(results: [TestResult]) -> String {
-    var log = buildLogHeader(results: results)
+    internal var log = buildLogHeader(results: results)
     log += buildLogResultEntries(results: results)
     log += buildLogSummary(results: results)
     return log
@@ -33,9 +33,9 @@ static func buildLogHeader(results: [TestResult]) -> String {
 }
 
 static func buildLogResultEntries(results: [TestResult]) -> String {
-    var entries = ""
+    internal var entries = ""
     for result in results {
-        let status = !result.hasDuplicates && !result.insufficient ? "PASSED"
+        internal let status = !result.hasDuplicates && !result.insufficient ? "PASSED"
             : result.insufficient && !result.hasDuplicates ? "INSUFFICIENT"
             : result.hasDuplicates && !result.insufficient ? "DUPLICATES"
             : "BOTH_FAILURES"
@@ -90,8 +90,8 @@ static func buildLogSummary(results: [TestResult]) -> String {
 static func writeLogToFile(log: String, path: String) {
     do {
         // Ensure the directory exists
-        let url = URL(fileURLWithPath: path)
-        let directory = url.deletingLastPathComponent()
+        internal let url = URL(fileURLWithPath: path)
+        internal let directory = url.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
         // Write the log file
@@ -100,7 +100,7 @@ static func writeLogToFile(log: String, path: String) {
         print("🧪 📁 File size: \(log.count) characters")
 
         // Mirror to sandbox temp for automation consumers
-        let sandboxTemp = FileManager.default.temporaryDirectory
+        internal let sandboxTemp = FileManager.default.temporaryDirectory
             .appendingPathComponent("tiercade_test_output.log")
         try log.write(to: sandboxTemp, atomically: true, encoding: .utf8)
         #if os(macOS)
@@ -122,7 +122,7 @@ static func handleLogWriteError(log: String, path: String, error: Error) {
 
     // Fallback: try writing to Documents directory
     if let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-        let fallbackPath = documentsPath.appendingPathComponent("tiercade_prompt_test_results.txt").path
+        internal let fallbackPath = documentsPath.appendingPathComponent("tiercade_prompt_test_results.txt").path
         do {
             try log.write(toFile: fallbackPath, atomically: true, encoding: .utf8)
             print("🧪 ✅ Fallback: Log written to \(fallbackPath)")

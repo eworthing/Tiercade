@@ -36,18 +36,18 @@ internal enum AcceptanceTestSuite {
     // Seed ring for reproducible retries across tests
     internal static let seedRing: [UInt64] = [42, 1337, 9999, 123456, 987654]
 
-    struct SeedRun {
-        let seed: UInt64
-        let ok: Bool
-        let ips: Double
+    internal struct SeedRun {
+        internal let seed: UInt64
+        internal let ok: Bool
+        internal let ips: Double
     }
 
-    struct TestResult: Codable {
-        let testName: String
-        let passed: Bool
-        let message: String
-        let timestamp: Date
-        let details: [String: String]
+    internal struct TestResult: Codable {
+        internal let testName: String
+        internal let passed: Bool
+        internal let message: String
+        internal let timestamp: Date
+        internal let details: [String: String]
 
         init(testName: String, passed: Bool, message: String, details: [String: String] = [:]) {
             self.testName = testName
@@ -58,15 +58,15 @@ internal enum AcceptanceTestSuite {
         }
     }
 
-    struct TestReport: Codable {
-        let totalTests: Int
-        let passed: Int
-        let failed: Int
-        let results: [TestResult]
-        let environment: RunEnv
-        let timestamp: Date
+    internal struct TestReport: Codable {
+        internal let totalTests: Int
+        internal let passed: Int
+        internal let failed: Int
+        internal let results: [TestResult]
+        internal let environment: RunEnv
+        internal let timestamp: Date
 
-        var passRate: Double {
+        internal var passRate: Double {
             guard totalTests > 0 else { return 0 }
             return Double(passed) / Double(totalTests)
         }
@@ -78,7 +78,7 @@ internal enum AcceptanceTestSuite {
         logger("🧪 Starting Acceptance Test Suite")
         logger("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-        var results: [TestResult] = []
+        internal var results: [TestResult] = []
 
         // Test 1: Structure (JSON decoding)
         results.append(await testStructure(logger: logger))
@@ -104,10 +104,10 @@ internal enum AcceptanceTestSuite {
         // Test 8: Token budgeting
         results.append(testTokenBudgeting(logger: logger))
 
-        let passed = results.filter { $0.passed }.count
-        let failed = results.count - passed
+        internal let passed = results.filter { $0.passed }.count
+        internal let failed = results.count - passed
 
-        let report = TestReport(
+        internal let report = TestReport(
             totalTests: results.count,
             passed: passed,
             failed: failed,
@@ -126,7 +126,7 @@ internal enum AcceptanceTestSuite {
             }
         }
 
-        let telemetryPath = FileManager.default.temporaryDirectory
+        internal let telemetryPath = FileManager.default.temporaryDirectory
             .appendingPathComponent("unique_list_runs.jsonl").path
         logger("📄 Telemetry: \(telemetryPath)")
 

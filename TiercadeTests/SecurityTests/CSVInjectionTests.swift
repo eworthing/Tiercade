@@ -4,53 +4,53 @@ import Foundation
 
 /// Security tests for CSV injection and parsing vulnerabilities
 @Suite("CSV Injection Security Tests")
-struct CSVInjectionTests {
+internal struct CSVInjectionTests {
 
     // MARK: - Formula Injection Prevention
 
     @Test("Sanitizes CSV cells starting with =")
-    func sanitizeEqualsFormula() {
-        let dangerous = "=SUM(A1:A10)"
-        let sanitized = AppState.sanitizeCSVCell(dangerous)
+    internal func sanitizeEqualsFormula() {
+        internal let dangerous = "=SUM(A1:A10)"
+        internal let sanitized = AppState.sanitizeCSVCell(dangerous)
         #expect(sanitized.hasPrefix("'"))
         #expect(sanitized == "'=SUM(A1:A10)")
     }
 
     @Test("Sanitizes CSV cells starting with +")
-    func sanitizePlusFormula() {
-        let dangerous = "+1+1"
-        let sanitized = AppState.sanitizeCSVCell(dangerous)
+    internal func sanitizePlusFormula() {
+        internal let dangerous = "+1+1"
+        internal let sanitized = AppState.sanitizeCSVCell(dangerous)
         #expect(sanitized.hasPrefix("'"))
         #expect(sanitized == "'+1+1")
     }
 
     @Test("Sanitizes CSV cells starting with -")
-    func sanitizeMinusFormula() {
-        let dangerous = "-AVERAGE(A1:A10)"
-        let sanitized = AppState.sanitizeCSVCell(dangerous)
+    internal func sanitizeMinusFormula() {
+        internal let dangerous = "-AVERAGE(A1:A10)"
+        internal let sanitized = AppState.sanitizeCSVCell(dangerous)
         #expect(sanitized.hasPrefix("'"))
         #expect(sanitized == "'-AVERAGE(A1:A10)")
     }
 
     @Test("Sanitizes CSV cells starting with @")
-    func sanitizeAtFormula() {
-        let dangerous = "@SUM(A1:A10)"
-        let sanitized = AppState.sanitizeCSVCell(dangerous)
+    internal func sanitizeAtFormula() {
+        internal let dangerous = "@SUM(A1:A10)"
+        internal let sanitized = AppState.sanitizeCSVCell(dangerous)
         #expect(sanitized.hasPrefix("'"))
         #expect(sanitized == "'@SUM(A1:A10)")
     }
 
     @Test("Does not modify safe content")
-    func leaveSafeContentUnchanged() {
-        let safe = "Normal Item Name"
-        let sanitized = AppState.sanitizeCSVCell(safe)
+    internal func leaveSafeContentUnchanged() {
+        internal let safe = "Normal Item Name"
+        internal let sanitized = AppState.sanitizeCSVCell(safe)
         #expect(sanitized == safe)
     }
 
     @Test("Sanitizes dangerous Excel commands")
-    func sanitizeDangerousCommands() {
-        let dangerous = "=SYSTEM(\"rm -rf /\")"
-        let sanitized = AppState.sanitizeCSVCell(dangerous)
+    internal func sanitizeDangerousCommands() {
+        internal let dangerous = "=SYSTEM(\"rm -rf /\")"
+        internal let sanitized = AppState.sanitizeCSVCell(dangerous)
         #expect(sanitized.hasPrefix("'"))
         #expect(!sanitized.contains("SYSTEM"))  // Still contains but prefixed
     }
@@ -58,18 +58,18 @@ struct CSVInjectionTests {
     // MARK: - CSV Parsing (Quote Escaping)
 
     @Test("Parses escaped quotes correctly")
-    func parseEscapedQuotes() {
-        let input = "Name,\"Description with \"\"quotes\"\"\""
-        let parsed = AppState.parseCSVLine(input)
+    internal func parseEscapedQuotes() {
+        internal let input = "Name,\"Description with \"\"quotes\"\"\""
+        internal let parsed = AppState.parseCSVLine(input)
         #expect(parsed.count == 2)
         #expect(parsed[0] == "Name")
         #expect(parsed[1] == "Description with \"quotes\"")
     }
 
     @Test("Handles empty fields")
-    func parseEmptyFields() {
-        let input = "Field1,,Field3"
-        let parsed = AppState.parseCSVLine(input)
+    internal func parseEmptyFields() {
+        internal let input = "Field1,,Field3"
+        internal let parsed = AppState.parseCSVLine(input)
         #expect(parsed.count == 3)
         #expect(parsed[0] == "Field1")
         #expect(parsed[1] == "")
@@ -77,9 +77,9 @@ struct CSVInjectionTests {
     }
 
     @Test("Handles quoted fields with commas")
-    func parseQuotedFieldsWithCommas() {
-        let input = "Name,\"Last, First\",Age"
-        let parsed = AppState.parseCSVLine(input)
+    internal func parseQuotedFieldsWithCommas() {
+        internal let input = "Name,\"Last, First\",Age"
+        internal let parsed = AppState.parseCSVLine(input)
         #expect(parsed.count == 3)
         #expect(parsed[0] == "Name")
         #expect(parsed[1] == "Last, First")
@@ -87,9 +87,9 @@ struct CSVInjectionTests {
     }
 
     @Test("Handles complex quoted content")
-    func parseComplexQuotes() {
-        let input = "\"Field with \"\"nested\"\" quotes and, comma\""
-        let parsed = AppState.parseCSVLine(input)
+    internal func parseComplexQuotes() {
+        internal let input = "\"Field with \"\"nested\"\" quotes and, comma\""
+        internal let parsed = AppState.parseCSVLine(input)
         #expect(parsed.count == 1)
         #expect(parsed[0] == "Field with \"nested\" quotes and, comma")
     }
@@ -97,11 +97,11 @@ struct CSVInjectionTests {
     // MARK: - Duplicate ID Prevention
 
     @Test("Generates unique IDs for duplicate items", .enabled(if: false))
-    func generateUniqueIDsForDuplicates() async throws {
+    internal func generateUniqueIDsForDuplicates() async throws {
         // This test requires actual CSV import implementation
         // Placeholder for when import logic is testable
 
-        let csv = """
+        internal let csv = """
         Name,Tier
         Duplicate Item,S
         Duplicate Item,A
@@ -118,10 +118,10 @@ struct CSVInjectionTests {
     }
 
     @Test("Handles malformed CSV gracefully", .enabled(if: false))
-    func handleMalformedCSV() async throws {
+    internal func handleMalformedCSV() async throws {
         // Test that malformed CSV doesn't crash or cause data corruption
 
-        let malformed = """
+        internal let malformed = """
         Name,Tier
         "Unclosed quote,S
         Normal Item,A

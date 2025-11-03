@@ -5,16 +5,16 @@ import Foundation
 ///
 /// Allows tests to verify persistence behavior without depending on
 /// actual SwiftData or file system operations.
-actor MockTierPersistenceStore: TierPersistenceStore {
+internal actor MockTierPersistenceStore: TierPersistenceStore {
     // MARK: - Configuration
 
     /// Whether the store should report as available
-    var isAvailable: Bool = true
+    internal var isAvailable: Bool = true
 
     // MARK: - Test Helpers
 
     /// Reset the mock to its initial state
-    func reset() {
+    internal func reset() {
         isAvailable = true
     }
 }

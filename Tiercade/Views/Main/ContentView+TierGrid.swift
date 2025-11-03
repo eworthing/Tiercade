@@ -83,7 +83,7 @@ internal struct UnrankedView: View {
             VStack(alignment: .leading, spacing: Metrics.grid) {
                 header
                 #if os(tvOS)
-                let layout = TVMetrics.cardLayout(
+                internal let layout = TVMetrics.cardLayout(
                     for: filteredItems.count,
                     preference: app.cardDensityPreference
                 )
@@ -103,7 +103,7 @@ internal struct UnrankedView: View {
                 .focusSection()
                 .defaultFocus($focusedItemId, filteredItems.first?.id)
                 #else
-                let layout = PlatformCardLayoutProvider.layout(
+                internal let layout = PlatformCardLayoutProvider.layout(
                     for: filteredItems.count,
                     preference: app.cardDensityPreference,
                     horizontalSizeClass: horizontalSizeClass
@@ -115,7 +115,7 @@ internal struct UnrankedView: View {
                     spacing: layout.rowSpacing
                 ) {
                     ForEach(filteredItems, id: \.id) { item in
-                        let focusID = CardFocus(tier: "unranked", itemID: item.id)
+                        internal let focusID = CardFocus(tier: "unranked", itemID: item.id)
                         CardView(item: item, layout: layout, onTapFocus: {
                             // Update hardware focus when card is clicked
                             hardwareFocus.wrappedValue = focusID
@@ -199,9 +199,9 @@ internal struct UnrankedView: View {
         } else {
             // Single item move
             switch direction {
-            case .left:
+        case .left:
                 app.moveItemLeft(itemId, in: "unranked")
-            case .right:
+        case .right:
                 app.moveItemRight(itemId, in: "unranked")
             default:
                 break
@@ -214,7 +214,7 @@ internal struct UnrankedView: View {
         guard let items = app.tiers["unranked"] else { return }
 
         // Get indices of all selected items in unranked tier
-        let selectedIndices = IndexSet(
+        internal let selectedIndices = IndexSet(
             items.enumerated()
                 .filter { app.selection.contains($0.element.id) }
                 .map { $0.offset }
@@ -223,10 +223,10 @@ internal struct UnrankedView: View {
         guard !selectedIndices.isEmpty else { return }
 
         // Calculate destination index based on direction
-        let minIndex = selectedIndices.min() ?? 0
-        let maxIndex = selectedIndices.max() ?? (items.count - 1)
+        internal let minIndex = selectedIndices.min() ?? 0
+        internal let maxIndex = selectedIndices.max() ?? (items.count - 1)
 
-        let destination: Int
+        internal let destination: Int
         switch direction {
         case .left:
             // Move block one position to the left
@@ -351,9 +351,9 @@ internal struct CardView: View {
             } else {
                 // Single item move
                 switch direction {
-                case .left:
+        case .left:
                     app.moveItemLeft(item.id, in: tierName)
-                case .right:
+        case .right:
                     app.moveItemRight(item.id, in: tierName)
                 default:
                     break
@@ -514,7 +514,7 @@ internal struct CardView: View {
         guard let items = app.tiers[tierName] else { return }
 
         // Get indices of all selected items in this tier
-        let selectedIndices = IndexSet(
+        internal let selectedIndices = IndexSet(
             items.enumerated()
                 .filter { app.selection.contains($0.element.id) }
                 .map { $0.offset }
@@ -523,10 +523,10 @@ internal struct CardView: View {
         guard !selectedIndices.isEmpty else { return }
 
         // Calculate destination index based on direction
-        let minIndex = selectedIndices.min() ?? 0
-        let maxIndex = selectedIndices.max() ?? (items.count - 1)
+        internal let minIndex = selectedIndices.min() ?? 0
+        internal let maxIndex = selectedIndices.max() ?? (items.count - 1)
 
-        let destination: Int
+        internal let destination: Int
         switch direction {
         case .left:
             // Move block one position to the left
@@ -578,16 +578,16 @@ private struct ThumbnailView: View {
     @ViewBuilder
     private var thumbnailContent: some View {
         if let asset = item.imageUrl ?? item.videoUrl,
-           let url = URLValidator.allowedMediaURL(from: asset) {
+           internal let url = URLValidator.allowedMediaURL(from: asset) {
             AsyncImage(url: url) { phase in
                 switch phase {
-                case .empty:
+        case .empty:
                     ProgressView()
-                case .success(let image):
+        case .success(let image):
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                case .failure:
+        case .failure:
                     placeholder
                 @unknown default:
                     placeholder
@@ -656,7 +656,7 @@ private struct ThumbnailView: View {
 }
 
 private extension Gradient {
-    static var tierListBackground: Gradient {
+    internal static var tierListBackground: Gradient {
         .init(colors: [Color.black.opacity(0.6), Color.blue.opacity(0.2)])
     }
 }

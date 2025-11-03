@@ -7,14 +7,14 @@ import TiercadeCore
 /// Focus on the theme application logic that maps tier order to colors.
 /// Ensures correct color assignment and fallback behavior.
 @MainActor
-struct ThemeStateTests {
+internal struct ThemeStateTests {
     // MARK: - Test Helpers
 
-    func makeMockCatalog() -> MockThemeCatalog {
+    internal func makeMockCatalog() -> MockThemeCatalog {
         MockThemeCatalog()
     }
 
-    func makeTestTheme() -> TierTheme {
+    internal func makeTestTheme() -> TierTheme {
         TierTheme(
             slug: "test",
             displayName: "Test Theme",
@@ -32,13 +32,13 @@ struct ThemeStateTests {
     // MARK: - applyTheme Tests
 
     @Test("applyTheme maps tier order to theme colors correctly")
-    func applyTheme_mapsColorsCorrectly() async {
-        let catalog = makeMockCatalog()
-        let state = ThemeState(themeCatalog: catalog)
-        let theme = makeTestTheme()
-        let tierOrder = ["S", "A", "B", "C", "D", "F"]
+    internal func applyTheme_mapsColorsCorrectly() async {
+        internal let catalog = makeMockCatalog()
+        internal let state = ThemeState(themeCatalog: catalog)
+        internal let theme = makeTestTheme()
+        internal let tierOrder = ["S", "A", "B", "C", "D", "F"]
 
-        let colors = state.applyTheme(theme, to: tierOrder)
+        internal let colors = state.applyTheme(theme, to: tierOrder)
 
         #expect(colors["S"] == "#FF0000")
         #expect(colors["A"] == "#FF8800")
@@ -50,11 +50,11 @@ struct ThemeStateTests {
     }
 
     @Test("applyTheme updates selectedTheme and selectedThemeID")
-    func applyTheme_updatesSelection() async {
-        let catalog = makeMockCatalog()
-        let state = ThemeState(themeCatalog: catalog)
-        let theme = makeTestTheme()
-        let tierOrder = ["S", "A", "B"]
+    internal func applyTheme_updatesSelection() async {
+        internal let catalog = makeMockCatalog()
+        internal let state = ThemeState(themeCatalog: catalog)
+        internal let theme = makeTestTheme()
+        internal let tierOrder = ["S", "A", "B"]
 
         _ = state.applyTheme(theme, to: tierOrder)
 
@@ -63,13 +63,13 @@ struct ThemeStateTests {
     }
 
     @Test("applyTheme handles custom tier order")
-    func applyTheme_customTierOrder() async {
-        let catalog = makeMockCatalog()
-        let state = ThemeState(themeCatalog: catalog)
-        let theme = makeTestTheme()
-        let tierOrder = ["Best", "Good", "Okay"]
+    internal func applyTheme_customTierOrder() async {
+        internal let catalog = makeMockCatalog()
+        internal let state = ThemeState(themeCatalog: catalog)
+        internal let theme = makeTestTheme()
+        internal let tierOrder = ["Best", "Good", "Okay"]
 
-        let colors = state.applyTheme(theme, to: tierOrder)
+        internal let colors = state.applyTheme(theme, to: tierOrder)
 
         // Should use fallback index since tier names don't match
         #expect(colors["Best"] != nil)
@@ -79,13 +79,13 @@ struct ThemeStateTests {
     }
 
     @Test("applyTheme handles empty tier order")
-    func applyTheme_emptyTierOrder() async {
-        let catalog = makeMockCatalog()
-        let state = ThemeState(themeCatalog: catalog)
-        let theme = makeTestTheme()
-        let tierOrder: [String] = []
+    internal func applyTheme_emptyTierOrder() async {
+        internal let catalog = makeMockCatalog()
+        internal let state = ThemeState(themeCatalog: catalog)
+        internal let theme = makeTestTheme()
+        internal let tierOrder: [String] = []
 
-        let colors = state.applyTheme(theme, to: tierOrder)
+        internal let colors = state.applyTheme(theme, to: tierOrder)
 
         #expect(colors["unranked"] == "#888888")
         #expect(colors.count == 1)
@@ -94,24 +94,24 @@ struct ThemeStateTests {
     // MARK: - availableThemes Tests
 
     @Test("availableThemes includes bundled and custom themes")
-    func availableThemes() async {
-        let catalog = makeMockCatalog()
-        let bundledTheme = TierTheme(
+    internal func availableThemes() async {
+        internal let catalog = makeMockCatalog()
+        internal let bundledTheme = TierTheme(
             slug: "bundled",
             displayName: "Bundled",
             shortDescription: "Bundled theme"
         )
-        let customTheme = TierTheme(
+        internal let customTheme = TierTheme(
             slug: "custom",
             displayName: "Custom",
             shortDescription: "Custom theme"
         )
 
         await catalog.mockThemes(bundled: [bundledTheme], custom: [customTheme])
-        let state = ThemeState(themeCatalog: catalog)
+        internal let state = ThemeState(themeCatalog: catalog)
         state.customThemes = [customTheme]
 
-        let available = state.availableThemes
+        internal let available = state.availableThemes
 
         #expect(available.count >= 2)
         #expect(available.contains { $0.slug == "custom" })
@@ -120,10 +120,10 @@ struct ThemeStateTests {
     // MARK: - customThemeIDs Tests
 
     @Test("customThemeIDs tracks added custom themes")
-    func customThemeIDs() async {
-        let catalog = makeMockCatalog()
-        let state = ThemeState(themeCatalog: catalog)
-        let theme = makeTestTheme()
+    internal func customThemeIDs() async {
+        internal let catalog = makeMockCatalog()
+        internal let state = ThemeState(themeCatalog: catalog)
+        internal let theme = makeTestTheme()
 
         #expect(state.customThemeIDs.isEmpty)
 
@@ -137,12 +137,12 @@ struct ThemeStateTests {
     // MARK: - themeDraft Tests
 
     @Test("themeDraft can be set and cleared")
-    func themeDraft() async {
-        let catalog = makeMockCatalog()
-        let state = ThemeState(themeCatalog: catalog)
-        let theme = makeTestTheme()
-        let tierOrder = ["S", "A", "B"]
-        let draft = ThemeDraft(baseTheme: theme, tierOrder: tierOrder)
+    internal func themeDraft() async {
+        internal let catalog = makeMockCatalog()
+        internal let state = ThemeState(themeCatalog: catalog)
+        internal let theme = makeTestTheme()
+        internal let tierOrder = ["S", "A", "B"]
+        internal let draft = ThemeDraft(baseTheme: theme, tierOrder: tierOrder)
 
         #expect(state.themeDraft == nil)
 

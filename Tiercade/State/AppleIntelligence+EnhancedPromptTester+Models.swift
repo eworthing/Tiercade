@@ -6,19 +6,19 @@ import FoundationModels
 // MARK: - Models & Configuration
 
 @available(iOS 26.0, macOS 26.0, *)
-extension EnhancedPromptTester {
+internal extension EnhancedPromptTester {
 // MARK: - Configuration
 
 internal enum SamplingMode {
-    case greedy
-    case topP(Double)
-    case topK(Int)
+    internal case greedy
+    internal case topP(Double)
+    internal case topK(Int)
 }
 
 internal struct DecodingConfig {
-    let name: String
-    let sampling: SamplingMode
-    let temperature: Double
+    internal let name: String
+    internal let sampling: SamplingMode
+    internal let temperature: Double
 
     internal func generationOptions(seed: UInt64, maxTokens: Int) -> GenerationOptions {
         switch sampling {
@@ -45,16 +45,16 @@ internal struct DecodingConfig {
 }
 
 internal struct TestQuery {
-    let query: String
-    let target: Int?
-    let domain: String
+    internal let query: String
+    internal let target: Int?
+    internal let domain: String
 }
 
 internal struct TestConfig {
     // PILOT CONFIGURATION: Reduced grid for speed validation
-    let seeds: [UInt64] = [42, 1337]  // 2 seeds
+    internal let seeds: [UInt64] = [42, 1337]  // 2 seeds
 
-    let testQueries: [TestQuery] = [
+    internal let testQueries: [TestQuery] = [
         TestQuery(query: "top 15 most popular fruits", target: 15, domain: "food"),  // Small
         TestQuery(query: "best places to live in the United States", target: 50, domain: "geography"),  // Medium
         TestQuery(query: "best video games released in 2020-2023", target: 150, domain: "media"),  // Large
@@ -62,22 +62,22 @@ internal struct TestConfig {
         TestQuery(query: "What are the most popular candy bars?", target: nil, domain: "food")
     ]
 
-    let decodingConfigs: [DecodingConfig] = [
+    internal let decodingConfigs: [DecodingConfig] = [
         // PILOT: 3 decoders
         DecodingConfig(name: "Greedy", sampling: .greedy, temperature: 0.0),
         DecodingConfig(name: "TopK50-T0.8", sampling: .topK(50), temperature: 0.8),
         DecodingConfig(name: "TopP92-T0.8", sampling: .topP(0.92), temperature: 0.8)
     ]
 
-    let guidedModes: [Bool] = [false, true]
+    internal let guidedModes: [Bool] = [false, true]
 
     // PILOT: Test 4 prompts only (G0, G2, G3, G6)
     // Full grid: 4 prompts × 4 queries × 3 decoders × 2 seeds × 2 guided = 192 runs (~15 min)
 
     // Dynamic token budget
     internal func dynamicMaxTokens(targetCount: Int, overgenFactor: Double) -> Int {
-        let tokensPerItem = 6
-        let calculated = Int(ceil(Double(targetCount) * overgenFactor * Double(tokensPerItem) * 1.3))
+        internal let tokensPerItem = 6
+        internal let calculated = Int(ceil(Double(targetCount) * overgenFactor * Double(tokensPerItem) * 1.3))
         return min(3000, calculated)
     }
 
@@ -97,67 +97,67 @@ internal struct TestConfig {
 // MARK: - Results
 
 internal struct SingleRunResult: Sendable {
-    let promptNumber: Int
-    let promptName: String
-    let runNumber: Int
-    let seed: UInt64
-    let query: String
-    let targetCount: Int?
-    let domain: String
-    let nBucket: String
-    let decodingName: String
-    let guidedSchema: Bool
-    let response: String
-    let parsedItems: [String]
-    let normalizedItems: [String]
-    let totalItems: Int
-    let uniqueItems: Int
-    let duplicateCount: Int
-    let dupRate: Double
-    let passAtN: Bool
-    let surplusAtN: Int  // max(0, unique - N)
-    let jsonStrict: Bool  // Parsed as JSON array (not fallback)
-    let insufficient: Bool
-    let formatError: Bool
-    let wasJsonParsed: Bool
-    let finishReason: String?
-    let wasTruncated: Bool
-    let maxTokensUsed: Int
-    let duration: TimeInterval
-    let timePerUnique: Double  // duration / max(1, unique)
+    internal let promptNumber: Int
+    internal let promptName: String
+    internal let runNumber: Int
+    internal let seed: UInt64
+    internal let query: String
+    internal let targetCount: Int?
+    internal let domain: String
+    internal let nBucket: String
+    internal let decodingName: String
+    internal let guidedSchema: Bool
+    internal let response: String
+    internal let parsedItems: [String]
+    internal let normalizedItems: [String]
+    internal let totalItems: Int
+    internal let uniqueItems: Int
+    internal let duplicateCount: Int
+    internal let dupRate: Double
+    internal let passAtN: Bool
+    internal let surplusAtN: Int  // max(0, unique - N)
+    internal let jsonStrict: Bool  // Parsed as JSON array (not fallback)
+    internal let insufficient: Bool
+    internal let formatError: Bool
+    internal let wasJsonParsed: Bool
+    internal let finishReason: String?
+    internal let wasTruncated: Bool
+    internal let maxTokensUsed: Int
+    internal let duration: TimeInterval
+    internal let timePerUnique: Double  // duration / max(1, unique)
 }
 
 internal struct AggregateResult {
-    let promptNumber: Int
-    let promptName: String
-    let promptText: String
-    let totalRuns: Int
-    let nBucket: String
-    let domain: String
+    internal let promptNumber: Int
+    internal let promptName: String
+    internal let promptText: String
+    internal let totalRuns: Int
+    internal let nBucket: String
+    internal let domain: String
 
     // SORTED BY PRIORITY
-    let passAtNRate: Double
-    let meanUniqueItems: Double
-    let jsonStrictRate: Double
-    let meanTimePerUnique: Double
-    let meanDupRate: Double
-    let stdevDupRate: Double
-    let meanSurplusAtN: Double
-    let truncationRate: Double
-    let seedVariance: Double  // stdev of unique@N across seeds
-    let insufficientRate: Double
-    let formatErrorRate: Double
+    internal let passAtNRate: Double
+    internal let meanUniqueItems: Double
+    internal let jsonStrictRate: Double
+    internal let meanTimePerUnique: Double
+    internal let meanDupRate: Double
+    internal let stdevDupRate: Double
+    internal let meanSurplusAtN: Double
+    internal let truncationRate: Double
+    internal let seedVariance: Double  // stdev of unique@N across seeds
+    internal let insufficientRate: Double
+    internal let formatErrorRate: Double
 
-    let bestRun: SingleRunResult?
-    let worstRun: SingleRunResult?
-    let allRuns: [SingleRunResult]
+    internal let bestRun: SingleRunResult?
+    internal let worstRun: SingleRunResult?
+    internal let allRuns: [SingleRunResult]
 }
 
 // MARK: - Guided Schema
 
 @Generable
 internal struct StringList: Codable {
-    let items: [String]
+    internal let items: [String]
 }
 }
 #endif

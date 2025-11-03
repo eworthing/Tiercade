@@ -107,12 +107,12 @@ internal struct ThemeCreatorOverlay: View {
 
 private extension ThemeCreatorOverlay {
     #if os(tvOS)
-    func directionalMove(from direction: MoveCommandDirection) -> DirectionalMove? {
+    internal func directionalMove(from direction: MoveCommandDirection) -> DirectionalMove? {
         DirectionalMove(moveCommand: direction)
     }
     #endif
 
-    var header: some View {
+    internal var header: some View {
         HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Create Custom Theme")
@@ -130,7 +130,7 @@ private extension ThemeCreatorOverlay {
         .tvGlassRounded(0)
     }
 
-    var content: some View {
+    internal var content: some View {
         HStack(alignment: .top, spacing: 32) {
             VStack(alignment: .leading, spacing: 28) {
                 formSection
@@ -146,7 +146,7 @@ private extension ThemeCreatorOverlay {
         .padding(.vertical, 32)
     }
 
-    var formSection: some View {
+    internal var formSection: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Details")
                 .font(.headline)
@@ -190,7 +190,7 @@ private extension ThemeCreatorOverlay {
         }
     }
 
-    var tierList: some View {
+    internal var tierList: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Tiers")
                 .font(.headline)
@@ -212,9 +212,9 @@ private extension ThemeCreatorOverlay {
         }
     }
 
-    func tierRow(for tier: ThemeTierDraft) -> some View {
-        let isActive = tier.id == draft.activeTierID
-        let background = RoundedRectangle(cornerRadius: 14, style: .continuous)
+    internal func tierRow(for tier: ThemeTierDraft) -> some View {
+        internal let isActive = tier.id == draft.activeTierID
+        internal let background = RoundedRectangle(cornerRadius: 14, style: .continuous)
 
         return HStack(spacing: 16) {
             RoundedRectangle(cornerRadius: 12)
@@ -257,7 +257,7 @@ private extension ThemeCreatorOverlay {
         .animation(reduceMotion ? nil : Motion.emphasis, value: isActive)
     }
 
-    var paletteSection: some View {
+    internal var paletteSection: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Palette")
                 .font(.headline)
@@ -272,7 +272,7 @@ private extension ThemeCreatorOverlay {
                     spacing: 18
                 ) {
                     ForEach(Self.paletteHexes.indices, id: \.self) { index in
-                        let hex = Self.paletteHexes[index]
+                        internal let hex = Self.paletteHexes[index]
                         paletteButton(for: hex, index: index)
                     }
                 }
@@ -282,10 +282,10 @@ private extension ThemeCreatorOverlay {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    func paletteButton(for hex: String, index: Int) -> some View {
-        let isFocusedColor = focusedElement == .palette(index)
-        let isApplied = draft.activeTier?.colorHex.uppercased() == ThemeDraft.normalizeHex(hex)
-        let background = RoundedRectangle(cornerRadius: 12, style: .continuous)
+    internal func paletteButton(for hex: String, index: Int) -> some View {
+        internal let isFocusedColor = focusedElement == .palette(index)
+        internal let isApplied = draft.activeTier?.colorHex.uppercased() == ThemeDraft.normalizeHex(hex)
+        internal let background = RoundedRectangle(cornerRadius: 12, style: .continuous)
 
         return Button {
             paletteFocusIndex = index
@@ -328,7 +328,7 @@ private extension ThemeCreatorOverlay {
         .accessibilityIdentifier("ThemeCreator_Palette_\(index)")
     }
 
-    var footer: some View {
+    internal var footer: some View {
         HStack(spacing: platformButtonSpacing) {
             Button(role: .cancel) { dismiss(returnToPicker: true) } label: {
                 Label("Cancel", systemImage: "arrow.backward")
@@ -362,24 +362,24 @@ private extension ThemeCreatorOverlay {
         }
     }
 
-    func dismiss(returnToPicker: Bool) {
+    internal func dismiss(returnToPicker: Bool) {
         appState.cancelThemeCreation(returnToThemePicker: returnToPicker)
     }
 
-    func setActiveTier(_ tierID: UUID) {
+    internal func setActiveTier(_ tierID: UUID) {
         appState.selectThemeDraftTier(tierID)
         paletteFocusIndex = paletteIndex(for: appState.theme.themeDraft?.activeTier?.colorHex)
         setFocus(.tier(tierID))
     }
 
     #if os(tvOS)
-    func handleMoveCommand(_ direction: MoveCommandDirection) {
+    internal func handleMoveCommand(_ direction: MoveCommandDirection) {
         guard let move = directionalMove(from: direction) else { return }
         handleDirectionalMove(move)
     }
     #endif
 
-    func handleDirectionalMove(_ move: DirectionalMove) {
+    internal func handleDirectionalMove(_ move: DirectionalMove) {
         #if !os(tvOS)
         overlayHasFocus = true
         #endif
@@ -400,7 +400,7 @@ private extension ThemeCreatorOverlay {
         }
     }
 
-    func handlePrimaryAction() {
+    internal func handlePrimaryAction() {
         guard let focus = focusedElement ?? lastFocus else { return }
         switch focus {
         case .name, .description:
@@ -411,7 +411,7 @@ private extension ThemeCreatorOverlay {
         case .palette(let index):
             paletteFocusIndex = index
             if index < Self.paletteHexes.count {
-                let hex = Self.paletteHexes[index]
+                internal let hex = Self.paletteHexes[index]
                 appState.assignColorToActiveTier(hex)
             }
             setFocus(.palette(index))
@@ -422,7 +422,7 @@ private extension ThemeCreatorOverlay {
         }
     }
 
-    func handleNameMove(_ move: DirectionalMove) {
+    internal func handleNameMove(_ move: DirectionalMove) {
         switch move {
         case .down:
             setFocus(.description)
@@ -433,7 +433,7 @@ private extension ThemeCreatorOverlay {
         }
     }
 
-    func handleDescriptionMove(_ move: DirectionalMove) {
+    internal func handleDescriptionMove(_ move: DirectionalMove) {
         switch move {
         case .up:
             setFocus(.name)
@@ -444,7 +444,7 @@ private extension ThemeCreatorOverlay {
         }
     }
 
-    func handleTierMove(_ move: DirectionalMove, tierID: UUID) {
+    internal func handleTierMove(_ move: DirectionalMove, tierID: UUID) {
         guard let currentIndex = tierIndex(for: tierID) else { return }
         switch move {
         case .up:
@@ -467,16 +467,16 @@ private extension ThemeCreatorOverlay {
         }
     }
 
-    func handlePaletteMove(_ move: DirectionalMove, index: Int) {
+    internal func handlePaletteMove(_ move: DirectionalMove, index: Int) {
         switch move {
         case .left:
             setFocus(.tier(draft.activeTierID))
         case .up:
-            let target = max(index - paletteColumns, 0)
+            internal let target = max(index - paletteColumns, 0)
             paletteFocusIndex = target
             setFocus(.palette(target))
         case .down:
-            let target = index + paletteColumns
+            internal let target = index + paletteColumns
             if target < Self.paletteHexes.count {
                 paletteFocusIndex = target
                 setFocus(.palette(target))
@@ -484,13 +484,13 @@ private extension ThemeCreatorOverlay {
                 setFocus(.save)
             }
         case .right:
-            let target = min(index + 1, Self.paletteHexes.count - 1)
+            internal let target = min(index + 1, Self.paletteHexes.count - 1)
             paletteFocusIndex = target
             setFocus(.palette(target))
         }
     }
 
-    func handleSaveMove(_ move: DirectionalMove) {
+    internal func handleSaveMove(_ move: DirectionalMove) {
         switch move {
         case .up:
             setFocus(.palette(paletteFocusIndex))
@@ -501,7 +501,7 @@ private extension ThemeCreatorOverlay {
         }
     }
 
-    func handleCancelMove(_ move: DirectionalMove) {
+    internal func handleCancelMove(_ move: DirectionalMove) {
         switch move {
         case .up:
             setFocus(.tier(draft.activeTierID))
@@ -512,33 +512,33 @@ private extension ThemeCreatorOverlay {
         }
     }
 
-    func focusTier(at index: Int) {
-        let tier = draft.tiers[index]
+    internal func focusTier(at index: Int) {
+        internal let tier = draft.tiers[index]
         paletteFocusIndex = paletteIndex(for: tier.colorHex)
         setActiveTier(tier.id)
     }
 
-    var nameBinding: Binding<String> {
+    internal var nameBinding: Binding<String> {
         Binding(
             get: { appState.theme.themeDraft?.displayName ?? draft.displayName },
             set: { appState.updateThemeDraftName($0) }
         )
     }
 
-    var descriptionBinding: Binding<String> {
+    internal var descriptionBinding: Binding<String> {
         Binding(
             get: { appState.theme.themeDraft?.shortDescription ?? draft.shortDescription },
             set: { appState.updateThemeDraftDescription($0) }
         )
     }
 
-    func tierIndex(for id: UUID) -> Int? {
+    internal func tierIndex(for id: UUID) -> Int? {
         draft.tiers.firstIndex { $0.id == id }
     }
 
-    func paletteIndex(for hex: String?) -> Int {
+    internal func paletteIndex(for hex: String?) -> Int {
         guard let hex else { return 0 }
-        let normalized = ThemeDraft.normalizeHex(hex)
+        internal let normalized = ThemeDraft.normalizeHex(hex)
         return Self.paletteHexes.firstIndex { ThemeDraft.normalizeHex($0) == normalized } ?? 0
     }
 
@@ -551,7 +551,7 @@ private extension ThemeCreatorOverlay {
 // MARK: - Platform metrics
 
 private extension ThemeCreatorOverlay {
-    var platformOverlayCornerRadius: CGFloat {
+    internal var platformOverlayCornerRadius: CGFloat {
         #if os(tvOS)
         TVMetrics.overlayCornerRadius
         #else
@@ -559,7 +559,7 @@ private extension ThemeCreatorOverlay {
         #endif
     }
 
-    var platformOverlayPadding: CGFloat {
+    internal var platformOverlayPadding: CGFloat {
         #if os(tvOS)
         TVMetrics.overlayPadding
         #else
@@ -567,7 +567,7 @@ private extension ThemeCreatorOverlay {
         #endif
     }
 
-    var platformButtonSpacing: CGFloat {
+    internal var platformButtonSpacing: CGFloat {
         #if os(tvOS)
         TVMetrics.buttonSpacing
         #else

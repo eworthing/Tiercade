@@ -32,7 +32,7 @@ internal struct ModelDiagnostics {
         logger("🔬 ========================================")
         logger("")
 
-        var results: [DiagnosticResult] = []
+        internal var results: [DiagnosticResult] = []
 
         // Test 1: Raw output (no schema constraint)
         results.append(await testRawOutput(itemCount: 10, tokens: 112))
@@ -54,7 +54,7 @@ internal struct ModelDiagnostics {
         // Test 4: CRITICAL - Replicate exact acceptance test flow
         results.append(await testViaCoordinator(itemCount: 25))
 
-        let report = DiagnosticReport(
+        internal let report = DiagnosticReport(
             timestamp: Date(),
             results: results,
             environment: RunEnv()
@@ -85,18 +85,18 @@ internal struct ModelDiagnostics {
                 )
             }
 
-            let prompt = buildRawOutputPrompt(itemCount: itemCount)
-            let options = buildGenerationOptions(tokens: tokens)
+            internal let prompt = buildRawOutputPrompt(itemCount: itemCount)
+            internal let options = buildGenerationOptions(tokens: tokens)
             logPromptAndOptions(prompt: prompt, tokens: tokens)
 
-            let start = Date()
-            let response = try await session.respond(to: Prompt(prompt), options: options)
-            let elapsed = Date().timeIntervalSince(start)
-            let rawText = response.content
+            internal let start = Date()
+            internal let response = try await session.respond(to: Prompt(prompt), options: options)
+            internal let elapsed = Date().timeIntervalSince(start)
+            internal let rawText = response.content
 
             logResponseMetrics(rawText: rawText, elapsed: elapsed)
 
-            let (parseSuccess, itemsParsed) = attemptManualJSONParse(rawText: rawText)
+            internal let (parseSuccess, itemsParsed) = attemptManualJSONParse(rawText: rawText)
 
             return buildSuccessResult(
                 testName: "RawOutput_\(itemCount)items_\(tokens)tokens",
@@ -149,12 +149,12 @@ internal struct ModelDiagnostics {
     }
 
     private func attemptManualJSONParse(rawText: String) -> (success: Bool, itemsParsed: Int) {
-        var parseSuccess = false
-        var itemsParsed = 0
+        internal var parseSuccess = false
+        internal var itemsParsed = 0
 
         if let data = rawText.data(using: .utf8) {
             do {
-                let json = try JSONDecoder().decode(UniqueListResponse.self, from: data)
+                internal let json = try JSONDecoder().decode(UniqueListResponse.self, from: data)
                 itemsParsed = json.items.count
                 parseSuccess = true
                 logger("  ✓ Manual JSON parse succeeded: \(itemsParsed) items")
@@ -204,8 +204,8 @@ internal struct ModelDiagnostics {
         tokensPerItem: Int,
         seed: UInt64 = 42
     ) async -> DiagnosticResult {
-        let maxTokens = itemCount * tokensPerItem
-        let testName = "Generable_\(itemCount)items_\(tokensPerItem)tpi_seed\(seed)"
+        internal let maxTokens = itemCount * tokensPerItem
+        internal let testName = "Generable_\(itemCount)items_\(tokensPerItem)tpi_seed\(seed)"
         logger(
             "🔬 [Test] @Generable - \(itemCount) items, \(tokensPerItem) tokens/item = \(maxTokens) total, seed=\(seed)"
         )
@@ -215,19 +215,19 @@ internal struct ModelDiagnostics {
                 return buildGenerableFailureResult(testName: testName, message: "Failed to create session", seed: seed)
             }
 
-            let prompt = buildRawOutputPrompt(itemCount: itemCount)
-            let options = buildGenerableOptions(seed: seed, maxTokens: maxTokens)
+            internal let prompt = buildRawOutputPrompt(itemCount: itemCount)
+            internal let options = buildGenerableOptions(seed: seed, maxTokens: maxTokens)
             logGenerableOptions(prompt: prompt, options: options)
 
-            let start = Date()
-            let response = try await session.respond(
+            internal let start = Date()
+            internal let response = try await session.respond(
                 to: Prompt(prompt),
                 generating: UniqueListResponse.self,
                 includeSchemaInPrompt: true,
                 options: options
             )
-            let elapsed = Date().timeIntervalSince(start)
-            let items = response.content.items
+            internal let elapsed = Date().timeIntervalSince(start)
+            internal let items = response.content.items
 
             logGenerableSuccess(items: items, elapsed: elapsed)
 
@@ -281,12 +281,12 @@ internal struct ModelDiagnostics {
     }
 
     private struct GenerableSuccessContext: Sendable {
-        let testName: String
-        let items: [String]
-        let elapsed: TimeInterval
-        let tokensPerItem: Int
-        let maxTokens: Int
-        let seed: UInt64
+        internal let testName: String
+        internal let items: [String]
+        internal let elapsed: TimeInterval
+        internal let tokensPerItem: Int
+        internal let maxTokens: Int
+        internal let seed: UInt64
     }
 
     private func buildGenerableSuccessResult(context: GenerableSuccessContext) -> DiagnosticResult {
@@ -314,8 +314,8 @@ internal struct ModelDiagnostics {
     ) -> DiagnosticResult {
         logger("  ❌ @Generable failed: \(error)")
 
-        var errorType = "unknown"
-        var contextInfo = ""
+        internal var errorType = "unknown"
+        internal var contextInfo = ""
         if case .decodingFailure(let context) = error {
             errorType = "decodingFailure"
             contextInfo = context.debugDescription
@@ -351,7 +351,7 @@ internal struct ModelDiagnostics {
     // MARK: - Test 3: Via Coordinator (Exact Acceptance Test Path)
 
     private func testViaCoordinator(itemCount: Int) async -> DiagnosticResult {
-        let testName = "Coordinator_\(itemCount)items"
+        internal let testName = "Coordinator_\(itemCount)items"
         logger("🔬 [Test] Via UniqueListCoordinator - \(itemCount) items (EXACT acceptance test path)")
 
         do {
@@ -359,15 +359,15 @@ internal struct ModelDiagnostics {
                 return buildCoordinatorFailureResult(testName: testName, message: "Failed to create session")
             }
 
-            let coordinator = setupCoordinator(session: session)
+            internal let coordinator = setupCoordinator(session: session)
 
-            let start = Date()
-            let items = try await runCoordinatorTest(coordinator: coordinator, itemCount: itemCount)
-            let elapsed = Date().timeIntervalSince(start)
+            internal let start = Date()
+            internal let items = try await runCoordinatorTest(coordinator: coordinator, itemCount: itemCount)
+            internal let elapsed = Date().timeIntervalSince(start)
 
             logCoordinatorSuccess(items: items, elapsed: elapsed)
 
-            let (uniqueKeys, allUnique) = checkUniqueness(items: items)
+            internal let (uniqueKeys, allUnique) = checkUniqueness(items: items)
 
             return buildCoordinatorSuccessResult(
                 testName: testName,
@@ -390,7 +390,7 @@ internal struct ModelDiagnostics {
 
     private func setupCoordinator(session: LanguageModelSession) -> UniqueListCoordinator {
         logger("  📝 Creating FMClient and UniqueListCoordinator...")
-        let fm = FMClient(session: session, logger: logger)
+        internal let fm = FMClient(session: session, logger: logger)
         return UniqueListCoordinator(fm: fm, logger: logger)
     }
 
@@ -410,9 +410,9 @@ internal struct ModelDiagnostics {
     }
 
     private func checkUniqueness(items: [String]) -> (uniqueKeys: Set<String>, allUnique: Bool) {
-        let normKeys = items.map { $0.normKey }
-        let uniqueKeys = Set(normKeys)
-        let allUnique = normKeys.count == uniqueKeys.count
+        internal let normKeys = items.map { $0.normKey }
+        internal let uniqueKeys = Set(normKeys)
+        internal let allUnique = normKeys.count == uniqueKeys.count
         return (uniqueKeys, allUnique)
     }
 
@@ -443,8 +443,8 @@ internal struct ModelDiagnostics {
     ) -> DiagnosticResult {
         logger("  ❌ Coordinator failed with GenerationError: \(error)")
 
-        var errorType = "unknown"
-        var contextInfo = ""
+        internal var errorType = "unknown"
+        internal var contextInfo = ""
         if case .decodingFailure(let context) = error {
             errorType = "decodingFailure"
             contextInfo = context.debugDescription
@@ -477,7 +477,7 @@ internal struct ModelDiagnostics {
     // MARK: - Helper
 
     private func createTestSession() async throws -> LanguageModelSession {
-        let instructions = Instructions("""
+        internal let instructions = Instructions("""
         You are a helpful assistant that generates lists.
         Always return valid JSON matching the requested schema.
         Ensure items are distinct and diverse.
@@ -495,18 +495,18 @@ internal struct ModelDiagnostics {
 
 @available(iOS 26.0, macOS 26.0, *)
 internal struct DiagnosticResult: Codable {
-    let testName: String
-    let success: Bool
-    let message: String
-    let rawOutput: String?
-    let details: [String: String]
+    internal let testName: String
+    internal let success: Bool
+    internal let message: String
+    internal let rawOutput: String?
+    internal let details: [String: String]
 }
 
 @available(iOS 26.0, macOS 26.0, *)
 internal struct DiagnosticReport: Codable {
-    let timestamp: Date
-    let results: [DiagnosticResult]
-    let environment: RunEnv
+    internal let timestamp: Date
+    internal let results: [DiagnosticResult]
+    internal let environment: RunEnv
 }
 
 #endif

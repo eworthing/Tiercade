@@ -104,25 +104,25 @@ internal struct ToastView: View {
 
     /// Parses message text and converts symbol markers like {undo} to inline SF Symbols
     private func parseMessageWithSymbols(_ message: String) -> Text {
-        let attributedString = NSMutableAttributedString()
-        var remaining = message
+        internal let attributedString = NSMutableAttributedString()
+        internal var remaining = message
 
         while let openBrace = remaining.firstIndex(of: "{"),
-              let closeBrace = remaining[openBrace...].firstIndex(of: "}") {
-            let beforeMarker = String(remaining[..<openBrace])
+              internal let closeBrace = remaining[openBrace...].firstIndex(of: "}") {
+            internal let beforeMarker = String(remaining[..<openBrace])
             if !beforeMarker.isEmpty {
                 attributedString.append(NSAttributedString(string: beforeMarker))
             }
 
-            let marker = String(remaining[openBrace...closeBrace])
+            internal let marker = String(remaining[openBrace...closeBrace])
             if let symbolName = Self.symbolMap[marker],
-               let attachment = makeSymbolAttachment(named: symbolName) {
+               internal let attachment = makeSymbolAttachment(named: symbolName) {
                 attributedString.append(NSAttributedString(attachment: attachment))
             } else {
                 attributedString.append(NSAttributedString(string: marker))
             }
 
-            let nextIndex = remaining.index(after: closeBrace)
+            internal let nextIndex = remaining.index(after: closeBrace)
             if nextIndex < remaining.endIndex {
                 remaining = String(remaining[nextIndex...])
             } else {
@@ -134,19 +134,19 @@ internal struct ToastView: View {
             attributedString.append(NSAttributedString(string: remaining))
         }
 
-        let converted = AttributedString(attributedString)
+        internal let converted = AttributedString(attributedString)
         return Text(converted)
     }
 
     private func makeSymbolAttachment(named symbolName: String) -> NSTextAttachment? {
         #if os(iOS)
         guard let image = UIImage(systemName: symbolName) else { return nil }
-        let attachment = NSTextAttachment()
+        internal let attachment = NSTextAttachment()
         attachment.image = image
         return attachment
         #elseif os(macOS)
         guard let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) else { return nil }
-        let attachment = NSTextAttachment()
+        internal let attachment = NSTextAttachment()
         attachment.image = image
         return attachment
         #else
@@ -225,7 +225,7 @@ internal struct QuickRankOverlay: View {
     #endif
     internal var body: some View {
         if let item = app.quickRankTarget {
-            let isUITest = ProcessInfo.processInfo.arguments.contains("-uiTest")
+            internal let isUITest = ProcessInfo.processInfo.arguments.contains("-uiTest")
             ZStack {
                 Color.black.opacity(0.65)
                     .ignoresSafeArea()

@@ -7,15 +7,15 @@ import FoundationModels
 
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
-extension AcceptanceTestSuite {
+internal extension AcceptanceTestSuite {
 static func testNormalization(logger: @escaping (String) -> Void) -> TestResult {
     logger("\n[Test 7/8] Normalization - edge case handling...")
 
-    let testCases = buildNormalizationTestCases()
-    let result = runNormalizationTests(testCases: testCases, logger: logger)
+    internal let testCases = buildNormalizationTestCases()
+    internal let result = runNormalizationTests(testCases: testCases, logger: logger)
 
-    let success = result.failed == 0
-    let message = success
+    internal let success = result.failed == 0
+    internal let message = success
         ? "All \(testCases.count) normalization tests passed"
         : "\(result.failed)/\(testCases.count) normalization tests failed"
 
@@ -53,27 +53,27 @@ static func buildNormalizationTestCases() -> [NormalizationTestCase] {
 }
 
 internal struct NormalizationTestResult: Sendable {
-    let passed: Int
-    let failed: Int
-    let failures: [String]
+    internal let passed: Int
+    internal let failed: Int
+    internal let failures: [String]
 }
 
 static func runNormalizationTests(
     testCases: [NormalizationTestCase],
     logger: @escaping (String) -> Void
 ) -> NormalizationTestResult {
-    var passed = 0
-    var failed = 0
-    var failures: [String] = []
+    internal var passed = 0
+    internal var failed = 0
+    internal var failures: [String] = []
 
     for testCase in testCases {
-        let result = testCase.input.normKey
+        internal let result = testCase.input.normKey
         if result == testCase.expected {
             passed += 1
             logger("  ✓ \(testCase.description): '\(testCase.input)' → '\(result)'")
         } else {
             failed += 1
-            let msg = "\(testCase.description): '\(testCase.input)' → '\(result)' (expected '\(testCase.expected)')"
+            internal let msg = "\(testCase.description): '\(testCase.input)' → '\(result)' (expected '\(testCase.expected)')"
             failures.append(msg)
             logger("  ✗ \(msg)")
         }

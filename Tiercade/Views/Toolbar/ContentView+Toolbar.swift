@@ -55,14 +55,14 @@ internal struct ToolbarView: ToolbarContent {
         #if os(iOS)
         ToolbarItemGroup(placement: .bottomBar) {
             if editMode?.wrappedValue == .active {
-                let count = app.selection.count
+                internal let count = app.selection.count
                 Label("\(count) Selected", systemImage: "checkmark.circle.fill")
                     .font(.headline)
                     .accessibilityIdentifier("Toolbar_SelectionCount")
 
                 Menu {
                     ForEach(app.tierOrder, id: \.self) { tier in
-                        let label = app.displayLabel(for: tier)
+                        internal let label = app.displayLabel(for: tier)
                         Button(label) {
                             app.batchMove(Array(app.selection), to: tier)
                         }
@@ -181,7 +181,7 @@ internal struct ToolbarView: ToolbarContent {
             Button {
                 app.setGlobalSortMode(.alphabetical(ascending: true))
             } label: {
-                let isSelected = {
+                internal let isSelected = {
                     if case .alphabetical(let asc) = app.globalSortMode, asc { return true }
                     return false
                 }()
@@ -191,7 +191,7 @@ internal struct ToolbarView: ToolbarContent {
             Button {
                 app.setGlobalSortMode(.alphabetical(ascending: false))
             } label: {
-                let isSelected = {
+                internal let isSelected = {
                     if case .alphabetical(let asc) = app.globalSortMode, !asc { return true }
                     return false
                 }()
@@ -199,7 +199,7 @@ internal struct ToolbarView: ToolbarContent {
             }
 
             // Discovered attributes
-            let discovered = app.discoverSortableAttributes()
+            internal let discovered = app.discoverSortableAttributes()
             if !discovered.isEmpty {
                 Divider()
 
@@ -209,7 +209,7 @@ internal struct ToolbarView: ToolbarContent {
                             Button {
                                 app.setGlobalSortMode(.byAttribute(key: key, ascending: true, type: type))
                             } label: {
-                                let isSelected = {
+                                internal let isSelected = {
                                     if case .byAttribute(let k, let asc, _) = app.globalSortMode,
                                        k == key, asc { return true }
                                     return false
@@ -220,7 +220,7 @@ internal struct ToolbarView: ToolbarContent {
                             Button {
                                 app.setGlobalSortMode(.byAttribute(key: key, ascending: false, type: type))
                             } label: {
-                                let isSelected = {
+                                internal let isSelected = {
                                     if case .byAttribute(let k, let asc, _) = app.globalSortMode,
                                        k == key, !asc { return true }
                                     return false
@@ -320,9 +320,9 @@ internal struct ToolbarView: ToolbarContent {
 
         // 6. Multi-Select (iOS only)
         #if os(iOS)
-        let multiSelectActive = editMode?.wrappedValue == .active
+        internal let multiSelectActive = editMode?.wrappedValue == .active
         Button {
-            let isActive = editMode?.wrappedValue == .active
+            internal let isActive = editMode?.wrappedValue == .active
             withAnimation(.easeInOut(duration: 0.18)) {
                 editMode?.wrappedValue = isActive ? .inactive : .active
             }
@@ -348,9 +348,9 @@ internal struct ToolbarView: ToolbarContent {
     // Helper methods for sort mode matching
     private func matchesMode(_ mode: GlobalSortMode) -> Bool {
         switch (app.globalSortMode, mode) {
-        case (.custom, .custom):
+        internal case (.custom, .custom):
             return true
-        case (.alphabetical(let asc1), .alphabetical(let asc2)):
+        internal case (.alphabetical(let asc1), .alphabetical(let asc2)):
             return asc1 == asc2
         default:
             return false
@@ -419,7 +419,7 @@ internal struct ToolbarView: ToolbarContent {
             Button {
                 app.setGlobalSortMode(.alphabetical(ascending: true))
             } label: {
-                let isSelected = {
+                internal let isSelected = {
                     if case .alphabetical(let asc) = app.globalSortMode, asc { return true }
                     return false
                 }()
@@ -429,7 +429,7 @@ internal struct ToolbarView: ToolbarContent {
             Button {
                 app.setGlobalSortMode(.alphabetical(ascending: false))
             } label: {
-                let isSelected = {
+                internal let isSelected = {
                     if case .alphabetical(let asc) = app.globalSortMode, !asc { return true }
                     return false
                 }()
@@ -437,7 +437,7 @@ internal struct ToolbarView: ToolbarContent {
             }
 
             // Discovered attributes
-            let discovered = app.discoverSortableAttributes()
+            internal let discovered = app.discoverSortableAttributes()
             if !discovered.isEmpty {
                 Divider()
 
@@ -447,7 +447,7 @@ internal struct ToolbarView: ToolbarContent {
                             Button {
                                 app.setGlobalSortMode(.byAttribute(key: key, ascending: true, type: type))
                             } label: {
-                                let isSelected = {
+                                internal let isSelected = {
                                     if case .byAttribute(let k, let asc, _) = app.globalSortMode,
                                        k == key, asc { return true }
                                     return false
@@ -458,7 +458,7 @@ internal struct ToolbarView: ToolbarContent {
                             Button {
                                 app.setGlobalSortMode(.byAttribute(key: key, ascending: false, type: type))
                             } label: {
-                                let isSelected = {
+                                internal let isSelected = {
                                     if case .byAttribute(let k, let asc, _) = app.globalSortMode,
                                        k == key, !asc { return true }
                                     return false
@@ -519,7 +519,7 @@ internal struct TiersDocument: FileDocument {
     }
 
     internal func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        let data = try JSONEncoder().encode(tiers)
+        internal let data = try JSONEncoder().encode(tiers)
         return .init(regularFileWithContents: data)
     }
 }
@@ -538,7 +538,7 @@ internal struct SecondaryToolbarActions: ToolbarContent {
         ToolbarItemGroup(placement: toolbarPlacement) {
             Menu("Actions") {
                 ForEach(["S", "A", "B", "C", "D", "F"], id: \.self) { tier in
-                    let isTierEmpty = (app.tiers[tier]?.isEmpty ?? true)
+                    internal let isTierEmpty = (app.tiers[tier]?.isEmpty ?? true)
                     Button("Clear \(tier) Tier") { app.clearTier(tier) }
                         .disabled(isTierEmpty)
                 }
@@ -649,7 +649,7 @@ internal struct BottomToolbarSheets: ToolbarContent {
                             title: "JSON Export Failed",
                             message: error.localizedDescription
                         )
-                    case .success:
+        case .success:
                         app.showToast(
                             type: .success,
                             title: "JSON Export Complete",
@@ -783,5 +783,5 @@ internal struct MacAndTVToolbarSheets: ToolbarContent {
 
 #if os(iOS)
 @MainActor
-extension AppState: ToolbarExportCoordinating {}
+internal extension AppState: ToolbarExportCoordinating {}
 #endif

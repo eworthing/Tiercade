@@ -41,9 +41,9 @@ internal struct MatchupProgressDial: View {
 
     private var symbolName: String {
         switch clampedProgress {
-        case 0..<0.25:
+        internal case 0..<0.25:
             return "gauge.low"
-        case 0.25..<0.75:
+        internal case 0.25..<0.75:
             return "gauge.medium"
         default:
             return "gauge.high"
@@ -52,7 +52,7 @@ internal struct MatchupProgressDial: View {
 }
 
 internal struct MatchupCandidateCard: View {
-    enum AlignmentHint { case leading, trailing }
+    internal enum AlignmentHint { case leading, trailing }
 
     internal let item: Item
     internal let accentColor: Color
@@ -115,7 +115,7 @@ internal struct MatchupCandidateCard: View {
     }
 
     private var metadataStack: some View {
-        let alignment: HorizontalAlignment = self.alignment == .leading ? .leading : .trailing
+        internal let alignment: HorizontalAlignment = self.alignment == .leading ? .leading : .trailing
 
         return VStack(alignment: alignment, spacing: 6) {
             ForEach(metadataTokens, id: \.self) { token in
@@ -129,7 +129,7 @@ internal struct MatchupCandidateCard: View {
     }
 
     private var metadataTokens: [String] {
-        var tokens: [String] = []
+        internal var tokens: [String] = []
         if let season = item.seasonString, !season.isEmpty {
             tokens.append("Season \(season)")
         }

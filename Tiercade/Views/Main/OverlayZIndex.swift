@@ -13,30 +13,30 @@ import Foundation
 /// ```
 internal enum OverlayZIndex {
     /// Toast messages (top-most, must be visible above all other UI)
-    static let toast: Double = 60
+    internal static let toast: Double = 60
 
     /// Progress indicators (blocks all interaction during operations)
-    static let progress: Double = 50
+    internal static let progress: Double = 50
 
     /// Modal overlays (theme creator, AI chat)
     /// These are full-screen modal experiences that should block other overlays
-    static let modalOverlay: Double = 55
+    internal static let modalOverlay: Double = 55
 
     /// Detail sidebar (tvOS item detail view)
-    static let detailSidebar: Double = 55
+    internal static let detailSidebar: Double = 55
 
     /// Theme picker overlay
-    static let themePicker: Double = 54
+    internal static let themePicker: Double = 54
 
     /// Tier list browser full-screen view
-    static let browser: Double = 53
+    internal static let browser: Double = 53
 
     /// Analytics sidebar (tvOS)
-    static let analytics: Double = 52
+    internal static let analytics: Double = 52
 
     /// Quick move overlay (tvOS unified item actions)
-    static let quickMove: Double = 45
+    internal static let quickMove: Double = 45
 
     /// Standard overlays (quick rank, head-to-head, general overlays)
-    static let standardOverlay: Double = 40
+    internal static let standardOverlay: Double = 40
 }
