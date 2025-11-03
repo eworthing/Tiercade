@@ -537,9 +537,9 @@ internal struct SecondaryToolbarActions: ToolbarContent {
     internal var body: some ToolbarContent {
         ToolbarItemGroup(placement: toolbarPlacement) {
             Menu("Actions") {
-                ForEach(["S", "A", "B", "C", "D", "F"], id: \.self) { tier in
+                ForEach(app.tierOrder, id: \.self) { tier in
                     let isTierEmpty = (app.tiers[tier]?.isEmpty ?? true)
-                    Button("Clear \(tier) Tier") { app.clearTier(tier) }
+                    Button("Clear \(app.displayLabel(for: tier)) Tier") { app.clearTier(tier) }
                         .disabled(isTierEmpty)
                 }
                 Divider()

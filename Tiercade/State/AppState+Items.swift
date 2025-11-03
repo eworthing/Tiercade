@@ -136,15 +136,14 @@ internal extension AppState {
         }
     }
 
+    /// Builds empty tier dictionary dynamically from current tierOrder
+    /// This enables custom tier names, ordering, and variable tier counts
     private func makeEmptyTiers() -> Items {
-        [
-            "S": [],
-            "A": [],
-            "B": [],
-            "C": [],
-            "D": [],
-            "F": [],
-            "unranked": []
-        ]
+        var result: Items = [:]
+        for name in tierOrder {
+            result[name] = []
+        }
+        result["unranked"] = []
+        return result
     }
 }

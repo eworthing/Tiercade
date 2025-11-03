@@ -31,7 +31,7 @@ internal extension AppState {
     ) async throws -> (Data, String) {
         updateProgress(0.2)
 
-        let tierConfig = buildDefaultTierConfig()
+        let tierConfig = buildTierConfig()
         updateProgress(0.4)
 
         if let binaryResult = try handleBinaryExport(format: format, group: group, themeName: themeName) {
@@ -45,15 +45,15 @@ internal extension AppState {
         return try handleTextExport(format: format, group: group, themeName: themeName, tierConfig: tierConfig)
     }
 
-    private func buildDefaultTierConfig() -> TierConfig {
-        [
-            "S": TierConfigEntry(name: "S", description: nil),
-            "A": TierConfigEntry(name: "A", description: nil),
-            "B": TierConfigEntry(name: "B", description: nil),
-            "C": TierConfigEntry(name: "C", description: nil),
-            "D": TierConfigEntry(name: "D", description: nil),
-            "F": TierConfigEntry(name: "F", description: nil)
-        ]
+    /// Builds tier configuration dynamically from current state
+    /// This enables export of custom tier names, ordering, and variable tier counts
+    private func buildTierConfig() -> TierConfig {
+        var config: TierConfig = [:]
+        for tier in tierOrder {
+            let label = tierLabels[tier] ?? tier
+            config[tier] = TierConfigEntry(name: label, description: nil)
+        }
+        return config
     }
 
     private func handleBinaryExport(
@@ -110,14 +110,7 @@ internal extension AppState {
     }
 
     internal func exportText(group: String = "All", themeName: String = "Default") -> String {
-        let config: TierConfig = [
-            "S": TierConfigEntry(name: "S", description: nil),
-            "A": TierConfigEntry(name: "A", description: nil),
-            "B": TierConfigEntry(name: "B", description: nil),
-            "C": TierConfigEntry(name: "C", description: nil),
-            "D": TierConfigEntry(name: "D", description: nil),
-            "F": TierConfigEntry(name: "F", description: nil)
-        ]
+        let config = buildTierConfig()
         return ExportFormatter.generate(
             group: group,
             date: .now,

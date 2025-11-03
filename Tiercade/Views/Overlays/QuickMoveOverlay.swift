@@ -192,7 +192,7 @@ internal struct QuickMoveOverlay: View {
         if direction == .up {
             if case .tier(let tierName) = focusedElement,
                tierName == allTiers.first {
-                focusedElement = .tier(allTiers.first ?? "S")
+                focusedElement = .tier(allTiers.first ?? TierIdentifier.unranked.rawValue)
                 return
             }
         }

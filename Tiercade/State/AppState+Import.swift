@@ -58,9 +58,11 @@ internal extension AppState {
             throw ImportError.invalidData("CSV file appears to be empty")
         }
 
-        var newTiers: Items = [
-            "S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []
-        ]
+        // Initialize from current tierOrder to support custom tier configurations
+        var newTiers: Items = [TierIdentifier.unranked.rawValue: []]
+        for tier in tierOrder {
+            newTiers[tier] = []
+        }
 
         var seenIDs = Set<String>()
         var counters: [String: Int] = [:]
