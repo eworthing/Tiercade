@@ -69,14 +69,6 @@ internal struct TierAnalysisData: Sendable {
 @MainActor
 @Observable
 final class AppState {
-    struct TierStateSnapshot: Sendable {
-        var tiers: Items
-        var tierOrder: [String]
-        var tierLabels: [String: String]
-        var tierColors: [String: String]
-        var lockedTiers: Set<String>
-    }
-
     enum TierListDraftValidationCategory: String, Sendable {
         case project
         case tier
@@ -100,22 +92,15 @@ final class AppState {
     internal let listGenerator: UniqueListGenerating
     internal let themeCatalog: ThemeCatalogProviding
 
-    var tiers: Items = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
-    var tierOrder: [String] = ["S", "A", "B", "C", "D", "F"]
+    // MARK: - Tier List State
+    /// Consolidated state for tier list data and operations
+    var tierList = TierListState()
+
     var searchQuery: String = ""
     var activeFilter: FilterType = .all
     var currentToast: ToastMessage?
     var quickRankTarget: Item?
     var batchQuickMoveActive: Bool = false
-    // Multi-select state for batch operations (driven by editMode environment)
-    var selection: Set<String> = []
-    // Locked tiers set (until full Tier model exists)
-    var lockedTiers: Set<String> = []
-    // Tier display overrides (rename/recolor without core model changes)
-    var tierLabels: [String: String] = [:] // tierId -> display label
-    var tierColors: [String: String] = [:] // tierId -> hex color
-    // Global sort mode for all tiers (default: alphabetical A-Z)
-    var globalSortMode: GlobalSortMode = .alphabetical(ascending: true)
     // Layout preferences
     var cardDensityPreference: CardDensityPreference = .compact
     // Tier List Creator state (active flags for focus management)
@@ -161,9 +146,6 @@ final class AppState {
     let tierListRecentsKey = "Tiercade.tierlist.recents.v1"
     var autosaveTask: Task<Void, Never>?
     let autosaveInterval: TimeInterval = 30.0 // Auto-save every 30 seconds
-
-    var undoManager: UndoManager?
-    private var isPerformingUndoRedo = false
 
     /// Centralized check for whether any overlay blocks background interaction
     /// Use with `.allowsHitTesting(!app.blocksBackgroundFocus)` on background content
@@ -249,77 +231,85 @@ final class AppState {
         }
     }
 
+    // MARK: - Tier List Convenience Accessors
+
+    /// Convenience accessor for tiers
+    var tiers: Items {
+        get { tierList.tiers }
+        set { tierList.tiers = newValue }
+    }
+
+    /// Convenience accessor for tierOrder
+    var tierOrder: [String] {
+        get { tierList.tierOrder }
+        set { tierList.tierOrder = newValue }
+    }
+
+    /// Convenience accessor for selection
+    var selection: Set<String> {
+        get { tierList.selection }
+        set { tierList.selection = newValue }
+    }
+
+    /// Convenience accessor for lockedTiers
+    var lockedTiers: Set<String> {
+        get { tierList.lockedTiers }
+        set { tierList.lockedTiers = newValue }
+    }
+
+    /// Convenience accessor for tierLabels
+    var tierLabels: [String: String] {
+        get { tierList.tierLabels }
+        set { tierList.tierLabels = newValue }
+    }
+
+    /// Convenience accessor for tierColors
+    var tierColors: [String: String] {
+        get { tierList.tierColors }
+        set { tierList.tierColors = newValue }
+    }
+
+    /// Convenience accessor for globalSortMode
+    var globalSortMode: GlobalSortMode {
+        get { tierList.globalSortMode }
+        set { tierList.globalSortMode = newValue }
+    }
+
+    /// Convenience accessor for displayLabel
+    func displayLabel(for tierId: String) -> String {
+        tierList.displayLabel(for: tierId)
+    }
+
+    /// Convenience accessor for displayColorHex
+    func displayColorHex(for tierId: String) -> String? {
+        tierList.displayColorHex(for: tierId)
+    }
+
+    // MARK: - Undo/Redo Management
+
     internal func updateUndoManager(_ manager: UndoManager?) {
-        undoManager = manager
+        tierList.updateUndoManager(manager)
     }
 
-    internal func captureTierSnapshot() -> TierStateSnapshot {
-        TierStateSnapshot(
-            tiers: tiers,
-            tierOrder: tierOrder,
-            tierLabels: tierLabels,
-            tierColors: tierColors,
-            lockedTiers: lockedTiers
-        )
+    internal func captureTierSnapshot() -> TierListState.TierStateSnapshot {
+        tierList.captureTierSnapshot()
     }
 
-    internal func restore(from snapshot: TierStateSnapshot) {
-        tiers = snapshot.tiers
-        tierOrder = snapshot.tierOrder
-        tierLabels = snapshot.tierLabels
-        tierColors = snapshot.tierColors
-        lockedTiers = snapshot.lockedTiers
+    internal func restore(from snapshot: TierListState.TierStateSnapshot) {
+        tierList.restore(from: snapshot)
     }
 
-    internal func finalizeChange(action: String, undoSnapshot: TierStateSnapshot) {
-        if !isPerformingUndoRedo {
-            let redoSnapshot = captureTierSnapshot()
-            registerUndo(action: action, undoSnapshot: undoSnapshot, redoSnapshot: redoSnapshot, isRedo: false)
+    internal func finalizeChange(action: String, undoSnapshot: TierListState.TierStateSnapshot) {
+        tierList.finalizeChange(action: action, undoSnapshot: undoSnapshot) { [weak self] in
+            self?.markAsChanged()
         }
-        markAsChanged()
-    }
 
-    private func registerUndo(
-        action: String,
-        undoSnapshot: TierStateSnapshot,
-        redoSnapshot: TierStateSnapshot,
-        isRedo: Bool
-    ) {
-        guard let manager = undoManager else { return }
-        manager.registerUndo(withTarget: self) { target in
-            target.performUndo(
-                action: action,
-                undoSnapshot: undoSnapshot,
-                redoSnapshot: redoSnapshot,
-                isRedo: isRedo
-            )
+        // Show toast for undo/redo operations
+        if tierList.undoManager?.isUndoing == true {
+            showInfoToast("Undone", message: "\(action) reverted {undo}")
+        } else if tierList.undoManager?.isRedoing == true {
+            showInfoToast("Redone", message: "\(action) repeated {redo}")
         }
-        manager.setActionName(action)
-    }
-
-    private func performUndo(
-        action: String,
-        undoSnapshot: TierStateSnapshot,
-        redoSnapshot: TierStateSnapshot,
-        isRedo: Bool
-    ) {
-        isPerformingUndoRedo = true
-        defer { isPerformingUndoRedo = false }
-        let inverseSnapshot = captureTierSnapshot()
-        restore(from: undoSnapshot)
-        markAsChanged()
-        let toastTitle = isRedo ? "Redone" : "Undone"
-        let toastMessage = isRedo ? "\(action) repeated {redo}" : "\(action) reverted {undo}"
-        showInfoToast(toastTitle, message: toastMessage)
-        undoManager?.registerUndo(withTarget: self) { target in
-            target.performUndo(
-                action: action,
-                undoSnapshot: redoSnapshot,
-                redoSnapshot: inverseSnapshot,
-                isRedo: !isRedo
-            )
-        }
-        undoManager?.setActionName(action)
     }
 
     internal func markAsChanged() {
@@ -367,28 +357,19 @@ final class AppState {
     }
 
     internal func undo() {
-        if let manager = undoManager, manager.canUndo {
-            manager.undo()
-            return
-        }
+        tierList.undo()
     }
 
     internal func redo() {
-        if let manager = undoManager, manager.canRedo {
-            manager.redo()
-            return
-        }
+        tierList.redo()
     }
-    var canUndo: Bool { undoManager?.canUndo ?? false }
-    var canRedo: Bool { undoManager?.canRedo ?? false }
-    var totalItemCount: Int {
-        tiers.values.reduce(into: 0) { partialResult, items in
-            partialResult += items.count
-        }
-    }
-    var hasAnyItems: Bool { totalItemCount > 0 }
-    var hasEnoughForPairing: Bool { totalItemCount >= 2 }
-    var canRandomizeItems: Bool { totalItemCount > 1 }
+
+    var canUndo: Bool { tierList.canUndo }
+    var canRedo: Bool { tierList.canRedo }
+    var totalItemCount: Int { tierList.totalItemCount }
+    var hasAnyItems: Bool { tierList.hasAnyItems }
+    var hasEnoughForPairing: Bool { tierList.hasEnoughForPairing }
+    var canRandomizeItems: Bool { tierList.canRandomizeItems }
     var canStartHeadToHead: Bool { !headToHead.isActive && hasEnoughForPairing }
     var canShowAnalysis: Bool { hasAnyItems }
 

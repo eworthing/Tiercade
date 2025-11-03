@@ -28,7 +28,7 @@ internal struct HeadToHeadState: Sendable {
     var phase: H2HSessionPhase = .quick
 
     /// Snapshot of tier state before H2H session started (for undo)
-    var initialSnapshot: AppState.TierStateSnapshot?
+    var initialSnapshot: TierListState.TierStateSnapshot?
 
     // MARK: - Item Pool & Pairing
 

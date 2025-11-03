@@ -14,7 +14,7 @@ internal extension AppState {
                 let project = try await decodeProject(fromJSON: jsonString)
                 updateProgress(0.7)
                 let snapshot = captureTierSnapshot()
-                applyImportedProject(project, action: "Import JSON", fileName: nil, undoSnapshot: snapshot)
+                applyImportedProject(project, action: "Import JSON", fileName: nil as String?, undoSnapshot: snapshot)
                 updateProgress(1.0)
 
                 showSuccessToast("Import Complete", message: "Successfully imported tier list {import}")
@@ -229,7 +229,7 @@ internal extension AppState {
         _ project: Project,
         action: String,
         fileName: String?,
-        undoSnapshot: TierStateSnapshot
+        undoSnapshot: TierListState.TierStateSnapshot
     ) {
         let state = resolvedTierState(from: project)
         tierOrder = state.order
