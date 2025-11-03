@@ -126,7 +126,9 @@ internal enum AcceptanceTestSuite {
             }
         }
 
-        logger("📄 Telemetry: /tmp/unique_list_runs.jsonl")
+        let telemetryPath = FileManager.default.temporaryDirectory
+            .appendingPathComponent("unique_list_runs.jsonl").path
+        logger("📄 Telemetry: \(telemetryPath)")
 
         return report
     }

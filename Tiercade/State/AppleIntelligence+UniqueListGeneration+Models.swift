@@ -387,8 +387,8 @@ internal struct RunTelemetry: Codable {
 func exportTelemetryToJSONL(_ records: [RunTelemetry], to path: String? = nil) {
     guard !records.isEmpty else { return }
 
-    // Use NSTemporaryDirectory() for portability
-    let defaultPath = URL(fileURLWithPath: NSTemporaryDirectory())
+    // Use sandbox temp directory for security
+    let defaultPath = FileManager.default.temporaryDirectory
         .appendingPathComponent("unique_list_runs.jsonl").path
     let targetPath = path ?? defaultPath
 
@@ -419,6 +419,12 @@ func exportTelemetryToJSONL(_ records: [RunTelemetry], to path: String? = nil) {
             try fileHandle.seekToEnd()
         } else {
             FileManager.default.createFile(atPath: targetPath, contents: nil)
+            #if os(macOS)
+            try? FileManager.default.setAttributes(
+                [.posixPermissions: 0o600],
+                ofItemAtPath: targetPath
+            )
+            #endif
             fileHandle = try FileHandle(forWritingTo: fileURL)
         }
 

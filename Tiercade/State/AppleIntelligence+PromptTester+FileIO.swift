@@ -99,10 +99,17 @@ static func writeLogToFile(log: String, path: String) {
         print("🧪 ✅ Log file written successfully to: \(path)")
         print("🧪 📁 File size: \(log.count) characters")
 
-        // Mirror to the legacy aggregated log path for automation consumers
-        let legacyPath = "/tmp/tiercade_test_output.log"
-        try log.write(toFile: legacyPath, atomically: true, encoding: .utf8)
-        print("🧪 ✅ Legacy log mirrored to: \(legacyPath)")
+        // Mirror to sandbox temp for automation consumers
+        let sandboxTemp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("tiercade_test_output.log")
+        try log.write(to: sandboxTemp, atomically: true, encoding: .utf8)
+        #if os(macOS)
+        try? FileManager.default.setAttributes(
+            [.posixPermissions: 0o600],
+            ofItemAtPath: sandboxTemp.path
+        )
+        #endif
+        print("🧪 ✅ Sandbox temp log written to: \(sandboxTemp.path)")
     } catch {
         handleLogWriteError(log: log, path: path, error: error)
     }
