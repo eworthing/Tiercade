@@ -62,6 +62,20 @@ internal extension AppState {
             "S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []
         ]
 
+        var seenIDs = Set<String>()
+        var counters: [String: Int] = [:]
+
+        func uniqueID(from base: String) -> String {
+            var id = base
+            while seenIDs.contains(id) {
+                let next = (counters[id] ?? 1) + 1
+                counters[id] = next
+                id = "\(base)_\(next)"
+            }
+            seenIDs.insert(id)
+            return id
+        }
+
         for line in lines.dropFirst() {
             guard !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
 
@@ -69,7 +83,20 @@ internal extension AppState {
             guard components.count >= 3 else { continue }
 
             if let item = Self.createItemFromCSVComponents(components) {
-                Self.addItemToTier(item, tier: components[2], in: &newTiers)
+                // Ensure unique ID per import session
+                let base = item.id
+                let unique = uniqueID(from: base)
+                let adjusted = Item(
+                    id: unique,
+                    name: item.name,
+                    seasonString: item.seasonString,
+                    seasonNumber: item.seasonNumber,
+                    status: item.status,
+                    description: item.description,
+                    imageUrl: item.imageUrl,
+                    videoUrl: item.videoUrl
+                )
+                Self.addItemToTier(adjusted, tier: components[2], in: &newTiers)
             }
         }
 
@@ -163,27 +190,35 @@ internal extension AppState {
     }
 
     nonisolated private static func parseCSVLine(_ line: String) -> [String] {
-        var components: [String] = []
-        var currentComponent = ""
+        var fields: [String] = []
+        var current = ""
         var insideQuotes = false
+        var prevWasQuote = false
 
-        for character in line {
-            if character == "\"" {
-                insideQuotes.toggle()
-            } else if character == "," && !insideQuotes {
-                components.append(currentComponent)
-                currentComponent = ""
+        for ch in line {
+            if ch == "\"" {
+                if insideQuotes && prevWasQuote {
+                    current.append("\"")
+                    prevWasQuote = false
+                } else if insideQuotes {
+                    prevWasQuote = true
+                } else {
+                    insideQuotes = true
+                }
+            } else if ch == "," && !insideQuotes {
+                fields.append(current.trimmingCharacters(in: .whitespaces))
+                current = ""
+                prevWasQuote = false
             } else {
-                currentComponent.append(character)
+                if prevWasQuote {
+                    insideQuotes = false
+                    prevWasQuote = false
+                }
+                current.append(ch)
             }
         }
-        components.append(currentComponent)
-
-        return components.map { component in
-            component
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .replacingOccurrences(of: "\"", with: "")
-        }
+        fields.append(current.trimmingCharacters(in: .whitespaces))
+        return fields
     }
 
     // MARK: - Canonical project helpers

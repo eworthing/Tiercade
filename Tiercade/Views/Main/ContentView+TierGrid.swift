@@ -578,7 +578,7 @@ private struct ThumbnailView: View {
     @ViewBuilder
     private var thumbnailContent: some View {
         if let asset = item.imageUrl ?? item.videoUrl,
-           let url = URL(string: asset) {
+           let url = URLValidator.allowedMediaURL(from: asset) {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .empty:

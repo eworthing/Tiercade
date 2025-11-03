@@ -42,7 +42,7 @@ private struct GalleryPage: View {
 
     internal var body: some View {
         ZStack {
-            AsyncImage(url: URL(string: uri)) { phase in
+            AsyncImage(url: URLValidator.allowedMediaURL(from: uri)) { phase in
                 switch phase {
                 case .empty:
                     ProgressView()

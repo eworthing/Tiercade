@@ -46,13 +46,19 @@ internal struct DetailView: View {
                 if let v = item.videoUrl, let url = URL(string: v) {
                     #if os(tvOS)
                     Button("Play Video") {
-                        activePlayer = AVPlayer(url: url)
-                        showVideoPlayer = true
+                        if URLValidator.isAllowedExternalURL(url) {
+                            activePlayer = AVPlayer(url: url)
+                            showVideoPlayer = true
+                        } else {
+                            pendingURL = url
+                            showQR = true
+                        }
                     }
                     .buttonStyle(.tvRemote(.primary))
                     .accessibilityIdentifier("Detail_PlayVideo")
                     #else
                     Button("Play Video") {
+                        guard URLValidator.isAllowedExternalURL(url) else { pendingURL = url; showQR = true; return }
                         OpenExternal.open(url) { result in
                             if case .unsupported = result { pendingURL = url; showQR = true }
                         }

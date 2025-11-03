@@ -167,8 +167,10 @@ internal extension AppState {
         guard let relativePath = bundleRelativePath(from: uri) else { return nil }
 
         let fileManager = FileManager.default
-        let sourceURL = tempDirectory.appendingPathComponent(relativePath)
-        guard fileManager.fileExists(atPath: sourceURL.path) else {
+        // Canonicalize and ensure the source lives under the extraction directory
+        let base = tempDirectory.resolvingSymlinksInPath()
+        let sourceURL = base.appendingPathComponent(relativePath).resolvingSymlinksInPath()
+        guard sourceURL.path.hasPrefix(base.path + "/"), fileManager.fileExists(atPath: sourceURL.path) else {
             throw PersistenceError.fileSystemError("Missing asset inside bundle at \(relativePath)")
         }
 
@@ -251,10 +253,10 @@ internal extension AppState {
     internal func bundleRelativePath(from uri: String) -> String? {
         guard uri.hasPrefix("file://") else { return nil }
         let trimmed = String(uri.dropFirst("file://".count))
-        if trimmed.hasPrefix("/") {
-            return String(trimmed.dropFirst())
-        }
-        return trimmed
+        let path = trimmed.hasPrefix("/") ? String(trimmed.dropFirst()) : trimmed
+        // Reject attempts at path traversal or absolute paths
+        if path.contains("..") || path.hasPrefix("/") { return nil }
+        return path
     }
 
     internal func sanitizeFileName(_ fileName: String) -> String {

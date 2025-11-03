@@ -161,21 +161,30 @@ internal extension AppState {
     }
 
     private func exportToCSV(group: String, themeName: String) -> String {
+        func sanitizeCSVCell(_ value: String) -> String {
+            if value.hasPrefix("=") || value.hasPrefix("+") || value.hasPrefix("-") || value.hasPrefix("@") {
+                return "'" + value
+            }
+            return value
+        }
+
         var csv = "Name,Season,Tier\n"
 
         for tierName in tierOrder {
             guard let items = tiers[tierName] else { continue }
             for item in items {
-                let name = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
-                let season = item.seasonString ?? "?"
+                let rawName = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
+                let name = sanitizeCSVCell(rawName)
+                let season = sanitizeCSVCell(item.seasonString ?? "?")
                 csv += "\"\(name)\",\"\(season)\",\"\(tierName)\"\n"
             }
         }
 
         if let unranked = tiers["unranked"] {
             for item in unranked {
-                let name = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
-                let season = item.seasonString ?? "?"
+                let rawName = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
+                let name = sanitizeCSVCell(rawName)
+                let season = sanitizeCSVCell(item.seasonString ?? "?")
                 csv += "\"\(name)\",\"\(season)\",\"Unranked\"\n"
             }
         }
