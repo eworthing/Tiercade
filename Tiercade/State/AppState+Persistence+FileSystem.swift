@@ -39,6 +39,13 @@ internal extension AppState {
             try data.write(to: projectURL, options: .atomic)
 
             for exportFile in artifacts.files {
+                // Validate relative path to prevent traversal attacks
+                guard try validateExportPath(exportFile.relativePath) else {
+                    throw PersistenceError.fileSystemError(
+                        "Export path contains invalid components (traversal attempt): \(exportFile.relativePath)"
+                    )
+                }
+
                 let destinationURL = destination.appendingPathComponent(exportFile.relativePath)
                 try fileManager.createDirectory(
                     at: destinationURL.deletingLastPathComponent(),
@@ -257,6 +264,30 @@ internal extension AppState {
         // Reject attempts at path traversal or absolute paths
         if path.contains("..") || path.hasPrefix("/") { return nil }
         return path
+    }
+
+    /// Validates that an export path doesn't contain traversal sequences
+    /// Returns true if path is safe, false if it should be rejected
+    private func validateExportPath(_ path: String) throws(PersistenceError) -> Bool {
+        // Reject absolute paths
+        guard !path.hasPrefix("/") else { return false }
+
+        // Reject paths with traversal sequences
+        guard !path.contains("..") else { return false }
+
+        // Canonicalize and verify it stays relative
+        let components = path.split(separator: "/").map(String.init)
+        var normalized: [String] = []
+        for component in components {
+            if component == ".." {
+                return false  // Reject any .. components
+            } else if component != "." && !component.isEmpty {
+                normalized.append(component)
+            }
+        }
+
+        // Ensure the normalized path is non-empty and still relative
+        return !normalized.isEmpty && !normalized.joined(separator: "/").hasPrefix("/")
     }
 
     internal func sanitizeFileName(_ fileName: String) -> String {
