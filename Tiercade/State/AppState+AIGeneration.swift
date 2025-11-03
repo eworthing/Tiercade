@@ -192,4 +192,3 @@ internal extension AppState {
         aiGeneration.aiGenerationInProgress = false
     }
 }
-

@@ -11,7 +11,10 @@ public enum ModelResolverError: Error {
         case .fileTooLarge(let size, let limit):
             let sizeMB = Double(size) / 1_000_000.0
             let limitMB = Double(limit) / 1_000_000.0
-            return "Project file is too large (\(String(format: "%.1f", sizeMB))MB). Maximum allowed size is \(String(format: "%.1f", limitMB))MB."
+            return """
+                Project file is too large (\(String(format: "%.1f", sizeMB))MB). \
+                Maximum allowed size is \(String(format: "%.1f", limitMB))MB.
+                """
         }
     }
 }

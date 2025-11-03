@@ -37,12 +37,10 @@ extension TierListState {
         }
 
         // INVARIANT 3: All tierOrder entries must exist in tiers (prevents dangling tier names)
-        for tierName in tierOrder {
-            if tiers[tierName] == nil {
-                let message = "WARNING: Tier '\(tierName)' in tierOrder has no tiers entry"
-                violations.append(message)
-                Logger.appState.warning("\(message)")
-            }
+        for tierName in tierOrder where tiers[tierName] == nil {
+            let message = "WARNING: Tier '\(tierName)' in tierOrder has no tiers entry"
+            violations.append(message)
+            Logger.appState.warning("\(message)")
         }
 
         if violations.isEmpty {

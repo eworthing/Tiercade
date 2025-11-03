@@ -163,24 +163,21 @@ struct TiercadeApp: App {
 
     #if DEBUG && canImport(FoundationModels)
     private func checkForAutomatedTesting() {
-        if CommandLine.arguments.contains("-runUnifiedTests") {
-            runUnifiedTests()
-        } else if CommandLine.arguments.contains("-runEnhancedPromptTests") {
-            runEnhancedPromptTests()
-        } else if CommandLine.arguments.contains("-runPromptTests") {
-            runPromptTests()
-        } else if CommandLine.arguments.contains("-runAcceptanceTests-legacy") {
-            runAcceptanceTestsLegacy()
-        } else if CommandLine.arguments.contains("-runCoordinatorExperiments") {
-            runCoordinatorExperiments()
-        } else if CommandLine.arguments.contains("-runCoordinatorHybrid") {
-            runCoordinatorHybrid()
-        } else if CommandLine.arguments.contains("-runCoordinatorMediumGrid") {
-            runCoordinatorMediumGrid()
-        } else if CommandLine.arguments.contains("-runPilotTests") {
-            runPilotTests()
-        } else if CommandLine.arguments.contains("-runDiagnostics") {
-            runDiagnostics()
+        let testHandlers: [(String, () -> Void)] = [
+            ("-runUnifiedTests", runUnifiedTests),
+            ("-runEnhancedPromptTests", runEnhancedPromptTests),
+            ("-runPromptTests", runPromptTests),
+            ("-runAcceptanceTests-legacy", runAcceptanceTestsLegacy),
+            ("-runCoordinatorExperiments", runCoordinatorExperiments),
+            ("-runCoordinatorHybrid", runCoordinatorHybrid),
+            ("-runCoordinatorMediumGrid", runCoordinatorMediumGrid),
+            ("-runPilotTests", runPilotTests),
+            ("-runDiagnostics", runDiagnostics)
+        ]
+
+        for (argument, handler) in testHandlers where CommandLine.arguments.contains(argument) {
+            handler()
+            return
         }
     }
 
