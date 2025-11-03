@@ -61,13 +61,25 @@ internal final class ThemeState {
     // MARK: - Theme Application
 
     /// Apply a theme and return the color mappings
+    /// Supports variable-length tier lists by repeating last color when tiers exceed theme ranks
     internal func applyTheme(_ theme: TierTheme, to tierOrder: [String]) -> [String: String] {
         selectedTheme = theme
         selectedThemeID = theme.id
 
+        let themeRankCount = theme.rankedTiers.count
+
         var colors: [String: String] = [:]
         for (index, tierId) in tierOrder.enumerated() {
-            colors[tierId] = theme.colorHex(forRank: tierId, fallbackIndex: index)
+            // Try name match first, then positional
+            if let colorHex = theme.colorHex(forRank: tierId, fallbackIndex: index) {
+                colors[tierId] = colorHex
+            } else if themeRankCount > 0 {
+                // UX enhancement: repeat last color if we exceed theme tier count
+                let lastIndex = themeRankCount - 1
+                colors[tierId] = theme.colorHex(forRankIndex: lastIndex) ?? TierTheme.fallbackColor
+            } else {
+                colors[tierId] = TierTheme.fallbackColor
+            }
         }
         colors["unranked"] = theme.unrankedColorHex
 
