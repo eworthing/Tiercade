@@ -55,7 +55,7 @@ internal struct TierRowWrapper: View {
                     return false
                 }
 
-                provider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { item, error in
+                provider.loadItem(forTypeIdentifier: UTType.text.identifier, options: nil) { item, _ in
                     if let data = item as? Data, let id = String(data: data, encoding: .utf8) {
                         Task { @MainActor in
                             app.move(id, to: tier)

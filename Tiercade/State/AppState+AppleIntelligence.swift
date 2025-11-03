@@ -104,9 +104,9 @@ final class AppleIntelligenceService_DEPRECATED {
     var promptStyle: PromptAB = .strict
 
     // Last-run context for rating/export
-    var lastGeneratedItems: [String]? = nil
-    var lastRunDiagnosticsJSON: String? = nil
-    var lastUserQuery: String? = nil
+    var lastGeneratedItems: [String]?
+    var lastRunDiagnosticsJSON: String?
+    var lastUserQuery: String?
 
     internal static let maxContextTokens = 4096
     internal static let instructionsTokenEstimate = 100 // Estimated tokens for our strong anti-duplicate instructions
@@ -275,7 +275,7 @@ final class AppleIntelligenceService_DEPRECATED {
             if useLeadingToolchain, detection.count == nil {
                 detection = (isListRequest: true, count: 50)
             }
-            if (useLeadingToolchain || detection.isListRequest), let count = detection.count {
+            if useLeadingToolchain || detection.isListRequest, let count = detection.count {
                 print("🤖 [AI] 🧪 POC: Detected list request for \(count) items")
                 print("🤖 [AI] 🧪 POC: Using advanced UniqueListCoordinator")
 

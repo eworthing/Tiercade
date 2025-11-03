@@ -95,7 +95,7 @@ internal struct CoordinatorExperimentRunner {
                 guidedBudgetBumpFirst: false
             )
         ]
-        
+
         return await run(scenarios: scenarios)
     }
 
@@ -124,7 +124,7 @@ internal struct CoordinatorExperimentRunner {
                 guidedBudgetBumpFirst: false
             )
         ]
-        
+
         return await run(scenarios: scenarios)
     }
 

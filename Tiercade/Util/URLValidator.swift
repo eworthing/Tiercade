@@ -19,4 +19,3 @@ internal enum URLValidator {
         return url
     }
 }
-
