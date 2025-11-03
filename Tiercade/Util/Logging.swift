@@ -56,4 +56,7 @@ extension Logger {
 
     /// Search operations
     internal static let search = Logger(subsystem: subsystem, category: "Search")
+
+    /// Apple Intelligence and AI generation (DEBUG only)
+    internal static let aiGeneration = Logger(subsystem: subsystem, category: "AI-Generation")
 }

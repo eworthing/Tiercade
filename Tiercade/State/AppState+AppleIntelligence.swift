@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import Observation
 import TiercadeCore
+import os
 
 #if canImport(FoundationModels)
 import FoundationModels
@@ -222,7 +223,7 @@ final class AppleIntelligenceService {
         isProcessing = true
         defer {
             isProcessing = false
-            print("🤖 [AI] isProcessing set to false")
+            Logger.aiGeneration.debug("isProcessing set to false")
         }
 
         #if canImport(FoundationModels)
@@ -236,16 +237,16 @@ final class AppleIntelligenceService {
         // Standard response path (re-ensure session in case advanced path reset it)
         _ = ensureSessionAvailable()
         await executeStandardResponse(text: sanitizedText)
-        print("🤖 [AI] ===== sendMessage END =====")
+        Logger.aiGeneration.debug("sendMessage END")
         #else
         handleFoundationModelsUnavailable()
         #endif
     }
 
     private func logSendMessageStart() {
-        print("🤖 [AI] ===== sendMessage START =====")
-        print("🤖 [AI] Message count before: \(messages.count)")
-        print("🤖 [AI] Estimated tokens before: \(estimatedTokenCount)")
+        Logger.aiGeneration.debug("sendMessage START")
+        Logger.aiGeneration.debug("Message count: \(self.messages.count)")
+        Logger.aiGeneration.debug("Estimated tokens: \(self.estimatedTokenCount)")
     }
 
     #if canImport(FoundationModels)
