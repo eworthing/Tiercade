@@ -172,21 +172,31 @@ internal struct CoordinatorExperimentRunner {
         let report = await run(scenarios: scenarios)
 
         // Pick best arm: highest pass@N; tie break by best time/unique
-        var perScenario: [String: (pass: Int, total: Int, timePerUnique: Double)] = [:]
+        struct ScenarioMetrics {
+            var pass: Int
+            var total: Int
+            var timePerUnique: Double
+        }
+        var perScenario: [String: ScenarioMetrics] = [:]
         for r in report.results {
             let key = r.scenarioId
-            var entry = perScenario[key] ?? (0, 0, 0.0)
+            var entry = perScenario[key] ?? ScenarioMetrics(pass: 0, total: 0, timePerUnique: 0.0)
             entry.total += 1
             if r.passAtN { entry.pass += 1 }
             let tpu = r.uniqueItems > 0 ? r.duration / Double(r.uniqueItems) : r.duration
             entry.timePerUnique += tpu
             perScenario[key] = entry
         }
-        var ranked: [(id: String, score: Double, tpu: Double)] = []
+        struct RankedScenario {
+            let id: String
+            let score: Double
+            let tpu: Double
+        }
+        var ranked: [RankedScenario] = []
         for (id, v) in perScenario {
             let passRate = Double(v.pass) / Double(max(1, v.total))
             let avgTPU = v.timePerUnique / Double(max(1, v.total))
-            ranked.append((id, passRate, avgTPU))
+            ranked.append(RankedScenario(id: id, score: passRate, tpu: avgTPU))
         }
         ranked.sort { (a, b) in
             if abs(a.score - b.score) > 0.0001 { return a.score > b.score }
@@ -211,15 +221,15 @@ internal struct CoordinatorExperimentRunner {
 
             for seed in scenario.seeds {
                 do {
-                    let (items, duration, diag) = try await runSingle(
+                    let result = try await runSingle(
                         scenario: scenario,
                         seed: seed
                     )
 
-                    let pass = items.count >= scenario.targetN
+                    let pass = result.items.count >= scenario.targetN
                     if pass { success += 1 }
 
-                    let escalate = shouldEscalatePCC(diagnostics: diag, pass: pass)
+                    let escalate = shouldEscalatePCC(diagnostics: result.diagnostics, pass: pass)
 
                     results.append(SingleRunResult(
                         scenarioId: scenario.id,
@@ -227,24 +237,25 @@ internal struct CoordinatorExperimentRunner {
                         seed: seed,
                         guidedBackfill: scenario.useGuidedBackfill,
                         prewarm: scenario.prewarm,
-                        uniqueItems: items.count,
+                        uniqueItems: result.items.count,
                         passAtN: pass,
-                        duration: duration,
+                        duration: result.duration,
                         diagnostics: DiagSummary(
-                            totalGenerated: diag.totalGenerated,
-                            dupCount: diag.dupCount,
-                            dupRate: diag.dupRate,
-                            backfillRounds: diag.backfillRounds,
-                            circuitBreakerTriggered: diag.circuitBreakerTriggered,
-                            passCount: diag.passCount,
-                            failureReason: diag.failureReason
+                            totalGenerated: result.diagnostics.totalGenerated,
+                            dupCount: result.diagnostics.dupCount,
+                            dupRate: result.diagnostics.dupRate,
+                            backfillRounds: result.diagnostics.backfillRounds,
+                            circuitBreakerTriggered: result.diagnostics.circuitBreakerTriggered,
+                            passCount: result.diagnostics.passCount,
+                            failureReason: result.diagnostics.failureReason
                         ),
                         wouldEscalatePCC: escalate
                     ))
 
-                    let dupPct = diag.dupRate.map { String(format: "%.1f%%", $0 * 100) } ?? "n/a"
-                    let durStr = String(format: "%.2fs", duration)
-                    onProgress("  • seed=\(seed) pass=\(pass) unique=\(items.count) dup=\(dupPct) dur=\(durStr) escalate=\(escalate)")
+                    let dupPct = result.diagnostics.dupRate.map { String(format: "%.1f%%", $0 * 100) } ?? "n/a"
+                    let durStr = String(format: "%.2fs", result.duration)
+                    let uniqueCount = result.items.count
+                    onProgress("  • seed=\(seed) pass=\(pass) unique=\(uniqueCount) dup=\(dupPct) dur=\(durStr) escalate=\(escalate)")
 
                 } catch {
                     onProgress("  ❌ seed=\(seed) error: \(error.localizedDescription)")
@@ -266,7 +277,13 @@ internal struct CoordinatorExperimentRunner {
         return report
     }
 
-    private func runSingle(scenario: Scenario, seed: UInt64) async throws -> ([String], Double, UniqueListCoordinator.RunDiagnostics) {
+    struct RunResult {
+        let items: [String]
+        let duration: Double
+        let diagnostics: UniqueListCoordinator.RunDiagnostics
+    }
+
+    private func runSingle(scenario: Scenario, seed: UInt64) async throws -> RunResult {
         let instructions = Instructions("""
         You are a helpful assistant that generates lists.
         Always return valid JSON matching the requested schema.
@@ -299,7 +316,7 @@ internal struct CoordinatorExperimentRunner {
         let dt = Date().timeIntervalSince(t0)
 
         let diag = coordinator.getDiagnostics()
-        return (items, dt, diag)
+        return RunResult(items: items, duration: dt, diagnostics: diag)
     }
 
     private func shouldEscalatePCC(diagnostics: UniqueListCoordinator.RunDiagnostics, pass: Bool) -> Bool {
