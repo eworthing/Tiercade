@@ -155,7 +155,7 @@ final class AppleIntelligenceService {
         }
 
         estimatedTokenCount = total
-        print("🤖 [AI] Estimated tokens: \(estimatedTokenCount)/\(Self.maxContextTokens)")
+        Logger.aiGeneration.debug("Estimated tokens: \(self.estimatedTokenCount)/\(Self.maxContextTokens)")
     }
 
     #if canImport(FoundationModels)
@@ -165,7 +165,7 @@ final class AppleIntelligenceService {
         if session == nil {
             let instructions = makeAntiDuplicateInstructions()
             session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
-            print("🤖 [AI] Created new LanguageModelSession with STRONG anti-duplicate instructions")
+            Logger.aiGeneration.info("Created new LanguageModelSession")
         }
     }
     #endif
@@ -279,8 +279,8 @@ final class AppleIntelligenceService {
             return false
         }
 
-        print("🤖 [AI] Session exists ✓")
-        print("🤖 [AI] Session.isResponding: \(session!.isResponding)")
+        Logger.aiGeneration.debug("Session exists")
+        Logger.aiGeneration.debug("Session.isResponding: \(self.session!.isResponding)")
         return true
     }
 
@@ -325,7 +325,7 @@ final class AppleIntelligenceService {
 
         do {
             let startTime = Date()
-            print("🤖 [AI] Calling session.respond() at \(startTime)...")
+            Logger.aiGeneration.debug("Calling session.respond()")
             print("🤖 [AI] Prompt text: \"\(text)\"")
 
             let response = try await session.respond(to: Prompt(text))
@@ -336,8 +336,8 @@ final class AppleIntelligenceService {
             let deduplicated = deduplicateListItems(response.content)
             messages.append(AIChatMessage(content: deduplicated, isUser: false))
             updateTokenEstimate()
-            print("🤖 [AI] Message count after: \(messages.count)")
-            print("🤖 [AI] Estimated tokens after: \(estimatedTokenCount)")
+            Logger.aiGeneration.debug("Message count after: \(self.messages.count)")
+            Logger.aiGeneration.debug("Estimated tokens after: \(self.estimatedTokenCount)")
         } catch let error as LanguageModelSession.GenerationError {
             await handleGenerationError(error, originalText: text)
         } catch {
@@ -347,20 +347,20 @@ final class AppleIntelligenceService {
 
     private func logResponseReceived(response: LanguageModelSession.Response<String>, startTime: Date) {
         let elapsed = Date().timeIntervalSince(startTime)
-        print("🤖 [AI] ✓ Received response after \(String(format: "%.2f", elapsed))s")
-        print("🤖 [AI] Response content: \"\(response.content)\"")
-        print("🤖 [AI] Response length: \(response.content.count) chars")
+        Logger.aiGeneration.info("Received response after \(String(format: "%.2f", elapsed))s")
+        Logger.aiGeneration.debug("Response content: \"\(response.content)\"")
+        Logger.aiGeneration.debug("Response length: \(response.content.count) chars")
     }
 
     /// Handle LanguageModelSession.GenerationError cases
     private func handleGenerationError(_ error: LanguageModelSession.GenerationError, originalText: String) async {
-        print("🤖 [AI] ❌ GenerationError caught: \(error)")
+        Logger.aiGeneration.error("GenerationError caught: \(error)")
         print("🤖 [AI] Error description: \(error.localizedDescription)")
         print("🤖 [AI] Error type: \(type(of: error))")
 
         // Handle context window overflow by resetting the session
         if case .exceededContextWindowSize = error {
-            print("🤖 [AI] Context window exceeded - resetting session")
+            Logger.aiGeneration.info("Context window exceeded - resetting session")
             // Remove the user message we just added (will be re-added on retry)
             if messages.last?.isUser == true {
                 messages.removeLast()
@@ -372,7 +372,7 @@ final class AppleIntelligenceService {
             ))
             updateTokenEstimate()
             // Retry the current message with new session
-            print("🤖 [AI] Retrying with new session...")
+            Logger.aiGeneration.info("Retrying with new session")
             await sendMessage(originalText)
             return
         }
@@ -449,7 +449,7 @@ final class AppleIntelligenceService {
     private func resetSession() {
         #if canImport(FoundationModels)
         session = nil
-        print("🤖 [AI] Session reset")
+        Logger.aiGeneration.debug("Session reset")
         #endif
     }
 

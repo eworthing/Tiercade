@@ -160,22 +160,24 @@ internal extension AppState {
         return markdown
     }
 
-    private func exportToCSV(group: String, themeName: String) -> String {
-        func sanitizeCSVCell(_ value: String) -> String {
-            if value.hasPrefix("=") || value.hasPrefix("+") || value.hasPrefix("-") || value.hasPrefix("@") {
-                return "'" + value
-            }
-            return value
+    /// Sanitizes CSV cell values to prevent formula injection attacks
+    /// Prefixes formula-leading characters (=, +, -, @) with a single quote
+    internal static func sanitizeCSVCell(_ value: String) -> String {
+        if value.hasPrefix("=") || value.hasPrefix("+") || value.hasPrefix("-") || value.hasPrefix("@") {
+            return "'" + value
         }
+        return value
+    }
 
+    private func exportToCSV(group: String, themeName: String) -> String {
         var csv = "Name,Season,Tier\n"
 
         for tierName in tierOrder {
             guard let items = tiers[tierName] else { continue }
             for item in items {
                 let rawName = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
-                let name = sanitizeCSVCell(rawName)
-                let season = sanitizeCSVCell(item.seasonString ?? "?")
+                let name = Self.sanitizeCSVCell(rawName)
+                let season = Self.sanitizeCSVCell(item.seasonString ?? "?")
                 csv += "\"\(name)\",\"\(season)\",\"\(tierName)\"\n"
             }
         }
@@ -183,8 +185,8 @@ internal extension AppState {
         if let unranked = tiers["unranked"] {
             for item in unranked {
                 let rawName = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
-                let name = sanitizeCSVCell(rawName)
-                let season = sanitizeCSVCell(item.seasonString ?? "?")
+                let name = Self.sanitizeCSVCell(rawName)
+                let season = Self.sanitizeCSVCell(item.seasonString ?? "?")
                 csv += "\"\(name)\",\"\(season)\",\"Unranked\"\n"
             }
         }

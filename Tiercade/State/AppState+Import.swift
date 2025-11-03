@@ -191,7 +191,7 @@ internal extension AppState {
         }
     }
 
-    nonisolated private static func parseCSVLine(_ line: String) -> [String] {
+    nonisolated internal static func parseCSVLine(_ line: String) -> [String] {
         var fields: [String] = []
         var current = ""
         var insideQuotes = false

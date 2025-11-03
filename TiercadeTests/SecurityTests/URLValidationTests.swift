@@ -50,7 +50,7 @@ struct URLValidationTests {
         #expect(!URLValidator.isAllowedMediaURL(customURL))
     }
 
-    // MARK: - External URL Validation (HTTPS-only for links)
+    // MARK: - External URL Validation (HTTP/HTTPS for browser handoff)
 
     @Test("Rejects file:// URLs for external opens")
     func externalRejectFileURLs() {
@@ -62,6 +62,12 @@ struct URLValidationTests {
     func externalAcceptHTTPSURLs() {
         let httpsURL = URL(string: "https://example.com")!
         #expect(URLValidator.isAllowedExternalURL(httpsURL))
+    }
+
+    @Test("Accepts http:// URLs for external opens (Safari handles connection)")
+    func externalAcceptHTTPURLs() {
+        let httpURL = URL(string: "http://example.com")!
+        #expect(URLValidator.isAllowedExternalURL(httpURL))
     }
 
     // MARK: - Edge Cases
