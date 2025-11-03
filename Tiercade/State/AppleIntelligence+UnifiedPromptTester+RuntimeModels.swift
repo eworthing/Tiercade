@@ -109,10 +109,8 @@ internal struct PromptTemplate {
     /// Check which variables are required by this template
     internal func requiredVariables() -> Set<Variable> {
         var required = Set<Variable>()
-        for variable in Variable.allCases {
-            if raw.contains(variable.rawValue) {
-                required.insert(variable)
-            }
+        for variable in Variable.allCases where raw.contains(variable.rawValue) {
+            required.insert(variable)
         }
         return required
     }
