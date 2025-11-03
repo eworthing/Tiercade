@@ -25,11 +25,11 @@ internal struct QuickMoveOverlay: View {
 
             ZStack {
                 // Background dimming
-                Color.black.opacity(0.65)
+                Color.black.opacity(OpacityTokens.scrim)
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
 
-                VStack(spacing: 28) {
+                VStack(spacing: SpacingTokens.verticalSpacing) {
                     // Title
                     Text(title)
                         .font(.title2.weight(.semibold))
@@ -45,8 +45,8 @@ internal struct QuickMoveOverlay: View {
                     )
 
                     Divider()
-                        .opacity(0.3)
-                        .padding(.horizontal, 24)
+                        .opacity(OpacityTokens.divider)
+                        .padding(.horizontal, SpacingTokens.horizontalPadding)
 
                     // Action buttons
                     actionButtons(
@@ -55,10 +55,10 @@ internal struct QuickMoveOverlay: View {
                         isMultiSelectActive: isMultiSelectActive
                     )
                 }
-                .padding(32)
+                .padding(SpacingTokens.overlayPadding)
                 .background(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(Color.black.opacity(0.85))
+                        .fill(Color.black.opacity(OpacityTokens.containerBackground))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
@@ -83,7 +83,6 @@ internal struct QuickMoveOverlay: View {
                 }
                 .onDisappear { focusedElement = nil }
                 .onExitCommand { app.cancelQuickMove() }
-                .accessibilityIdentifier("QuickMove_Overlay")
                 .accessibilityElement(children: .contain)
                 .accessibilityAddTraits(.isModal)
             }
@@ -265,7 +264,7 @@ private struct TierButton: View {
             .frame(height: 74)
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .tvGlassRounded(16)
-            .tint(tierColor.opacity(isCurrentTier ? 0.36 : 0.24))
+            .tint(tierColor.opacity(isCurrentTier ? OpacityTokens.focusedTint : OpacityTokens.unfocusedTint))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .stroke(

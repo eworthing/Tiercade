@@ -217,10 +217,12 @@ internal extension AppState {
 
     internal func cancelH2H(fromExitCommand: Bool = false) {
         guard h2hActive else { return }
-        if fromExitCommand, let activatedAt = h2hActivatedAt, Date().timeIntervalSince(activatedAt) < 0.35 {
+        #if os(tvOS)
+        if fromExitCommand, let activatedAt = h2hActivatedAt, Date().timeIntervalSince(activatedAt) < TVInteraction.exitCommandDebounce {
             Logger.headToHead.debug("Cancel ignored: exitCommand within debounce window")
             return
         }
+        #endif
         resetH2HSession()
         showInfoToast("Head-to-Head Cancelled", message: "No changes were made.")
         Logger.headToHead.info("H2H cancelled: trigger=\(fromExitCommand ? "exitCommand" : "user")")
@@ -255,12 +257,12 @@ internal extension AppState {
         guard poolCount > 1 else { return 0 }
         let maxUnique = poolCount - 1
         let desired: Int
-        if poolCount >= 10 {
-            desired = 3
-        } else if poolCount >= 6 {
-            desired = 3
+        if poolCount >= H2HHeuristics.largePoolThreshold {
+            desired = H2HHeuristics.largeDesiredComparisons
+        } else if poolCount >= H2HHeuristics.mediumPoolThreshold {
+            desired = H2HHeuristics.mediumDesiredComparisons
         } else {
-            desired = 2
+            desired = H2HHeuristics.smallDesiredComparisons
         }
         return max(1, min(desired, maxUnique))
     }

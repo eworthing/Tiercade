@@ -225,7 +225,7 @@ final class AppState {
     }
 
     var h2hOverallProgress: Double {
-        let quickWeight = 0.75
+        let quickWeight = HeadToHeadWeights.quickPhase
         var progress: Double = 0
 
         if h2hTotalComparisons > 0 {
@@ -238,7 +238,7 @@ final class AppState {
                 min(h2hRefinementCompletedComparisons, h2hRefinementTotalComparisons)
             ) / Double(h2hRefinementTotalComparisons)
             progress = min(progress, quickWeight)
-            progress += (1 - quickWeight) * min(max(refinementFraction, 0), 1)
+            progress += HeadToHeadWeights.refinementPhase * min(max(refinementFraction, 0), 1)
         } else if !h2hActive && h2hTotalComparisons > 0 && h2hCompletedComparisons >= h2hTotalComparisons {
             progress = 1.0
         }
