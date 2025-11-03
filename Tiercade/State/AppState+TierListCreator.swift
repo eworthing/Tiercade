@@ -61,7 +61,7 @@ internal extension AppState {
     }
 
     private func projectForEditor(from handle: TierListHandle) -> Project? {
-        if let entity = activeTierListEntity {
+        if let entity = persistence.activeTierListEntity {
             if let data = entity.projectData {
                 do {
                     return try TierListCreatorCodec.makeDecoder().decode(Project.self, from: data)

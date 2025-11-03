@@ -409,7 +409,7 @@ internal extension AppState {
         return Project(
             schemaVersion: 1,
             projectId: projectIdentifier,
-            title: activeTierList?.displayName ?? "Untitled Project",
+            title: persistence.activeTierList?.displayName ?? "Untitled Project",
             description: nil,
             tiers: projectTiers,
             items: projectItems,
@@ -537,8 +537,8 @@ internal extension AppState {
     }
 
     private func determineProjectIdentifier() -> String {
-        activeTierList?.entityID?.uuidString
-            ?? activeTierList?.identifier
+        persistence.activeTierList?.entityID?.uuidString
+            ?? persistence.activeTierList?.identifier
             ?? UUID().uuidString
     }
 }

@@ -137,7 +137,7 @@ internal extension AppState {
                 tierListCreatorDraft = nil
                 let feedback = successFeedback(for: context, action: action, entityTitle: entity.title)
                 dismissTierListCreator(resetDraft: true)
-                let handle = AppState.TierListHandle(entity: entity)
+                let handle = TierListHandle(entity: entity)
                 registerTierListSelection(handle)
                 showToast(type: .success, title: feedback.title, message: feedback.message)
             } catch {

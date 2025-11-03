@@ -351,7 +351,7 @@ internal extension AppState {
         var settingsAdditional: [String: JSONValue] = [
             "cardDensityPreference": .string(cardDensityPreference.rawValue)
         ]
-        if let activeGroup = activeTierList?.displayName {
+        if let activeGroup = persistence.activeTierList?.displayName {
             settingsAdditional["activeList"] = .string(activeGroup)
         }
 
@@ -381,7 +381,7 @@ internal extension AppState {
 
     private func buildProjectAudit(timestamp: Date) -> Project.Audit {
         Project.Audit(
-            createdAt: lastSavedTime ?? timestamp,
+            createdAt: persistence.lastSavedTime ?? timestamp,
             updatedAt: timestamp,
             createdBy: "local-user",
             updatedBy: "local-user"
@@ -568,10 +568,10 @@ internal extension AppState {
     }
 
     private func exportProjectIdentifier() -> String {
-        if let handle = activeTierList {
+        if let handle = persistence.activeTierList {
             return handle.identifier
         }
-        if let currentFileName {
+        if let currentFileName = persistence.currentFileName {
             return currentFileName
         }
         return "tiercade-\(UUID().uuidString)"

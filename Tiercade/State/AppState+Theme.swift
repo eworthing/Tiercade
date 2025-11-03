@@ -19,7 +19,7 @@ internal extension AppState {
             tierColors[tierId] = selectedTheme.colorHex(forRank: tierId, fallbackIndex: index)
         }
         tierColors["unranked"] = selectedTheme.unrankedColorHex
-        hasUnsavedChanges = true
+        persistence.hasUnsavedChanges = true
     }
 
     /// Resets all tier colors to use the selected theme

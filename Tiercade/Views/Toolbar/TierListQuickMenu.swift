@@ -1,7 +1,6 @@
 import SwiftUI
 
 internal struct TierListQuickMenu: View {
-    private typealias TierListHandle = AppState.TierListHandle
     @Bindable var app: AppState
 
     #if os(tvOS)
@@ -42,9 +41,9 @@ internal struct TierListQuickMenu: View {
         } else {
             // Use Picker for selection with checkmark pattern (Apple HIG)
             Picker("Tier List", selection: Binding(
-                get: { app.activeTierList },
+                get: { app.persistence.activeTierList },
                 set: { newValue in
-                    guard let newValue, newValue != app.activeTierList else { return }
+                    guard let newValue, newValue != app.persistence.activeTierList else { return }
                     Task { await app.selectTierList(newValue) }
                 }
             )) {

@@ -63,8 +63,8 @@ internal extension AppState {
         do {
             try persistActiveTierList()
             try modelContext.save()
-            hasUnsavedChanges = false
-            lastSavedTime = Date()
+            persistence.hasUnsavedChanges = false
+            persistence.lastSavedTime = Date()
         } catch let error as PersistenceError {
             throw error
         } catch {
@@ -77,12 +77,12 @@ internal extension AppState {
     }
 
     internal func autoSave() throws(PersistenceError) {
-        guard hasUnsavedChanges else { return }
+        guard persistence.hasUnsavedChanges else { return }
         try save()
     }
 
     internal func autoSaveAsync() async {
-        guard hasUnsavedChanges else { return }
+        guard persistence.hasUnsavedChanges else { return }
         try? save()
     }
 
@@ -90,7 +90,7 @@ internal extension AppState {
     internal func load() -> Bool {
         do {
             if let entity = try fetchActiveTierListEntity() {
-                activeTierListEntity = entity
+                persistence.activeTierListEntity = entity
                 applyLoadedTierList(entity)
                 return true
             }
@@ -155,8 +155,8 @@ internal extension AppState {
         do {
             try persistActiveTierList()
             try modelContext.save()
-            hasUnsavedChanges = false
-            lastSavedTime = Date()
+            persistence.hasUnsavedChanges = false
+            persistence.lastSavedTime = Date()
         } catch let error as PersistenceError {
             Logger.persistence.error("Persist after external load failed: \(error.localizedDescription)")
         } catch {
@@ -171,14 +171,14 @@ internal extension AppState {
     }
 
     private func finalizeSuccessfulFileSave(named fileName: String) {
-        currentFileName = fileName
-        hasUnsavedChanges = false
-        lastSavedTime = Date()
+        persistence.currentFileName = fileName
+        persistence.hasUnsavedChanges = false
+        persistence.lastSavedTime = Date()
         showSuccessToast("File Saved", message: "Saved as \(fileName).tierproj {file}")
     }
 
     internal func fetchActiveTierListEntity() throws(PersistenceError) -> TierListEntity? {
-        if let cached = activeTierListEntity {
+        if let cached = persistence.activeTierListEntity {
             return cached
         }
 
@@ -189,7 +189,7 @@ internal extension AppState {
             )
 
             if let entity = try modelContext.fetch(descriptor).first {
-                activeTierListEntity = entity
+                persistence.activeTierListEntity = entity
                 return entity
             }
 
@@ -198,7 +198,7 @@ internal extension AppState {
             )
             let entity = try modelContext.fetch(anyDescriptor).first
             if let entity {
-                activeTierListEntity = entity
+                persistence.activeTierListEntity = entity
             }
             return entity
         } catch {
@@ -214,21 +214,21 @@ internal extension AppState {
 
         let newEntity = TierListEntity(
             title: activeTierDisplayName,
-            fileName: currentFileName,
+            fileName: persistence.currentFileName,
             cardDensityRaw: cardDensityPreference.rawValue,
             selectedThemeID: selectedThemeID,
             customThemesData: encodedCustomThemesData(),
             globalSortModeData: encodedGlobalSortMode()
         )
         modelContext.insert(newEntity)
-        activeTierListEntity = newEntity
+        persistence.activeTierListEntity = newEntity
         return newEntity
     }
 
     private func persistActiveTierList() throws(PersistenceError) {
         let entity = try ensureActiveTierListEntity()
         entity.title = activeTierDisplayName
-        entity.fileName = currentFileName
+        entity.fileName = persistence.currentFileName
         entity.cardDensityRaw = cardDensityPreference.rawValue
         entity.selectedThemeID = selectedThemeID
         entity.updatedAt = Date()
@@ -355,9 +355,9 @@ internal extension AppState {
         restoreCustomThemes(decodeCustomThemes(from: entity.customThemesData))
         restoreGlobalSortMode(from: entity.globalSortModeData)
         restoreCardDensityPreference(rawValue: entity.cardDensityRaw)
-        currentFileName = entity.fileName
-        hasUnsavedChanges = false
-        lastSavedTime = entity.updatedAt
+        persistence.currentFileName = entity.fileName
+        persistence.hasUnsavedChanges = false
+        persistence.lastSavedTime = entity.updatedAt
     }
 
     private func decodeCustomThemes(from data: Data?) -> [CodableTheme] {

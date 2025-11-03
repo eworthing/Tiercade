@@ -241,7 +241,7 @@ internal extension AppState {
         applyProjectMetadata(from: project)
 
         if let fileName {
-            currentFileName = fileName
+            persistence.currentFileName = fileName
         }
 
         finalizeChange(action: action, undoSnapshot: undoSnapshot)

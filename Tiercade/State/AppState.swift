@@ -146,10 +146,9 @@ final class AppState {
     /// Consolidated state for Head-to-Head ranking mode (replaces 17 scattered h2h* properties)
     var headToHead = HeadToHeadState()
 
-    // Enhanced Persistence
-    var hasUnsavedChanges: Bool = false
-    var lastSavedTime: Date?
-    var currentFileName: String?
+    // MARK: - Persistence State
+    /// Consolidated state for tier list persistence and file management
+    var persistence: PersistenceState
 
     // Progress Tracking & Visual Feedback
     var isLoading: Bool = false
@@ -161,10 +160,6 @@ final class AppState {
     var showAnalyticsSidebar: Bool = false
     var showingTierListBrowser: Bool = false
     let bundledProjects: [BundledProject] = BundledProjects.all
-    var activeTierList: TierListHandle?
-    var recentTierLists: [TierListHandle] = []
-    let maxRecentTierLists: Int = 6
-    let quickPickMenuLimit: Int = 5
 
     // Confirmation alerts
     var showRandomizeConfirmation: Bool = false
@@ -190,8 +185,6 @@ final class AppState {
         || (aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform)
     }
 
-    var activeTierListEntity: TierListEntity?
-
     internal init(
         modelContext: ModelContext,
         persistenceStore: TierPersistenceStore? = nil,
@@ -207,6 +200,9 @@ final class AppState {
 
         // Initialize AI generation state with injected list generator
         self.aiGeneration = AIGenerationState(listGenerator: self.listGenerator)
+
+        // Initialize persistence state with injected persistence store
+        self.persistence = PersistenceState(persistenceStore: self.persistenceStore)
 
         let didLoad = load()
         if !didLoad {
@@ -257,7 +253,7 @@ final class AppState {
 
     @MainActor
     private func performAutosaveIfNeeded() async {
-        if hasUnsavedChanges {
+        if persistence.hasUnsavedChanges {
             await autoSaveAsync()
         }
     }
@@ -336,7 +332,7 @@ final class AppState {
     }
 
     internal func markAsChanged() {
-        hasUnsavedChanges = true
+        persistence.hasUnsavedChanges = true
     }
 
     /// Log a general app state event using unified logging
