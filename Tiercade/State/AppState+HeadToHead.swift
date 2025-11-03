@@ -7,7 +7,7 @@ internal extension AppState {
     // MARK: - Head-to-Head lifecycle
 
     internal func startH2H() {
-        if h2hActive {
+        if headToHead.isActive {
             showInfoToast("Head-to-Head Already Active", message: "Finish or cancel the current matchup first")
             return
         }
@@ -32,114 +32,114 @@ internal extension AppState {
             return
         }
 
-        h2hInitialSnapshot = captureTierSnapshot()
-        h2hPool = pool
-        h2hRecords = [:]
-        h2hPairsQueue = pairs
-        h2hDeferredPairs = []
-        h2hTotalComparisons = pairs.count
-        h2hCompletedComparisons = 0
-        h2hRefinementTotalComparisons = 0
-        h2hRefinementCompletedComparisons = 0
-        h2hSkippedPairKeys = []
-        h2hPair = nil
-        h2hActive = true
-        h2hActivatedAt = Date()
-        h2hPhase = .quick
-        h2hArtifacts = nil
-        h2hSuggestedPairs = []
+        headToHead.initialSnapshot = captureTierSnapshot()
+        headToHead.pool = pool
+        headToHead.records = [:]
+        headToHead.pairsQueue = pairs
+        headToHead.deferredPairs = []
+        headToHead.totalComparisons = pairs.count
+        headToHead.completedComparisons = 0
+        headToHead.refinementTotalComparisons = 0
+        headToHead.refinementCompletedComparisons = 0
+        headToHead.skippedPairKeys = []
+        headToHead.currentPair = nil
+        headToHead.isActive = true
+        headToHead.activatedAt = Date()
+        headToHead.phase = .quick
+        headToHead.artifacts = nil
+        headToHead.suggestedPairs = []
 
         Logger.headToHead.info(
-            "Started H2H: pool=\(self.h2hPool.count) target=\(targetComparisons) pairs=\(self.h2hTotalComparisons)"
+            "Started H2H: pool=\(self.headToHead.pool.count) target=\(targetComparisons) pairs=\(self.headToHead.totalComparisons)"
         )
 
         nextH2HPair()
     }
 
     internal func nextH2HPair() {
-        guard h2hActive else { return }
+        guard headToHead.isActive else { return }
 
-        if h2hPairsQueue.isEmpty, !h2hDeferredPairs.isEmpty {
-            h2hPairsQueue = h2hDeferredPairs
-            h2hDeferredPairs = []
-            Logger.headToHead.info("Recycling skipped pairs: count=\(self.h2hPairsQueue.count)")
+        if headToHead.pairsQueue.isEmpty, !headToHead.deferredPairs.isEmpty {
+            headToHead.pairsQueue = headToHead.deferredPairs
+            headToHead.deferredPairs = []
+            Logger.headToHead.info("Recycling skipped pairs: count=\(self.headToHead.pairsQueue.count)")
         }
 
-        guard !h2hPairsQueue.isEmpty else {
-            h2hPair = nil
+        guard !headToHead.pairsQueue.isEmpty else {
+            headToHead.currentPair = nil
             Logger.headToHead.debug("Next pair: queue empty")
             return
         }
 
-        let pair = h2hPairsQueue.removeFirst()
-        h2hPair = (pair.0, pair.1)
-        Logger.headToHead.debug("Next pair: \(pair.0.id)-\(pair.1.id), queue=\(self.h2hPairsQueue.count)")
+        let pair = headToHead.pairsQueue.removeFirst()
+        headToHead.currentPair = (pair.0, pair.1)
+        Logger.headToHead.debug("Next pair: \(pair.0.id)-\(pair.1.id), queue=\(self.headToHead.pairsQueue.count)")
     }
 
     internal func voteH2H(winner: Item) {
-        guard h2hActive, let pair = h2hPair else { return }
+        guard headToHead.isActive, let pair = headToHead.currentPair else { return }
         let a = pair.0
         let b = pair.1
         #if DEBUG
-        let poolIds = Set(h2hPool.map(\.id))
+        let poolIds = Set(headToHead.pool.map(\.id))
         assert(
             poolIds.contains(a.id) && poolIds.contains(b.id),
             "Voting on items that are no longer in the head-to-head pool"
         )
         #endif
-        HeadToHeadLogic.vote(a, b, winner: winner, records: &h2hRecords)
-        if h2hPhase == .refinement {
-            h2hRefinementCompletedComparisons = min(
-                h2hRefinementCompletedComparisons + 1,
-                h2hRefinementTotalComparisons
+        HeadToHeadLogic.vote(a, b, winner: winner, records: &headToHead.records)
+        if headToHead.phase == .refinement {
+            headToHead.refinementCompletedComparisons = min(
+                headToHead.refinementCompletedComparisons + 1,
+                headToHead.refinementTotalComparisons
             )
         } else {
-            h2hCompletedComparisons = min(h2hCompletedComparisons + 1, h2hTotalComparisons)
+            headToHead.completedComparisons = min(headToHead.completedComparisons + 1, headToHead.totalComparisons)
         }
-        h2hSkippedPairKeys.remove(h2hPairKey(pair))
-        h2hPair = nil
+        headToHead.skippedPairKeys.remove(h2hPairKey(pair))
+        headToHead.currentPair = nil
         nextH2HPair()
 
         autoAdvanceIfNeeded()
 
-        if h2hPhase == .refinement {
+        if headToHead.phase == .refinement {
             // swiftlint:disable:next line_length
-            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(a.id)-\(b.id) target=\(self.h2hRefinementCompletedComparisons)/\(self.h2hRefinementTotalComparisons)")
+            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(a.id)-\(b.id) target=\(self.headToHead.refinementCompletedComparisons)/\(self.headToHead.refinementTotalComparisons)")
         } else {
             // swiftlint:disable:next line_length
-            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(a.id)-\(b.id) progress=\(self.h2hCompletedComparisons)/\(self.h2hTotalComparisons)")
+            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(a.id)-\(b.id) progress=\(self.headToHead.completedComparisons)/\(self.headToHead.totalComparisons)")
         }
     }
 
     internal func skipCurrentH2HPair() {
-        guard h2hActive, let pair = h2hPair else { return }
-        h2hDeferredPairs.append(pair)
-        h2hSkippedPairKeys.insert(h2hPairKey(pair))
-        h2hPair = nil
-        Logger.headToHead.info("Skipped pair: \(pair.0.id)-\(pair.1.id), deferred=\(self.h2hDeferredPairs.count)")
+        guard headToHead.isActive, let pair = headToHead.currentPair else { return }
+        headToHead.deferredPairs.append(pair)
+        headToHead.skippedPairKeys.insert(h2hPairKey(pair))
+        headToHead.currentPair = nil
+        Logger.headToHead.info("Skipped pair: \(pair.0.id)-\(pair.1.id), deferred=\(self.headToHead.deferredPairs.count)")
         nextH2HPair()
     }
 
     internal func finishH2H() {
-        guard h2hActive else { return }
+        guard headToHead.isActive else { return }
         handleCombinedCompletion()
     }
 
     private func autoAdvanceIfNeeded() {
-        guard h2hActive else { return }
-        guard h2hPairsQueue.isEmpty, h2hDeferredPairs.isEmpty, h2hPair == nil else { return }
+        guard headToHead.isActive else { return }
+        guard headToHead.pairsQueue.isEmpty, headToHead.deferredPairs.isEmpty, headToHead.currentPair == nil else { return }
         handleCombinedCompletion()
     }
 
     private func handleCombinedCompletion() {
-        if let artifacts = h2hArtifacts, h2hPairsQueue.isEmpty {
+        if let artifacts = headToHead.artifacts, headToHead.pairsQueue.isEmpty {
             finalizeRefinement(using: artifacts)
             return
         }
 
         let quick = HeadToHeadLogic.quickTierPass(
-            from: h2hPool,
-            records: h2hRecords,
+            from: headToHead.pool,
+            records: headToHead.records,
             tierOrder: tierOrder,
             baseTiers: tiers
         )
@@ -155,25 +155,25 @@ internal extension AppState {
     }
 
     private func transitionToRefinement(artifacts: H2HArtifacts, suggestedPairs: [(Item, Item)]) {
-        h2hArtifacts = artifacts
-        h2hSuggestedPairs = suggestedPairs
-        h2hPairsQueue = suggestedPairs
-        h2hDeferredPairs = []
-        h2hSkippedPairKeys = []
-        h2hRefinementTotalComparisons = suggestedPairs.count
-        h2hRefinementCompletedComparisons = 0
-        h2hPhase = .refinement
+        headToHead.artifacts = artifacts
+        headToHead.suggestedPairs = suggestedPairs
+        headToHead.pairsQueue = suggestedPairs
+        headToHead.deferredPairs = []
+        headToHead.skippedPairKeys = []
+        headToHead.refinementTotalComparisons = suggestedPairs.count
+        headToHead.refinementCompletedComparisons = 0
+        headToHead.phase = .refinement
 
         Logger.headToHead.info("Entering refinement phase: pairs=\(suggestedPairs.count)")
         nextH2HPair()
     }
 
     private func finalizeHeadToHead(with artifacts: H2HArtifacts?) {
-        let snapshot = h2hInitialSnapshot ?? captureTierSnapshot()
+        let snapshot = headToHead.initialSnapshot ?? captureTierSnapshot()
         if let artifacts {
             let result = HeadToHeadLogic.finalizeTiers(
                 artifacts: artifacts,
-                records: h2hRecords,
+                records: headToHead.records,
                 tierOrder: tierOrder,
                 baseTiers: tiers
             )
@@ -187,21 +187,21 @@ internal extension AppState {
             debugSuffix: "combined phase complete counts",
             summary: tierSummary()
         )
-        h2hInitialSnapshot = nil
+        headToHead.initialSnapshot = nil
         resetH2HSession()
     }
 
     private func finalizeRefinement(using artifacts: H2HArtifacts) {
         let result = HeadToHeadLogic.finalizeTiers(
             artifacts: artifacts,
-            records: h2hRecords,
+            records: headToHead.records,
             tierOrder: tierOrder,
             baseTiers: tiers
         )
 
         tiers = result.tiers
-        h2hArtifacts = nil
-        h2hSuggestedPairs = []
+        headToHead.artifacts = nil
+        headToHead.suggestedPairs = []
         finalizeHeadToHead(with: nil)
     }
 
@@ -216,9 +216,9 @@ internal extension AppState {
     }
 
     internal func cancelH2H(fromExitCommand: Bool = false) {
-        guard h2hActive else { return }
+        guard headToHead.isActive else { return }
         #if os(tvOS)
-        if fromExitCommand, let activatedAt = h2hActivatedAt, Date().timeIntervalSince(activatedAt) < TVInteraction.exitCommandDebounce {
+        if fromExitCommand, let activatedAt = headToHead.activatedAt, Date().timeIntervalSince(activatedAt) < TVInteraction.exitCommandDebounce {
             Logger.headToHead.debug("Cancel ignored: exitCommand within debounce window")
             return
         }
@@ -229,24 +229,24 @@ internal extension AppState {
     }
 
     private func resetH2HSession(clearRecords: Bool = true) {
-        h2hActive = false
-        h2hPair = nil
-        h2hPool = []
-        h2hPairsQueue = []
-        h2hDeferredPairs = []
-        h2hTotalComparisons = 0
-        h2hCompletedComparisons = 0
-        h2hRefinementTotalComparisons = 0
-        h2hRefinementCompletedComparisons = 0
-        h2hSkippedPairKeys = []
-        h2hActivatedAt = nil
-        h2hPhase = .quick
-        h2hArtifacts = nil
-        h2hSuggestedPairs = []
+        headToHead.isActive = false
+        headToHead.currentPair = nil
+        headToHead.pool = []
+        headToHead.pairsQueue = []
+        headToHead.deferredPairs = []
+        headToHead.totalComparisons = 0
+        headToHead.completedComparisons = 0
+        headToHead.refinementTotalComparisons = 0
+        headToHead.refinementCompletedComparisons = 0
+        headToHead.skippedPairKeys = []
+        headToHead.activatedAt = nil
+        headToHead.phase = .quick
+        headToHead.artifacts = nil
+        headToHead.suggestedPairs = []
         if clearRecords {
-            h2hRecords = [:]
+            headToHead.records = [:]
         }
-        h2hInitialSnapshot = nil
+        headToHead.initialSnapshot = nil
     }
 
     private func h2hPairKey(_ pair: (Item, Item)) -> String {

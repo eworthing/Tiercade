@@ -27,7 +27,7 @@ internal struct MainAppView: View {
     internal var body: some View {
         @Bindable var app = app
         let detailPresented = app.detailItem != nil
-        let headToHeadPresented = app.h2hActive
+        let headToHeadPresented = app.headToHead.isActive
         let themeCreatorPresented = app.showThemeCreator
         let tierCreatorPresented = app.showTierListCreator
         let quickMovePresented = app.quickMoveTarget != nil
@@ -178,7 +178,7 @@ internal struct MainAppView: View {
         #endif
 
         // Head-to-Head overlay
-        if app.h2hActive {
+        if app.headToHead.isActive {
             AccessibilityBridgeView(identifier: "MatchupOverlay_Root")
 
             MatchupArenaOverlay(app: app)
@@ -471,7 +471,7 @@ private extension MainAppView {
             app.cancelQuickMove()
             return true
         }
-        if app.h2hActive {
+        if app.headToHead.isActive {
             app.cancelH2H(fromExitCommand: true)
             return true
         }

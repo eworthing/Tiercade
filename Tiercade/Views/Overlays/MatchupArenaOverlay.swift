@@ -22,7 +22,7 @@ internal struct MatchupArenaOverlay: View {
     private let minOverlayWidth: CGFloat = 960
 
     internal var body: some View {
-        if app.h2hActive {
+        if app.headToHead.isActive {
             ZStack {
                 LinearGradient(
                     colors: [Palette.bg.opacity(0.65), Palette.surfHi.opacity(0.85)],
@@ -110,7 +110,7 @@ internal struct MatchupArenaOverlay: View {
     }
 
     private var defaultFocus: MatchupFocusAnchor {
-        app.h2hPair == nil ? .apply : .primary
+        app.headToHead.currentPair == nil ? .apply : .primary
     }
 
     private func overlayMaxWidth(for proxy: GeometryProxy) -> CGFloat {
@@ -167,7 +167,7 @@ internal struct MatchupArenaOverlay: View {
 
     private var progressSection: some View {
         HStack(alignment: .center, spacing: Metrics.grid * 3) {
-            MatchupProgressDial(progress: app.h2hOverallProgress, label: progressLabel)
+            MatchupProgressDial(progress: app.headToHead.overallProgress, label: progressLabel)
                 .frame(width: 150, height: 150)
                 .accessibilityIdentifier("MatchupOverlay_Progress")
 
@@ -177,8 +177,8 @@ internal struct MatchupArenaOverlay: View {
                 Text(secondaryStatus)
                     .font(.body)
                     .foregroundStyle(.secondary)
-                if app.h2hSkippedCount > 0 {
-                    Text("Skipped: \(app.h2hSkippedCount)")
+                if app.headToHead.skippedCount > 0 {
+                    Text("Skipped: \(app.headToHead.skippedCount)")
                         .font(.headline)
                         .padding(.vertical, 6)
                         .padding(.horizontal, 14)
@@ -198,7 +198,7 @@ internal struct MatchupArenaOverlay: View {
 
     private var matchSection: some View {
         Group {
-            if let pair = app.h2hPair {
+            if let pair = app.headToHead.currentPair {
                 HStack(alignment: .top, spacing: pairSpacing) {
                     MatchupCandidateCard(
                         item: pair.0,
@@ -277,16 +277,16 @@ internal struct MatchupArenaOverlay: View {
     }
 
     private var progressLabel: String {
-        let percentage = Int(round(app.h2hOverallProgress * 100))
+        let percentage = Int(round(app.headToHead.overallProgress * 100))
         return "\(percentage)%"
     }
 
     private var statusSummary: String {
-        switch app.h2hPhase {
+        switch app.headToHead.phase {
         case .quick:
             return "Building your ranking"
         case .refinement:
-            if app.h2hTotalRemainingComparisons == 0 {
+            if app.headToHead.totalRemainingComparisons == 0 {
                 return "Ranking complete"
             }
             return "Polishing the results"
@@ -294,10 +294,10 @@ internal struct MatchupArenaOverlay: View {
     }
 
     private var secondaryStatus: String {
-        if app.h2hTotalRemainingComparisons == 0 {
+        if app.headToHead.totalRemainingComparisons == 0 {
             return "Choose Commit Rankings to apply the outcome."
         }
-        switch app.h2hPhase {
+        switch app.headToHead.phase {
         case .quick:
             return "Keep comparing contenders to shape the tiers."
         case .refinement:
@@ -361,7 +361,7 @@ internal struct MatchupArenaOverlay: View {
 
     private func moveRight(from current: MatchupFocusAnchor) -> MatchupFocusAnchor? {
         switch current {
-        case .primary: return app.h2hPair != nil ? .pass : .apply
+        case .primary: return app.headToHead.currentPair != nil ? .pass : .apply
         case .pass: return .secondary
         case .abort: return .apply
         default: return nil
@@ -371,7 +371,7 @@ internal struct MatchupArenaOverlay: View {
     private func moveUp(from current: MatchupFocusAnchor) -> MatchupFocusAnchor? {
         switch current {
         case .apply, .abort:
-            return app.h2hPair != nil ? .pass : nil
+            return app.headToHead.currentPair != nil ? .pass : nil
         case .pass:
             return .primary
         default:
@@ -392,11 +392,11 @@ internal struct MatchupArenaOverlay: View {
         let anchor = focusAnchor ?? defaultFocus
         switch anchor {
         case .primary:
-            if let pair = app.h2hPair {
+            if let pair = app.headToHead.currentPair {
                 app.voteH2H(winner: pair.0)
             }
         case .secondary:
-            if let pair = app.h2hPair {
+            if let pair = app.headToHead.currentPair {
                 app.voteH2H(winner: pair.1)
             }
         case .pass:

@@ -136,28 +136,10 @@ final class AppState {
     var aiGenerationRequest: AIGenerationRequest?
     var aiGeneratedCandidates: [AIGeneratedItemCandidate] = []
     var aiGenerationInProgress: Bool = false
-    // Head-to-Head
-    var h2hActive: Bool = false
-    enum H2HSessionPhase: Sendable {
-        case quick
-        case refinement
-    }
 
-    var h2hPool: [Item] = []
-    var h2hPair: (Item, Item)?
-    var h2hRecords: [String: H2HRecord] = [:]
-    var h2hPairsQueue: [(Item, Item)] = []
-    var h2hDeferredPairs: [(Item, Item)] = []
-    var h2hTotalComparisons: Int = 0
-    var h2hCompletedComparisons: Int = 0
-    var h2hSkippedPairKeys: Set<String> = []
-    var h2hActivatedAt: Date?
-    var h2hPhase: H2HSessionPhase = .quick
-    var h2hArtifacts: H2HArtifacts?
-    var h2hSuggestedPairs: [(Item, Item)] = []
-    var h2hInitialSnapshot: TierStateSnapshot?
-    var h2hRefinementTotalComparisons: Int = 0
-    var h2hRefinementCompletedComparisons: Int = 0
+    // MARK: - Head-to-Head State
+    /// Consolidated state for Head-to-Head ranking mode (replaces 17 scattered h2h* properties)
+    var headToHead = HeadToHeadState()
 
     // Enhanced Persistence
     var hasUnsavedChanges: Bool = false
@@ -199,66 +181,13 @@ final class AppState {
     /// Use with `.allowsHitTesting(!app.blocksBackgroundFocus)` on background content
     var blocksBackgroundFocus: Bool {
         (detailItem != nil)
-        || h2hActive
+        || headToHead.isActive
         || showThemePicker
         || (quickMoveTarget != nil)
         || showThemeCreator
         || showTierListCreator
         || (showAIChat && AppleIntelligenceService.isSupportedOnCurrentPlatform)
     }
-
-    var h2hProgress: Double {
-        guard h2hTotalComparisons > 0 else { return 0 }
-        return min(Double(h2hCompletedComparisons) / Double(h2hTotalComparisons), 1.0)
-    }
-
-    var h2hRemainingComparisons: Int {
-        max(h2hTotalComparisons - h2hCompletedComparisons, 0)
-    }
-
-    var h2hRefinementProgress: Double {
-        guard h2hRefinementTotalComparisons > 0 else { return 0 }
-        return min(
-            Double(h2hRefinementCompletedComparisons) / Double(h2hRefinementTotalComparisons),
-            1.0
-        )
-    }
-
-    var h2hRefinementRemainingComparisons: Int {
-        max(h2hRefinementTotalComparisons - h2hRefinementCompletedComparisons, 0)
-    }
-
-    var h2hTotalDecidedComparisons: Int {
-        h2hCompletedComparisons + h2hRefinementCompletedComparisons
-    }
-
-    var h2hTotalRemainingComparisons: Int {
-        h2hRemainingComparisons + h2hRefinementRemainingComparisons
-    }
-
-    var h2hOverallProgress: Double {
-        let quickWeight = HeadToHeadWeights.quickPhase
-        var progress: Double = 0
-
-        if h2hTotalComparisons > 0 {
-            let quickFraction = Double(min(h2hCompletedComparisons, h2hTotalComparisons)) / Double(h2hTotalComparisons)
-            progress = min(max(quickFraction, 0), 1) * quickWeight
-        }
-
-        if h2hRefinementTotalComparisons > 0 {
-            let refinementFraction = Double(
-                min(h2hRefinementCompletedComparisons, h2hRefinementTotalComparisons)
-            ) / Double(h2hRefinementTotalComparisons)
-            progress = min(progress, quickWeight)
-            progress += HeadToHeadWeights.refinementPhase * min(max(refinementFraction, 0), 1)
-        } else if !h2hActive && h2hTotalComparisons > 0 && h2hCompletedComparisons >= h2hTotalComparisons {
-            progress = 1.0
-        }
-
-        return min(max(progress, 0), 1)
-    }
-
-    var h2hSkippedCount: Int { h2hSkippedPairKeys.count }
 
     var activeTierListEntity: TierListEntity?
 
@@ -458,7 +387,7 @@ final class AppState {
     var hasAnyItems: Bool { totalItemCount > 0 }
     var hasEnoughForPairing: Bool { totalItemCount >= 2 }
     var canRandomizeItems: Bool { totalItemCount > 1 }
-    var canStartHeadToHead: Bool { !h2hActive && hasEnoughForPairing }
+    var canStartHeadToHead: Bool { !headToHead.isActive && hasEnoughForPairing }
     var canShowAnalysis: Bool { hasAnyItems }
 
     // MARK: - Enhanced Persistence
