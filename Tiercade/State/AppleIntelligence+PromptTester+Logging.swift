@@ -127,13 +127,14 @@ static func printTestSummary(results: [TestResult], onProgress: @MainActor @esca
 }
 
 static func saveCompleteLogs(results: [TestResult], onProgress: @MainActor @escaping (String) -> Void) {
-    let logPath = "/tmp/tiercade_prompt_test_results.txt"
-    let legacyLogPath = "/tmp/tiercade_test_output.log"
+    let sandboxTemp = FileManager.default.temporaryDirectory
+    let logPath = sandboxTemp.appendingPathComponent("tiercade_prompt_test_results.txt").path
+    let outputLogPath = sandboxTemp.appendingPathComponent("tiercade_test_output.log").path
     writeDetailedLog(results: results, to: logPath)
     onProgress("\n📁 Detailed results saved to: \(logPath)")
-    onProgress("📁 Legacy log mirrored to: \(legacyLogPath)")
+    onProgress("📁 Output log at: \(outputLogPath)")
     print("🧪 Detailed log saved to: \(logPath)")
-    print("🧪 Legacy log mirrored to: \(legacyLogPath)")
+    print("🧪 Output log at: \(outputLogPath)")
 }
 }
 #endif

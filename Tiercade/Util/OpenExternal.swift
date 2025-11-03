@@ -11,6 +11,10 @@ internal enum ExternalOpenResult { case success, handoff, unsupported }
 
 internal struct OpenExternal {
     internal static func open(_ url: URL, completion: @escaping @MainActor (ExternalOpenResult) -> Void) {
+        guard URLValidator.isAllowedExternalURL(url) else {
+            Task { @MainActor in completion(.unsupported) }
+            return
+        }
         #if os(macOS)
         NSWorkspace.shared.open(url)
         Task { @MainActor in

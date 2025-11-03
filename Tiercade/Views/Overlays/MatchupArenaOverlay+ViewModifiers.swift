@@ -41,9 +41,9 @@ internal extension View {
         onDisappear: @escaping () -> Void
     ) -> some View {
         self
-            .onChange(of: app.h2hPair?.0.id) { _, _ in onSync() }
-            .onChange(of: app.h2hPair?.1.id) { _, _ in onSync() }
-            .onChange(of: app.h2hPair == nil) { _, _ in onSync() }
+            .onChange(of: app.headToHead.currentPair?.0.id) { _, _ in onSync() }
+            .onChange(of: app.headToHead.currentPair?.1.id) { _, _ in onSync() }
+            .onChange(of: app.headToHead.currentPair == nil) { _, _ in onSync() }
             .onDisappear { onDisappear() }
     }
 
@@ -73,10 +73,10 @@ internal extension View {
             .onKeyPress(.space) { handleAction(); return .handled }
             .onKeyPress(.return) { handleAction(); return .handled }
             .onChange(of: overlayHasFocus.wrappedValue) { _, newValue in
-                guard !newValue, app.h2hActive else { return }
+                guard !newValue, app.headToHead.isActive else { return }
                 Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(50))
-                    if app.h2hActive {
+                    if app.headToHead.isActive {
                         overlayHasFocus.wrappedValue = true
                     }
                 }

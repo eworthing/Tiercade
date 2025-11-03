@@ -369,7 +369,7 @@ internal struct CardView: View {
             Button("Move to Unranked") {
                 app.move(item.id, to: "unranked")
             }
-            Button("View Details") { app.detailItem = item }
+            Button("View Details") { app.overlays.detailItem = item }
         }
         #endif
     }
@@ -578,7 +578,7 @@ private struct ThumbnailView: View {
     @ViewBuilder
     private var thumbnailContent: some View {
         if let asset = item.imageUrl ?? item.videoUrl,
-           let url = URL(string: asset) {
+           let url = URLValidator.allowedMediaURL(from: asset) {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .empty:

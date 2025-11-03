@@ -28,8 +28,7 @@ internal extension AppState {
         }
 
         // Close theme picker when opening analysis
-        showThemePicker = false
-        themePickerActive = false
+        overlays.dismissThemePicker()
 
         showingAnalysis = true
         if analysisData == nil {
@@ -39,8 +38,8 @@ internal extension AppState {
     }
 
     internal func toggleAnalyticsSidebar() {
-        if showAnalyticsSidebar {
-            showAnalyticsSidebar = false
+        if overlays.showAnalyticsSidebar {
+            overlays.showAnalyticsSidebar = false
             return
         }
 
@@ -49,7 +48,7 @@ internal extension AppState {
             return
         }
 
-        showAnalyticsSidebar = true
+        overlays.showAnalyticsSidebar = true
         showingAnalysis = false
         if analysisData == nil {
             Task { await generateSidebarAnalysis() }
@@ -57,7 +56,7 @@ internal extension AppState {
     }
 
     internal func closeAnalyticsSidebar() {
-        showAnalyticsSidebar = false
+        overlays.showAnalyticsSidebar = false
         showingAnalysis = false
     }
 

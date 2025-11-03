@@ -34,7 +34,6 @@ internal struct ThemeLibraryOverlay: View {
         #endif
         .onAppear(perform: handleAppear)
         .onDisappear {
-            appState.themePickerActive = false
             #if !os(tvOS)
             overlayHasFocus = false
             #endif
@@ -75,17 +74,17 @@ private extension ThemeLibraryOverlay {
         .onKeyPress(.space) { activateFocusedTheme(); return .handled }
         .onKeyPress(.return) { activateFocusedTheme(); return .handled }
         .onChange(of: overlayHasFocus) { _, newValue in
-        guard !newValue, appState.themePickerActive else { return }
+        guard !newValue, appState.overlays.showThemePicker else { return }
         Task { @MainActor in
         try? await Task.sleep(for: .milliseconds(50))
-        if appState.themePickerActive {
+        if appState.overlays.showThemePicker {
         overlayHasFocus = true
         }
         }
         }
         #endif
-        .onChange(of: appState.availableThemes) { ensureValidFocus() }
-        .onChange(of: appState.selectedTheme.id) { assignFocusToSelectedTheme() }
+        .onChange(of: appState.theme.availableThemes) { ensureValidFocus() }
+        .onChange(of: appState.theme.selectedTheme.id) { assignFocusToSelectedTheme() }
     }
 
     @ViewBuilder
@@ -103,11 +102,14 @@ private extension ThemeLibraryOverlay {
         }
 
         container
-            .glassEffect(
-                Glass.regular.tint(Palette.surface.opacity(0.92)).interactive(),
-                in: RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
+            .background(
+                RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
+                    .fill(Color.black.opacity(0.85))
             )
-            .glassEffectID("ThemeLibraryOverlay", in: glassNamespace)
+            .overlay(
+                RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+            )
             .shadow(color: Color.black.opacity(0.35), radius: 32, y: 18)
     }
 
@@ -126,7 +128,7 @@ private extension ThemeLibraryOverlay {
             Spacer(minLength: 0)
 
             Button {
-                appState.beginThemeCreation(baseTheme: appState.selectedTheme)
+                appState.beginThemeCreation(baseTheme: appState.theme.selectedTheme)
             } label: {
                 Label("Create Theme", systemImage: "paintpalette")
             }
@@ -159,11 +161,11 @@ private extension ThemeLibraryOverlay {
     var grid: some View {
         ScrollView(.vertical, showsIndicators: false) {
             LazyVGrid(columns: columns, spacing: platformCardSpacing) {
-                ForEach(appState.availableThemes) { theme in
+                ForEach(appState.theme.availableThemes) { theme in
                     ThemeLibraryTile(
                         theme: theme,
                         tint: tint(for: theme),
-                        isSelected: appState.selectedTheme.id == theme.id,
+                        isSelected: appState.theme.selectedTheme.id == theme.id,
                         isCustom: appState.isCustomTheme(theme),
                         namespace: glassNamespace
                     ) {
@@ -203,7 +205,7 @@ private extension ThemeLibraryOverlay {
                     .font(TypeScale.label)
                     .foregroundStyle(Palette.textDim)
 
-                Text(appState.selectedTheme.displayName)
+                Text(appState.theme.selectedTheme.displayName)
                     .font(TypeScale.body.weight(.semibold))
                     .foregroundStyle(Palette.text)
             }
@@ -229,7 +231,7 @@ private extension ThemeLibraryOverlay {
         #if !os(tvOS)
         overlayHasFocus = true
         #endif
-        let themes = appState.availableThemes
+        let themes = appState.theme.availableThemes
         guard !themes.isEmpty else { return }
         let columnCount = max(columns.count, 1)
         let currentId = focusedThemeID ?? defaultFocusID
@@ -294,14 +296,13 @@ private extension ThemeLibraryOverlay {
     }
 
     func activateFocusedTheme() {
-        let themes = appState.availableThemes
+        let themes = appState.theme.availableThemes
         guard let id = focusedThemeID ?? defaultFocusID,
               let theme = themes.first(where: { $0.id == id }) else { return }
         appState.applyTheme(theme)
     }
 
     func handleAppear() {
-        appState.themePickerActive = true
         assignFocusToSelectedTheme()
         #if !os(tvOS)
         overlayHasFocus = true
@@ -309,7 +310,7 @@ private extension ThemeLibraryOverlay {
     }
 
     func assignFocusToSelectedTheme() {
-        if let target = appState.availableThemes.first(where: { $0.id == appState.selectedTheme.id }) {
+        if let target = appState.theme.availableThemes.first(where: { $0.id == appState.theme.selectedTheme.id }) {
             assignFocus(target.id)
         } else {
             assignFocus(defaultFocusID)
@@ -322,7 +323,7 @@ private extension ThemeLibraryOverlay {
             return
         }
 
-        guard appState.availableThemes.contains(where: { $0.id == current }) else {
+        guard appState.theme.availableThemes.contains(where: { $0.id == current }) else {
             assignFocusToSelectedTheme()
             return
         }
@@ -335,10 +336,10 @@ private extension ThemeLibraryOverlay {
     }
 
     var defaultFocusID: TierTheme.ID? {
-        if appState.availableThemes.contains(where: { $0.id == appState.selectedTheme.id }) {
-            return appState.selectedTheme.id
+        if appState.theme.availableThemes.contains(where: { $0.id == appState.theme.selectedTheme.id }) {
+            return appState.theme.selectedTheme.id
         }
-        return appState.availableThemes.first?.id
+        return appState.theme.availableThemes.first?.id
     }
 
     func tint(for theme: TierTheme) -> Color {

@@ -14,7 +14,7 @@ internal extension AppState {
         tierColors = state.colors
         lockedTiers = state.locked
         finalizeChange(action: "Load Bundled Project", undoSnapshot: snapshot)
-        currentFileName = bundled.id
+        persistence.currentFileName = bundled.id
         showSuccessToast("Loaded \(bundled.title)", message: "Bundled tier list ready to rank")
         let counts = tierOrder
             .map { "\($0):\(tiers[$0]?.count ?? 0)" }
@@ -150,7 +150,7 @@ internal extension AppState {
             updatedAt: Date(),
             isActive: false,
             cardDensityRaw: cardDensityPreference.rawValue,
-            selectedThemeID: selectedThemeID,
+            selectedThemeID: theme.selectedThemeID,
             customThemesData: nil,
             sourceRaw: source,
             externalIdentifier: project.id,

@@ -12,7 +12,7 @@ internal extension AppState {
     /// - Parameter mode: The new sort mode to apply
     func setGlobalSortMode(_ mode: GlobalSortMode) {
         globalSortMode = mode
-        hasUnsavedChanges = true
+        persistence.hasUnsavedChanges = true
     }
 
     // MARK: - Apply Global Sort (Commit to Storage)

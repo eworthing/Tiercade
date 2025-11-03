@@ -69,14 +69,6 @@ internal struct TierAnalysisData: Sendable {
 @MainActor
 @Observable
 final class AppState {
-    struct TierStateSnapshot: Sendable {
-        var tiers: Items
-        var tierOrder: [String]
-        var tierLabels: [String: String]
-        var tierColors: [String: String]
-        var lockedTiers: Set<String>
-    }
-
     enum TierListDraftValidationCategory: String, Sendable {
         case project
         case tier
@@ -94,94 +86,58 @@ final class AppState {
     }
 
     let modelContext: ModelContext
-    var tiers: Items = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
-    var tierOrder: [String] = ["S", "A", "B", "C", "D", "F"]
+
+    // MARK: - Injected Services (DI)
+    internal let persistenceStore: TierPersistenceStore
+    internal let listGenerator: UniqueListGenerating
+    internal let themeCatalog: ThemeCatalogProviding
+
+    // MARK: - Tier List State
+    /// Consolidated state for tier list data and operations
+    var tierList = TierListState()
+
     var searchQuery: String = ""
     var activeFilter: FilterType = .all
     var currentToast: ToastMessage?
     var quickRankTarget: Item?
-    // tvOS quick move (Play/Pause accelerator)
-    var quickMoveTarget: Item?
     var batchQuickMoveActive: Bool = false
-    // Multi-select state for batch operations (driven by editMode environment)
-    var selection: Set<String> = []
-    // Detail overlay routing
-    var detailItem: Item?
-    // Locked tiers set (until full Tier model exists)
-    var lockedTiers: Set<String> = []
-    // Tier display overrides (rename/recolor without core model changes)
-    var tierLabels: [String: String] = [:] // tierId -> display label
-    var tierColors: [String: String] = [:] // tierId -> hex color
-    // Global sort mode for all tiers (default: alphabetical A-Z)
-    var globalSortMode: GlobalSortMode = .alphabetical(ascending: true)
     // Layout preferences
     var cardDensityPreference: CardDensityPreference = .compact
-    // Theme selection
-    var selectedThemeID: UUID = TierThemeCatalog.defaultTheme.id
-    var selectedTheme: TierTheme = TierThemeCatalog.defaultTheme
-    var showThemePicker: Bool = false
-    var themePickerActive: Bool = false
-    var customThemes: [TierTheme] = []
-    var customThemeIDs: Set<UUID> = []
-    var showThemeCreator: Bool = false
-    var themeCreatorActive: Bool = false
-    var themeDraft: ThemeDraft?
-    var showTierListCreator: Bool = false
+    // Tier List Creator state (active flags for focus management)
     var tierListCreatorActive: Bool = false
     var tierListWizardContext: TierListWizardContext = .create
     var tierListCreatorDraft: TierProjectDraft?
     var tierListCreatorIssues: [TierListDraftValidationIssue] = []
     var tierListCreatorExportPayload: String?
-    // AI Item Generation (Wizard)
-    var aiGenerationRequest: AIGenerationRequest?
-    var aiGeneratedCandidates: [AIGeneratedItemCandidate] = []
-    var aiGenerationInProgress: Bool = false
-    // Head-to-Head
-    var h2hActive: Bool = false
-    enum H2HSessionPhase: Sendable {
-        case quick
-        case refinement
-    }
+    // MARK: - AI Generation State
+    /// Consolidated state for Apple Intelligence chat and AI generation
+    var aiGeneration: AIGenerationState
 
-    var h2hPool: [Item] = []
-    var h2hPair: (Item, Item)?
-    var h2hRecords: [String: H2HRecord] = [:]
-    var h2hPairsQueue: [(Item, Item)] = []
-    var h2hDeferredPairs: [(Item, Item)] = []
-    var h2hTotalComparisons: Int = 0
-    var h2hCompletedComparisons: Int = 0
-    var h2hSkippedPairKeys: Set<String> = []
-    var h2hActivatedAt: Date?
-    var h2hPhase: H2HSessionPhase = .quick
-    var h2hArtifacts: H2HArtifacts?
-    var h2hSuggestedPairs: [(Item, Item)] = []
-    var h2hInitialSnapshot: TierStateSnapshot?
-    var h2hRefinementTotalComparisons: Int = 0
-    var h2hRefinementCompletedComparisons: Int = 0
+    // MARK: - Head-to-Head State
+    /// Consolidated state for Head-to-Head ranking mode (replaces 17 scattered h2h* properties)
+    var headToHead = HeadToHeadState()
 
-    // Enhanced Persistence
-    var hasUnsavedChanges: Bool = false
-    var lastSavedTime: Date?
-    var currentFileName: String?
+    // MARK: - Persistence State
+    /// Consolidated state for tier list persistence and file management
+    var persistence: PersistenceState
+
+    // MARK: - Overlays State
+    /// Consolidated state for modal/overlay routing and visibility
+    var overlays = OverlaysState()
+
+    // MARK: - Theme State
+    /// Consolidated state for theme selection and management
+    var theme: ThemeState
+
+    // MARK: - Progress State
+    /// Consolidated state for loading indicators and progress tracking
+    var progress = ProgressState()
 
     // Progress Tracking & Visual Feedback
-    var isLoading: Bool = false
-    var loadingMessage: String = ""
-    var operationProgress: Double = 0.0
     var dragTargetTier: String?
     var draggingId: String?
     var isProcessingSearch: Bool = false
-    var showAnalyticsSidebar: Bool = false
-    var showingTierListBrowser: Bool = false
-    var showAIChat: Bool = false
-    #if DEBUG
-    var testConsoleMessages: [AIChatMessage] = []
-    #endif
     let bundledProjects: [BundledProject] = BundledProjects.all
-    var activeTierList: TierListHandle?
-    var recentTierLists: [TierListHandle] = []
-    let maxRecentTierLists: Int = 6
-    let quickPickMenuLimit: Int = 5
 
     // Confirmation alerts
     var showRandomizeConfirmation: Bool = false
@@ -192,66 +148,36 @@ final class AppState {
     var autosaveTask: Task<Void, Never>?
     let autosaveInterval: TimeInterval = 30.0 // Auto-save every 30 seconds
 
-    var undoManager: UndoManager?
-    private var isPerformingUndoRedo = false
-
-    var h2hProgress: Double {
-        guard h2hTotalComparisons > 0 else { return 0 }
-        return min(Double(h2hCompletedComparisons) / Double(h2hTotalComparisons), 1.0)
+    /// Centralized check for whether any overlay blocks background interaction
+    /// Use with `.allowsHitTesting(!app.blocksBackgroundFocus)` on background content
+    var blocksBackgroundFocus: Bool {
+        overlays.blocksBackgroundFocus
+        || headToHead.isActive
+        || (aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform)
     }
 
-    var h2hRemainingComparisons: Int {
-        max(h2hTotalComparisons - h2hCompletedComparisons, 0)
-    }
-
-    var h2hRefinementProgress: Double {
-        guard h2hRefinementTotalComparisons > 0 else { return 0 }
-        return min(
-            Double(h2hRefinementCompletedComparisons) / Double(h2hRefinementTotalComparisons),
-            1.0
-        )
-    }
-
-    var h2hRefinementRemainingComparisons: Int {
-        max(h2hRefinementTotalComparisons - h2hRefinementCompletedComparisons, 0)
-    }
-
-    var h2hTotalDecidedComparisons: Int {
-        h2hCompletedComparisons + h2hRefinementCompletedComparisons
-    }
-
-    var h2hTotalRemainingComparisons: Int {
-        h2hRemainingComparisons + h2hRefinementRemainingComparisons
-    }
-
-    var h2hOverallProgress: Double {
-        let quickWeight = 0.75
-        var progress: Double = 0
-
-        if h2hTotalComparisons > 0 {
-            let quickFraction = Double(min(h2hCompletedComparisons, h2hTotalComparisons)) / Double(h2hTotalComparisons)
-            progress = min(max(quickFraction, 0), 1) * quickWeight
-        }
-
-        if h2hRefinementTotalComparisons > 0 {
-            let refinementFraction = Double(
-                min(h2hRefinementCompletedComparisons, h2hRefinementTotalComparisons)
-            ) / Double(h2hRefinementTotalComparisons)
-            progress = min(progress, quickWeight)
-            progress += (1 - quickWeight) * min(max(refinementFraction, 0), 1)
-        } else if !h2hActive && h2hTotalComparisons > 0 && h2hCompletedComparisons >= h2hTotalComparisons {
-            progress = 1.0
-        }
-
-        return min(max(progress, 0), 1)
-    }
-
-    var h2hSkippedCount: Int { h2hSkippedPairKeys.count }
-
-    var activeTierListEntity: TierListEntity?
-
-    internal init(modelContext: ModelContext) {
+    internal init(
+        modelContext: ModelContext,
+        persistenceStore: TierPersistenceStore? = nil,
+        listGenerator: UniqueListGenerating? = nil,
+        themeCatalog: ThemeCatalogProviding? = nil
+    ) {
         self.modelContext = modelContext
+
+        // Initialize services with provided implementations or defaults
+        self.persistenceStore = persistenceStore ?? SwiftDataPersistenceStore(modelContext: modelContext)
+        self.listGenerator = listGenerator ?? AppleIntelligenceListGenerator()
+        self.themeCatalog = themeCatalog ?? BundledThemeCatalog(modelContext: modelContext)
+
+        // Initialize AI generation state with injected list generator
+        self.aiGeneration = AIGenerationState(listGenerator: self.listGenerator)
+
+        // Initialize persistence state with injected persistence store
+        self.persistence = PersistenceState(persistenceStore: self.persistenceStore)
+
+        // Initialize theme state with injected theme catalog
+        self.theme = ThemeState(themeCatalog: self.themeCatalog)
+
         let didLoad = load()
         if !didLoad {
             seed()
@@ -301,86 +227,114 @@ final class AppState {
 
     @MainActor
     private func performAutosaveIfNeeded() async {
-        if hasUnsavedChanges {
+        if persistence.hasUnsavedChanges {
             await autoSaveAsync()
         }
     }
 
+    // MARK: - Tier List Convenience Accessors
+
+    /// Convenience accessor for tiers
+    var tiers: Items {
+        get { tierList.tiers }
+        set { tierList.tiers = newValue }
+    }
+
+    /// Convenience accessor for tierOrder
+    var tierOrder: [String] {
+        get { tierList.tierOrder }
+        set { tierList.tierOrder = newValue }
+    }
+
+    /// Convenience accessor for selection
+    var selection: Set<String> {
+        get { tierList.selection }
+        set { tierList.selection = newValue }
+    }
+
+    /// Convenience accessor for lockedTiers
+    var lockedTiers: Set<String> {
+        get { tierList.lockedTiers }
+        set { tierList.lockedTiers = newValue }
+    }
+
+    /// Convenience accessor for tierLabels
+    var tierLabels: [String: String] {
+        get { tierList.tierLabels }
+        set { tierList.tierLabels = newValue }
+    }
+
+    /// Convenience accessor for tierColors
+    var tierColors: [String: String] {
+        get { tierList.tierColors }
+        set { tierList.tierColors = newValue }
+    }
+
+    /// Convenience accessor for globalSortMode
+    var globalSortMode: GlobalSortMode {
+        get { tierList.globalSortMode }
+        set { tierList.globalSortMode = newValue }
+    }
+
+    /// Convenience accessor for displayLabel
+    func displayLabel(for tierId: String) -> String {
+        tierList.displayLabel(for: tierId)
+    }
+
+    /// Convenience accessor for displayColorHex
+    func displayColorHex(for tierId: String) -> String? {
+        tierList.displayColorHex(for: tierId)
+    }
+
+    // MARK: - Progress Convenience Accessors
+
+    /// Convenience accessor for isLoading
+    var isLoading: Bool {
+        get { progress.isLoading }
+        set { progress.isLoading = newValue }
+    }
+
+    /// Convenience accessor for loadingMessage
+    var loadingMessage: String {
+        get { progress.loadingMessage }
+        set { progress.loadingMessage = newValue }
+    }
+
+    /// Convenience accessor for operationProgress
+    var operationProgress: Double {
+        get { progress.operationProgress }
+        set { progress.operationProgress = newValue }
+    }
+
+    // MARK: - Undo/Redo Management
+
     internal func updateUndoManager(_ manager: UndoManager?) {
-        undoManager = manager
+        tierList.updateUndoManager(manager)
     }
 
-    internal func captureTierSnapshot() -> TierStateSnapshot {
-        TierStateSnapshot(
-            tiers: tiers,
-            tierOrder: tierOrder,
-            tierLabels: tierLabels,
-            tierColors: tierColors,
-            lockedTiers: lockedTiers
-        )
+    internal func captureTierSnapshot() -> TierListState.TierStateSnapshot {
+        tierList.captureTierSnapshot()
     }
 
-    internal func restore(from snapshot: TierStateSnapshot) {
-        tiers = snapshot.tiers
-        tierOrder = snapshot.tierOrder
-        tierLabels = snapshot.tierLabels
-        tierColors = snapshot.tierColors
-        lockedTiers = snapshot.lockedTiers
+    internal func restore(from snapshot: TierListState.TierStateSnapshot) {
+        tierList.restore(from: snapshot)
     }
 
-    internal func finalizeChange(action: String, undoSnapshot: TierStateSnapshot) {
-        if !isPerformingUndoRedo {
-            let redoSnapshot = captureTierSnapshot()
-            registerUndo(action: action, undoSnapshot: undoSnapshot, redoSnapshot: redoSnapshot, isRedo: false)
+    internal func finalizeChange(action: String, undoSnapshot: TierListState.TierStateSnapshot) {
+        tierList.finalizeChange(action: action, undoSnapshot: undoSnapshot) { [weak self] in
+            self?.markAsChanged()
         }
-        markAsChanged()
-    }
 
-    private func registerUndo(
-        action: String,
-        undoSnapshot: TierStateSnapshot,
-        redoSnapshot: TierStateSnapshot,
-        isRedo: Bool
-    ) {
-        guard let manager = undoManager else { return }
-        manager.registerUndo(withTarget: self) { target in
-            target.performUndo(
-                action: action,
-                undoSnapshot: undoSnapshot,
-                redoSnapshot: redoSnapshot,
-                isRedo: isRedo
-            )
+        // Show toast for undo/redo operations
+        if tierList.undoManager?.isUndoing == true {
+            showInfoToast("Undone", message: "\(action) reverted {undo}")
+        } else if tierList.undoManager?.isRedoing == true {
+            showInfoToast("Redone", message: "\(action) repeated {redo}")
         }
-        manager.setActionName(action)
-    }
-
-    private func performUndo(
-        action: String,
-        undoSnapshot: TierStateSnapshot,
-        redoSnapshot: TierStateSnapshot,
-        isRedo: Bool
-    ) {
-        isPerformingUndoRedo = true
-        defer { isPerformingUndoRedo = false }
-        let inverseSnapshot = captureTierSnapshot()
-        restore(from: undoSnapshot)
-        markAsChanged()
-        let toastTitle = isRedo ? "Redone" : "Undone"
-        let toastMessage = isRedo ? "\(action) repeated {redo}" : "\(action) reverted {undo}"
-        showInfoToast(toastTitle, message: toastMessage)
-        undoManager?.registerUndo(withTarget: self) { target in
-            target.performUndo(
-                action: action,
-                undoSnapshot: redoSnapshot,
-                redoSnapshot: inverseSnapshot,
-                isRedo: !isRedo
-            )
-        }
-        undoManager?.setActionName(action)
     }
 
     internal func markAsChanged() {
-        hasUnsavedChanges = true
+        persistence.hasUnsavedChanges = true
     }
 
     /// Log a general app state event using unified logging
@@ -397,13 +351,13 @@ final class AppState {
         }
         applyBundledProject(defaultProject)
         let fallbackTheme = TierThemeCatalog.defaultTheme
-        selectedTheme = fallbackTheme
-        selectedThemeID = fallbackTheme.id
+        theme.selectedTheme = fallbackTheme
+        theme.selectedThemeID = fallbackTheme.id
         applyCurrentTheme()
         cardDensityPreference = .compact
-        customThemes = []
-        customThemeIDs = []
-        themeDraft = nil
+        theme.customThemes = []
+        theme.customThemeIDs = []
+        theme.themeDraft = nil
         logEvent("seed: loaded default bundled project \(defaultProject.id)")
         do {
             try save()
@@ -424,29 +378,20 @@ final class AppState {
     }
 
     internal func undo() {
-        if let manager = undoManager, manager.canUndo {
-            manager.undo()
-            return
-        }
+        tierList.undo()
     }
 
     internal func redo() {
-        if let manager = undoManager, manager.canRedo {
-            manager.redo()
-            return
-        }
+        tierList.redo()
     }
-    var canUndo: Bool { undoManager?.canUndo ?? false }
-    var canRedo: Bool { undoManager?.canRedo ?? false }
-    var totalItemCount: Int {
-        tiers.values.reduce(into: 0) { partialResult, items in
-            partialResult += items.count
-        }
-    }
-    var hasAnyItems: Bool { totalItemCount > 0 }
-    var hasEnoughForPairing: Bool { totalItemCount >= 2 }
-    var canRandomizeItems: Bool { totalItemCount > 1 }
-    var canStartHeadToHead: Bool { !h2hActive && hasEnoughForPairing }
+
+    var canUndo: Bool { tierList.canUndo }
+    var canRedo: Bool { tierList.canRedo }
+    var totalItemCount: Int { tierList.totalItemCount }
+    var hasAnyItems: Bool { tierList.hasAnyItems }
+    var hasEnoughForPairing: Bool { tierList.hasEnoughForPairing }
+    var canRandomizeItems: Bool { tierList.canRandomizeItems }
+    var canStartHeadToHead: Bool { !headToHead.isActive && hasEnoughForPairing }
     var canShowAnalysis: Bool { hasAnyItems }
 
     // MARK: - Enhanced Persistence

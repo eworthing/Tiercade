@@ -39,6 +39,13 @@ internal extension AppState {
             try data.write(to: projectURL, options: .atomic)
 
             for exportFile in artifacts.files {
+                // Validate relative path to prevent traversal attacks
+                guard try validateExportPath(exportFile.relativePath) else {
+                    throw PersistenceError.fileSystemError(
+                        "Export path contains invalid components (traversal attempt): \(exportFile.relativePath)"
+                    )
+                }
+
                 let destinationURL = destination.appendingPathComponent(exportFile.relativePath)
                 try fileManager.createDirectory(
                     at: destinationURL.deletingLastPathComponent(),
@@ -167,8 +174,10 @@ internal extension AppState {
         guard let relativePath = bundleRelativePath(from: uri) else { return nil }
 
         let fileManager = FileManager.default
-        let sourceURL = tempDirectory.appendingPathComponent(relativePath)
-        guard fileManager.fileExists(atPath: sourceURL.path) else {
+        // Canonicalize and ensure the source lives under the extraction directory
+        let base = tempDirectory.resolvingSymlinksInPath()
+        let sourceURL = base.appendingPathComponent(relativePath).resolvingSymlinksInPath()
+        guard sourceURL.path.hasPrefix(base.path + "/"), fileManager.fileExists(atPath: sourceURL.path) else {
             throw PersistenceError.fileSystemError("Missing asset inside bundle at \(relativePath)")
         }
 
@@ -251,10 +260,34 @@ internal extension AppState {
     internal func bundleRelativePath(from uri: String) -> String? {
         guard uri.hasPrefix("file://") else { return nil }
         let trimmed = String(uri.dropFirst("file://".count))
-        if trimmed.hasPrefix("/") {
-            return String(trimmed.dropFirst())
+        let path = trimmed.hasPrefix("/") ? String(trimmed.dropFirst()) : trimmed
+        // Reject attempts at path traversal or absolute paths
+        if path.contains("..") || path.hasPrefix("/") { return nil }
+        return path
+    }
+
+    /// Validates that an export path doesn't contain traversal sequences
+    /// Returns true if path is safe, false if it should be rejected
+    private func validateExportPath(_ path: String) throws(PersistenceError) -> Bool {
+        // Reject absolute paths
+        guard !path.hasPrefix("/") else { return false }
+
+        // Reject paths with traversal sequences
+        guard !path.contains("..") else { return false }
+
+        // Canonicalize and verify it stays relative
+        let components = path.split(separator: "/").map(String.init)
+        var normalized: [String] = []
+        for component in components {
+            if component == ".." {
+                return false  // Reject any .. components
+            } else if component != "." && !component.isEmpty {
+                normalized.append(component)
+            }
         }
-        return trimmed
+
+        // Ensure the normalized path is non-empty and still relative
+        return !normalized.isEmpty && !normalized.joined(separator: "/").hasPrefix("/")
     }
 
     internal func sanitizeFileName(_ fileName: String) -> String {

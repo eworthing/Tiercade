@@ -8,6 +8,7 @@ internal final actor ImageLoader {
 
     private enum LoaderError: Error {
         case decodingFailed
+        case invalidURL
     }
 
     private final class CGImageBox: NSObject {
@@ -18,7 +19,20 @@ internal final actor ImageLoader {
         }
     }
 
-    private let cache = NSCache<NSURL, CGImageBox>()
+    private let cache: NSCache<NSURL, CGImageBox> = {
+        let c = NSCache<NSURL, CGImageBox>()
+        c.countLimit = 200
+        c.totalCostLimit = 50_000_000 // ~50 MB budget
+        return c
+    }()
+
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 15
+        config.timeoutIntervalForResource = 30
+        config.waitsForConnectivity = false
+        return URLSession(configuration: config)
+    }()
 
     internal func cachedImage(for url: URL) async -> CGImage? {
         cache.object(forKey: url as NSURL)?.image
@@ -29,9 +43,15 @@ internal final actor ImageLoader {
             return cached
         }
 
-        let (data, _) = try await URLSession.shared.data(from: url)
+        guard URLValidator.isAllowedMediaURL(url) else {
+            throw LoaderError.invalidURL
+        }
+
+        let (data, _) = try await session.data(from: url)
         let image = try decodeImage(from: data)
-        cache.setObject(CGImageBox(image: image), forKey: url as NSURL)
+        // Compute cost for NSCache limit enforcement: bytes = bytesPerRow × height
+        let cost = image.bytesPerRow * image.height
+        cache.setObject(CGImageBox(image: image), forKey: url as NSURL, cost: cost)
         return image
     }
 

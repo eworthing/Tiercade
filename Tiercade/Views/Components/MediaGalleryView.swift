@@ -42,29 +42,40 @@ private struct GalleryPage: View {
 
     internal var body: some View {
         ZStack {
-            AsyncImage(url: URL(string: uri)) { phase in
-                switch phase {
-                case .empty:
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFit()
-                case .failure:
-                    ZStack {
-                        Color.secondary.opacity(0.2)
-                        Image(systemName: "photo")
-                            .imageScale(.large)
-                            .foregroundStyle(.secondary)
+            // If URL validation fails (nil), show failure placeholder immediately
+            // instead of passing nil to AsyncImage which causes infinite spinner
+            if let validURL = URLValidator.allowedMediaURL(from: uri) {
+                AsyncImage(url: validURL) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFit()
+                    case .failure:
+                        failurePlaceholder
+                    @unknown default:
+                        EmptyView()
                     }
-                @unknown default:
-                    EmptyView()
                 }
+            } else {
+                // Invalid URL scheme (not HTTPS)
+                failurePlaceholder
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.clear)
         .accessibilityIdentifier("Gallery_Page_\(uri)")
+    }
+
+    private var failurePlaceholder: some View {
+        ZStack {
+            Color.secondary.opacity(0.2)
+            Image(systemName: "photo")
+                .imageScale(.large)
+                .foregroundStyle(.secondary)
+        }
     }
 }

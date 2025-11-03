@@ -35,9 +35,9 @@ struct AIItemGeneratorOverlay: View {
     }
 
     private var stage: Stage {
-        if appState.aiGenerationInProgress {
+        if appState.aiGeneration.aiGenerationInProgress {
             return .generating
-        } else if !appState.aiGeneratedCandidates.isEmpty {
+        } else if !appState.aiGeneration.aiGeneratedCandidates.isEmpty {
             return .review
         } else {
             return .input
@@ -45,14 +45,14 @@ struct AIItemGeneratorOverlay: View {
     }
 
     private var selectedCount: Int {
-        appState.aiGeneratedCandidates.filter(\.isSelected).count
+        appState.aiGeneration.aiGeneratedCandidates.filter(\.isSelected).count
     }
 
     private var filteredCandidates: [AIGeneratedItemCandidate] {
         if searchText.isEmpty {
-            return appState.aiGeneratedCandidates
+            return appState.aiGeneration.aiGeneratedCandidates
         } else {
-            return appState.aiGeneratedCandidates.filter {
+            return appState.aiGeneration.aiGeneratedCandidates.filter {
                 $0.name.localizedCaseInsensitiveContains(searchText)
             }
         }
@@ -77,9 +77,9 @@ struct AIItemGeneratorOverlay: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        appState.aiGenerationRequest = nil
-                        appState.aiGeneratedCandidates = []
-                        appState.aiGenerationInProgress = false
+                        appState.aiGeneration.aiGenerationRequest = nil
+                        appState.aiGeneration.aiGeneratedCandidates = []
+                        appState.aiGeneration.aiGenerationInProgress = false
                     }
                 }
 
@@ -95,9 +95,9 @@ struct AIItemGeneratorOverlay: View {
         .accessibilityIdentifier("AIGenerator_Overlay")
         #if os(tvOS)
         .onExitCommand {
-            appState.aiGenerationRequest = nil
-            appState.aiGeneratedCandidates = []
-            appState.aiGenerationInProgress = false
+            appState.aiGeneration.aiGenerationRequest = nil
+            appState.aiGeneration.aiGeneratedCandidates = []
+            appState.aiGeneration.aiGenerationInProgress = false
         }
         #endif
     }
@@ -220,7 +220,7 @@ struct AIItemGeneratorOverlay: View {
     private var reviewList: some View {
         VStack(spacing: 0) {
             // Selection counter
-            Text("\(selectedCount) of \(appState.aiGeneratedCandidates.count) selected")
+            Text("\(selectedCount) of \(appState.aiGeneration.aiGeneratedCandidates.count) selected")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .padding(.top, 8)

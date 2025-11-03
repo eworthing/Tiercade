@@ -710,7 +710,7 @@ HStack {
 }
 
 // No search bar (focus complexity)
-// Glass effects with proper spacing (.glassBackgroundEffect)
+// Glass effects with proper spacing (.glassEffect)
 #else
 // TextField + Stepper for numbers
 HStack {

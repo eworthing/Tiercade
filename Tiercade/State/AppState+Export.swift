@@ -160,22 +160,33 @@ internal extension AppState {
         return markdown
     }
 
+    /// Sanitizes CSV cell values to prevent formula injection attacks
+    /// Prefixes formula-leading characters (=, +, -, @) with a single quote
+    internal static func sanitizeCSVCell(_ value: String) -> String {
+        if value.hasPrefix("=") || value.hasPrefix("+") || value.hasPrefix("-") || value.hasPrefix("@") {
+            return "'" + value
+        }
+        return value
+    }
+
     private func exportToCSV(group: String, themeName: String) -> String {
         var csv = "Name,Season,Tier\n"
 
         for tierName in tierOrder {
             guard let items = tiers[tierName] else { continue }
             for item in items {
-                let name = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
-                let season = item.seasonString ?? "?"
+                let rawName = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
+                let name = Self.sanitizeCSVCell(rawName)
+                let season = Self.sanitizeCSVCell(item.seasonString ?? "?")
                 csv += "\"\(name)\",\"\(season)\",\"\(tierName)\"\n"
             }
         }
 
         if let unranked = tiers["unranked"] {
             for item in unranked {
-                let name = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
-                let season = item.seasonString ?? "?"
+                let rawName = (item.name ?? item.id).replacingOccurrences(of: ",", with: ";")
+                let name = Self.sanitizeCSVCell(rawName)
+                let season = Self.sanitizeCSVCell(item.seasonString ?? "?")
                 csv += "\"\(name)\",\"\(season)\",\"Unranked\"\n"
             }
         }
@@ -340,12 +351,12 @@ internal extension AppState {
         var settingsAdditional: [String: JSONValue] = [
             "cardDensityPreference": .string(cardDensityPreference.rawValue)
         ]
-        if let activeGroup = activeTierList?.displayName {
+        if let activeGroup = persistence.activeTierList?.displayName {
             settingsAdditional["activeList"] = .string(activeGroup)
         }
 
         return Project.Settings(
-            theme: selectedTheme.slug,
+            theme: theme.selectedTheme.slug,
             tierSortOrder: nil,
             gridSnap: nil,
             showUnranked: true,
@@ -370,7 +381,7 @@ internal extension AppState {
 
     private func buildProjectAudit(timestamp: Date) -> Project.Audit {
         Project.Audit(
-            createdAt: lastSavedTime ?? timestamp,
+            createdAt: persistence.lastSavedTime ?? timestamp,
             updatedAt: timestamp,
             createdBy: "local-user",
             updatedBy: "local-user"
@@ -531,9 +542,9 @@ internal extension AppState {
     }
 
     private func makeCustomThemesPayload() -> JSONValue? {
-        guard !customThemes.isEmpty else { return nil }
+        guard !theme.customThemes.isEmpty else { return nil }
 
-        let themeValues: [JSONValue] = customThemes.map { theme in
+        let themeValues: [JSONValue] = theme.customThemes.map { theme in
             let tierValues: [JSONValue] = theme.tiers.map { tier in
                 .object([
                     "id": .string(tier.id.uuidString),
@@ -557,10 +568,10 @@ internal extension AppState {
     }
 
     private func exportProjectIdentifier() -> String {
-        if let handle = activeTierList {
+        if let handle = persistence.activeTierList {
             return handle.identifier
         }
-        if let currentFileName {
+        if let currentFileName = persistence.currentFileName {
             return currentFileName
         }
         return "tiercade-\(UUID().uuidString)"

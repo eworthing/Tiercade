@@ -6,16 +6,11 @@ import TiercadeCore
 internal extension AppState {
     // MARK: - Loading & Progress
     internal func setLoading(_ loading: Bool, message: String = "") {
-        isLoading = loading
-        loadingMessage = message
-        if loading {
-            operationProgress = 0.0
-        }
-        logLoadingState(isLoading: loading, message: message)
+        progress.setLoading(loading, message: message)
     }
 
-    internal func updateProgress(_ progress: Double) {
-        operationProgress = min(max(progress, 0.0), 1.0)
+    internal func updateProgress(_ progressValue: Double) {
+        progress.updateProgress(progressValue)
     }
 
     internal func setDragTarget(_ tierName: String?) {
@@ -36,10 +31,6 @@ internal extension AppState {
         setLoading(true, message: message)
         defer { setLoading(false) }
         return try await operation()
-    }
-
-    private func logLoadingState(isLoading: Bool, message: String) {
-        Logger.appState.debug("Loading: \(isLoading) message=\(message) progress=\(self.operationProgress)")
     }
 
     private func logDragTarget(_ tierName: String?) {

@@ -125,12 +125,12 @@ internal struct TierListBrowserScene: View {
             .foregroundStyle(Palette.textDim)
     }
 
-    private func cardsGrid(for handles: [AppState.TierListHandle]) -> some View {
+    private func cardsGrid(for handles: [TierListHandle]) -> some View {
         LazyVGrid(columns: columns, spacing: 28) {
             ForEach(handles) { handle in
                 TierListCard(
                     handle: handle,
-                    isActive: handle == app.activeTierList,
+                    isActive: handle == app.persistence.activeTierList,
                     focusBinding: $focus,
                     openAction: { select(handle) },
                     editAction: { edit(handle) }
@@ -139,27 +139,27 @@ internal struct TierListBrowserScene: View {
         }
     }
 
-    private func select(_ handle: AppState.TierListHandle) {
+    private func select(_ handle: TierListHandle) {
         Task {
             await app.selectTierList(handle)
             app.dismissTierListBrowser()
         }
     }
 
-    private func edit(_ handle: AppState.TierListHandle) {
+    private func edit(_ handle: TierListHandle) {
         Task {
             await app.presentTierListEditor(for: handle)
         }
     }
 
-    private var recentHandles: [AppState.TierListHandle] {
-        app.recentTierLists
+    private var recentHandles: [TierListHandle] {
+        app.persistence.recentTierLists
     }
 
-    private var bundledHandles: [AppState.TierListHandle] {
+    private var bundledHandles: [TierListHandle] {
         // Show all bundled projects, not just those not in recent
         return app.bundledProjects
-            .map(AppState.TierListHandle.init(bundled:))
+            .map(TierListHandle.init(bundled:))
     }
 
     private var containerVerticalPadding: CGFloat {
@@ -179,7 +179,7 @@ internal struct TierListBrowserScene: View {
     }
 
     private var defaultFocusTarget: FocusTarget? {
-        if let active = app.activeTierList?.id {
+        if let active = app.persistence.activeTierList?.id {
             return .card(active)
         }
         if let firstRecent = recentHandles.first?.id {
@@ -199,7 +199,7 @@ internal struct TierListBrowserScene: View {
 }
 
 private struct TierListCard: View {
-    internal let handle: AppState.TierListHandle
+    internal let handle: TierListHandle
     internal let isActive: Bool
     internal let focusBinding: FocusState<TierListBrowserScene.FocusTarget?>.Binding
     internal let openAction: () -> Void

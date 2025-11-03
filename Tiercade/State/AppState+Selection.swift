@@ -3,12 +3,6 @@ import TiercadeCore
 
 @MainActor
 internal extension AppState {
-    // MARK: - Theme Picker Overlay
-    internal func presentThemePicker() {
-        showThemePicker = true
-        themePickerActive = true
-    }
-
     // MARK: - Selection / Multi-Select
     // Note: editMode is managed by view layer via environment
     // AppState only manages the selection Set
@@ -116,7 +110,6 @@ internal extension AppState {
     }
 
     // MARK: - Tier Presentation
-    internal func displayLabel(for tierId: String) -> String { tierLabels[tierId] ?? tierId }
 
     internal func setDisplayLabel(_ label: String, for tierId: String) {
         // Check for duplicate labels
@@ -130,8 +123,6 @@ internal extension AppState {
         tierLabels[tierId] = label
         finalizeChange(action: "Rename Tier", undoSnapshot: snapshot)
     }
-
-    internal func displayColorHex(for tierId: String) -> String? { tierColors[tierId] }
 
     internal func setDisplayColorHex(_ hex: String?, for tierId: String) {
         let snapshot = captureTierSnapshot()

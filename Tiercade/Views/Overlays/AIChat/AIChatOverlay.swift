@@ -15,16 +15,18 @@ import UIKit
 @MainActor
 internal struct AIChatOverlay: View {
     @Environment(AppState.self) var app: AppState
-    @State var aiService = AppleIntelligenceService()
+    @Bindable var ai: AIGenerationState
     @State var inputText = ""
     @FocusState var isInputFocused: Bool
     @State var showImagePreview = false
     @State var generatedImage: Image?
     @State var isGeneratingImage = false
     @State var showTestSuitePicker = false
+    #if DEBUG
     @State var useLeadingToolchain = false
     @State var showSteps = false
     @State var useMinimalPrompt = false
+    #endif
 
     internal var body: some View {
         VStack(spacing: 0) {
@@ -97,8 +99,8 @@ internal struct AIChatOverlay: View {
             .toggleStyle(.switch)
             #endif
             .onChange(of: useMinimalPrompt) { _, newValue in
-                aiService.promptStyle = newValue ? .minimal : .strict
-                aiService.messages.append(AIChatMessage(content: newValue ? "🧪 Prompt style: Minimal JSON" : "🧪 Prompt style: Strict JSON", isUser: false))
+                ai.promptStyle = newValue ? .minimal : .strict
+                ai.messages.append(AIChatMessage(content: newValue ? "🧪 Prompt style: Minimal JSON" : "🧪 Prompt style: Strict JSON", isUser: false))
             }
             .accessibilityIdentifier("AIChat_PromptABToggle")
             .accessibilityLabel("Toggle A/B prompt style")
@@ -111,13 +113,13 @@ internal struct AIChatOverlay: View {
             .toggleStyle(.button)
             #endif
             .onChange(of: useLeadingToolchain) { _, newValue in
-                aiService.useLeadingToolchain = newValue
+                ai.useLeadingToolchain = newValue
                 if newValue {
-                    aiService.hybridSwitchEnabled = false
-                    aiService.guidedBudgetBumpFirst = true
-                    aiService.messages.append(AIChatMessage(content: "⚙️ Leading toolchain enabled (guided + budget bump; hybrid off ≤50)", isUser: false))
+                    ai.hybridSwitchEnabled = false
+                    ai.guidedBudgetBumpFirst = true
+                    ai.messages.append(AIChatMessage(content: "⚙️ Leading toolchain enabled (guided + budget bump; hybrid off ≤50)", isUser: false))
                 } else {
-                    aiService.messages.append(AIChatMessage(content: "⚙️ Leading toolchain disabled (standard chat)", isUser: false))
+                    ai.messages.append(AIChatMessage(content: "⚙️ Leading toolchain disabled (standard chat)", isUser: false))
                 }
             }
             .accessibilityIdentifier("AIChat_ToolchainToggle")
@@ -131,8 +133,8 @@ internal struct AIChatOverlay: View {
             .toggleStyle(.button)
             #endif
             .onChange(of: showSteps) { _, newValue in
-                aiService.showStepByStep = newValue
-                aiService.messages.append(AIChatMessage(content: newValue ? "🔎 Step‑by‑step logging enabled" : "🔎 Step‑by‑step logging disabled", isUser: false))
+                ai.showStepByStep = newValue
+                ai.messages.append(AIChatMessage(content: newValue ? "🔎 Step‑by‑step logging enabled" : "🔎 Step‑by‑step logging disabled", isUser: false))
             }
             .accessibilityIdentifier("AIChat_StepToggle")
             .accessibilityLabel("Toggle step-by-step logging")
@@ -167,7 +169,7 @@ internal struct AIChatOverlay: View {
             .accessibilityLabel("Test system prompts")
             #endif
 
-            Button(action: aiService.clearHistory) {
+            Button(action: ai.clearHistory) {
                 Image(systemName: "trash")
             }
             .buttonStyle(.plain)
@@ -188,8 +190,8 @@ internal struct AIChatOverlay: View {
 
     @ViewBuilder
     private var tokenCounter: some View {
-        let current = aiService.estimatedTokenCount
-        let max = AppleIntelligenceService.maxContextTokens
+        let current = ai.estimatedTokenCount
+        let max = AIGenerationState.maxContextTokens
         let percentage = Double(current) / Double(max)
         let color: Color = {
             if percentage < 0.5 { return .green }
@@ -218,13 +220,13 @@ internal struct AIChatOverlay: View {
                 }
                 .padding()
             }
-            .onChange(of: aiService.messages.count) { _, _ in
-                guard let last = aiService.messages.last else { return }
+            .onChange(of: ai.messages.count) { _, _ in
+                guard let last = ai.messages.last else { return }
                 withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
             }
             #if DEBUG
-            .onChange(of: app.testConsoleMessages.count) { _, _ in
-                guard let last = app.testConsoleMessages.last else { return }
+            .onChange(of: ai.testConsoleMessages.count) { _, _ in
+                guard let last = ai.testConsoleMessages.last else { return }
                 withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
             }
             #endif
@@ -235,9 +237,9 @@ internal struct AIChatOverlay: View {
     private var messagesContent: some View {
         let allMessages: [AIChatMessage] = {
             #if DEBUG
-            return aiService.messages + app.testConsoleMessages
+            return ai.messages + ai.testConsoleMessages
             #else
-            return aiService.messages
+            return ai.messages
             #endif
         }()
 
@@ -279,7 +281,7 @@ internal struct AIChatOverlay: View {
                 .id(message.id)
             }
 
-            if aiService.isProcessing {
+            if ai.isProcessing {
                 thinkingRow
             }
         }
@@ -350,7 +352,7 @@ internal struct AIChatOverlay: View {
     }
 
     private var isSendDisabled: Bool {
-        inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || aiService.isProcessing
+        inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || ai.isProcessing
     }
 
     private var isImageButtonDisabled: Bool {
@@ -369,7 +371,7 @@ internal struct AIChatOverlay: View {
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         inputText = ""
-        Task { await aiService.sendMessage(trimmed) }
+        Task { await ai.sendMessage(trimmed) }
     }
 
     private func copyToClipboard(_ text: String) {
@@ -420,7 +422,7 @@ internal struct AIChatOverlay: View {
     }
 
     internal func showUnifiedTestsUnavailable() {
-        aiService.messages.append(AIChatMessage(
+        ai.messages.append(AIChatMessage(
             content: "⚠️ Unified tests require iOS 26.0+ or macOS 26.0+",
             isUser: false
         ))
@@ -431,7 +433,7 @@ internal struct AIChatOverlay: View {
         print("🔧 [Coordinator] Experiments button clicked!")
 
         if #available(iOS 26.0, macOS 26.0, *) {
-            aiService.messages.append(AIChatMessage(
+            ai.messages.append(AIChatMessage(
                 content: "🔧 Starting Coordinator Experiments (baseline)…",
                 isUser: false
             ))
@@ -439,19 +441,19 @@ internal struct AIChatOverlay: View {
             Task {
                 let runner = CoordinatorExperimentRunner { message in
                     Task { @MainActor in
-                        aiService.messages.append(AIChatMessage(content: message, isUser: false))
+                        ai.messages.append(AIChatMessage(content: message, isUser: false))
                     }
                 }
                 let report = await runner.runDefaultSuite()
                 await MainActor.run {
-                    aiService.messages.append(AIChatMessage(
+                    ai.messages.append(AIChatMessage(
                         content: "📊 Coordinator experiments complete: \(report.successfulRuns)/\(report.totalRuns) passed. Report saved to temp directory.",
                         isUser: false
                     ))
                 }
             }
         } else {
-            aiService.messages.append(AIChatMessage(
+            ai.messages.append(AIChatMessage(
                 content: "⚠️ Coordinator experiments require iOS 26.0+ or macOS 26.0+",
                 isUser: false
             ))
@@ -472,7 +474,7 @@ internal struct AIChatOverlay: View {
     }
 
     internal func showAcceptanceTestsUnavailable() {
-        aiService.messages.append(AIChatMessage(
+        ai.messages.append(AIChatMessage(
             content: "⚠️ Acceptance tests require iOS 26.0+ or macOS 26.0+",
             isUser: false
         ))
@@ -491,7 +493,7 @@ internal struct AIChatOverlay: View {
     }
 
     internal func showPilotTestsUnavailable() {
-        aiService.messages.append(AIChatMessage(
+        ai.messages.append(AIChatMessage(
             content: "⚠️ Pilot tests require iOS 26.0+ or macOS 26.0+",
             isUser: false
         ))
@@ -503,19 +505,19 @@ internal struct AIChatOverlay: View {
 
         #if canImport(FoundationModels)
         // Add initial message to chat
-        aiService.messages.append(AIChatMessage(content: "🧪 Starting automated prompt tests...", isUser: false))
+        ai.messages.append(AIChatMessage(content: "🧪 Starting automated prompt tests...", isUser: false))
 
         Task {
             let results = await SystemPromptTester.testPrompts { progressMessage in
                 // Post each progress update to the chat
-                aiService.messages.append(AIChatMessage(content: progressMessage, isUser: false))
+                ai.messages.append(AIChatMessage(content: progressMessage, isUser: false))
             }
 
             // Find the best prompt
             let successful = results.filter { !$0.hasDuplicates }
 
             if let best = successful.first {
-                aiService.messages.append(AIChatMessage(
+                ai.messages.append(AIChatMessage(
                     content: """
                     🎉 SUCCESS! Prompt #\(best.promptNumber) eliminates duplicates.
 
@@ -531,7 +533,7 @@ internal struct AIChatOverlay: View {
                 print("\n✅ BEST PROMPT:")
                 print(best.promptText)
             } else {
-                aiService.messages.append(AIChatMessage(
+                ai.messages.append(AIChatMessage(
                     content: """
                     😔 All \(results.count) prompts failed - duplicates still occur \
                     with every variation tested.
@@ -545,7 +547,7 @@ internal struct AIChatOverlay: View {
             }
         }
         #else
-        aiService.messages.append(AIChatMessage(
+        ai.messages.append(AIChatMessage(
             content: "⚠️ FoundationModels framework not available at compile time on this platform.",
             isUser: false
         ))

@@ -26,29 +26,16 @@ internal struct MainAppView: View {
 
     internal var body: some View {
         @Bindable var app = app
-        let detailPresented = app.detailItem != nil
-        let headToHeadPresented = app.h2hActive
-        let themeCreatorPresented = app.showThemeCreator
-        let tierCreatorPresented = app.showTierListCreator
-        let quickMovePresented = app.quickMoveTarget != nil
-        let aiChatPresented = app.showAIChat && AppleIntelligenceService.isSupportedOnCurrentPlatform
+        let detailPresented = app.overlays.detailItem != nil
+        let headToHeadPresented = app.headToHead.isActive
+        let themeCreatorPresented = app.overlays.showThemeCreator
+        let tierCreatorPresented = app.overlays.showTierListCreator
+        let quickMovePresented = app.overlays.quickMoveTarget != nil
+        let aiChatPresented = app.aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform
         // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
         // which provides automatic focus containment via separate presentation context
-        #if os(tvOS)
-        let modalBlockingFocus = headToHeadPresented
-            || detailPresented
-            || themeCreatorPresented
-            || quickMovePresented
-            || app.showThemePicker
-            || tierCreatorPresented
-            || aiChatPresented
-        #else
-        let modalBlockingFocus = detailPresented
-            || headToHeadPresented
-            || themeCreatorPresented
-            || tierCreatorPresented
-            || aiChatPresented
-        #endif
+        // Use centralized overlay blocking check from AppState
+        let modalBlockingFocus = app.blocksBackgroundFocus
 
         return Group {
             #if os(tvOS)
@@ -91,15 +78,15 @@ internal struct MainAppView: View {
         #endif
         #if !os(tvOS)
         .sheet(item: Binding(
-            get: { app.detailItem },
-            set: { app.detailItem = $0 }
+            get: { app.overlays.detailItem },
+            set: { app.overlays.detailItem = $0 }
         )) { detail in
             NavigationStack {
                 DetailView(item: detail)
                     .navigationTitle(detail.name ?? detail.id)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Close") { app.detailItem = nil }
+                            Button("Close") { app.overlays.detailItem = nil }
                         }
                     }
             }
@@ -136,8 +123,8 @@ internal struct MainAppView: View {
         }
         #if os(macOS)
         .sheet(isPresented: Binding(
-            get: { app.showTierListCreator },
-            set: { app.showTierListCreator = $0 }
+            get: { app.overlays.showTierListCreator },
+            set: { app.overlays.showTierListCreator = $0 }
         )) {
             if let draft = app.tierListCreatorDraft {
                 TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
@@ -145,8 +132,8 @@ internal struct MainAppView: View {
         }
         #else
         .fullScreenCover(isPresented: Binding(
-            get: { app.showTierListCreator },
-            set: { app.showTierListCreator = $0 }
+            get: { app.overlays.showTierListCreator },
+            set: { app.overlays.showTierListCreator = $0 }
         )) {
             if let draft = app.tierListCreatorDraft {
                 TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
@@ -191,7 +178,7 @@ internal struct MainAppView: View {
         #endif
 
         // Head-to-Head overlay
-        if app.h2hActive {
+        if app.headToHead.isActive {
             AccessibilityBridgeView(identifier: "MatchupOverlay_Root")
 
             MatchupArenaOverlay(app: app)
@@ -199,7 +186,7 @@ internal struct MainAppView: View {
         }
 
         #if os(tvOS)
-        if app.showAnalyticsSidebar {
+        if app.overlays.showAnalyticsSidebar {
             HStack(spacing: 0) {
                 Spacer(minLength: 0)
                 AnalyticsSidebarView()
@@ -210,14 +197,14 @@ internal struct MainAppView: View {
         }
         #endif
 
-        if app.showingTierListBrowser {
+        if app.overlays.showTierListBrowser {
             TierListBrowserScene(app: app)
                 .transition(.opacity)
                 .zIndex(53)
         }
 
         // Theme picker overlay
-        if app.showThemePicker {
+        if app.overlays.showThemePicker {
             AccessibilityBridgeView()
 
             // In UI tests, avoid transitions so the overlay appears in the
@@ -234,7 +221,7 @@ internal struct MainAppView: View {
         }
 
         // AI Chat overlay
-        if app.showAIChat && AppleIntelligenceService.isSupportedOnCurrentPlatform {
+        if app.aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform {
             AccessibilityBridgeView(identifier: "AIChat_Overlay")
 
             ZStack {
@@ -245,13 +232,13 @@ internal struct MainAppView: View {
                         app.closeAIChat()
                     }
 
-                AIChatOverlay()
+                AIChatOverlay(ai: app.aiGeneration)
             }
             .transition(.opacity.combined(with: .scale(scale: 0.9)))
             .zIndex(55)
         }
 
-        if app.showThemeCreator, let draft = app.themeDraft {
+        if app.overlays.showThemeCreator, let draft = app.theme.themeDraft {
             AccessibilityBridgeView()
 
             ThemeCreatorOverlay(appState: app, draft: draft)
@@ -270,7 +257,7 @@ internal struct MainAppView: View {
         }
 
         // Detail overlay (all platforms)
-        if let detail = app.detailItem {
+        if let detail = app.overlays.detailItem {
             detailOverlay(for: detail)
         }
     }
@@ -460,15 +447,15 @@ private extension MainAppView {
     }
 
     private func handleOverlayDismissals() -> Bool {
-        if app.showAIChat {
+        if app.aiGeneration.showAIChat {
             app.closeAIChat()
             return true
         }
-        if app.showingTierListBrowser {
+        if app.overlays.showTierListBrowser {
             app.dismissTierListBrowser()
             return true
         }
-        if app.showAnalyticsSidebar {
+        if app.overlays.showAnalyticsSidebar {
             app.closeAnalyticsSidebar()
             return true
         }
@@ -480,11 +467,11 @@ private extension MainAppView {
             app.cancelQuickRank()
             return true
         }
-        if app.quickMoveTarget != nil {
+        if app.overlays.quickMoveTarget != nil {
             app.cancelQuickMove()
             return true
         }
-        if app.h2hActive {
+        if app.headToHead.isActive {
             app.cancelH2H(fromExitCommand: true)
             return true
         }
@@ -492,11 +479,11 @@ private extension MainAppView {
     }
 
     private func handleCreatorDismissals() -> Bool {
-        if app.showThemeCreator {
+        if app.overlays.showThemeCreator {
             app.cancelThemeCreation(returnToThemePicker: false)
             return true
         }
-        if app.showTierListCreator {
+        if app.overlays.showTierListCreator {
             app.cancelTierListCreator()
             return true
         }
@@ -504,8 +491,8 @@ private extension MainAppView {
     }
 
     private func handleModeDismissals() -> Bool {
-        if app.detailItem != nil {
-            app.detailItem = nil
+        if app.overlays.detailItem != nil {
+            app.overlays.detailItem = nil
             return true
         }
         #if os(iOS) || os(tvOS)

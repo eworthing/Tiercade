@@ -32,7 +32,7 @@ internal struct DetailSidebarView: View {
             .padding(.trailing, 48)
             .focusSection()
             .onExitCommand {
-                app.detailItem = nil
+                app.overlays.detailItem = nil
             }
             .onAppear { focus.wrappedValue = .close }
         }
@@ -40,7 +40,7 @@ internal struct DetailSidebarView: View {
 
     private var closeButton: some View {
         Button {
-            app.detailItem = nil
+            app.overlays.detailItem = nil
         } label: {
             Image(systemName: "xmark.circle.fill")
                 .font(.system(size: 44, weight: .bold))

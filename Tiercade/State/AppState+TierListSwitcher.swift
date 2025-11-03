@@ -4,48 +4,53 @@ import SwiftData
 import os
 import TiercadeCore
 
+// MARK: - Tier List Source & Handle Types
+
+enum TierListSource: String, Codable, Sendable {
+    case bundled
+    case file
+    case authored
+}
+
+struct TierListHandle: Identifiable, Codable, Hashable, Sendable {
+    var source: TierListSource
+    var identifier: String
+    var displayName: String
+    var subtitle: String?
+    var iconSystemName: String?
+    var entityID: UUID?
+
+    var id: String {
+        if let entityID {
+            return "\(source.rawValue)::\(identifier)::\(entityID.uuidString)"
+        }
+        return "\(source.rawValue)::\(identifier)"
+    }
+}
+
+// MARK: - AppState Tier List Switcher Extension
+
 @MainActor
 internal extension AppState {
-    enum TierListSource: String, Codable, Sendable {
-        case bundled
-        case file
-        case authored
-    }
-
-    struct TierListHandle: Identifiable, Codable, Hashable, Sendable {
-        var source: TierListSource
-        var identifier: String
-        var displayName: String
-        var subtitle: String?
-        var iconSystemName: String?
-        var entityID: UUID?
-
-        var id: String {
-            if let entityID {
-                return "\(source.rawValue)::\(identifier)::\(entityID.uuidString)"
-            }
-            return "\(source.rawValue)::\(identifier)"
-        }
-    }
 
     var activeTierDisplayName: String {
-        activeTierList?.displayName ?? "Untitled Tier List"
+        persistence.activeTierList?.displayName ?? "Untitled Tier List"
     }
 
     var quickPickTierLists: [TierListHandle] {
         var picks: [TierListHandle] = []
-        if let activeTierList {
+        if let activeTierList = persistence.activeTierList {
             picks.append(activeTierList)
         }
 
-        let recent = recentTierLists.filter { $0 != activeTierList }
-        picks.append(contentsOf: recent.prefix(max(0, quickPickMenuLimit - picks.count)))
+        let recent = persistence.recentTierLists.filter { $0 != persistence.activeTierList }
+        picks.append(contentsOf: recent.prefix(max(0, persistence.quickPickMenuLimit - picks.count)))
 
-        if picks.count < quickPickMenuLimit {
+        if picks.count < persistence.quickPickMenuLimit {
             let additionalBundled = bundledProjects
                 .map(TierListHandle.init(bundled:))
                 .filter { !picks.contains($0) }
-                .prefix(max(0, quickPickMenuLimit - picks.count))
+                .prefix(max(0, persistence.quickPickMenuLimit - picks.count))
             picks.append(contentsOf: additionalBundled)
         }
 
@@ -99,7 +104,7 @@ internal extension AppState {
     }
 
     internal func registerTierListSelection(_ handle: TierListHandle) {
-        activeTierList = handle
+        persistence.activeTierList = handle
         do {
             try deactivateOtherLists(except: handle.entityID)
             let entity = try ensureEntity(for: handle)
@@ -110,8 +115,8 @@ internal extension AppState {
             entity.iconSystemName = handle.iconSystemName
             entity.externalIdentifier = handle.identifier
             entity.sourceRaw = handle.source.rawValue
-            activeTierList = TierListHandle(entity: entity)
-            activeTierListEntity = entity
+            persistence.activeTierList = TierListHandle(entity: entity)
+            persistence.activeTierListEntity = entity
             try modelContext.save()
         } catch {
             Logger.persistence.error("registerTierListSelection failed: \(error.localizedDescription)")
@@ -121,13 +126,13 @@ internal extension AppState {
 
     internal func presentTierListBrowser() {
         logEvent("presentTierListBrowser called")
-        showingTierListBrowser = true
-        logEvent("showingTierListBrowser set to \(showingTierListBrowser)")
+        overlays.showTierListBrowser = true
+        logEvent("overlays.showTierListBrowser set to \(overlays.showTierListBrowser)")
     }
 
     internal func dismissTierListBrowser() {
         logEvent("dismissTierListBrowser called")
-        showingTierListBrowser = false
+        overlays.showTierListBrowser = false
     }
 
     internal func tierListHandle(forFileNamed fileName: String) -> TierListHandle {
@@ -144,8 +149,8 @@ internal extension AppState {
     internal func restoreTierListState() {
         do {
             if let entity = try fetchActiveTierListEntity() {
-                activeTierListEntity = entity
-                activeTierList = TierListHandle(entity: entity)
+                persistence.activeTierListEntity = entity
+                persistence.activeTierList = TierListHandle(entity: entity)
             }
             refreshRecentTierListsFromStore()
         } catch {
@@ -154,7 +159,7 @@ internal extension AppState {
     }
 
     internal func loadActiveTierListIfNeeded() {
-        guard let handle = activeTierList else { return }
+        guard let handle = persistence.activeTierList else { return }
 
         switch handle.source {
         case .bundled:
@@ -178,9 +183,9 @@ internal extension AppState {
                 sortBy: [SortDescriptor(\TierListEntity.lastOpenedAt, order: .reverse)]
             )
             let entities = try modelContext.fetch(descriptor)
-            recentTierLists = entities
+            persistence.recentTierLists = entities
                 .filter { !$0.isDeleted }
-                .prefix(maxRecentTierLists)
+                .prefix(persistence.maxRecentTierLists)
                 .map(TierListHandle.init)
         } catch {
             Logger.persistence.error("refreshRecentTierListsFromStore failed: \(error.localizedDescription)")
@@ -207,7 +212,7 @@ internal extension AppState {
             fileName: handle.source == .file ? handle.identifier : nil,
             isActive: true,
             cardDensityRaw: cardDensityPreference.rawValue,
-            selectedThemeID: selectedThemeID,
+            selectedThemeID: theme.selectedThemeID,
             customThemesData: encodedCustomThemesData(),
             sourceRaw: handle.source.rawValue,
             externalIdentifier: handle.identifier,
@@ -237,7 +242,7 @@ internal extension AppState {
     }
 }
 
-extension AppState.TierListHandle {
+extension TierListHandle {
     internal init(bundled project: BundledProject) {
         self.init(
             source: .bundled,
@@ -251,7 +256,7 @@ extension AppState.TierListHandle {
 
     internal init(entity: TierListEntity) {
         self.init(
-            source: AppState.TierListSource(rawValue: entity.sourceRaw) ?? .bundled,
+            source: TierListSource(rawValue: entity.sourceRaw) ?? .bundled,
             identifier: entity.externalIdentifier ?? entity.identifier.uuidString,
             displayName: entity.title,
             subtitle: entity.subtitle,

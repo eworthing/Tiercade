@@ -63,8 +63,8 @@ internal extension AppState {
         do {
             try persistActiveTierList()
             try modelContext.save()
-            hasUnsavedChanges = false
-            lastSavedTime = Date()
+            persistence.hasUnsavedChanges = false
+            persistence.lastSavedTime = Date()
         } catch let error as PersistenceError {
             throw error
         } catch {
@@ -77,12 +77,12 @@ internal extension AppState {
     }
 
     internal func autoSave() throws(PersistenceError) {
-        guard hasUnsavedChanges else { return }
+        guard persistence.hasUnsavedChanges else { return }
         try save()
     }
 
     internal func autoSaveAsync() async {
-        guard hasUnsavedChanges else { return }
+        guard persistence.hasUnsavedChanges else { return }
         try? save()
     }
 
@@ -90,7 +90,7 @@ internal extension AppState {
     internal func load() -> Bool {
         do {
             if let entity = try fetchActiveTierListEntity() {
-                activeTierListEntity = entity
+                persistence.activeTierListEntity = entity
                 applyLoadedTierList(entity)
                 return true
             }
@@ -105,7 +105,7 @@ internal extension AppState {
         do {
             let artifacts = try buildProjectExportArtifacts(
                 group: "All",
-                themeName: selectedTheme.displayName
+                themeName: theme.selectedTheme.displayName
             )
             let destination = try fileURLForExport(named: sanitizedName)
             try writeProjectBundle(artifacts, to: destination)
@@ -155,8 +155,8 @@ internal extension AppState {
         do {
             try persistActiveTierList()
             try modelContext.save()
-            hasUnsavedChanges = false
-            lastSavedTime = Date()
+            persistence.hasUnsavedChanges = false
+            persistence.lastSavedTime = Date()
         } catch let error as PersistenceError {
             Logger.persistence.error("Persist after external load failed: \(error.localizedDescription)")
         } catch {
@@ -171,14 +171,14 @@ internal extension AppState {
     }
 
     private func finalizeSuccessfulFileSave(named fileName: String) {
-        currentFileName = fileName
-        hasUnsavedChanges = false
-        lastSavedTime = Date()
+        persistence.currentFileName = fileName
+        persistence.hasUnsavedChanges = false
+        persistence.lastSavedTime = Date()
         showSuccessToast("File Saved", message: "Saved as \(fileName).tierproj {file}")
     }
 
     internal func fetchActiveTierListEntity() throws(PersistenceError) -> TierListEntity? {
-        if let cached = activeTierListEntity {
+        if let cached = persistence.activeTierListEntity {
             return cached
         }
 
@@ -189,7 +189,7 @@ internal extension AppState {
             )
 
             if let entity = try modelContext.fetch(descriptor).first {
-                activeTierListEntity = entity
+                persistence.activeTierListEntity = entity
                 return entity
             }
 
@@ -198,7 +198,7 @@ internal extension AppState {
             )
             let entity = try modelContext.fetch(anyDescriptor).first
             if let entity {
-                activeTierListEntity = entity
+                persistence.activeTierListEntity = entity
             }
             return entity
         } catch {
@@ -214,23 +214,23 @@ internal extension AppState {
 
         let newEntity = TierListEntity(
             title: activeTierDisplayName,
-            fileName: currentFileName,
+            fileName: persistence.currentFileName,
             cardDensityRaw: cardDensityPreference.rawValue,
-            selectedThemeID: selectedThemeID,
+            selectedThemeID: theme.selectedThemeID,
             customThemesData: encodedCustomThemesData(),
             globalSortModeData: encodedGlobalSortMode()
         )
         modelContext.insert(newEntity)
-        activeTierListEntity = newEntity
+        persistence.activeTierListEntity = newEntity
         return newEntity
     }
 
     private func persistActiveTierList() throws(PersistenceError) {
         let entity = try ensureActiveTierListEntity()
         entity.title = activeTierDisplayName
-        entity.fileName = currentFileName
+        entity.fileName = persistence.currentFileName
         entity.cardDensityRaw = cardDensityPreference.rawValue
-        entity.selectedThemeID = selectedThemeID
+        entity.selectedThemeID = theme.selectedThemeID
         entity.updatedAt = Date()
         entity.customThemesData = encodedCustomThemesData()
         entity.globalSortModeData = encodedGlobalSortMode()
@@ -355,9 +355,9 @@ internal extension AppState {
         restoreCustomThemes(decodeCustomThemes(from: entity.customThemesData))
         restoreGlobalSortMode(from: entity.globalSortModeData)
         restoreCardDensityPreference(rawValue: entity.cardDensityRaw)
-        currentFileName = entity.fileName
-        hasUnsavedChanges = false
-        lastSavedTime = entity.updatedAt
+        persistence.currentFileName = entity.fileName
+        persistence.hasUnsavedChanges = false
+        persistence.lastSavedTime = entity.updatedAt
     }
 
     private func decodeCustomThemes(from data: Data?) -> [CodableTheme] {
@@ -382,27 +382,27 @@ internal extension AppState {
 
     private func restoreTheme(themeID: UUID?) {
         if let themeID,
-           let theme = theme(with: themeID) {
-            selectedThemeID = themeID
-            selectedTheme = theme
+           let foundTheme = self.theme.theme(with: themeID) {
+            self.theme.selectedThemeID = themeID
+            self.theme.selectedTheme = foundTheme
             return
         }
 
         let fallback = TierThemeCatalog.defaultTheme
-        selectedTheme = fallback
-        selectedThemeID = fallback.id
+        self.theme.selectedTheme = fallback
+        self.theme.selectedThemeID = fallback.id
     }
 
     private func restoreCustomThemes(_ codableThemes: [CodableTheme]) {
         let restored = codableThemes.map { $0.toTheme() }
-        customThemes = restored.sorted {
+        self.theme.customThemes = restored.sorted {
             $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
         }
-        customThemeIDs = Set(restored.map(\TierTheme.id))
+        self.theme.customThemeIDs = Set(restored.map(\TierTheme.id))
     }
 
     internal func encodedCustomThemesData() -> Data? {
-        try? JSONEncoder().encode(customThemes.map(CodableTheme.init))
+        try? JSONEncoder().encode(self.theme.customThemes.map(CodableTheme.init))
     }
 
     internal func encodedGlobalSortMode() -> Data? {

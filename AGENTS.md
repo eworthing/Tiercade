@@ -367,13 +367,13 @@ tvOS Exit button (Menu/⌘) should dismiss modals, not exit app:
 ### Liquid Glass support matrix
 | Platform | Implementation | Helper |
 | --- | --- | --- |
-| tvOS 26+ | `glassEffect` / `glassBackgroundEffect` with focus-ready spacing | See `GlassContainer` helper below |
+| tvOS 26+ | `glassEffect(_:in:)` with focus-ready spacing | See `GlassContainer` helper below |
 | iOS · iPadOS · macOS (native) | `.ultraThinMaterial` fallback inside the same shape | See `GlassContainer` helper below |
 
 ```swift
 @ViewBuilder func GlassContainer<S: Shape, V: View>(_ shape: S, @ViewBuilder _ content: () -> V) -> some View {
   #if os(tvOS)
-  content().glassBackgroundEffect(in: shape, displayMode: .fill)
+  content().glassEffect(.regular, in: shape)
   #else
   content().background(.ultraThinMaterial, in: shape)
   #endif

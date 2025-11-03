@@ -33,7 +33,7 @@ final class TierListEntity {
         selectedThemeID: UUID?,
         customThemesData: Data? = nil,
         globalSortModeData: Data? = nil,
-        sourceRaw: String = AppState.TierListSource.bundled.rawValue,
+        sourceRaw: String = TierListSource.bundled.rawValue,
         externalIdentifier: String? = nil,
         subtitle: String? = nil,
         iconSystemName: String? = nil,

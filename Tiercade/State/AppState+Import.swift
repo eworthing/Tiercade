@@ -14,7 +14,7 @@ internal extension AppState {
                 let project = try await decodeProject(fromJSON: jsonString)
                 updateProgress(0.7)
                 let snapshot = captureTierSnapshot()
-                applyImportedProject(project, action: "Import JSON", fileName: nil, undoSnapshot: snapshot)
+                applyImportedProject(project, action: "Import JSON", fileName: nil as String?, undoSnapshot: snapshot)
                 updateProgress(1.0)
 
                 showSuccessToast("Import Complete", message: "Successfully imported tier list {import}")
@@ -62,6 +62,22 @@ internal extension AppState {
             "S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []
         ]
 
+        var seenIDs = Set<String>()
+        var counters: [String: Int] = [:]
+
+        func uniqueID(from base: String) -> String {
+            var id = base
+            while seenIDs.contains(id) {
+                // Key counter by base ID, not evolving id, to avoid miscounts
+                // when generated IDs collide with existing base IDs
+                let next = (counters[base] ?? 1) + 1
+                counters[base] = next
+                id = "\(base)_\(next)"
+            }
+            seenIDs.insert(id)
+            return id
+        }
+
         for line in lines.dropFirst() {
             guard !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
 
@@ -69,7 +85,20 @@ internal extension AppState {
             guard components.count >= 3 else { continue }
 
             if let item = Self.createItemFromCSVComponents(components) {
-                Self.addItemToTier(item, tier: components[2], in: &newTiers)
+                // Ensure unique ID per import session
+                let base = item.id
+                let unique = uniqueID(from: base)
+                let adjusted = Item(
+                    id: unique,
+                    name: item.name,
+                    seasonString: item.seasonString,
+                    seasonNumber: item.seasonNumber,
+                    status: item.status,
+                    description: item.description,
+                    imageUrl: item.imageUrl,
+                    videoUrl: item.videoUrl
+                )
+                Self.addItemToTier(adjusted, tier: components[2], in: &newTiers)
             }
         }
 
@@ -162,28 +191,36 @@ internal extension AppState {
         }
     }
 
-    nonisolated private static func parseCSVLine(_ line: String) -> [String] {
-        var components: [String] = []
-        var currentComponent = ""
+    nonisolated internal static func parseCSVLine(_ line: String) -> [String] {
+        var fields: [String] = []
+        var current = ""
         var insideQuotes = false
+        var prevWasQuote = false
 
-        for character in line {
-            if character == "\"" {
-                insideQuotes.toggle()
-            } else if character == "," && !insideQuotes {
-                components.append(currentComponent)
-                currentComponent = ""
+        for ch in line {
+            if ch == "\"" {
+                if insideQuotes && prevWasQuote {
+                    current.append("\"")
+                    prevWasQuote = false
+                } else if insideQuotes {
+                    prevWasQuote = true
+                } else {
+                    insideQuotes = true
+                }
+            } else if ch == "," && !insideQuotes {
+                fields.append(current.trimmingCharacters(in: .whitespaces))
+                current = ""
+                prevWasQuote = false
             } else {
-                currentComponent.append(character)
+                if prevWasQuote {
+                    insideQuotes = false
+                    prevWasQuote = false
+                }
+                current.append(ch)
             }
         }
-        components.append(currentComponent)
-
-        return components.map { component in
-            component
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .replacingOccurrences(of: "\"", with: "")
-        }
+        fields.append(current.trimmingCharacters(in: .whitespaces))
+        return fields
     }
 
     // MARK: - Canonical project helpers
@@ -192,7 +229,7 @@ internal extension AppState {
         _ project: Project,
         action: String,
         fileName: String?,
-        undoSnapshot: TierStateSnapshot
+        undoSnapshot: TierListState.TierStateSnapshot
     ) {
         let state = resolvedTierState(from: project)
         tierOrder = state.order
@@ -204,7 +241,7 @@ internal extension AppState {
         applyProjectMetadata(from: project)
 
         if let fileName {
-            currentFileName = fileName
+            persistence.currentFileName = fileName
         }
 
         finalizeChange(action: action, undoSnapshot: undoSnapshot)
@@ -230,8 +267,8 @@ internal extension AppState {
             let value = project.additional?["customThemes"],
             case let .array(themeValues) = value
         else {
-            customThemes = []
-            customThemeIDs = []
+            theme.customThemes = []
+            theme.customThemeIDs = []
             return
         }
 
@@ -244,8 +281,8 @@ internal extension AppState {
             }
         }
 
-        customThemes = restored
-        customThemeIDs = Set(restored.map(\.id))
+        theme.customThemes = restored
+        theme.customThemeIDs = Set(restored.map(\.id))
     }
 
     private func decodeTheme(from value: JSONValue) -> TierTheme? {
@@ -306,14 +343,14 @@ internal extension AppState {
             return
         }
 
-        if let custom = customThemes.first(where: { $0.slug.caseInsensitiveCompare(slug) == .orderedSame }) {
+        if let custom = theme.customThemes.first(where: { $0.slug.caseInsensitiveCompare(slug) == .orderedSame }) {
             setSelectedTheme(custom)
         }
     }
 
     private func setSelectedTheme(_ theme: TierTheme) {
-        selectedTheme = theme
-        selectedThemeID = theme.id
+        self.theme.selectedTheme = theme
+        self.theme.selectedThemeID = theme.id
     }
 
     // MARK: - Decoding helpers

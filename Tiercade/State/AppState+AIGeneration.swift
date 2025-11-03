@@ -40,8 +40,8 @@ internal extension AppState {
             return
         }
 
-        aiGenerationRequest = request
-        aiGenerationInProgress = true
+        aiGeneration.aiGenerationRequest = request
+        aiGeneration.aiGenerationInProgress = true
 
         await withLoadingIndicator(message: "Generating \(count) items...") {
             do {
@@ -68,7 +68,7 @@ internal extension AppState {
                 }
 
                 // Convert to candidates (all selected by default)
-                aiGeneratedCandidates = items.map {
+                aiGeneration.aiGeneratedCandidates = items.map {
                     AIGeneratedItemCandidate(name: $0, isSelected: true)
                 }
 
@@ -88,7 +88,7 @@ internal extension AppState {
                     title: "Generation Failed",
                     message: error.userMessage
                 )
-                aiGeneratedCandidates = []
+                aiGeneration.aiGeneratedCandidates = []
             } catch {
                 // Fallback for unexpected errors
                 print("❌ [AIGeneration] Unexpected error: \(error)")
@@ -97,11 +97,11 @@ internal extension AppState {
                     title: "Generation Failed",
                     message: "An unexpected error occurred. Please try again."
                 )
-                aiGeneratedCandidates = []
+                aiGeneration.aiGeneratedCandidates = []
             }
         }
 
-        aiGenerationInProgress = false
+        aiGeneration.aiGenerationInProgress = false
     }
 
     // MARK: - Candidate Management
@@ -110,10 +110,10 @@ internal extension AppState {
     ///
     /// - Parameter candidate: The candidate to toggle
     internal func toggleCandidateSelection(_ candidate: AIGeneratedItemCandidate) {
-        guard let index = aiGeneratedCandidates.firstIndex(where: { $0.id == candidate.id }) else {
+        guard let index = aiGeneration.aiGeneratedCandidates.firstIndex(where: { $0.id == candidate.id }) else {
             return
         }
-        aiGeneratedCandidates[index].isSelected.toggle()
+        aiGeneration.aiGeneratedCandidates[index].isSelected.toggle()
     }
 
     /// Remove a candidate completely from the list.
@@ -122,7 +122,7 @@ internal extension AppState {
     ///
     /// - Parameter candidate: The candidate to remove
     internal func removeCandidate(_ candidate: AIGeneratedItemCandidate) {
-        aiGeneratedCandidates.removeAll { $0.id == candidate.id }
+        aiGeneration.aiGeneratedCandidates.removeAll { $0.id == candidate.id }
     }
 
     // MARK: - Import
@@ -138,7 +138,7 @@ internal extension AppState {
     /// - Note: Shows toast with import count and duplicate count
     /// - Note: Automatically dismisses overlay after successful import
     internal func importSelectedCandidates(into draft: TierProjectDraft) {
-        let selected = aiGeneratedCandidates.filter { $0.isSelected }
+        let selected = aiGeneration.aiGeneratedCandidates.filter { $0.isSelected }
 
         guard !selected.isEmpty else {
             showToast(type: .warning, title: "No Selection", message: "Please select items to import")
@@ -187,9 +187,9 @@ internal extension AppState {
 
         print("✅ [AIGeneration] Imported \(uniqueCandidates.count) items to draft '\(draft.title)'")
         // Clear state after successful import
-        aiGenerationRequest = nil
-        aiGeneratedCandidates = []
-        aiGenerationInProgress = false
+        aiGeneration.aiGenerationRequest = nil
+        aiGeneration.aiGeneratedCandidates = []
+        aiGeneration.aiGenerationInProgress = false
     }
 }
 

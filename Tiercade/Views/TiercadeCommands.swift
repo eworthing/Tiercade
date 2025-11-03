@@ -10,7 +10,7 @@ internal struct TiercadeCommands: Commands {
         // File menu commands
         CommandGroup(replacing: .newItem) {
             Button {
-                appState.showTierListCreator = true
+                appState.overlays.showTierListCreator = true
             } label: {
                 Label("New Tier List…", systemImage: "square.and.pencil")
             }
@@ -30,7 +30,7 @@ internal struct TiercadeCommands: Commands {
             .help("Save the current tier list")
 
             Button {
-                appState.showingTierListBrowser.toggle()
+                appState.overlays.showTierListBrowser.toggle()
             } label: {
                 Label("Tier List Browser…", systemImage: "list.bullet.rectangle")
             }
@@ -85,10 +85,10 @@ internal struct TiercadeCommands: Commands {
         // View menu commands
         CommandGroup(after: .sidebar) {
             Button {
-                appState.showThemePicker.toggle()
+                appState.overlays.showThemePicker.toggle()
             } label: {
                 Label(
-                    appState.showThemePicker ? "Hide Themes" : "Show Themes",
+                    appState.overlays.showThemePicker ? "Hide Themes" : "Show Themes",
                     systemImage: "paintpalette"
                 )
             }

@@ -15,19 +15,25 @@ import FoundationModels
 
 // Boot logging for acceptance test diagnostics
 private let acceptanceTestFlag = "-runAcceptanceTests"
-private let bootLogPath = "/tmp/tiercade_acceptance_boot.log"
+private let bootLogURL: URL = {
+    FileManager.default.temporaryDirectory.appendingPathComponent("tiercade_acceptance_boot.log")
+}()
 
 private func bootLog(_ s: String) {
     let line = "[\(ISO8601DateFormatter().string(from: Date()))] \(s)\n"
     if let d = line.data(using: .utf8) {
-        if FileManager.default.fileExists(atPath: bootLogPath) {
-            if let h = try? FileHandle(forWritingTo: URL(fileURLWithPath: bootLogPath)) {
+        let path = bootLogURL.path
+        if FileManager.default.fileExists(atPath: path) {
+            if let h = try? FileHandle(forWritingTo: bootLogURL) {
                 _ = try? h.seekToEnd()
                 _ = try? h.write(contentsOf: d)
                 _ = try? h.close()
             }
         } else {
-            FileManager.default.createFile(atPath: bootLogPath, contents: d)
+            FileManager.default.createFile(atPath: path, contents: d)
+            #if os(macOS)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: path)
+            #endif
         }
     }
     print(s)
@@ -200,8 +206,8 @@ struct TiercadeApp: App {
         // Auto-open AI Chat to stream test progress
         Task { @MainActor in
             // Open AI Chat overlay to display streaming progress
-            if !appState.showAIChat {
-                appState.showAIChat = true
+            if !appState.aiGeneration.showAIChat {
+                appState.aiGeneration.showAIChat = true
                 print("🤖 Auto-opened AI Chat for test progress")
             }
 
@@ -316,8 +322,8 @@ struct TiercadeApp: App {
 
         Task { @MainActor in
             if #available(iOS 26.0, macOS 26.0, *) {
-                if !appState.showAIChat {
-                    appState.showAIChat = true
+                if !appState.aiGeneration.showAIChat {
+                    appState.aiGeneration.showAIChat = true
                     print("🤖 Auto-opened AI Chat for experiment progress")
                 }
                 try? await Task.sleep(for: .milliseconds(400))
@@ -347,8 +353,8 @@ struct TiercadeApp: App {
 
         Task { @MainActor in
             if #available(iOS 26.0, macOS 26.0, *) {
-                if !appState.showAIChat {
-                    appState.showAIChat = true
+                if !appState.aiGeneration.showAIChat {
+                    appState.aiGeneration.showAIChat = true
                     print("🤖 Auto-opened AI Chat for experiment progress")
                 }
                 try? await Task.sleep(for: .milliseconds(400))
@@ -386,8 +392,8 @@ struct TiercadeApp: App {
 
         Task { @MainActor in
             if #available(iOS 26.0, macOS 26.0, *) {
-                if !appState.showAIChat {
-                    appState.showAIChat = true
+                if !appState.aiGeneration.showAIChat {
+                    appState.aiGeneration.showAIChat = true
                     print("🤖 Auto-opened AI Chat for experiment progress")
                 }
                 try? await Task.sleep(for: .milliseconds(400))

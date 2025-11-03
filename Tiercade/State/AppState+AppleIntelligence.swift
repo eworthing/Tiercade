@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import Observation
 import TiercadeCore
+import os
 
 #if canImport(FoundationModels)
 import FoundationModels
@@ -43,72 +44,52 @@ internal func makeAntiDuplicateInstructions() -> Instructions {
 }
 #endif
 
-// MARK: - Apple Intelligence Chat State
+// MARK: - Apple Intelligence Chat State (Forwarding to AIGenerationState)
 @MainActor
 internal extension AppState {
     /// Toggle AI chat overlay visibility
     internal func toggleAIChat() {
-        guard AppleIntelligenceService.isSupportedOnCurrentPlatform else {
-            if showAIChat { showAIChat = false }
-            showToast(
-                type: .info,
-                title: "Unavailable",
-                message: "Apple Intelligence chat isn't supported on this platform."
-            )
-            return
-        }
-
-        #if !canImport(FoundationModels)
-        // FoundationModels not available at compile time (e.g., Catalyst SDK limitation)
-        showToast(
-            type: .info,
-            title: "Not Available",
-            message: "Apple Intelligence requires FoundationModels framework (macOS 26+)."
+        aiGeneration.toggleAIChat(
+            showToast: { [weak self] type, title, message in
+                self?.showToast(type: type, title: title, message: message)
+            },
+            logEvent: { [weak self] event in
+                self?.logEvent(event)
+            }
         )
-        return
-        #endif
-
-        showAIChat.toggle()
-        if showAIChat {
-            logEvent("🤖 Apple Intelligence chat opened")
-        }
     }
 
     /// Close AI chat overlay
     internal func closeAIChat() {
-        showAIChat = false
-        logEvent("🤖 Apple Intelligence chat closed")
+        aiGeneration.closeAIChat(logEvent: { [weak self] event in
+            self?.logEvent(event)
+        })
     }
 
     #if DEBUG
     /// Add a test console message (for streaming test progress)
     internal func appendTestMessage(_ content: String) {
-        testConsoleMessages.append(AIChatMessage(content: content, isUser: false))
+        aiGeneration.appendTestMessage(content)
     }
 
     /// Clear test console messages
     internal func clearTestMessages() {
-        testConsoleMessages.removeAll()
+        aiGeneration.clearTestMessages()
     }
     #endif
-}// MARK: - Chat Message Model
-internal struct AIChatMessage: Identifiable, Sendable {
-    let id = UUID()
-    let content: String
-    let isUser: Bool
-    let timestamp: Date
-
-    internal init(content: String, isUser: Bool) {
-        self.content = content
-        self.isUser = isUser
-        self.timestamp = Date()
-    }
 }
 
-// MARK: - Apple Intelligence Service (real integration where available)
+// Note: AIChatMessage is now defined in AIGenerationState.swift
+// Note: AppleIntelligenceService has been replaced by AIGenerationState (see State/AIGenerationState.swift)
+// The remaining code in this file provides advanced generation features that will be
+// integrated into AIGenerationState in future PRs
+
+#if false
+// MARK: - Legacy Apple Intelligence Service (DEPRECATED - use AIGenerationState)
+// This code is preserved for reference but should not be instantiated
 @MainActor
 @Observable
-final class AppleIntelligenceService {
+final class AppleIntelligenceService_DEPRECATED {
     var messages: [AIChatMessage] = []
     var isProcessing = false
     var estimatedTokenCount: Int = 0
@@ -154,7 +135,7 @@ final class AppleIntelligenceService {
         }
 
         estimatedTokenCount = total
-        print("🤖 [AI] Estimated tokens: \(estimatedTokenCount)/\(Self.maxContextTokens)")
+        Logger.aiGeneration.debug("Estimated tokens: \(self.estimatedTokenCount)/\(Self.maxContextTokens)")
     }
 
     #if canImport(FoundationModels)
@@ -164,7 +145,7 @@ final class AppleIntelligenceService {
         if session == nil {
             let instructions = makeAntiDuplicateInstructions()
             session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
-            print("🤖 [AI] Created new LanguageModelSession with STRONG anti-duplicate instructions")
+            Logger.aiGeneration.info("Created new LanguageModelSession")
         }
     }
     #endif
@@ -209,17 +190,20 @@ final class AppleIntelligenceService {
 
     /// Send a message to Apple Intelligence
     internal func sendMessage(_ text: String) async {
-        lastUserQuery = text
+        // Sanitize user input to mitigate prompt injection attacks
+        let sanitizedText = PromptValidator.sanitize(text)
+
+        lastUserQuery = sanitizedText
         logSendMessageStart()
 
-        // Append user message immediately
-        messages.append(AIChatMessage(content: text, isUser: true))
+        // Append user message immediately (display original for transparency)
+        messages.append(AIChatMessage(content: sanitizedText, isUser: true))
         updateTokenEstimate()
 
         isProcessing = true
         defer {
             isProcessing = false
-            print("🤖 [AI] isProcessing set to false")
+            Logger.aiGeneration.debug("isProcessing set to false")
         }
 
         #if canImport(FoundationModels)
@@ -228,21 +212,21 @@ final class AppleIntelligenceService {
         guard ensureSessionAvailable() else { return }
 
         // Try advanced list generation if enabled (POC)
-        if await tryAdvancedListGeneration(text: text) { return }
+        if await tryAdvancedListGeneration(text: sanitizedText) { return }
 
         // Standard response path (re-ensure session in case advanced path reset it)
         _ = ensureSessionAvailable()
-        await executeStandardResponse(text: text)
-        print("🤖 [AI] ===== sendMessage END =====")
+        await executeStandardResponse(text: sanitizedText)
+        Logger.aiGeneration.debug("sendMessage END")
         #else
         handleFoundationModelsUnavailable()
         #endif
     }
 
     private func logSendMessageStart() {
-        print("🤖 [AI] ===== sendMessage START =====")
-        print("🤖 [AI] Message count before: \(messages.count)")
-        print("🤖 [AI] Estimated tokens before: \(estimatedTokenCount)")
+        Logger.aiGeneration.debug("sendMessage START")
+        Logger.aiGeneration.debug("Message count: \(self.messages.count)")
+        Logger.aiGeneration.debug("Estimated tokens: \(self.estimatedTokenCount)")
     }
 
     #if canImport(FoundationModels)
@@ -275,8 +259,8 @@ final class AppleIntelligenceService {
             return false
         }
 
-        print("🤖 [AI] Session exists ✓")
-        print("🤖 [AI] Session.isResponding: \(session!.isResponding)")
+        Logger.aiGeneration.debug("Session exists")
+        Logger.aiGeneration.debug("Session.isResponding: \(self.session!.isResponding)")
         return true
     }
 
@@ -321,7 +305,7 @@ final class AppleIntelligenceService {
 
         do {
             let startTime = Date()
-            print("🤖 [AI] Calling session.respond() at \(startTime)...")
+            Logger.aiGeneration.debug("Calling session.respond()")
             print("🤖 [AI] Prompt text: \"\(text)\"")
 
             let response = try await session.respond(to: Prompt(text))
@@ -332,8 +316,8 @@ final class AppleIntelligenceService {
             let deduplicated = deduplicateListItems(response.content)
             messages.append(AIChatMessage(content: deduplicated, isUser: false))
             updateTokenEstimate()
-            print("🤖 [AI] Message count after: \(messages.count)")
-            print("🤖 [AI] Estimated tokens after: \(estimatedTokenCount)")
+            Logger.aiGeneration.debug("Message count after: \(self.messages.count)")
+            Logger.aiGeneration.debug("Estimated tokens after: \(self.estimatedTokenCount)")
         } catch let error as LanguageModelSession.GenerationError {
             await handleGenerationError(error, originalText: text)
         } catch {
@@ -343,20 +327,20 @@ final class AppleIntelligenceService {
 
     private func logResponseReceived(response: LanguageModelSession.Response<String>, startTime: Date) {
         let elapsed = Date().timeIntervalSince(startTime)
-        print("🤖 [AI] ✓ Received response after \(String(format: "%.2f", elapsed))s")
-        print("🤖 [AI] Response content: \"\(response.content)\"")
-        print("🤖 [AI] Response length: \(response.content.count) chars")
+        Logger.aiGeneration.info("Received response after \(String(format: "%.2f", elapsed))s")
+        Logger.aiGeneration.debug("Response content: \"\(response.content)\"")
+        Logger.aiGeneration.debug("Response length: \(response.content.count) chars")
     }
 
     /// Handle LanguageModelSession.GenerationError cases
     private func handleGenerationError(_ error: LanguageModelSession.GenerationError, originalText: String) async {
-        print("🤖 [AI] ❌ GenerationError caught: \(error)")
+        Logger.aiGeneration.error("GenerationError caught: \(error)")
         print("🤖 [AI] Error description: \(error.localizedDescription)")
         print("🤖 [AI] Error type: \(type(of: error))")
 
         // Handle context window overflow by resetting the session
         if case .exceededContextWindowSize = error {
-            print("🤖 [AI] Context window exceeded - resetting session")
+            Logger.aiGeneration.info("Context window exceeded - resetting session")
             // Remove the user message we just added (will be re-added on retry)
             if messages.last?.isUser == true {
                 messages.removeLast()
@@ -368,7 +352,7 @@ final class AppleIntelligenceService {
             ))
             updateTokenEstimate()
             // Retry the current message with new session
-            print("🤖 [AI] Retrying with new session...")
+            Logger.aiGeneration.info("Retrying with new session")
             await sendMessage(originalText)
             return
         }
@@ -445,7 +429,7 @@ final class AppleIntelligenceService {
     private func resetSession() {
         #if canImport(FoundationModels)
         session = nil
-        print("🤖 [AI] Session reset")
+        Logger.aiGeneration.debug("Session reset")
         #endif
     }
 
@@ -642,3 +626,4 @@ final class AppleIntelligenceService {
     }
     #endif
 }
+#endif

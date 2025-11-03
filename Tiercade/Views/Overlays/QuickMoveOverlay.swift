@@ -6,8 +6,9 @@ internal struct QuickMoveOverlay: View {
     @Bindable var app: AppState
     @Environment(\.editMode) private var editMode
     @FocusState private var focusedElement: FocusElement?
+    @Namespace private var quickMoveFocusScope
 
-    private enum FocusElement: Hashable {
+    internal enum FocusElement: Hashable {
         case tier(String)
         case toggleSelection
         case details
@@ -15,114 +16,72 @@ internal struct QuickMoveOverlay: View {
     }
 
     internal var body: some View {
-        if let item = app.quickMoveTarget {
+        if let item = app.overlays.quickMoveTarget {
             let isBatchMode = app.batchQuickMoveActive
-            let title = isBatchMode
-                ? "Move \(app.selection.count) Items"
-                : item.name ?? item.id
+            let title = isBatchMode ? "Move \(app.selection.count) Items" : (item.name ?? item.id)
             let allTiers = app.tierOrder + ["unranked"]
             let currentTier = app.currentTier(of: item.id)
             let isMultiSelectActive = editMode?.wrappedValue == .active
-            let computeDefaultFocus: () -> FocusElement = {
-                guard let target = app.quickMoveTarget else { return .cancel }
-                return resolvedDefaultFocus(
-                    tiers: allTiers,
-                    currentTier: app.currentTier(of: target.id),
-                    isBatchMode: app.batchQuickMoveActive,
-                    hasSelectionControls: (editMode?.wrappedValue == .active) && !app.batchQuickMoveActive
-                )
-            }
-            let defaultFocus = computeDefaultFocus()
 
             ZStack {
-                // Background dimming (non-interactive)
-                Color.black.opacity(0.65)
+                // Background dimming
+                Color.black.opacity(OpacityTokens.scrim)
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
 
-                VStack(spacing: 28) {
+                VStack(spacing: SpacingTokens.verticalSpacing) {
                     // Title
                     Text(title)
                         .font(.title2.weight(.semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
 
-                    // Tier selection - use ScrollView + VStack for reliable tvOS focus
-                    ScrollView {
-                        tvGlassContainer(spacing: 12) {
-                            VStack(spacing: 12) {
-                                ForEach(allTiers, id: \.self) { tierName in
-                                    TierButton(
-                                        tierName: tierName,
-                                        displayLabel: app.displayLabel(for: tierName),
-                                        tierColor: Palette.tierColor(tierName),
-                                        itemCount: app.tiers[tierName]?.count ?? 0,
-                                        isCurrentTier: !isBatchMode && currentTier == tierName,
-                                        action: { app.commitQuickMove(to: tierName) }
-                                    )
-                                    .accessibilityIdentifier("QuickMove_\(tierName)")
-                                    .focused($focusedElement, equals: .tier(tierName))
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 24)
-                    }
-                    .frame(maxHeight: 600)
-                    .focusSection()
+                    // Tier buttons
+                    tierButtons(
+                        item: item,
+                        allTiers: allTiers,
+                        currentTier: currentTier,
+                        isBatchMode: isBatchMode
+                    )
 
                     Divider()
-                        .opacity(0.3)
-                        .padding(.horizontal, 24)
+                        .opacity(OpacityTokens.divider)
+                        .padding(.horizontal, SpacingTokens.horizontalPadding)
 
-                    // Secondary actions
-                    HStack(spacing: 16) {
-                        // Single-item actions (not in batch mode)
-                        if !isBatchMode {
-                            if isMultiSelectActive {
-                                Button(app.isSelected(item.id) ? "Remove from Selection" : "Add to Selection") {
-                                    app.toggleSelection(item.id)
-                                }
-                                .buttonStyle(.bordered)
-                                .accessibilityIdentifier("QuickMove_ToggleSelection")
-                                .focused($focusedElement, equals: .toggleSelection)
-                            }
-
-                            Button("View Details") {
-                                app.detailItem = item
-                                app.cancelQuickMove()
-                            }
-                            .buttonStyle(.bordered)
-                            .accessibilityIdentifier("QuickMove_ViewDetails")
-                            .focused($focusedElement, equals: .details)
-                        }
-
-                        Spacer()
-
-                        Button("Cancel", role: .cancel) {
-                            app.cancelQuickMove()
-                        }
-                        .buttonStyle(.bordered)
-                        .accessibilityIdentifier("QuickMove_Cancel")
-                        .focused($focusedElement, equals: .cancel)
-                    }
-                    .padding(.horizontal, 24)
+                    // Action buttons
+                    actionButtons(
+                        item: item,
+                        isBatchMode: isBatchMode,
+                        isMultiSelectActive: isMultiSelectActive
+                    )
                 }
-                .padding(32)
-                .tvGlassRounded(28)
+                .padding(SpacingTokens.overlayPadding)
+                .background(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(Color.black.opacity(OpacityTokens.containerBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
                 .shadow(color: Color.black.opacity(0.22), radius: 24, y: 8)
-                .focusSection()
-                .defaultFocus($focusedElement, defaultFocus)
-                .onAppear { focusedElement = defaultFocus }
+                .focusScope(quickMoveFocusScope)
+                .onMoveCommand(perform: handleMoveCommand)
+                .defaultFocus($focusedElement, defaultFocus(
+                    currentTier: currentTier,
+                    allTiers: allTiers,
+                    isBatchMode: isBatchMode,
+                    isMultiSelectActive: isMultiSelectActive
+                ))
+                .onAppear {
+                    focusedElement = defaultFocus(
+                        currentTier: currentTier,
+                        allTiers: allTiers,
+                        isBatchMode: isBatchMode,
+                        isMultiSelectActive: isMultiSelectActive
+                    )
+                }
                 .onDisappear { focusedElement = nil }
-                .onChange(of: app.batchQuickMoveActive) { _, _ in
-                    focusedElement = computeDefaultFocus()
-                }
-                .onChange(of: app.quickMoveTarget?.id) { _, _ in
-                    focusedElement = computeDefaultFocus()
-                }
-                .onChange(of: editMode?.wrappedValue) { _, _ in
-                    focusedElement = computeDefaultFocus()
-                }
                 .onExitCommand { app.cancelQuickMove() }
                 .accessibilityIdentifier("QuickMove_Overlay")
                 .accessibilityElement(children: .contain)
@@ -132,106 +91,192 @@ internal struct QuickMoveOverlay: View {
         }
     }
 
-    private func resolvedDefaultFocus(
-        tiers: [String],
+    @ViewBuilder
+    private func tierButtons(
+        item: Item,
+        allTiers: [String],
         currentTier: String?,
+        isBatchMode: Bool
+    ) -> some View {
+        ScrollView {
+            tvGlassContainer(spacing: 12) {
+                VStack(spacing: 12) {
+                    ForEach(allTiers, id: \.self) { tierName in
+                        TierButton(
+                            tierName: tierName,
+                            displayLabel: app.displayLabel(for: tierName),
+                            tierColor: Palette.tierColor(tierName),
+                            itemCount: app.tiers[tierName]?.count ?? 0,
+                            isCurrentTier: !isBatchMode && currentTier == tierName,
+                            isFocused: focusedElement == .tier(tierName),
+                            action: { app.commitQuickMove(to: tierName) }
+                        )
+                        .accessibilityIdentifier("QuickMove_\(tierName)")
+                        .focused($focusedElement, equals: .tier(tierName))
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+        }
+        .frame(maxHeight: 600)
+    }
+
+    @ViewBuilder
+    private func actionButtons(
+        item: Item,
         isBatchMode: Bool,
-        hasSelectionControls: Bool
+        isMultiSelectActive: Bool
+    ) -> some View {
+        HStack(spacing: 16) {
+            if !isBatchMode {
+                if isMultiSelectActive {
+                    Button(app.isSelected(item.id) ? "Remove from Selection" : "Add to Selection") {
+                        app.toggleSelection(item.id)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("QuickMove_ToggleSelection")
+                    .focused($focusedElement, equals: .toggleSelection)
+                }
+
+                Button("View Details") {
+                    app.overlays.detailItem = item
+                    app.cancelQuickMove()
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("QuickMove_ViewDetails")
+                .focused($focusedElement, equals: .details)
+            }
+
+            Spacer()
+
+            Button("Cancel", role: .cancel) {
+                app.cancelQuickMove()
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("QuickMove_Cancel")
+            .focused($focusedElement, equals: .cancel)
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private func defaultFocus(
+        currentTier: String?,
+        allTiers: [String],
+        isBatchMode: Bool,
+        isMultiSelectActive: Bool
     ) -> FocusElement {
-        if hasSelectionControls {
+        if isMultiSelectActive && !isBatchMode {
             return .toggleSelection
         }
 
         if isBatchMode {
-            if let first = tiers.first {
-                return .tier(first)
-            }
-            return .cancel
+            return allTiers.first.map { .tier($0) } ?? .cancel
         }
 
         if let currentTier,
-           let firstAlternative = tiers.first(where: { $0 != currentTier }) {
+           let firstAlternative = allTiers.first(where: { $0 != currentTier }) {
             return .tier(firstAlternative)
         }
 
-        if let currentTier, tiers.contains(currentTier) {
+        if let currentTier, allTiers.contains(currentTier) {
             return .cancel
         }
 
-        if let first = tiers.first {
-            return .tier(first)
+        return allTiers.first.map { .tier($0) } ?? .cancel
+    }
+
+    private func handleMoveCommand(_ direction: MoveCommandDirection) {
+        let allTiers = app.tierOrder + ["unranked"]
+
+        // Trap up-arrow when at first tier
+        if direction == .up {
+            if case .tier(let tierName) = focusedElement,
+               tierName == allTiers.first {
+                focusedElement = .tier(allTiers.first ?? "S")
+                return
+            }
         }
 
-        return .cancel
+        // Trap down-arrow when at bottom
+        if direction == .down {
+            if focusedElement == .cancel {
+                focusedElement = .cancel
+                return
+            }
+        }
+
+        // Trap left/right to prevent horizontal escape
+        if direction == .left || direction == .right {
+            if case .tier(let tierName) = focusedElement {
+                focusedElement = .tier(tierName)
+                return
+            }
+        }
     }
 }
 
-// Simplified tier button component - relies on SwiftUI default focus behavior
+// Simplified tier button component
 private struct TierButton: View {
-    internal let tierName: String
-    internal let displayLabel: String
-    internal let tierColor: Color
-    internal let itemCount: Int
-    internal let isCurrentTier: Bool
-    internal let action: () -> Void
+    let tierName: String
+    let displayLabel: String
+    let tierColor: Color
+    let itemCount: Int
+    let isCurrentTier: Bool
+    let isFocused: Bool
+    let action: () -> Void
 
-    internal var body: some View {
-        Button(
-            action: { if !isCurrentTier { action() } },
-            label: {
-                HStack(spacing: 16) {
-                    // Tier label
-                    Text(displayLabel)
-                        .font(.system(size: 28, weight: .bold))
-                        .foregroundStyle(.primary)
-                        .frame(minWidth: 60, alignment: .leading)
+    var body: some View {
+        Button(action: { if !isCurrentTier { action() } }) {
+            HStack(spacing: 16) {
+                Text(displayLabel)
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .frame(minWidth: 60, alignment: .leading)
 
-                    // Item count (with fixed space reservation)
-                    Group {
-                        if itemCount > 0 {
-                            Text("\(itemCount)")
-                                .font(.title3.weight(.medium))
-                                .foregroundStyle(.secondary)
-                        } else {
-                            Text("")
-                                .font(.title3.weight(.medium))
-                                .hidden()
-                        }
-                    }
-                    .frame(minWidth: 40, alignment: .leading)
-
-                    Spacer()
-
-                    // Current tier indicator (with fixed space reservation)
-                    Group {
-                        if isCurrentTier {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.title2)
-                                .foregroundStyle(tierColor)
-                        } else {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.title2)
-                                .hidden()
-                        }
-                    }
-                    .frame(width: 30)
+                if itemCount > 0 {
+                    Text("\(itemCount)")
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .frame(minWidth: 40, alignment: .leading)
+                } else {
+                    Text("")
+                        .font(.title3.weight(.medium))
+                        .hidden()
+                        .frame(minWidth: 40, alignment: .leading)
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 18)
-                .frame(maxWidth: .infinity)
-                .frame(height: 74)
-                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .tvGlassRounded(16)
-                .tint(tierColor.opacity(isCurrentTier ? 0.36 : 0.24))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(tierColor.opacity(isCurrentTier ? 0.95 : 0.55), lineWidth: isCurrentTier ? 3 : 2)
-                )
+
+                Spacer()
+
+                if isCurrentTier {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(tierColor)
+                        .frame(width: 30)
+                } else {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title2)
+                        .hidden()
+                        .frame(width: 30)
+                }
             }
-        )
-        .buttonStyle(.plain)
-        .focusable(!isCurrentTier, interactions: .activate)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 18)
+            .frame(maxWidth: .infinity)
+            .frame(height: 74)
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .tvGlassRounded(16)
+            .tint(tierColor.opacity(isCurrentTier ? OpacityTokens.focusedTint : OpacityTokens.unfocusedTint))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(
+                        isFocused ? Color.white : tierColor.opacity(isCurrentTier ? 0.95 : 0.55),
+                        lineWidth: isFocused ? 4 : (isCurrentTier ? 3 : 2)
+                    )
+            )
+        }
+        .buttonStyle(.tvRemote(.secondary))
         .accessibilityLabel(isCurrentTier ? "Current tier: \(displayLabel)" : "Move to \(displayLabel)")
+        .accessibilityHint(isCurrentTier ? "Already in this tier" : "Select to move")
     }
 }
 #endif

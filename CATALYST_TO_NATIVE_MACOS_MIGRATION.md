@@ -1304,7 +1304,7 @@ The app already uses Liquid Glass via SwiftUI's tvOS 26 APIs, which work identic
 // GlassEffects.swift
 @ViewBuilder func GlassContainer<S: Shape, V: View>(_ shape: S, @ViewBuilder _ content: () -> V) -> some View {
   #if os(tvOS)
-  content().glassBackgroundEffect(in: shape, displayMode: .fill)
+  content().glassEffect(.regular, in: shape)
   #else
   content().background(.ultraThinMaterial, in: shape)
   #endif
@@ -1318,7 +1318,7 @@ The app already uses Liquid Glass via SwiftUI's tvOS 26 APIs, which work identic
 @ViewBuilder func GlassContainer<S: Shape, V: View>(_ shape: S, @ViewBuilder _ content: () -> V) -> some View {
   #if os(tvOS) || os(macOS)
   if #available(macOS 26.0, *) {
-    content().glassBackgroundEffect(in: shape, displayMode: .fill)
+    content().glassEffect(.regular, in: shape)
   } else {
     content().background(.ultraThinMaterial, in: shape)
   }
