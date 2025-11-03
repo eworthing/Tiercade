@@ -195,6 +195,18 @@ final class AppState {
     var undoManager: UndoManager?
     private var isPerformingUndoRedo = false
 
+    /// Centralized check for whether any overlay blocks background interaction
+    /// Use with `.allowsHitTesting(!app.blocksBackgroundFocus)` on background content
+    var blocksBackgroundFocus: Bool {
+        (detailItem != nil)
+        || h2hActive
+        || showThemePicker
+        || (quickMoveTarget != nil)
+        || showThemeCreator
+        || showTierListCreator
+        || (showAIChat && AppleIntelligenceService.isSupportedOnCurrentPlatform)
+    }
+
     var h2hProgress: Double {
         guard h2hTotalComparisons > 0 else { return 0 }
         return min(Double(h2hCompletedComparisons) / Double(h2hTotalComparisons), 1.0)

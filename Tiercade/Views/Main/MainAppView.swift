@@ -34,21 +34,8 @@ internal struct MainAppView: View {
         let aiChatPresented = app.showAIChat && AppleIntelligenceService.isSupportedOnCurrentPlatform
         // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
         // which provides automatic focus containment via separate presentation context
-        #if os(tvOS)
-        let modalBlockingFocus = headToHeadPresented
-            || detailPresented
-            || themeCreatorPresented
-            || quickMovePresented
-            || app.showThemePicker
-            || tierCreatorPresented
-            || aiChatPresented
-        #else
-        let modalBlockingFocus = detailPresented
-            || headToHeadPresented
-            || themeCreatorPresented
-            || tierCreatorPresented
-            || aiChatPresented
-        #endif
+        // Use centralized overlay blocking check from AppState
+        let modalBlockingFocus = app.blocksBackgroundFocus
 
         return Group {
             #if os(tvOS)
