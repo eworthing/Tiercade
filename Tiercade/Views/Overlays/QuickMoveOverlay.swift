@@ -105,7 +105,7 @@ internal struct QuickMoveOverlay: View {
                         TierButton(
                             tierName: tierName,
                             displayLabel: app.displayLabel(for: tierName),
-                            tierColor: Palette.tierColor(tierName),
+                            tierColor: Palette.tierColor(tierName, from: app.tierColors),
                             itemCount: app.tiers[tierName]?.count ?? 0,
                             isCurrentTier: !isBatchMode && currentTier == tierName,
                             isFocused: focusedElement == .tier(tierName),
@@ -192,7 +192,7 @@ internal struct QuickMoveOverlay: View {
         if direction == .up {
             if case .tier(let tierName) = focusedElement,
                tierName == allTiers.first {
-                focusedElement = .tier(allTiers.first ?? "S")
+                focusedElement = .tier(allTiers.first ?? TierIdentifier.unranked.rawValue)
                 return
             }
         }

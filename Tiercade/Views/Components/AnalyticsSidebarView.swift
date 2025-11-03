@@ -131,7 +131,7 @@ internal struct AnalyticsSidebarView: View {
                     x: .value("Items", tier.count),
                     y: .value("Tier", tier.tier)
                 )
-                .foregroundStyle(Palette.tierColor(tier.tier))
+                .foregroundStyle(Palette.tierColor(tier.tierId))
                 .annotation(position: .trailing) {
                     Text(percentageText(for: tier.percentage))
                         .font(.system(size: 22, weight: .semibold))

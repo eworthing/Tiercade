@@ -19,10 +19,12 @@ public enum ExportFormatter {
         text += "Theme: \(themeName)\n\n"
         let ordered = tiers.filter { $0.key != "unranked" }
         let parts = ordered.compactMap { (tier, items) -> String? in
-            guard let cfg = tierConfig[tier], !items.isEmpty else { return nil }
+            guard !items.isEmpty else { return nil }
+            // Fallback to tier name if config entry is missing (supports custom tiers)
+            let label = tierConfig[tier]?.name ?? tier
+            let desc = tierConfig[tier]?.description ?? ""
             let names = items.map { $0.name ?? "" }.joined(separator: ", ")
-            let desc = cfg.description ?? ""
-            return "\(cfg.name) Tier (\(desc)): \(names)"
+            return "\(label) Tier (\(desc)): \(names)"
         }
         text += parts.joined(separator: "\n\n")
         return text

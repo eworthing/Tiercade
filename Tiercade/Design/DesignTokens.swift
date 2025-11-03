@@ -65,6 +65,19 @@ internal enum Palette {
         if normalized == "unranked" { return unrankedTierColor }
         return tierColors[tier.uppercased()] ?? defaultTierColor
     }
+
+    /// State-driven tier color lookup with fallback to static colors
+    /// Enables custom tier colors while maintaining SABCDF defaults
+    internal static func tierColor(_ tier: String, from stateColors: [String: String]) -> Color {
+        // Check state colors first (custom tier colors)
+        if let hex = stateColors[tier] {
+            return ColorUtilities.color(hex: hex)
+        }
+
+        // Fallback to static colors (SABCDF defaults)
+        if tier.lowercased() == "unranked" { return unrankedTierColor }
+        return tierColors[tier.uppercased()] ?? defaultTierColor
+    }
 }
 
 internal enum Metrics {

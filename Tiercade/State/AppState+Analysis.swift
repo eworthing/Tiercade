@@ -93,9 +93,12 @@ internal extension AppState {
     private func tierDistribution(totalCount: Int) -> [TierDistributionData] {
         tierOrder.compactMap { tier in
             let count = tiers[tier]?.count ?? 0
-            guard totalCount > 0 else { return TierDistributionData(tier: tier, count: 0, percentage: 0) }
+            let label = displayLabel(for: tier)
+            guard totalCount > 0 else {
+                return TierDistributionData(tierId: tier, tierLabel: label, count: 0, percentage: 0)
+            }
             let percentage = Double(count) / Double(totalCount) * 100
-            return TierDistributionData(tier: tier, count: count, percentage: percentage)
+            return TierDistributionData(tierId: tier, tierLabel: label, count: count, percentage: percentage)
         }
     }
 

@@ -41,9 +41,13 @@ nonisolated enum ExportFormat: CaseIterable {
 
 internal struct TierDistributionData: Identifiable, Sendable {
     let id = UUID()
-    let tier: String
+    let tierId: String        // Internal tier identifier (e.g., "S", "GOLD", "EPIC")
+    let tierLabel: String      // Display label (e.g., "Best", "Golden", "Epic Tier")
     let count: Int
     let percentage: Double
+
+    /// Legacy accessor for backward compatibility with views expecting 'tier' property
+    var tier: String { tierLabel }
 }
 
 internal struct TierAnalysisData: Sendable {

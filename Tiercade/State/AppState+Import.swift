@@ -31,12 +31,23 @@ internal extension AppState {
             try await withLoadingIndicator(message: "Importing CSV data...") {
                 updateProgress(0.2)
 
+                // Capture MainActor state before moving to background
+                let currentTierOrder = tierOrder
+
                 // Heavy CSV parsing on background thread pool
-                let newTiers = try await parseCSVInBackground(csvString)
+                let (newTiers, discoveredTiers) = try await parseCSVInBackground(csvString, currentTierOrder: currentTierOrder)
                 updateProgress(0.8)
 
                 // State updates on MainActor
                 let snapshot = captureTierSnapshot()
+
+                // Add newly discovered tiers to tierOrder
+                for discoveredTier in discoveredTiers {
+                    if !tierOrder.contains(discoveredTier) {
+                        tierOrder.append(discoveredTier)
+                    }
+                }
+
                 tiers = newTiers
                 finalizeChange(action: "Import CSV", undoSnapshot: snapshot)
                 updateProgress(1.0)
@@ -52,18 +63,21 @@ internal extension AppState {
 
     // Swift 6 (Swift 6.2 toolchain) pattern: heavy CSV parsing runs on background thread pool via Task.detached
     nonisolated
-    private func parseCSVInBackground(_ csvString: String) async throws(ImportError) -> Items {
+    private func parseCSVInBackground(_ csvString: String, currentTierOrder: [String]) async throws(ImportError) -> (Items, [String]) {
         let lines = csvString.components(separatedBy: .newlines)
         guard lines.count > 1 else {
             throw ImportError.invalidData("CSV file appears to be empty")
         }
 
-        var newTiers: Items = [
-            "S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []
-        ]
+        // Initialize from current tierOrder to support custom tier configurations
+        var newTiers: Items = [TierIdentifier.unranked.rawValue: []]
+        for tier in currentTierOrder {
+            newTiers[tier] = []
+        }
 
         var seenIDs = Set<String>()
         var counters: [String: Int] = [:]
+        var discoveredTiers: Set<String> = []  // Track new tier names from CSV
 
         func uniqueID(from base: String) -> String {
             var id = base
@@ -98,11 +112,13 @@ internal extension AppState {
                     imageUrl: item.imageUrl,
                     videoUrl: item.videoUrl
                 )
-                Self.addItemToTier(adjusted, tier: components[2], in: &newTiers)
+                let tierName = components[2]
+                Self.addItemToTier(adjusted, tier: tierName, in: &newTiers, discoveredTiers: &discoveredTiers)
             }
         }
 
-        return newTiers
+        // Return tiers and newly discovered tier names (sorted for consistent order)
+        return (newTiers, Array(discoveredTiers).sorted())
     }
 
     nonisolated private static func createItemFromCSVComponents(_ components: [String]) -> Item? {
@@ -120,14 +136,24 @@ internal extension AppState {
         return Item(id: id, attributes: attributes.isEmpty ? nil : attributes)
     }
 
-    nonisolated private static func addItemToTier(_ item: Item, tier: String, in tiers: inout Items) {
+    nonisolated private static func addItemToTier(
+        _ item: Item,
+        tier: String,
+        in tiers: inout Items,
+        discoveredTiers: inout Set<String>
+    ) {
         let tierKey = tier.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedKey = tierKey.lowercased() == "unranked" ? "unranked" : tierKey.uppercased()
 
         if tiers[normalizedKey] != nil {
+            // Known tier - add item directly
             tiers[normalizedKey]?.append(item)
         } else {
-            tiers["unranked"]?.append(item)
+            // Unknown tier - create new tier and track it
+            tiers[normalizedKey] = [item]
+            if normalizedKey != "unranked" {
+                discoveredTiers.insert(normalizedKey)
+            }
         }
     }
 

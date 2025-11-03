@@ -18,9 +18,17 @@ internal final class TierListState {
     // MARK: - Tier Data
 
     /// Core tier structure: tier name -> array of items
+    ///
+    /// **Note**: Hardcoded SABCDF defaults here are intentional for initial state.
+    /// When building empty tier dictionaries dynamically (e.g., during reset or initialization),
+    /// prefer deriving from current `tierOrder` to support custom tier names/counts.
+    /// See `AppState+Items.makeEmptyTiers()` for the dynamic builder pattern.
     var tiers: Items = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
 
     /// Order of tiers for display (excludes "unranked")
+    ///
+    /// **Important**: This property drives tier rendering order throughout the app.
+    /// Custom tier configurations should update both `tierOrder` AND `tiers` dictionary keys.
     var tierOrder: [String] = ["S", "A", "B", "C", "D", "F"]
 
     // MARK: - Selection

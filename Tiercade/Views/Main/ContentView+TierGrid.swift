@@ -265,18 +265,22 @@ internal struct CardView: View {
         #endif
     }
 
-    private static let tierLookup: [String: Tier] = [
-        "S": .s,
-        "A": .a,
-        "B": .b,
-        "C": .c,
-        "D": .d,
-        "F": .f
-    ]
+    /// Get color for focus halo using state-driven tier colors
+    private func colorForItem(_ item: Item) -> Color {
+        guard let tierId = app.currentTier(of: item.id) else {
+            return Palette.tierColor("unranked", from: app.tierColors)
+        }
+        return Palette.tierColor(tierId, from: app.tierColors)
+    }
 
-    private func tierForItem(_ item: Item) -> Tier {
-        guard let tierId = app.currentTier(of: item.id)?.uppercased() else { return .unranked }
-        return Self.tierLookup[tierId] ?? .unranked
+    /// Get tier badge data for display (label and color hex)
+    private func tierBadgeData(for item: Item) -> (label: String, colorHex: String) {
+        guard let tierId = app.currentTier(of: item.id) else {
+            return ("Unranked", app.tierColors["unranked"] ?? "#6B7280")
+        }
+        let label = app.displayLabel(for: tierId)
+        let colorHex = app.tierColors[tierId] ?? "#6B7280"
+        return (label, colorHex)
     }
 
     private var layoutCornerRadius: CGFloat {
@@ -319,7 +323,7 @@ internal struct CardView: View {
         )
         .contentShape(Rectangle())
         .accessibilityLabel(displayLabel)
-        .punchyFocus(tier: tierForItem(item), cornerRadius: layoutCornerRadius)
+        .punchyFocus(color: colorForItem(item), cornerRadius: layoutCornerRadius)
         #if os(iOS) || os(macOS)
         .accessibilityAddTraits(.isButton)
         #endif
@@ -455,7 +459,8 @@ internal struct CardView: View {
                 }
             }
 
-            TierBadgeView(tier: tierForItem(item))
+            let badgeData = tierBadgeData(for: item)
+            DynamicTierBadgeView(label: badgeData.label, colorHex: badgeData.colorHex)
                 .padding(layout.contentPadding * 0.6)
         }
     }
