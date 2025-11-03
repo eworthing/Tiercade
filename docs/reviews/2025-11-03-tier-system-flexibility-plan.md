@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-**Current State**: The Tiercade codebase has **partial** support for custom tiers, with significant hardcoded dependencies on the S,A,B,C,D,F tier system across 8 critical areas.
+**Current State**: The Tiercade codebase has **partial** support for custom tiers, with significant hardcoded dependencies on the S,A,B,C,D,F tier system across 8+ critical areas.
 
 **Risk Assessment**: 🔴 **HIGH** - Custom tier names, ordering, or variable tier counts would cause:
 - Export failures (missing custom tiers)
@@ -96,7 +96,35 @@ var newTiers: Items = [
 - ❌ Custom tier names: CSV with "Excellent/Good/Bad" tiers won't import correctly
 - ❌ Variable count: Extra tiers in CSV ignored
 
-**Evidence**: Import creates fresh SABCDF structure regardless of CSV content
+**Evidence**: Import creates fresh SABCDF structure regardless of CSV content. Unknown tier names from CSV aren’t added to `tierOrder`, which later causes analysis/export omissions.
+
+---
+
+#### 5. NEW: Type-safe conversion collapses unknown tiers to unranked (data loss risk)
+**Location**: `TiercadeCore/Sources/TiercadeCore/Models/TierIdentifier.swift:90-103`
+```swift
+extension Dictionary where Key == String, Value == [Item] {
+    public func toTyped() -> TypedItems {
+        var typed: TypedItems = [:]
+        for (key, value) in self {
+            if let tier = TierIdentifier(rawValue: key) {
+                typed[tier] = value
+            } else {
+                // Preserve unknown keys by mapping to closest match or unranked
+                typed[.unranked, default: []].append(contentsOf: value)
+            }
+        }
+        return typed
+    }
+}
+```
+
+**Impact**:
+- ❌ Custom tier names: Items in non-letter tiers may be collapsed into `unranked` when `toTyped()` is used
+- ⚠️ Downstream consumers (tests/experimental paths) that adopt `TypedItems` can silently misclassify
+
+**Mitigation**:
+- Treat `toTyped()` as migration/testing-only; avoid in runtime paths with custom tiers OR adjust implementation to preserve unknown keys (future enhancement).
 
 ---
 
@@ -128,24 +156,21 @@ internal static func tierColor(_ tier: String) -> Color {
 
 ---
 
-#### 6. **Theme System Assumes 6 Ranked Tiers**
-**Location**: `Tiercade/Design/TierTheme.swift:75-77, 83-97`
+#### 6. REVISED: Theme system is generally variable-length friendly; verify mapping is used consistently
+**Location**: `Tiercade/Design/TierTheme.swift` and `Tiercade/State/ThemeState.swift`
 ```swift
-internal func colorHex(forRankIndex index: Int) -> String? {
-    rankedTiers.first { $0.index == index }?.colorHex  // index 0-5
-}
-
 internal func colorHex(forRank identifier: String, fallbackIndex: Int? = nil) -> String {
-    // Falls back to index-based matching if name doesn't match
+    if identifier.lowercased() == "unranked" { return unrankedColorHex }
+    if let direct = colorHex(forIdentifier: identifier) { return direct }
+    if let fallbackIndex, let indexed = colorHex(forRankIndex: fallbackIndex) { return indexed }
+    return Self.fallbackColor
 }
 ```
 
-**Impact**:
-- ⚠️ Custom tier names: Falls back to index matching (may work)
-- ⚠️ Custom ordering: Theme index might not match tier position
-- ❌ Variable count: Themes hardcoded to 6 ranked tiers + unranked
-
-**Evidence**: All bundled themes in `TierThemeCatalog` define exactly 6 `rankedTiers` (index 0-5)
+**Impact (updated)**:
+- ✅ Custom tier names: Supported via `colorHex(forIdentifier:)`
+- ✅ Custom ordering: Positional fallback supported via `fallbackIndex`
+- ⚠️ Variable count: If tiers exceed theme ranks, falls back to `fallbackColor` — UX can be improved by repeating last color
 
 ---
 
@@ -195,11 +220,37 @@ private func tierDistribution(totalCount: Int) -> [TierDistributionData] {
 
 ---
 
+#### 9. NEW: Card focus halo and colors assume letter tiers
+**Locations**: `Tiercade/Views/Main/ContentView+TierGrid.swift:268-279`, `Tiercade/Design/VibrantDesign.swift:32-51`, `Tiercade/Views/Main/ContentView+TierRow.swift:201-209`
+
+**Impact**:
+- ❌ Custom tier names: Focus halo falls back to `.unranked`/default colors
+- ❌ Variable count: No dynamic mapping
+
+**Mitigation**:
+- Introduce `.punchyFocus(color:)` and compute `Color` from `app.displayColorHex(for:)` with Palette fallback; stop using fixed `Tier` enum for runtime data.
+
+---
+
+#### 10. NEW: QuickMove overlay focus fallback assumes "S"
+**Location**: `Tiercade/Views/Overlays/QuickMoveOverlay.swift:188-196`
+
+**Mitigation**: Replace `"S"` with `TierIdentifier.unranked.rawValue` fallback.
+
+---
+
+#### 11. NEW: Minor UI letter references (cosmetic)
+**Locations**: `Tiercade/Views/Components/InspectorView.swift`, wizard preview labels
+
+**Action**: Prefer state-driven colors when practical.
+
+---
+
 ### ✅ Already Flexible (No Changes Needed)
 
 These components already support custom tiers:
 
-1. **Tier Grid Rendering** (`ContentView+TierGrid.swift`) - Uses `ForEach(tierOrder, id: \.self)`
+1. **Tier Grid order iteration** (`ContentView+TierGrid.swift`) - Uses `ForEach(tierOrder, id: \.self)` (note: card halo color still needs fix in Finding 9)
 2. **Head-to-Head Logic** (`HeadToHead.swift`) - Accepts `tierOrder` parameter, uses quantile distribution
 3. **TierLogic** (`TierLogic.swift`) - Searches all tiers dynamically via `for (name, arr) in tiers`
 4. **Tier List Creator/Wizard** - Supports fully custom tier names, colors, ordering
@@ -269,6 +320,10 @@ internal static func tierColor(_ tier: String, from state: [String: String]) -> 
 
 **Apple Documentation Context**: This follows SwiftUI's environment-driven design patterns. Rather than static lookups, pass dynamic state through view hierarchy via `@Observable` classes (as we already do with `AppState`).
 
+Additional references (for dynamic lists and focus management):
+- SwiftUI ForEach (dynamic collections): https://developer.apple.com/documentation/swiftui/foreach/
+- SwiftUI FocusState (keyboard/remote focus): https://developer.apple.com/documentation/swiftui/focusstate/
+
 ---
 
 ## Implementation Plan (Phased Approach)
@@ -276,37 +331,26 @@ internal static func tierColor(_ tier: String, from state: [String: String]) -> 
 ### Phase 1: State & Initialization (Priority: 🔴 Critical)
 
 **Files to Modify**:
-1. `Tiercade/State/TierListState.swift`
-2. `Tiercade/State/AppState+Persistence.swift`
+1. `Tiercade/State/AppState+Items.swift`
+2. `Tiercade/State/TierListState.swift` (doc-only note)
 
-**Changes**:
+**Changes (low-risk)**:
 ```swift
-// TierListState.swift
-// ADD: Parameterized initializer
-internal init(
-    tierOrder: [String] = TierIdentifier.rankedTiers.map(\.rawValue),
-    tierLabels: [String: String] = [:],
-    tierColors: [String: String] = [:]
-) {
-    self.tierOrder = tierOrder
-    self.tierLabels = tierLabels
-    self.tierColors = tierColors
-
-    // Initialize tiers dictionary from tierOrder
-    var tiers: Items = [TierIdentifier.unranked.rawValue: []]
-    for tier in tierOrder {
-        tiers[tier] = []
-    }
-    self.tiers = tiers
-
-    Logger.appState.info("TierListState initialized with \(tierOrder.count) tiers: \(tierOrder.joined(separator: ", "))")
+// AppState+Items.swift
+// REPLACE makeEmptyTiers() with a dynamic builder
+private func makeEmptyTiers() -> Items {
+    var result: Items = [:]
+    for name in tierOrder { result[name] = [] }
+    result["unranked"] = []
+    return result
 }
+
+// TierListState.swift (doc): prefer deriving empty tiers from current tierOrder
 ```
 
 **Testing**:
-- ✅ Initialize with custom tier order: `["Gold", "Silver", "Bronze"]`
-- ✅ Verify `tiers` dictionary contains all custom tier keys
-- ✅ Verify SABCDF still works as default
+- ✅ Fresh initialization uses `tierOrder` for keys (no letters required)
+- ✅ Verify `tiers` contains all custom tier keys + `unranked`
 
 ---
 
@@ -329,6 +373,15 @@ private func buildTierConfig() -> TierConfig {
 
 // UPDATE all export methods to use buildTierConfig() instead of buildDefaultTierConfig()
 // Lines to update: 48-57, 113-120, 134-142, 164-172
+
+// ALSO: Avoid dropping tiers in core formatter when config entry is missing
+// TiercadeCore/Sources/TiercadeCore/Utilities/Formatters.swift
+// BEFORE:
+// guard let cfg = tierConfig[tier], !items.isEmpty else { return nil }
+// AFTER:
+let label = (tierConfig[tier]?.name) ?? tier
+guard !items.isEmpty else { return nil }
+return "\(label) Tier (\(tierConfig[tier]?.description ?? "")): \(names)"
 ```
 
 **Testing**:
@@ -365,6 +418,55 @@ ForEach(app.tierOrder, id: \.self) { tier in
 - ✅ Toolbar "Clear Tier" menu shows all custom tiers
 - ✅ Menu respects custom tier ordering
 - ✅ Menu shows custom tier labels (not internal IDs)
+
+Additional UI fixes in this phase:
+
+1) Card focus halo decoupled from letter tiers
+```swift
+// VibrantDesign.swift
+// ADD: color-based focus variant
+internal struct PunchyFocusStyleDynamic: ViewModifier {
+    let color: Color; let cornerRadius: CGFloat
+    @Environment(\.isFocused) private var isFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func body(content: Content) -> some View {
+        #if os(tvOS)
+        content
+            .scaleEffect(isFocused ? 1.07 : 1.0)
+            .shadow(color: color.opacity(isFocused ? 0.55 : 0.0), radius: isFocused ? 28 : 0)
+            .overlay(RoundedRectangle(cornerRadius: cornerRadius).stroke(color.opacity(isFocused ? 0.95 : 0.0), lineWidth: 4))
+            .animation(reduceMotion ? nil : Motion.spring, value: isFocused)
+        #else
+        content
+            .scaleEffect(isFocused ? 1.05 : 1.0)
+            .shadow(color: color.opacity(isFocused ? 0.22 : 0.0), radius: isFocused ? 24 : 0)
+            .overlay(RoundedRectangle(cornerRadius: cornerRadius).stroke(Color.white.opacity(isFocused ? 0.16 : 0.0), lineWidth: 2))
+            .animation(reduceMotion ? nil : Motion.spring, value: isFocused)
+        #endif
+    }
+}
+
+internal extension View {
+    func punchyFocus(color: Color, cornerRadius: CGFloat = 12) -> some View {
+        modifier(PunchyFocusStyleDynamic(color: color, cornerRadius: cornerRadius))
+    }
+}
+
+// ContentView+TierGrid.swift / ContentView+TierRow.swift
+// REPLACE
+.punchyFocus(tier: tierForItem(item), cornerRadius: ...)
+// WITH
+let hex = app.displayColorHex(for: currentTierId)
+let color = hex.flatMap(Color.init(hex:)) ?? Palette.tierColor(currentTierId)
+.punchyFocus(color: color, cornerRadius: ...)
+```
+
+2) QuickMove overlay fallback does not assume "S"
+```swift
+// QuickMoveOverlay.swift:195-196
+// BEFORE: focusedElement = .tier(allTiers.first ?? "S")
+// AFTER:  focusedElement = .tier(allTiers.first ?? TierIdentifier.unranked.rawValue)
+```
 - ✅ Grid rendering remains correct (already uses `tierOrder`)
 
 ---
@@ -503,6 +605,36 @@ private func tierDistribution(totalCount: Int) -> [TierDistributionData] {
 
 ---
 
+## Reviewer Addendum: Migration & Backward Compatibility
+
+- `TypedItems` conversion (`toTyped()`) must not be used in runtime flows that need full custom-tier preservation; if unavoidable, revisit its behavior to avoid collapsing unknown keys into `unranked`.
+- Keep `TierIdentifier` for reserved `unranked` and legacy paths only; avoid expanding its use in new flexible features.
+- Export formatters should never drop tiers if `TierConfig` is absent; fall back to the tier’s id/label string.
+- CSV import must create missing tiers and populate `tierOrder` in first-seen order (excluding `unranked`).
+- UI should prioritize `app.displayColorHex(for:)`/state colors over static Palette letter colors; Palette acts as a fallback only.
+
+## Reviewer Addendum: Risk Updates
+
+- High: Potential data loss/misclassification if `toTyped()` is applied to custom tiers (mitigation: policy + implementation guard)
+- Medium: Card halo color inconsistent for custom tiers (mitigation: color-based `punchyFocus`)
+- Medium: QuickMove overlay focus fallback wrongly assumes "S" (mitigation: use `unranked` or first tier)
+
+## Reviewer Addendum: Success Criteria (Augmented)
+
+- [ ] CSV import creates tiers dynamically and sets `tierOrder` accordingly
+- [ ] Exporters include all tiers with proper labels; no letter-only defaults
+- [ ] Toolbar menu enumerates `app.tierOrder` and displays labels
+- [ ] Card focus halo uses per-tier color from state (no letter coupling)
+- [ ] QuickMove overlay uses safe fallback (first tier or `unranked`), never hardcodes "S"
+- [ ] No production path uses `toTyped()` in ways that collapse custom tiers
+
+## Apple Docs References (Consulted)
+
+- SwiftUI ForEach (dynamic content): https://developer.apple.com/documentation/swiftui/foreach/
+- SwiftUI FocusState (focus management): https://developer.apple.com/documentation/swiftui/focusstate/
+
+---
+
 ## Testing Strategy
 
 ### Unit Tests (TiercadeCore)
@@ -534,7 +666,7 @@ func customTierDistribution() {
         baseTiers: [:]
     )
 
-    #expect(result.assignedTiers.keys.sorted() == tierOrder)
+    #expect(Set(result.tiers.keys).intersection(Set(tierOrder)) == Set(tierOrder))
 }
 ```
 
