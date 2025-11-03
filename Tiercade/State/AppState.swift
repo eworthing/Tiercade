@@ -129,10 +129,11 @@ final class AppState {
     /// Consolidated state for theme selection and management
     var theme: ThemeState
 
+    // MARK: - Progress State
+    /// Consolidated state for loading indicators and progress tracking
+    var progress = ProgressState()
+
     // Progress Tracking & Visual Feedback
-    var isLoading: Bool = false
-    var loadingMessage: String = ""
-    var operationProgress: Double = 0.0
     var dragTargetTier: String?
     var draggingId: String?
     var isProcessingSearch: Bool = false
@@ -283,6 +284,26 @@ final class AppState {
     /// Convenience accessor for displayColorHex
     func displayColorHex(for tierId: String) -> String? {
         tierList.displayColorHex(for: tierId)
+    }
+
+    // MARK: - Progress Convenience Accessors
+
+    /// Convenience accessor for isLoading
+    var isLoading: Bool {
+        get { progress.isLoading }
+        set { progress.isLoading = newValue }
+    }
+
+    /// Convenience accessor for loadingMessage
+    var loadingMessage: String {
+        get { progress.loadingMessage }
+        set { progress.loadingMessage = newValue }
+    }
+
+    /// Convenience accessor for operationProgress
+    var operationProgress: Double {
+        get { progress.operationProgress }
+        set { progress.operationProgress = newValue }
     }
 
     // MARK: - Undo/Redo Management
