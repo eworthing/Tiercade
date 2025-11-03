@@ -89,7 +89,7 @@ internal extension AppState {
 // This code is preserved for reference but should not be instantiated
 @MainActor
 @Observable
-final class AppleIntelligenceService_DEPRECATED {
+final class AppleIntelligenceServiceDeprecated {
     var messages: [AIChatMessage] = []
     var isProcessing = false
     var estimatedTokenCount: Int = 0
