@@ -103,11 +103,14 @@ private extension ThemeLibraryOverlay {
         }
 
         container
-            .glassEffect(
-                Glass.regular.tint(Palette.surface.opacity(0.92)).interactive(),
-                in: RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
+            .background(
+                RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
+                    .fill(Color.black.opacity(0.85))
             )
-            .glassEffectID("ThemeLibraryOverlay", in: glassNamespace)
+            .overlay(
+                RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+            )
             .shadow(color: Color.black.opacity(0.35), radius: 32, y: 18)
     }
 

@@ -58,7 +58,10 @@ internal struct ToastView: View {
         }
         .padding(.horizontal, Metrics.grid * 2)
         .padding(.vertical, Metrics.grid * 1.5)
-        .tvGlassRounded(18)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.black.opacity(0.88))
+        )
         .tint(toast.type.color.opacity(0.24))
         .shadow(color: Color.black.opacity(0.24), radius: 20, y: 10)
         .overlay(
@@ -247,7 +250,10 @@ internal struct QuickRankOverlay: View {
                 }
                 .accessibilityIdentifier("QuickRank_Overlay")
                 .padding(Metrics.grid * 1.5)
-                .tvGlassRounded(18)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.black.opacity(0.85))
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .stroke(Color.white.opacity(0.18), lineWidth: 1.25)
