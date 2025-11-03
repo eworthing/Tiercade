@@ -209,11 +209,14 @@ final class AppleIntelligenceService {
 
     /// Send a message to Apple Intelligence
     internal func sendMessage(_ text: String) async {
-        lastUserQuery = text
+        // Sanitize user input to mitigate prompt injection attacks
+        let sanitizedText = PromptValidator.sanitize(text)
+
+        lastUserQuery = sanitizedText
         logSendMessageStart()
 
-        // Append user message immediately
-        messages.append(AIChatMessage(content: text, isUser: true))
+        // Append user message immediately (display original for transparency)
+        messages.append(AIChatMessage(content: sanitizedText, isUser: true))
         updateTokenEstimate()
 
         isProcessing = true
@@ -228,11 +231,11 @@ final class AppleIntelligenceService {
         guard ensureSessionAvailable() else { return }
 
         // Try advanced list generation if enabled (POC)
-        if await tryAdvancedListGeneration(text: text) { return }
+        if await tryAdvancedListGeneration(text: sanitizedText) { return }
 
         // Standard response path (re-ensure session in case advanced path reset it)
         _ = ensureSessionAvailable()
-        await executeStandardResponse(text: text)
+        await executeStandardResponse(text: sanitizedText)
         print("🤖 [AI] ===== sendMessage END =====")
         #else
         handleFoundationModelsUnavailable()
