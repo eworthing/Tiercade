@@ -119,7 +119,37 @@ public struct TierConfigEntry: Codable, Sendable, Equatable {
     }
 }
 
+/// A collection of items organized by tier name.
+///
+/// **Structure:** `[tierName: [Item]]`
+///
+/// Each key represents a tier identifier (e.g., "S", "A", "B", "unranked"),
+/// and each value is an array of items currently placed in that tier.
+///
+/// **Example:**
+/// ```swift
+/// let tiers: Items = [
+///     "S": [ironMan, captainAmerica],
+///     "A": [thor, blackWidow],
+///     "B": [hawkeye],
+///     "unranked": [newHero]
+/// ]
+/// ```
+///
+/// **Invariants:**
+/// - All tier names in `tierOrder` **must** have entries in this dictionary (even if empty `[]`)
+/// - The `"unranked"` tier is **reserved** and must always exist
+/// - The `"unranked"` tier must **never** appear in `tierOrder`
+/// - Each `Item.id` should be unique across all tiers (no duplicates)
+///
+/// **Naming rationale:**
+/// - Plural `Items` indicates a collection of `Item` objects
+/// - Variable names (`tiers`, `baseTiers`, `newTiers`) provide tier-specific context
+/// - Brevity (5 chars) preferred over verbose alternatives like `TierStructure` (13 chars)
+///
+/// See also: `TierIdentifier.unranked` for the reserved tier constant
 public typealias Items = [String: [Item]]
+
 public typealias TierConfig = [String: TierConfigEntry]
 
 // MARK: - Sorting

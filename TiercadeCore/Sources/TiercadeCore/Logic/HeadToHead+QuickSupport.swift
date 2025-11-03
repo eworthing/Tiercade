@@ -13,9 +13,10 @@ extension HeadToHeadLogic {
         }
 
         var updatedTiers = tiers
+        let unrankedKey = TierIdentifier.unranked.rawValue
         let priors = buildPriors(from: baseTiers, tierOrder: tierOrder)
         let metrics = metricsDictionary(for: undersampled, records: records, z: Tun.zQuick, priors: priors)
-        updatedTiers["unranked", default: []] = orderedItems(undersampled, metrics: metrics)
+        updatedTiers[unrankedKey, default: []] = orderedItems(undersampled, metrics: metrics)
         return H2HQuickResult(tiers: updatedTiers, artifacts: nil, suggestedPairs: [])
     }
 
@@ -26,8 +27,9 @@ extension HeadToHeadLogic {
         priors: [String: Prior]
     ) {
         guard !undersampled.isEmpty else { return }
+        let unrankedKey = TierIdentifier.unranked.rawValue
         let metrics = metricsDictionary(for: undersampled, records: records, z: Tun.zQuick, priors: priors)
-        tiers["unranked", default: []] = orderedItems(undersampled, metrics: metrics)
+        tiers[unrankedKey, default: []] = orderedItems(undersampled, metrics: metrics)
     }
 
     internal static func makeQuickArtifacts(

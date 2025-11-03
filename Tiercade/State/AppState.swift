@@ -146,7 +146,7 @@ final class AppState {
     let tierListStateKey = "Tiercade.tierlist.active.v1"
     let tierListRecentsKey = "Tiercade.tierlist.recents.v1"
     var autosaveTask: Task<Void, Never>?
-    let autosaveInterval: TimeInterval = 30.0 // Auto-save every 30 seconds
+    let autosaveInterval: TimeInterval = PersistenceIntervals.autosave
 
     /// Centralized check for whether any overlay blocks background interaction
     /// Use with `.allowsHitTesting(!app.blocksBackgroundFocus)` on background content
@@ -193,7 +193,8 @@ final class AppState {
         let tierSummary = tierOrder
             .map { "\($0):\(tiers[$0]?.count ?? 0)" }
             .joined(separator: ", ")
-        let unrankedCount = tiers["unranked"]?.count ?? 0
+        let unrankedKey = TierIdentifier.unranked.rawValue
+        let unrankedCount = tiers[unrankedKey]?.count ?? 0
         let initMsg = "init: tiers counts=\(tierSummary) unranked=\(unrankedCount)"
         logEvent(initMsg)
         restoreTierListState()
@@ -346,7 +347,7 @@ final class AppState {
         // Load the first bundled project as default instead of placeholder items
         guard let defaultProject = bundledProjects.first else {
             // Fallback to empty state if no bundled projects available
-            tiers["unranked"] = []
+            tiers[TierIdentifier.unranked.rawValue] = []
             return
         }
         applyBundledProject(defaultProject)

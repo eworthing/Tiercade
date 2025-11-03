@@ -76,7 +76,7 @@ private extension ThemeLibraryOverlay {
         .onChange(of: overlayHasFocus) { _, newValue in
         guard !newValue, appState.overlays.showThemePicker else { return }
         Task { @MainActor in
-        try? await Task.sleep(for: .milliseconds(50))
+        try? await Task.sleep(for: FocusWorkarounds.reassertDelay)
         if appState.overlays.showThemePicker {
         overlayHasFocus = true
         }
@@ -89,28 +89,42 @@ private extension ThemeLibraryOverlay {
 
     @ViewBuilder
     var chrome: some View {
-        let container = tvGlassContainer {
-            VStack(spacing: 0) {
-                header
-                Divider().opacity(0.18)
-                grid
-                Divider().opacity(0.18)
-                footer
-            }
-            .frame(maxWidth: 1180)
-            .padding(.vertical, platformOverlayPadding / 2)
-        }
+        VStack(spacing: 0) {
+            // Apply glass to header chrome only
+            header
+                .background(
+                    tvGlassContainer {
+                        Color.clear
+                    }
+                )
 
-        container
-            .background(
-                RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
-                    .fill(Color.black.opacity(0.85))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.35), radius: 32, y: 18)
+            Divider().opacity(0.18)
+
+            // Grid uses solid background for focus legibility
+            grid
+                .background(Color.black.opacity(0.70))
+
+            Divider().opacity(0.18)
+
+            // Apply glass to footer chrome only
+            footer
+                .background(
+                    tvGlassContainer {
+                        Color.clear
+                    }
+                )
+        }
+        .frame(maxWidth: 1180)
+        .padding(.vertical, platformOverlayPadding / 2)
+        .background(
+            RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
+                .fill(Color.black.opacity(0.85))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
+                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.35), radius: 32, y: 18)
     }
 
     var header: some View {

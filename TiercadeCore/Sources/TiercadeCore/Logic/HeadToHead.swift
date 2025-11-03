@@ -239,8 +239,9 @@ public enum HeadToHeadLogic {
         sortTierMembers(&tiers, metrics: computation.metrics, tierNames: artifacts.tierNames)
 
         if !artifacts.undersampled.isEmpty {
+            let unrankedKey = TierIdentifier.unranked.rawValue
             let undersampledMetrics = metricsDictionary(for: artifacts.undersampled, records: records, z: Tun.zStd)
-            tiers["unranked", default: []] = orderedItems(artifacts.undersampled, metrics: undersampledMetrics)
+            tiers[unrankedKey, default: []] = orderedItems(artifacts.undersampled, metrics: undersampledMetrics)
         }
 
         let updated = makeRefinedArtifacts(

@@ -20,7 +20,33 @@ internal enum TVMetrics {
     internal static let overlayCornerRadius: CGFloat = 24
     internal static let cardSpacing: CGFloat = 32
     internal static let buttonSpacing: CGFloat = 24
-    // Grid density tuning
+    // MARK: - Grid Density Tuning
+
+    /// Base threshold for automatic density transitions (18 items).
+    ///
+    /// **Derivation:**
+    /// - Apple TV 4K (3rd gen) displays approximately 4 rows × 5 cards at "standard" density
+    /// - 4 × 5 = 20 cards visible without scrolling at 1920×1080 resolution
+    /// - At 18+ items, the unranked tier begins requiring vertical scrolling
+    /// - 10% buffer (20 → 18) provides headroom before auto-downgrade kicks in
+    ///
+    /// **Display context:**
+    /// - 236pt card width (standard density) @ 10ft viewing distance
+    /// - Content safe area: 1760×990 pts (accounting for tvOS overscan)
+    /// - Card spacing: 30pts horizontal, 22pts vertical
+    ///
+    /// **Why 18?**
+    /// - Below 18: Users can see entire tier grid without scrolling → maximize card size
+    /// - At 18-35: Scrolling begins → reduce to "compact" (200pt cards) for better overview
+    /// - At 36-53: Long scrolls → shift to "tight" (170pt cards) for faster navigation
+    /// - At 54-71: Very large catalogs → "micro" (140pt cards) prioritizes density
+    /// - At 72+: Massive collections → "ultraMicro" (110pt cards) shows maximum items
+    ///
+    /// **Multiplier rationale:**
+    /// - 1× (18): Compact threshold — one scroll-page worth of overflow
+    /// - 2× (36): Tight threshold — two screens worth, scrolling becomes tedious
+    /// - 3× (54): Micro threshold — three screens, users now scanning vs. reading
+    /// - 4× (72): UltraMicro threshold — four screens, information density critical
     internal static let denseThreshold: Int = 18
 
     internal static func cardLayout(

@@ -19,7 +19,7 @@ internal struct QuickMoveOverlay: View {
         if let item = app.overlays.quickMoveTarget {
             let isBatchMode = app.batchQuickMoveActive
             let title = isBatchMode ? "Move \(app.selection.count) Items" : (item.name ?? item.id)
-            let allTiers = app.tierOrder + ["unranked"]
+            let allTiers = app.tierOrder + [TierIdentifier.unranked.rawValue]
             let currentTier = app.currentTier(of: item.id)
             let isMultiSelectActive = editMode?.wrappedValue == .active
 
@@ -186,7 +186,7 @@ internal struct QuickMoveOverlay: View {
     }
 
     private func handleMoveCommand(_ direction: MoveCommandDirection) {
-        let allTiers = app.tierOrder + ["unranked"]
+        let allTiers = app.tierOrder + [TierIdentifier.unranked.rawValue]
 
         // Trap up-arrow when at first tier
         if direction == .up {

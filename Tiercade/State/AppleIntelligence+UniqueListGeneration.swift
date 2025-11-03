@@ -134,6 +134,12 @@ final class FMClient {
         let elapsed: Double
     }
 
+    struct UnguidedRetryState {
+        var options: GenerationOptions
+        var lastError: Error?
+        var sessionRecreated: Bool = false
+    }
+
     struct GenerateTextArrayParameters {
         let prompt: String
         let profile: DecoderProfile
@@ -150,21 +156,26 @@ final class FMClient {
         telemetry: inout [AttemptMetrics]
     ) async throws -> [String] {
         let start = Date()
-        var currentOptions = params.profile.options(
-            seed: params.initialSeed,
-            temp: params.temperature,
-            maxTok: params.maxTokens
+        var retryState = UnguidedRetryState(
+            options: params.profile.options(
+                seed: params.initialSeed,
+                temp: params.temperature,
+                maxTok: params.maxTokens
+            ),
+            lastError: nil
         )
-        var lastError: Error?
 
         for attempt in 0..<params.maxRetries {
             let attemptStart = Date()
-            var sessionRecreated = false
+            // INVARIANT: Reset per-attempt flags to preserve telemetry accuracy (see 1c5d26b).
+            // This flag is scoped per attempt; handleUnguidedError may set it to true during
+            // session recreation, but it must start false each iteration for accurate reporting.
+            retryState.sessionRecreated = false
 
             do {
                 let response = try await session.respond(
                     to: Prompt(params.prompt),
-                    options: currentOptions
+                    options: retryState.options
                 )
 
                 if let arr = try handleUnguidedResponse(
@@ -173,24 +184,24 @@ final class FMClient {
                     attemptStart: attemptStart,
                     totalStart: start,
                     params: params,
-                    options: currentOptions,
-                    sessionRecreated: sessionRecreated,
+                    options: retryState.options,
+                    sessionRecreated: retryState.sessionRecreated,
                     telemetry: &telemetry
                 ) {
                     return arr
                 }
 
             } catch {
-                lastError = error
+                retryState.lastError = error
 
                 if await handleUnguidedError(
                     error: error,
                     attempt: attempt,
                     attemptStart: attemptStart,
                     params: params,
-                    options: currentOptions,
-                    currentOptions: &currentOptions,
-                    sessionRecreated: &sessionRecreated,
+                    options: retryState.options,
+                    currentOptions: &retryState.options,
+                    sessionRecreated: &retryState.sessionRecreated,
                     telemetry: &telemetry
                 ) {
                     continue
@@ -198,7 +209,7 @@ final class FMClient {
             }
         }
 
-        throw lastError ?? NSError(domain: "Unguided", code: -2, userInfo: [
+        throw retryState.lastError ?? NSError(domain: "Unguided", code: -2, userInfo: [
             NSLocalizedDescriptionKey: "All unguided retries failed"
         ])
     }
@@ -207,7 +218,7 @@ final class FMClient {
 
 // MARK: - Token Chunking Helper
 
-private func chunkByTokens(_ keys: [String], budget: Int = 800) -> [[String]] {
+private func chunkByTokens(_ keys: [String], budget: Int = AIChunkingLimits.tokenBudget) -> [[String]] {
     var chunks: [[String]] = []
     var cur: [String] = []
     var used = 2  // Account for [ ]

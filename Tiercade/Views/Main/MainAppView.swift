@@ -160,7 +160,7 @@ internal struct MainAppView: View {
                 message: app.loadingMessage,
                 progress: app.operationProgress
             )
-            .zIndex(50)
+            .zIndex(OverlayZIndex.progress)
         }
 
         // Quick Rank overlay
@@ -168,13 +168,13 @@ internal struct MainAppView: View {
             AccessibilityBridgeView(identifier: "QuickRank_Overlay")
 
             QuickRankOverlay(app: app)
-                .zIndex(40)
+                .zIndex(OverlayZIndex.standardOverlay)
         }
 
         #if os(tvOS)
         // Quick Move overlay (unified item actions overlay)
         QuickMoveOverlay(app: app)
-            .zIndex(45)
+            .zIndex(OverlayZIndex.quickMove)
         #endif
 
         // Head-to-Head overlay
@@ -182,7 +182,7 @@ internal struct MainAppView: View {
             AccessibilityBridgeView(identifier: "MatchupOverlay_Root")
 
             MatchupArenaOverlay(app: app)
-                .zIndex(40)
+                .zIndex(OverlayZIndex.standardOverlay)
         }
 
         #if os(tvOS)
@@ -193,14 +193,14 @@ internal struct MainAppView: View {
                     .frame(maxHeight: .infinity)
             }
             .allowsHitTesting(true)
-            .zIndex(52)
+            .zIndex(OverlayZIndex.analytics)
         }
         #endif
 
         if app.overlays.showTierListBrowser {
             TierListBrowserScene(app: app)
                 .transition(.opacity)
-                .zIndex(53)
+                .zIndex(OverlayZIndex.browser)
         }
 
         // Theme picker overlay
@@ -212,11 +212,11 @@ internal struct MainAppView: View {
             // XCTest sees elements, causing flaky existence checks.
             if ProcessInfo.processInfo.arguments.contains("-uiTest") {
                 ThemeLibraryOverlay()
-                    .zIndex(54)
+                    .zIndex(OverlayZIndex.themePicker)
             } else {
                 ThemeLibraryOverlay()
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                    .zIndex(54)
+                    .zIndex(OverlayZIndex.themePicker)
             }
         }
 
@@ -235,7 +235,7 @@ internal struct MainAppView: View {
                 AIChatOverlay(ai: app.aiGeneration)
             }
             .transition(.opacity.combined(with: .scale(scale: 0.9)))
-            .zIndex(55)
+            .zIndex(OverlayZIndex.modalOverlay)
         }
 
         if app.overlays.showThemeCreator, let draft = app.theme.themeDraft {
@@ -243,7 +243,7 @@ internal struct MainAppView: View {
 
             ThemeCreatorOverlay(appState: app, draft: draft)
                 .transition(.opacity.combined(with: .scale(scale: 0.94)))
-                .zIndex(55)
+                .zIndex(OverlayZIndex.modalOverlay)
         }
 
         // Toast messages (bottom)
@@ -253,7 +253,7 @@ internal struct MainAppView: View {
                 ToastView(toast: toast)
                     .padding()
             }
-            .zIndex(60)
+            .zIndex(OverlayZIndex.toast)
         }
 
         // Detail overlay (all platforms)
@@ -278,7 +278,7 @@ internal struct MainAppView: View {
             .move(edge: .trailing)
                 .combined(with: .opacity)
         )
-        .zIndex(55)
+        .zIndex(OverlayZIndex.detailSidebar)
         #endif
     }
 
