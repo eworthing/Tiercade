@@ -70,16 +70,8 @@ internal final class ThemeState {
 
         var colors: [String: String] = [:]
         for (index, tierId) in tierOrder.enumerated() {
-            // Try name match first, then positional
-            if let colorHex = theme.colorHex(forRank: tierId, fallbackIndex: index) {
-                colors[tierId] = colorHex
-            } else if themeRankCount > 0 {
-                // UX enhancement: repeat last color if we exceed theme tier count
-                let lastIndex = themeRankCount - 1
-                colors[tierId] = theme.colorHex(forRankIndex: lastIndex) ?? TierTheme.fallbackColor
-            } else {
-                colors[tierId] = TierTheme.fallbackColor
-            }
+            // colorHex(forRank:fallbackIndex:) handles fallbacks internally
+            colors[tierId] = theme.colorHex(forRank: tierId, fallbackIndex: index)
         }
         colors["unranked"] = theme.unrankedColorHex
 

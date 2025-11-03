@@ -18,7 +18,7 @@ advanced analytics, multiple export formats, and intelligent insights.
 ### **Core Tier Management**
 
 - **Drag & Drop Interface** - Native SwiftUI drag and drop on iOS/macOS, with click-to-select Quick Move workflows on tvOS
-- **Multiple Tier Support** - Customizable tier structure (S, A, B, C, D, F tiers)
+- **Flexible Tier System** - Custom tier names, ordering, and variable tier counts (defaults to S, A, B, C, D, F)
 - **Item Management** - Add, remove, and organize items across tiers
 - **Real-time Updates** - Instant visual feedback for all operations
 

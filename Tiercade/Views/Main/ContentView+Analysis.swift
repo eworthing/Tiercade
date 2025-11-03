@@ -207,7 +207,7 @@ internal struct TierBarView: View {
     }
 
     private var barColor: Color {
-        Palette.tierColor(tierData.tier)
+        Palette.tierColor(tierData.tierId)
     }
 
     private var percentageText: String {

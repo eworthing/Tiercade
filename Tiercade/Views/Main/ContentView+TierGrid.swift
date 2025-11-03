@@ -265,13 +265,18 @@ internal struct CardView: View {
         #endif
     }
 
+    /// Get color for focus halo using state-driven tier colors
+    private func colorForItem(_ item: Item) -> Color {
+        guard let tierId = app.currentTier(of: item.id) else {
+            return Palette.tierColor("unranked", from: app.tierColors)
+        }
+        return Palette.tierColor(tierId, from: app.tierColors)
+    }
+
+    /// Legacy helper for TierBadgeView (hardcoded SABCDF only)
+    /// TODO: Replace TierBadgeView with dynamic tier badge component
     private static let tierLookup: [String: Tier] = [
-        "S": .s,
-        "A": .a,
-        "B": .b,
-        "C": .c,
-        "D": .d,
-        "F": .f
+        "S": .s, "A": .a, "B": .b, "C": .c, "D": .d, "F": .f
     ]
 
     private func tierForItem(_ item: Item) -> Tier {
@@ -319,7 +324,7 @@ internal struct CardView: View {
         )
         .contentShape(Rectangle())
         .accessibilityLabel(displayLabel)
-        .punchyFocus(tier: tierForItem(item), cornerRadius: layoutCornerRadius)
+        .punchyFocus(color: colorForItem(item), cornerRadius: layoutCornerRadius)
         #if os(iOS) || os(macOS)
         .accessibilityAddTraits(.isButton)
         #endif

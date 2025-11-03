@@ -359,10 +359,16 @@ tvOS Exit button (Menu/⌘) should dismiss modals, not exit app:
 
 ### Design Tokens
 **Use `Design/` helpers exclusively** — no hardcoded values
-- Colors: `Palette.primary`, `Palette.text`, `Palette.tierS`, etc.
+- Colors: `Palette.primary`, `Palette.text`, `Palette.brand`
 - Typography: `TypeScale.h1`, `TypeScale.body`, etc.
 - Spacing: `Metrics.padding`, `Metrics.cardPadding`, `TVMetrics.topBarHeight`
-- Effects: Apply Liquid Glass with SwiftUI’s tvOS 26 APIs — `glassEffect(_:in:)`, `GlassEffectContainer`, and `buttonStyle(.glass)`/`GlassProminentButtonStyle` — for chrome surfaces in our tvOS 26 target; fallbacks are optional and only necessary if we later choose to support older devices.
+- Effects: Apply Liquid Glass with SwiftUI's tvOS 26 APIs — `glassEffect(_:in:)`, `GlassEffectContainer`, and `buttonStyle(.glass)`/`GlassProminentButtonStyle` — for chrome surfaces in our tvOS 26 target; fallbacks are optional and only necessary if we later choose to support older devices.
+
+**Tier Colors (state-driven):**
+- Tiers support custom names, custom ordering, and variable counts (not just SABCDF)
+- **Always** use `Palette.tierColor(tierId, from: app.tierColors)` to respect theme customization
+- Avoid hardcoded tier lookups (`Palette.tierS`) or static tier IDs ("S", "A", etc.)
+- When using focus effects, prefer `.punchyFocus(color:)` over `.punchyFocus(tier:)` for custom tier color support
 
 ### Liquid Glass support matrix
 | Platform | Implementation | Helper |
