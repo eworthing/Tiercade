@@ -61,14 +61,14 @@ internal struct ThemeCreatorOverlay: View {
             #endif
             .onAppear {
                 suppressFocusReset = false
-                appState.themeCreatorActive = true
+                appState.theme.themeCreatorActive = true
                 paletteFocusIndex = paletteIndex(for: draft.activeTier?.colorHex)
                 setFocus(.tier(draft.activeTierID))
                 FocusUtils.seedFocus()
             }
             .onDisappear {
                 suppressFocusReset = true
-                appState.themeCreatorActive = false
+                appState.theme.themeCreatorActive = false
                 focusedElement = nil
                 lastFocus = nil
             }
@@ -370,7 +370,7 @@ private extension ThemeCreatorOverlay {
 
     func setActiveTier(_ tierID: UUID) {
         appState.selectThemeDraftTier(tierID)
-        paletteFocusIndex = paletteIndex(for: appState.themeDraft?.activeTier?.colorHex)
+        paletteFocusIndex = paletteIndex(for: appState.theme.themeDraft?.activeTier?.colorHex)
         setFocus(.tier(tierID))
     }
 
@@ -522,14 +522,14 @@ private extension ThemeCreatorOverlay {
 
     var nameBinding: Binding<String> {
         Binding(
-            get: { appState.themeDraft?.displayName ?? draft.displayName },
+            get: { appState.theme.themeDraft?.displayName ?? draft.displayName },
             set: { appState.updateThemeDraftName($0) }
         )
     }
 
     var descriptionBinding: Binding<String> {
         Binding(
-            get: { appState.themeDraft?.shortDescription ?? draft.shortDescription },
+            get: { appState.theme.themeDraft?.shortDescription ?? draft.shortDescription },
             set: { appState.updateThemeDraftDescription($0) }
         )
     }

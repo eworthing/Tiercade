@@ -212,7 +212,7 @@ internal extension AppState {
             fileName: handle.source == .file ? handle.identifier : nil,
             isActive: true,
             cardDensityRaw: cardDensityPreference.rawValue,
-            selectedThemeID: selectedThemeID,
+            selectedThemeID: theme.selectedThemeID,
             customThemesData: encodedCustomThemesData(),
             sourceRaw: handle.source.rawValue,
             externalIdentifier: handle.identifier,

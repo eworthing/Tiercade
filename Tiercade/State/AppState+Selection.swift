@@ -6,7 +6,7 @@ internal extension AppState {
     // MARK: - Theme Picker Overlay
     internal func presentThemePicker() {
         overlays.showThemePicker = true
-        themePickerActive = true
+        theme.themePickerActive = true
     }
 
     // MARK: - Selection / Multi-Select

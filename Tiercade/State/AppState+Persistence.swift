@@ -105,7 +105,7 @@ internal extension AppState {
         do {
             let artifacts = try buildProjectExportArtifacts(
                 group: "All",
-                themeName: selectedTheme.displayName
+                themeName: theme.selectedTheme.displayName
             )
             let destination = try fileURLForExport(named: sanitizedName)
             try writeProjectBundle(artifacts, to: destination)
@@ -216,7 +216,7 @@ internal extension AppState {
             title: activeTierDisplayName,
             fileName: persistence.currentFileName,
             cardDensityRaw: cardDensityPreference.rawValue,
-            selectedThemeID: selectedThemeID,
+            selectedThemeID: theme.selectedThemeID,
             customThemesData: encodedCustomThemesData(),
             globalSortModeData: encodedGlobalSortMode()
         )
@@ -230,7 +230,7 @@ internal extension AppState {
         entity.title = activeTierDisplayName
         entity.fileName = persistence.currentFileName
         entity.cardDensityRaw = cardDensityPreference.rawValue
-        entity.selectedThemeID = selectedThemeID
+        entity.selectedThemeID = theme.selectedThemeID
         entity.updatedAt = Date()
         entity.customThemesData = encodedCustomThemesData()
         entity.globalSortModeData = encodedGlobalSortMode()
@@ -382,27 +382,27 @@ internal extension AppState {
 
     private func restoreTheme(themeID: UUID?) {
         if let themeID,
-           let theme = theme(with: themeID) {
-            selectedThemeID = themeID
-            selectedTheme = theme
+           let foundTheme = self.theme.theme(with: themeID) {
+            self.theme.selectedThemeID = themeID
+            self.theme.selectedTheme = foundTheme
             return
         }
 
         let fallback = TierThemeCatalog.defaultTheme
-        selectedTheme = fallback
-        selectedThemeID = fallback.id
+        self.theme.selectedTheme = fallback
+        self.theme.selectedThemeID = fallback.id
     }
 
     private func restoreCustomThemes(_ codableThemes: [CodableTheme]) {
         let restored = codableThemes.map { $0.toTheme() }
-        customThemes = restored.sorted {
+        self.theme.customThemes = restored.sorted {
             $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
         }
-        customThemeIDs = Set(restored.map(\TierTheme.id))
+        self.theme.customThemeIDs = Set(restored.map(\TierTheme.id))
     }
 
     internal func encodedCustomThemesData() -> Data? {
-        try? JSONEncoder().encode(customThemes.map(CodableTheme.init))
+        try? JSONEncoder().encode(self.theme.customThemes.map(CodableTheme.init))
     }
 
     internal func encodedGlobalSortMode() -> Data? {

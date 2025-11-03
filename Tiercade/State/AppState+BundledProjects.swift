@@ -150,7 +150,7 @@ internal extension AppState {
             updatedAt: Date(),
             isActive: false,
             cardDensityRaw: cardDensityPreference.rawValue,
-            selectedThemeID: selectedThemeID,
+            selectedThemeID: theme.selectedThemeID,
             customThemesData: nil,
             sourceRaw: source,
             externalIdentifier: project.id,

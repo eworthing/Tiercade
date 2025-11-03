@@ -164,68 +164,68 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
 internal extension AppState {
     var availableThemes: [TierTheme] {
         let bundled = TierThemeCatalog.allThemes
-        guard !customThemes.isEmpty else { return bundled }
+        guard !theme.customThemes.isEmpty else { return bundled }
         let bundledIDs = Set(bundled.map(\TierTheme.id))
-        let uniqueCustom = customThemes.filter { !bundledIDs.contains($0.id) }
+        let uniqueCustom = theme.customThemes.filter { !bundledIDs.contains($0.id) }
         return bundled + uniqueCustom.sorted { lhs, rhs in
             lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
         }
     }
 
     internal func isCustomTheme(_ theme: TierTheme) -> Bool {
-        customThemeIDs.contains(theme.id)
+        self.theme.customThemeIDs.contains(theme.id)
     }
 
     internal func theme(with id: UUID) -> TierTheme? {
         if let bundled = TierThemeCatalog.theme(id: id) { return bundled }
-        return customThemes.first { $0.id == id }
+        return self.theme.customThemes.first { $0.id == id }
     }
 
     internal func beginThemeCreation(baseTheme: TierTheme? = nil) {
-        let source = baseTheme ?? selectedTheme
-        themeDraft = ThemeDraft(baseTheme: source, tierOrder: tierOrder)
-        themePickerActive = false
+        let source = baseTheme ?? theme.selectedTheme
+        theme.themeDraft = ThemeDraft(baseTheme: source, tierOrder: tierOrder)
+        theme.themePickerActive = false
         overlays.showThemeCreator = true
-        themeCreatorActive = true
+        theme.themeCreatorActive = true
     }
 
     internal func updateThemeDraftName(_ newName: String) {
-        guard var draft = themeDraft else { return }
+        guard var draft = theme.themeDraft else { return }
         draft.setName(newName)
-        themeDraft = draft
+        theme.themeDraft = draft
     }
 
     internal func updateThemeDraftDescription(_ newDescription: String) {
-        guard var draft = themeDraft else { return }
+        guard var draft = theme.themeDraft else { return }
         draft.setDescription(newDescription)
-        themeDraft = draft
+        theme.themeDraft = draft
     }
 
     internal func selectThemeDraftTier(_ tierID: UUID) {
-        guard var draft = themeDraft else { return }
+        guard var draft = theme.themeDraft else { return }
         draft.selectTier(tierID)
-        themeDraft = draft
+        theme.themeDraft = draft
     }
 
     internal func assignColorToActiveTier(_ hex: String) {
-        guard var draft = themeDraft else { return }
+        guard var draft = theme.themeDraft else { return }
         draft.applyColorToActiveTier(hex)
-        themeDraft = draft
+        theme.themeDraft = draft
         markAsChanged()
     }
 
     internal func cancelThemeCreation(returnToThemePicker: Bool) {
         overlays.showThemeCreator = false
-        themeCreatorActive = false
-        themeDraft = nil
+        theme.themeCreatorActive = false
+        theme.themeDraft = nil
         if !returnToThemePicker {
             overlays.showThemePicker = false
-            themePickerActive = false
+            theme.themePickerActive = false
         }
     }
 
     internal func completeThemeCreation() {
-        guard var draft = themeDraft else { return }
+        guard var draft = theme.themeDraft else { return }
 
         let cleanedName = draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanedName.isEmpty else {
@@ -248,9 +248,9 @@ internal extension AppState {
             return
         }
 
-        customThemes.append(newTheme)
-        customThemes.sort { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
-        customThemeIDs.insert(newTheme.id)
+        theme.customThemes.append(newTheme)
+        theme.customThemes.sort { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
+        theme.customThemeIDs.insert(newTheme.id)
 
         applyTheme(newTheme)
 
@@ -258,10 +258,10 @@ internal extension AppState {
         markAsChanged()
 
         overlays.showThemeCreator = false
-        themeCreatorActive = false
-        themeDraft = nil
+        theme.themeCreatorActive = false
+        theme.themeDraft = nil
         overlays.showThemePicker = true
-        themePickerActive = true
+        theme.themePickerActive = true
     }
 
     private func makeUniqueSlug(from base: String) -> String {

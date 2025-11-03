@@ -238,7 +238,7 @@ internal struct MainAppView: View {
             .zIndex(55)
         }
 
-        if app.overlays.showThemeCreator, let draft = app.themeDraft {
+        if app.overlays.showThemeCreator, let draft = app.theme.themeDraft {
             AccessibilityBridgeView()
 
             ThemeCreatorOverlay(appState: app, draft: draft)

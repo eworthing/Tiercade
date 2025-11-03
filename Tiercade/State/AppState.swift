@@ -118,14 +118,7 @@ final class AppState {
     var globalSortMode: GlobalSortMode = .alphabetical(ascending: true)
     // Layout preferences
     var cardDensityPreference: CardDensityPreference = .compact
-    // Theme selection
-    var selectedThemeID: UUID = TierThemeCatalog.defaultTheme.id
-    var selectedTheme: TierTheme = TierThemeCatalog.defaultTheme
-    var themePickerActive: Bool = false
-    var customThemes: [TierTheme] = []
-    var customThemeIDs: Set<UUID> = []
-    var themeCreatorActive: Bool = false
-    var themeDraft: ThemeDraft?
+    // Tier List Creator state (active flags for focus management)
     var tierListCreatorActive: Bool = false
     var tierListWizardContext: TierListWizardContext = .create
     var tierListCreatorDraft: TierProjectDraft?
@@ -146,6 +139,10 @@ final class AppState {
     // MARK: - Overlays State
     /// Consolidated state for modal/overlay routing and visibility
     var overlays = OverlaysState()
+
+    // MARK: - Theme State
+    /// Consolidated state for theme selection and management
+    var theme: ThemeState
 
     // Progress Tracking & Visual Feedback
     var isLoading: Bool = false
@@ -194,6 +191,9 @@ final class AppState {
 
         // Initialize persistence state with injected persistence store
         self.persistence = PersistenceState(persistenceStore: self.persistenceStore)
+
+        // Initialize theme state with injected theme catalog
+        self.theme = ThemeState(themeCatalog: self.themeCatalog)
 
         let didLoad = load()
         if !didLoad {
@@ -340,13 +340,13 @@ final class AppState {
         }
         applyBundledProject(defaultProject)
         let fallbackTheme = TierThemeCatalog.defaultTheme
-        selectedTheme = fallbackTheme
-        selectedThemeID = fallbackTheme.id
+        theme.selectedTheme = fallbackTheme
+        theme.selectedThemeID = fallbackTheme.id
         applyCurrentTheme()
         cardDensityPreference = .compact
-        customThemes = []
-        customThemeIDs = []
-        themeDraft = nil
+        theme.customThemes = []
+        theme.customThemeIDs = []
+        theme.themeDraft = nil
         logEvent("seed: loaded default bundled project \(defaultProject.id)")
         do {
             try save()

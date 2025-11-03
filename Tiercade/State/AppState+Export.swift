@@ -356,7 +356,7 @@ internal extension AppState {
         }
 
         return Project.Settings(
-            theme: selectedTheme.slug,
+            theme: theme.selectedTheme.slug,
             tierSortOrder: nil,
             gridSnap: nil,
             showUnranked: true,
@@ -542,9 +542,9 @@ internal extension AppState {
     }
 
     private func makeCustomThemesPayload() -> JSONValue? {
-        guard !customThemes.isEmpty else { return nil }
+        guard !theme.customThemes.isEmpty else { return nil }
 
-        let themeValues: [JSONValue] = customThemes.map { theme in
+        let themeValues: [JSONValue] = theme.customThemes.map { theme in
             let tierValues: [JSONValue] = theme.tiers.map { tier in
                 .object([
                     "id": .string(tier.id.uuidString),

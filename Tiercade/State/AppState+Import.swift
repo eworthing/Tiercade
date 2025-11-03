@@ -267,8 +267,8 @@ internal extension AppState {
             let value = project.additional?["customThemes"],
             case let .array(themeValues) = value
         else {
-            customThemes = []
-            customThemeIDs = []
+            theme.customThemes = []
+            theme.customThemeIDs = []
             return
         }
 
@@ -281,8 +281,8 @@ internal extension AppState {
             }
         }
 
-        customThemes = restored
-        customThemeIDs = Set(restored.map(\.id))
+        theme.customThemes = restored
+        theme.customThemeIDs = Set(restored.map(\.id))
     }
 
     private func decodeTheme(from value: JSONValue) -> TierTheme? {
@@ -343,14 +343,14 @@ internal extension AppState {
             return
         }
 
-        if let custom = customThemes.first(where: { $0.slug.caseInsensitiveCompare(slug) == .orderedSame }) {
+        if let custom = theme.customThemes.first(where: { $0.slug.caseInsensitiveCompare(slug) == .orderedSame }) {
             setSelectedTheme(custom)
         }
     }
 
     private func setSelectedTheme(_ theme: TierTheme) {
-        selectedTheme = theme
-        selectedThemeID = theme.id
+        self.theme.selectedTheme = theme
+        self.theme.selectedThemeID = theme.id
     }
 
     // MARK: - Decoding helpers

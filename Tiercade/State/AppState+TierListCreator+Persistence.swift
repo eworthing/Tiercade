@@ -45,7 +45,7 @@ internal extension AppState {
         entity.lastOpenedAt = timestamp
         entity.projectData = projectData
         entity.cardDensityRaw = cardDensityPreference.rawValue
-        entity.selectedThemeID = selectedThemeID
+        entity.selectedThemeID = theme.selectedThemeID
         entity.customThemesData = encodedCustomThemesData()
         entity.isActive = true
         entity.sourceRaw = TierListSource.authored.rawValue
@@ -70,7 +70,7 @@ internal extension AppState {
             updatedAt: now,
             isActive: true,
             cardDensityRaw: cardDensityPreference.rawValue,
-            selectedThemeID: selectedThemeID,
+            selectedThemeID: theme.selectedThemeID,
             customThemesData: encodedCustomThemesData(),
             sourceRaw: TierListSource.authored.rawValue,
             externalIdentifier: draft.projectId.uuidString,
@@ -514,7 +514,7 @@ internal extension AppState {
     }
 
     private func buildInMemoryProjectSettings() -> Project.Settings {
-        let themeSlug = TierThemeCatalog.theme(id: selectedThemeID)?.slug
+        let themeSlug = TierThemeCatalog.theme(id: theme.selectedThemeID)?.slug
         return Project.Settings(
             theme: themeSlug,
             tierSortOrder: "descending",
