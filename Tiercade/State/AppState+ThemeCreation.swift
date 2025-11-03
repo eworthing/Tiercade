@@ -185,7 +185,7 @@ internal extension AppState {
         let source = baseTheme ?? selectedTheme
         themeDraft = ThemeDraft(baseTheme: source, tierOrder: tierOrder)
         themePickerActive = false
-        showThemeCreator = true
+        overlays.showThemeCreator = true
         themeCreatorActive = true
     }
 
@@ -215,11 +215,11 @@ internal extension AppState {
     }
 
     internal func cancelThemeCreation(returnToThemePicker: Bool) {
-        showThemeCreator = false
+        overlays.showThemeCreator = false
         themeCreatorActive = false
         themeDraft = nil
         if !returnToThemePicker {
-            showThemePicker = false
+            overlays.showThemePicker = false
             themePickerActive = false
         }
     }
@@ -257,10 +257,10 @@ internal extension AppState {
         showSuccessToast("Theme saved", message: "\(newTheme.displayName) is ready to use")
         markAsChanged()
 
-        showThemeCreator = false
+        overlays.showThemeCreator = false
         themeCreatorActive = false
         themeDraft = nil
-        showThemePicker = true
+        overlays.showThemePicker = true
         themePickerActive = true
     }
 

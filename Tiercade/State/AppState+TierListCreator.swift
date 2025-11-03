@@ -22,13 +22,13 @@ internal extension AppState {
         tierListWizardContext = .create
         tierListCreatorDraft = TierProjectDraft.makeDefault()
         tierListCreatorIssues.removeAll()
-        showTierListCreator = true
+        overlays.showTierListCreator = true
         tierListCreatorActive = true
     }
 
     internal func dismissTierListCreator(resetDraft: Bool = false) {
         tierListCreatorActive = false
-        showTierListCreator = false
+        overlays.showTierListCreator = false
         tierListWizardContext = .create
         if resetDraft {
             tierListCreatorDraft = nil
@@ -55,8 +55,8 @@ internal extension AppState {
         tierListCreatorDraft = TierProjectDraft.make(from: project)
         tierListWizardContext = .edit(handle)
         tierListCreatorIssues.removeAll()
-        showingTierListBrowser = false
-        showTierListCreator = true
+        overlays.showTierListBrowser = false
+        overlays.showTierListCreator = true
         tierListCreatorActive = true
     }
 

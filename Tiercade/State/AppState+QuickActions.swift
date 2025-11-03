@@ -30,12 +30,12 @@ internal extension AppState {
 
     // MARK: - Quick Move (tvOS Play/Pause)
     internal func beginQuickMove(_ item: Item) {
-        quickMoveTarget = item
+        overlays.quickMoveTarget = item
         batchQuickMoveActive = false
     }
 
     internal func cancelQuickMove() {
-        quickMoveTarget = nil
+        overlays.quickMoveTarget = nil
         batchQuickMoveActive = false
     }
 
@@ -46,17 +46,17 @@ internal extension AppState {
             return
         }
 
-        guard let item = quickMoveTarget else { return }
+        guard let item = overlays.quickMoveTarget else { return }
         let snapshot = captureTierSnapshot()
         let next = QuickRankLogic.assign(tiers, itemId: item.id, to: tier)
         guard next != tiers else {
-            quickMoveTarget = nil
+            overlays.quickMoveTarget = nil
             return
         }
 
         tiers = next
         finalizeChange(action: "Quick Move", undoSnapshot: snapshot)
-        quickMoveTarget = nil
+        overlays.quickMoveTarget = nil
 
         let movedName = item.name ?? item.id
         let displayTier = displayLabel(for: tier)
@@ -69,7 +69,7 @@ internal extension AppState {
         guard !selection.isEmpty else { return }
         batchQuickMoveActive = true
         // Use a dummy item to trigger the overlay
-        quickMoveTarget = Item(id: "batch", attributes: ["name": "\(selection.count) Items"])
+        overlays.quickMoveTarget = Item(id: "batch", attributes: ["name": "\(selection.count) Items"])
     }
 
     internal func commitBatchQuickMove(to tier: String) {

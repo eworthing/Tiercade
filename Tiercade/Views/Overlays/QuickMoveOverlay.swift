@@ -16,7 +16,7 @@ internal struct QuickMoveOverlay: View {
     }
 
     internal var body: some View {
-        if let item = app.quickMoveTarget {
+        if let item = app.overlays.quickMoveTarget {
             let isBatchMode = app.batchQuickMoveActive
             let title = isBatchMode ? "Move \(app.selection.count) Items" : (item.name ?? item.id)
             let allTiers = app.tierOrder + ["unranked"]
@@ -139,7 +139,7 @@ internal struct QuickMoveOverlay: View {
                 }
 
                 Button("View Details") {
-                    app.detailItem = item
+                    app.overlays.detailItem = item
                     app.cancelQuickMove()
                 }
                 .buttonStyle(.bordered)

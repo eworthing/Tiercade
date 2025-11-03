@@ -369,7 +369,7 @@ internal struct CardView: View {
             Button("Move to Unranked") {
                 app.move(item.id, to: "unranked")
             }
-            Button("View Details") { app.detailItem = item }
+            Button("View Details") { app.overlays.detailItem = item }
         }
         #endif
     }

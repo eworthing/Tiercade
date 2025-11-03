@@ -126,13 +126,13 @@ internal extension AppState {
 
     internal func presentTierListBrowser() {
         logEvent("presentTierListBrowser called")
-        showingTierListBrowser = true
-        logEvent("showingTierListBrowser set to \(showingTierListBrowser)")
+        overlays.showTierListBrowser = true
+        logEvent("overlays.showTierListBrowser set to \(overlays.showTierListBrowser)")
     }
 
     internal func dismissTierListBrowser() {
         logEvent("dismissTierListBrowser called")
-        showingTierListBrowser = false
+        overlays.showTierListBrowser = false
     }
 
     internal func tierListHandle(forFileNamed fileName: String) -> TierListHandle {

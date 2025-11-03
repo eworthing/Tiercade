@@ -5,7 +5,7 @@ import TiercadeCore
 internal extension AppState {
     // MARK: - Theme Picker Overlay
     internal func presentThemePicker() {
-        showThemePicker = true
+        overlays.showThemePicker = true
         themePickerActive = true
     }
 

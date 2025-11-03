@@ -17,7 +17,7 @@ internal struct TVToolbarView: View {
     internal var body: some View {
         let randomizeEnabled = app.canRandomizeItems
         let headToHeadEnabled = app.canStartHeadToHead
-        let analyticsActive = app.showAnalyticsSidebar
+        let analyticsActive = app.overlays.showAnalyticsSidebar
         let analyticsEnabled = analyticsActive || app.canShowAnalysis
         let randomizeHint = randomizeEnabled
             ? "Randomly distribute items across tiers"
@@ -274,7 +274,7 @@ internal struct TVToolbarView: View {
         #if os(tvOS)
         .focusSection()
         #endif
-        .onChange(of: app.showAnalyticsSidebar) { _, isPresented in
+        .onChange(of: app.overlays.showAnalyticsSidebar) { _, isPresented in
             if !isPresented {
                 focusedControl = .analytics
             }

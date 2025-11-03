@@ -106,13 +106,9 @@ final class AppState {
     var activeFilter: FilterType = .all
     var currentToast: ToastMessage?
     var quickRankTarget: Item?
-    // tvOS quick move (Play/Pause accelerator)
-    var quickMoveTarget: Item?
     var batchQuickMoveActive: Bool = false
     // Multi-select state for batch operations (driven by editMode environment)
     var selection: Set<String> = []
-    // Detail overlay routing
-    var detailItem: Item?
     // Locked tiers set (until full Tier model exists)
     var lockedTiers: Set<String> = []
     // Tier display overrides (rename/recolor without core model changes)
@@ -125,14 +121,11 @@ final class AppState {
     // Theme selection
     var selectedThemeID: UUID = TierThemeCatalog.defaultTheme.id
     var selectedTheme: TierTheme = TierThemeCatalog.defaultTheme
-    var showThemePicker: Bool = false
     var themePickerActive: Bool = false
     var customThemes: [TierTheme] = []
     var customThemeIDs: Set<UUID> = []
-    var showThemeCreator: Bool = false
     var themeCreatorActive: Bool = false
     var themeDraft: ThemeDraft?
-    var showTierListCreator: Bool = false
     var tierListCreatorActive: Bool = false
     var tierListWizardContext: TierListWizardContext = .create
     var tierListCreatorDraft: TierProjectDraft?
@@ -150,6 +143,10 @@ final class AppState {
     /// Consolidated state for tier list persistence and file management
     var persistence: PersistenceState
 
+    // MARK: - Overlays State
+    /// Consolidated state for modal/overlay routing and visibility
+    var overlays = OverlaysState()
+
     // Progress Tracking & Visual Feedback
     var isLoading: Bool = false
     var loadingMessage: String = ""
@@ -157,8 +154,6 @@ final class AppState {
     var dragTargetTier: String?
     var draggingId: String?
     var isProcessingSearch: Bool = false
-    var showAnalyticsSidebar: Bool = false
-    var showingTierListBrowser: Bool = false
     let bundledProjects: [BundledProject] = BundledProjects.all
 
     // Confirmation alerts
@@ -176,12 +171,8 @@ final class AppState {
     /// Centralized check for whether any overlay blocks background interaction
     /// Use with `.allowsHitTesting(!app.blocksBackgroundFocus)` on background content
     var blocksBackgroundFocus: Bool {
-        (detailItem != nil)
+        overlays.blocksBackgroundFocus
         || headToHead.isActive
-        || showThemePicker
-        || (quickMoveTarget != nil)
-        || showThemeCreator
-        || showTierListCreator
         || (aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform)
     }
 
