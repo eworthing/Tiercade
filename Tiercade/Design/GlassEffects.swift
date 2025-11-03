@@ -52,7 +52,10 @@ extension View {
 }
 
 @MainActor @ViewBuilder
-internal func tvGlassContainer<Content: View>(spacing: CGFloat? = nil, @ViewBuilder content: () -> Content) -> some View {
+internal func tvGlassContainer<Content: View>(
+    spacing: CGFloat? = nil,
+    @ViewBuilder content: () -> Content
+) -> some View {
     if let spacing {
         GlassEffectContainer(spacing: spacing, content: content)
     } else {

@@ -20,7 +20,10 @@ internal extension AppState {
         }
     }
 
-    internal func writeProjectBundle(_ artifacts: ProjectExportArtifacts, to destination: URL) throws(PersistenceError) {
+    internal func writeProjectBundle(
+        _ artifacts: ProjectExportArtifacts,
+        to destination: URL
+    ) throws(PersistenceError) {
         let fileManager = FileManager.default
 
         do {

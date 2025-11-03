@@ -193,7 +193,9 @@ internal struct CoordinatorExperimentRunner {
             return a.tpu < b.tpu
         }
         if let best = ranked.first, let scenario = scenarios.first(where: { $0.id == best.id }) {
-            onProgress("🏆 Medium‑N best arm: \(scenario.name) — pass@N=\(String(format: "%.1f%%", best.score*100)), avg TPU=\(String(format: "%.2f", best.tpu))")
+            let scoreStr = String(format: "%.1f%%", best.score*100)
+            let tpuStr = String(format: "%.2f", best.tpu)
+            onProgress("🏆 Medium‑N best arm: \(scenario.name) — pass@N=\(scoreStr), avg TPU=\(tpuStr)")
         }
         return report
     }
@@ -241,7 +243,8 @@ internal struct CoordinatorExperimentRunner {
                     ))
 
                     let dupPct = diag.dupRate.map { String(format: "%.1f%%", $0 * 100) } ?? "n/a"
-                    onProgress("  • seed=\(seed) pass=\(pass) unique=\(items.count) dup=\(dupPct) dur=\(String(format: "%.2fs", duration)) escalate=\(escalate)")
+                    let durStr = String(format: "%.2fs", duration)
+                    onProgress("  • seed=\(seed) pass=\(pass) unique=\(items.count) dup=\(dupPct) dur=\(durStr) escalate=\(escalate)")
 
                 } catch {
                     onProgress("  ❌ seed=\(seed) error: \(error.localizedDescription)")
