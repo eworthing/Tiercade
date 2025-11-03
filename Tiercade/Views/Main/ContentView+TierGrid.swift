@@ -273,15 +273,14 @@ internal struct CardView: View {
         return Palette.tierColor(tierId, from: app.tierColors)
     }
 
-    /// Legacy helper for TierBadgeView (hardcoded SABCDF only)
-    /// TODO: Replace TierBadgeView with dynamic tier badge component
-    private static let tierLookup: [String: Tier] = [
-        "S": .s, "A": .a, "B": .b, "C": .c, "D": .d, "F": .f
-    ]
-
-    private func tierForItem(_ item: Item) -> Tier {
-        guard let tierId = app.currentTier(of: item.id)?.uppercased() else { return .unranked }
-        return Self.tierLookup[tierId] ?? .unranked
+    /// Get tier badge data for display (label and color hex)
+    private func tierBadgeData(for item: Item) -> (label: String, colorHex: String) {
+        guard let tierId = app.currentTier(of: item.id) else {
+            return ("Unranked", app.tierColors["unranked"] ?? "#6B7280")
+        }
+        let label = app.displayLabel(for: tierId)
+        let colorHex = app.tierColors[tierId] ?? "#6B7280"
+        return (label, colorHex)
     }
 
     private var layoutCornerRadius: CGFloat {
@@ -460,7 +459,8 @@ internal struct CardView: View {
                 }
             }
 
-            TierBadgeView(tier: tierForItem(item))
+            let badgeData = tierBadgeData(for: item)
+            DynamicTierBadgeView(label: badgeData.label, colorHex: badgeData.colorHex)
                 .padding(layout.contentPadding * 0.6)
         }
     }

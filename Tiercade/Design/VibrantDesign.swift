@@ -52,6 +52,8 @@ internal enum Tier: String, CaseIterable, Identifiable {
 
 // MARK: - Tier Badge View
 
+/// Legacy tier badge using hardcoded Tier enum (SABCDF only)
+/// Prefer DynamicTierBadgeView for custom tier color support
 internal struct TierBadgeView: View {
     internal let tier: Tier
     internal var body: some View {
@@ -69,6 +71,29 @@ internal struct TierBadgeView: View {
                     .stroke(Color.white.opacity(0.12), lineWidth: 1)
             )
             .accessibilityLabel("Tier \(tier.letter)")
+    }
+}
+
+/// Dynamic tier badge that respects custom tier colors and labels
+internal struct DynamicTierBadgeView: View {
+    internal let label: String
+    internal let colorHex: String
+
+    internal var body: some View {
+        Text(label)
+            .font(.headline.weight(.bold))
+            .foregroundStyle(chipTextColor(forHex: colorHex))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.wideGamut(colorHex))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+            )
+            .accessibilityLabel("Tier \(label)")
     }
 }
 
