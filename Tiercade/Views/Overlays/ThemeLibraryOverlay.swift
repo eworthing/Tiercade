@@ -34,7 +34,6 @@ internal struct ThemeLibraryOverlay: View {
         #endif
         .onAppear(perform: handleAppear)
         .onDisappear {
-            appState.theme.themePickerActive = false
             #if !os(tvOS)
             overlayHasFocus = false
             #endif
@@ -75,10 +74,10 @@ private extension ThemeLibraryOverlay {
         .onKeyPress(.space) { activateFocusedTheme(); return .handled }
         .onKeyPress(.return) { activateFocusedTheme(); return .handled }
         .onChange(of: overlayHasFocus) { _, newValue in
-        guard !newValue, appState.theme.themePickerActive else { return }
+        guard !newValue, appState.overlays.showThemePicker else { return }
         Task { @MainActor in
         try? await Task.sleep(for: .milliseconds(50))
-        if appState.theme.themePickerActive {
+        if appState.overlays.showThemePicker {
         overlayHasFocus = true
         }
         }
@@ -304,7 +303,6 @@ private extension ThemeLibraryOverlay {
     }
 
     func handleAppear() {
-        appState.theme.themePickerActive = true
         assignFocusToSelectedTheme()
         #if !os(tvOS)
         overlayHasFocus = true

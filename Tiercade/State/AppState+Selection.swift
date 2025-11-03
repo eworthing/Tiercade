@@ -3,12 +3,6 @@ import TiercadeCore
 
 @MainActor
 internal extension AppState {
-    // MARK: - Theme Picker Overlay
-    internal func presentThemePicker() {
-        overlays.showThemePicker = true
-        theme.themePickerActive = true
-    }
-
     // MARK: - Selection / Multi-Select
     // Note: editMode is managed by view layer via environment
     // AppState only manages the selection Set

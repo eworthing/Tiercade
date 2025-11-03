@@ -61,14 +61,12 @@ internal struct ThemeCreatorOverlay: View {
             #endif
             .onAppear {
                 suppressFocusReset = false
-                appState.theme.themeCreatorActive = true
                 paletteFocusIndex = paletteIndex(for: draft.activeTier?.colorHex)
                 setFocus(.tier(draft.activeTierID))
                 FocusUtils.seedFocus()
             }
             .onDisappear {
                 suppressFocusReset = true
-                appState.theme.themeCreatorActive = false
                 focusedElement = nil
                 lastFocus = nil
             }

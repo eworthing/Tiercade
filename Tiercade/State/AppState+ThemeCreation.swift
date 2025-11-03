@@ -184,9 +184,8 @@ internal extension AppState {
     internal func beginThemeCreation(baseTheme: TierTheme? = nil) {
         let source = baseTheme ?? theme.selectedTheme
         theme.themeDraft = ThemeDraft(baseTheme: source, tierOrder: tierOrder)
-        theme.themePickerActive = false
-        overlays.showThemeCreator = true
-        theme.themeCreatorActive = true
+        overlays.showThemePicker = false
+        overlays.presentThemeCreator()
     }
 
     internal func updateThemeDraftName(_ newName: String) {
@@ -215,12 +214,10 @@ internal extension AppState {
     }
 
     internal func cancelThemeCreation(returnToThemePicker: Bool) {
-        overlays.showThemeCreator = false
-        theme.themeCreatorActive = false
+        overlays.dismissThemeCreator()
         theme.themeDraft = nil
         if !returnToThemePicker {
-            overlays.showThemePicker = false
-            theme.themePickerActive = false
+            overlays.dismissThemePicker()
         }
     }
 
@@ -257,11 +254,9 @@ internal extension AppState {
         showSuccessToast("Theme saved", message: "\(newTheme.displayName) is ready to use")
         markAsChanged()
 
-        overlays.showThemeCreator = false
-        theme.themeCreatorActive = false
+        overlays.dismissThemeCreator()
         theme.themeDraft = nil
-        overlays.showThemePicker = true
-        theme.themePickerActive = true
+        overlays.presentThemePicker()
     }
 
     private func makeUniqueSlug(from base: String) -> String {

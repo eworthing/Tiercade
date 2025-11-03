@@ -28,8 +28,7 @@ internal extension AppState {
         }
 
         // Close theme picker when opening analysis
-        overlays.showThemePicker = false
-        theme.themePickerActive = false
+        overlays.dismissThemePicker()
 
         showingAnalysis = true
         if analysisData == nil {

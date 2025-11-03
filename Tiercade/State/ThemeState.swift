@@ -32,12 +32,6 @@ internal final class ThemeState {
 
     // MARK: - UI State
 
-    /// Whether the theme picker is currently active (for focus management)
-    var themePickerActive: Bool = false
-
-    /// Whether the theme creator is currently active (for focus management)
-    var themeCreatorActive: Bool = false
-
     /// Draft theme being edited in the theme creator
     var themeDraft: ThemeDraft?
 
@@ -108,27 +102,15 @@ internal final class ThemeState {
         }
     }
 
-    // MARK: - Theme Picker/Creator State
+    // MARK: - Theme Draft Management
 
-    /// Activate the theme picker
-    internal func activateThemePicker() {
-        themePickerActive = true
-    }
-
-    /// Deactivate the theme picker
-    internal func deactivateThemePicker() {
-        themePickerActive = false
-    }
-
-    /// Activate the theme creator with a draft
-    internal func activateThemeCreator(draft: ThemeDraft) {
+    /// Set the current theme draft
+    internal func setThemeDraft(_ draft: ThemeDraft?) {
         themeDraft = draft
-        themeCreatorActive = true
     }
 
-    /// Deactivate the theme creator and clear draft
-    internal func deactivateThemeCreator() {
-        themeCreatorActive = false
+    /// Clear the theme draft
+    internal func clearThemeDraft() {
         themeDraft = nil
     }
 }

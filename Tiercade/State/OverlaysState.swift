@@ -51,6 +51,7 @@ internal final class OverlaysState {
         if detailItem != nil { return .detail }
         if quickMoveTarget != nil { return .quickMove }
         if showThemePicker { return .themePicker }
+        if showThemeCreator { return .themeCreator }
         if showTierListCreator { return .tierListCreator }
         if showTierListBrowser { return .tierListBrowser }
         if showAnalyticsSidebar { return .analytics }
@@ -136,6 +137,16 @@ internal final class OverlaysState {
     /// Dismisses the theme picker
     internal func dismissThemePicker() {
         showThemePicker = false
+    }
+
+    /// Presents the theme creator
+    internal func presentThemeCreator() {
+        showThemeCreator = true
+    }
+
+    /// Dismisses the theme creator
+    internal func dismissThemeCreator() {
+        showThemeCreator = false
     }
 
     /// Presents the analytics sidebar
