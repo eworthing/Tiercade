@@ -3,6 +3,19 @@ import Foundation
 // Minimal resolver utilities to load a tierlist project JSON (matching referencedocs schema)
 // and produce resolved tiers for consumers (apply overrides to items).
 
+public enum ModelResolverError: Error {
+    case fileTooLarge(size: Int, limit: Int)
+
+    public var localizedDescription: String {
+        switch self {
+        case .fileTooLarge(let size, let limit):
+            let sizeMB = Double(size) / 1_000_000.0
+            let limitMB = Double(limit) / 1_000_000.0
+            return "Project file is too large (\(String(format: "%.1f", sizeMB))MB). Maximum allowed size is \(String(format: "%.1f", limitMB))MB."
+        }
+    }
+}
+
 public struct ResolvedItem: Identifiable {
     public let id: String
     public var title: String
@@ -42,6 +55,9 @@ public struct ResolvedTier {
 }
 
 public enum ModelResolver {
+    /// Maximum allowed JSON file size (50MB) to prevent DoS attacks from malicious/corrupted files
+    public static let maxFileSizeBytes = 50_000_000
+
     // Synchronous API (maintained for compatibility)
     public static func loadProject(from url: URL) throws -> Project {
         let data = try Data(contentsOf: url)
@@ -49,6 +65,11 @@ public enum ModelResolver {
     }
 
     public static func decodeProject(from data: Data) throws -> Project {
+        // Validate size before decoding to prevent memory exhaustion DoS
+        guard data.count <= maxFileSizeBytes else {
+            throw ModelResolverError.fileTooLarge(size: data.count, limit: maxFileSizeBytes)
+        }
+
         let decoder = jsonDecoder()
         let project = try decoder.decode(Project.self, from: data)
         try ProjectValidation.validateOfflineV1(project)
@@ -64,6 +85,11 @@ public enum ModelResolver {
 
     @concurrent
     public static func decodeProjectAsync(from data: Data) async throws -> Project {
+        // Validate size before decoding to prevent memory exhaustion DoS
+        guard data.count <= maxFileSizeBytes else {
+            throw ModelResolverError.fileTooLarge(size: data.count, limit: maxFileSizeBytes)
+        }
+
         let decoder = jsonDecoder()
         let project = try decoder.decode(Project.self, from: data)
         try ProjectValidation.validateOfflineV1(project)
