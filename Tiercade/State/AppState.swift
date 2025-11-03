@@ -146,7 +146,7 @@ final class AppState {
     let tierListStateKey = "Tiercade.tierlist.active.v1"
     let tierListRecentsKey = "Tiercade.tierlist.recents.v1"
     var autosaveTask: Task<Void, Never>?
-    let autosaveInterval: TimeInterval = 30.0 // Auto-save every 30 seconds
+    let autosaveInterval: TimeInterval = PersistenceIntervals.autosave
 
     /// Centralized check for whether any overlay blocks background interaction
     /// Use with `.allowsHitTesting(!app.blocksBackgroundFocus)` on background content

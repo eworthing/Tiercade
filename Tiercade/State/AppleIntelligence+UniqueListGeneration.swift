@@ -218,7 +218,7 @@ final class FMClient {
 
 // MARK: - Token Chunking Helper
 
-private func chunkByTokens(_ keys: [String], budget: Int = 800) -> [[String]] {
+private func chunkByTokens(_ keys: [String], budget: Int = AIChunkingLimits.tokenBudget) -> [[String]] {
     var chunks: [[String]] = []
     var cur: [String] = []
     var used = 2  // Account for [ ]
