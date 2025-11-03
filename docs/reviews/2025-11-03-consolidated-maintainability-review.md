@@ -530,16 +530,11 @@ VStack(spacing: 0) {
    - Purpose: Dismisses modal overlays without exiting app
    - Status: Used correctly in codebase
 
-3. **Liquid Glass / `glassEffect(_:in:)`** (SwiftUI, iOS/tvOS 26+)
-   - Source: Web search confirms iOS 26.0+, tvOS 26.0+ availability
-   - Implementation: Codebase correctly uses `#if os(tvOS)` guards with `.ultraThinMaterial` fallbacks
-   - Status: ✅ Platform checks correct, follows 2025 API patterns
-
-### ❌ NOT FOUND (but implementation is correct)
-
-- `glassEffect` is not in Apple's indexed documentation yet (likely too new)
-- Web sources (Swift with Majid, Donny Wals) confirm it's a real iOS/tvOS 26 API
-- Codebase implementation matches community examples
+3. **Liquid Glass / `glassEffect(_:in:)`** (SwiftUI)
+   - Source: https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)/
+   - Platform: iOS/iPadOS/macOS/tvOS 26.0+
+   - Purpose: Applies Liquid Glass to a view; typically combined with `GlassEffectContainer`
+   - Status: ✅ Confirmed in apple-docs; codebase uses `#if os(tvOS)` with material fallbacks and aligns with guidance to keep glass on chrome, not behind focusable content
 
 ---
 

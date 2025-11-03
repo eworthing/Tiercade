@@ -112,7 +112,8 @@ extension HeadToHeadLogic {
             accounted.formUnion(orderedMembers.map(\.id))
         }
 
-        var unranked = (currentTiers["unranked"] ?? []).compactMap { poolById[$0.id] }
+        let unrankedKey = TierIdentifier.unranked.rawValue
+        var unranked = (currentTiers[unrankedKey] ?? []).compactMap { poolById[$0.id] }
         accounted.formUnion(unranked.map(\.id))
         let loose = pool.filter { !accounted.contains($0.id) }
         unranked.append(contentsOf: loose)

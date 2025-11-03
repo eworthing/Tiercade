@@ -85,16 +85,17 @@ extension HeadToHeadLogic {
     internal static func clearedTiers(_ base: Items, removing pool: [Item], tierNames: [String]) -> Items {
         var updated = base
         let poolIds = Set(pool.map(\.id))
+        let unrankedKey = TierIdentifier.unranked.rawValue
 
         for name in tierNames {
             updated[name] = []
         }
-        for key in updated.keys where key != "unranked" && !tierNames.contains(key) {
+        for key in updated.keys where key != unrankedKey && !tierNames.contains(key) {
             updated[key]?.removeAll { poolIds.contains($0.id) }
         }
-        if var unranked = updated["unranked"] {
+        if var unranked = updated[unrankedKey] {
             unranked.removeAll { poolIds.contains($0.id) }
-            updated["unranked"] = unranked
+            updated[unrankedKey] = unranked
         }
         return updated
     }
