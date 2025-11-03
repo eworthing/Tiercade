@@ -49,7 +49,9 @@ internal final actor ImageLoader {
 
         let (data, _) = try await session.data(from: url)
         let image = try decodeImage(from: data)
-        cache.setObject(CGImageBox(image: image), forKey: url as NSURL)
+        // Compute cost for NSCache limit enforcement: bytes = bytesPerRow × height
+        let cost = image.bytesPerRow * image.height
+        cache.setObject(CGImageBox(image: image), forKey: url as NSURL, cost: cost)
         return image
     }
 

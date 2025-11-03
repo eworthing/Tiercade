@@ -68,8 +68,10 @@ internal extension AppState {
         func uniqueID(from base: String) -> String {
             var id = base
             while seenIDs.contains(id) {
-                let next = (counters[id] ?? 1) + 1
-                counters[id] = next
+                // Key counter by base ID, not evolving id, to avoid miscounts
+                // when generated IDs collide with existing base IDs
+                let next = (counters[base] ?? 1) + 1
+                counters[base] = next
                 id = "\(base)_\(next)"
             }
             seenIDs.insert(id)

@@ -83,6 +83,7 @@ internal struct QuickMoveOverlay: View {
                 }
                 .onDisappear { focusedElement = nil }
                 .onExitCommand { app.cancelQuickMove() }
+                .accessibilityIdentifier("QuickMove_Overlay")
                 .accessibilityElement(children: .contain)
                 .accessibilityAddTraits(.isModal)
             }

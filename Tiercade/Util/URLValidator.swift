@@ -6,9 +6,11 @@ internal enum URLValidator {
         url.scheme?.lowercased() == "https"
     }
 
-    /// Allow external opens for HTTPS only by default. Extend cautiously if needed.
+    /// Allow external opens for HTTP/HTTPS since the OS (Safari) handles the connection, not our app.
+    /// ATS applies to URL Loading System (URLSession), not external app handoff.
     nonisolated internal static func isAllowedExternalURL(_ url: URL) -> Bool {
-        url.scheme?.lowercased() == "https"
+        let scheme = url.scheme?.lowercased()
+        return scheme == "http" || scheme == "https"
     }
 
     /// Convenience for string inputs.
