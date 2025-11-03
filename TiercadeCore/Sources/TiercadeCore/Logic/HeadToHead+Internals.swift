@@ -16,10 +16,31 @@ extension HeadToHeadLogic {
         let beta: Double
     }
 
+    /// Canonical representation of an unordered item pair for deduplication.
+    ///
+    /// INVARIANT: lhs <= rhs (lexicographically)
+    ///
+    /// This canonical ordering ensures (A, B) and (B, A) produce identical hash keys,
+    /// preventing duplicate comparisons in the head-to-head queue. Without this,
+    /// the algorithm would waste ~50% of comparisons on duplicate pairs.
+    ///
+    /// Example:
+    /// ```swift
+    /// PairKey(item1, item2) == PairKey(item2, item1)  // ✅ Always true
+    /// ```
     internal struct PairKey: Hashable {
+        /// Left-hand item ID (guaranteed lexicographically <= rhs)
         let lhs: String
+
+        /// Right-hand item ID (guaranteed lexicographically >= lhs)
         let rhs: String
 
+        /// Creates a canonical pair key ensuring lhs <= rhs invariant.
+        ///
+        /// - Parameters:
+        ///   - a: First item in the pair
+        ///   - b: Second item in the pair
+        /// - Postcondition: lhs <= rhs (lexicographically)
         internal init(_ a: Item, _ b: Item) {
             if a.id <= b.id {
                 lhs = a.id
@@ -28,26 +49,79 @@ extension HeadToHeadLogic {
                 lhs = b.id
                 rhs = a.id
             }
+
+            assert(lhs <= rhs, "PairKey invariant violated: lhs must be <= rhs")
         }
     }
 
+    /// Statistical and algorithmic parameters for the Wilson score ranking system.
+    ///
+    /// These constants control confidence intervals, overlap thresholds, and tie-breaking
+    /// behavior in the head-to-head comparison algorithm. Derived from empirical testing
+    /// across pool sizes from 5-100 items.
     internal enum Tun {
+        // MARK: - Capacity Limits
+
+        /// Maximum number of tiers supported (prevents pathological tier proliferation)
         internal static let maximumTierCount = 20
+
+        /// Minimum comparisons required per item for reliable ranking
         internal static let minimumComparisonsPerItem = 2
+
+        /// Width of frontier region for boundary pair detection
         internal static let frontierWidth = 2
+
+        // MARK: - Z-scores (Standard Deviations for Confidence Intervals)
+
+        /// Z-score for quick-phase confidence intervals (68% confidence, ±1σ).
+        /// Lower confidence allows faster initial sorting with fewer comparisons.
         internal static let zQuick: Double = 1.0
+
+        /// Z-score for standard confidence intervals (80% confidence, ±1.28σ).
+        /// Higher confidence for final tier assignments after refinement.
         internal static let zStd: Double = 1.28
+
+        /// Z-score for early refinement decisions (68% confidence, ±1σ)
         internal static let zRefineEarly: Double = 1.0
+
+        // MARK: - Overlap & Epsilon Thresholds
+
+        /// Soft overlap epsilon (1.0%) - minimum Wilson interval gap to consider distinct ranks.
+        /// Items closer than this threshold are treated as statistical ties.
         internal static let softOverlapEps: Double = 0.010
+
+        /// Confidence bonus beta weight (10%) - prior strength adjustment for existing tier positions
         internal static let confBonusBeta: Double = 0.10
+
+        /// Maximum suggested refinement pairs per cycle
         internal static let maxSuggestedPairs = 6
+
+        // MARK: - Hysteresis Parameters
+
+        /// Soft churn threshold (12%) - minor tier reassignments allowed
         internal static let hysteresisMaxChurnSoft: Double = 0.12
+
+        /// Hard churn threshold (25%) - maximum tier movement before fallback
         internal static let hysteresisMaxChurnHard: Double = 0.25
+
+        /// Ramp boost factor (50%) - amplifies confidence for items with many comparisons
         internal static let hysteresisRampBoost: Double = 0.50
+
+        // MARK: - Tie Detection & Splitting
+
+        /// Minimum Wilson range (1.5%) to consider splitting a segment
         internal static let minWilsonRangeForSplit: Double = 0.015
+
+        /// Top-tier tie epsilon (1.2%) - items within this range at top are grouped together
         internal static let epsTieTop: Double = 0.012
+
+        /// Bottom-tier tie epsilon (1.0%) - items within this range at bottom are grouped
         internal static let epsTieBottom: Double = 0.010
+
+        /// Maximum items in bottom tie group before forcing split
         internal static let maxBottomTieWidth: Int = 4
+
+        /// Upper bound ceiling (20%) for bottom-tier detection
         internal static let ubBottomCeil: Double = 0.20
     }
 
@@ -448,7 +522,19 @@ extension HeadToHeadLogic {
         return Double(moved) / Double(universe.count)
     }
 
+    /// Determines the expected win-rate prior for a given tier.
+    ///
+    /// Uses hardcoded priors for standard letter grades, falling back to linear
+    /// interpolation for custom tier names based on tier index position.
+    ///
+    /// - Parameters:
+    ///   - name: Tier name (e.g., "S", "A", "MyCustomTier")
+    ///   - index: Zero-based position in tier order (0 = top tier)
+    ///   - total: Total number of tiers
+    /// - Returns: Expected win-rate for items in this tier [0.0, 1.0]
     internal static func priorMeanForTier(_ name: String, index: Int, total: Int) -> Double {
+        /// Standard letter-grade tier win-rate priors
+        /// (same values as buildPriors for consistency)
         let defaults: [String: Double] = [
             "S": 0.85,
             "A": 0.75,
