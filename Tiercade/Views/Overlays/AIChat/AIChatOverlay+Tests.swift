@@ -9,11 +9,11 @@ extension AIChatOverlay {
     internal func runUnifiedTestSuite(suiteId: String = "quick-smoke") {
         let debugLogPath = NSTemporaryDirectory().appending("tiercade_prompt_test_debug.log")
 
-        aiService.messages.append(AIChatMessage(
+        ai.messages.append(AIChatMessage(
             content: "🚀 Starting unified test suite '\(suiteId)'...",
             isUser: false
         ))
-        aiService.messages.append(AIChatMessage(
+        ai.messages.append(AIChatMessage(
             content: "🔍 Debug log: \(debugLogPath)",
             isUser: false
         ))
@@ -22,7 +22,7 @@ extension AIChatOverlay {
             do {
                 let report = try await UnifiedPromptTester.runSuite(suiteId: suiteId) { message in
                     Task { @MainActor in
-                        aiService.messages.append(AIChatMessage(content: message, isUser: false))
+                        ai.messages.append(AIChatMessage(content: message, isUser: false))
                     }
                 }
 
@@ -32,7 +32,7 @@ extension AIChatOverlay {
                 }
             } catch {
                 await MainActor.run {
-                    aiService.messages.append(AIChatMessage(
+                    ai.messages.append(AIChatMessage(
                         content: "❌ Test error: \(error.localizedDescription)",
                         isUser: false
                     ))
@@ -43,7 +43,7 @@ extension AIChatOverlay {
 
     private func handleUnifiedTestReport(_ report: UnifiedPromptTester.TestReport) {
         let summary = buildUnifiedTestSummary(report)
-        aiService.messages.append(AIChatMessage(content: summary, isUser: false))
+        ai.messages.append(AIChatMessage(content: summary, isUser: false))
 
         saveUnifiedTestReport(report)
         showUnifiedTestToast(report)
@@ -84,13 +84,13 @@ extension AIChatOverlay {
             let data = try encoder.encode(report)
             try data.write(to: URL(fileURLWithPath: reportPath))
 
-            aiService.messages.append(AIChatMessage(
+            ai.messages.append(AIChatMessage(
                 content: "📄 Detailed report: \(reportPath)",
                 isUser: false
             ))
         } catch {
             print("❌ Failed to save report: \(error)")
-            aiService.messages.append(AIChatMessage(
+            ai.messages.append(AIChatMessage(
                 content: "⚠️ Could not save report file: \(error.localizedDescription)",
                 isUser: false
             ))
@@ -111,7 +111,7 @@ extension AIChatOverlay {
 
     /// @deprecated Use runUnifiedTestSuite(suiteId:) instead
     internal func startAcceptanceTests() {
-        aiService.messages.append(AIChatMessage(
+        ai.messages.append(AIChatMessage(
             content: "🧪 Starting acceptance test suite...",
             isUser: false
         ))
@@ -121,7 +121,7 @@ extension AIChatOverlay {
                 let report = try await AcceptanceTestSuite.runAll { print("🧪 \($0)") }
                 handleAcceptanceTestResults(report)
             } catch {
-                aiService.messages.append(AIChatMessage(
+                ai.messages.append(AIChatMessage(
                     content: "❌ Test suite error: \(error.localizedDescription)",
                     isUser: false
                 ))
@@ -131,7 +131,7 @@ extension AIChatOverlay {
 
     internal func handleAcceptanceTestResults(_ report: AcceptanceTestSuite.TestReport) {
         let summary = buildAcceptanceTestSummary(report)
-        aiService.messages.append(AIChatMessage(content: summary, isUser: false))
+        ai.messages.append(AIChatMessage(content: summary, isUser: false))
 
         saveAcceptanceTestReport(report)
         showAcceptanceTestToast(report)
@@ -160,7 +160,7 @@ extension AIChatOverlay {
         let reportPath = "/tmp/tiercade_acceptance_test_report.json"
         do {
             try AcceptanceTestSuite.saveReport(report, to: reportPath)
-            aiService.messages.append(AIChatMessage(
+            ai.messages.append(AIChatMessage(
                 content: "📄 Detailed report saved to: \(reportPath)",
                 isUser: false
             ))
@@ -178,7 +178,7 @@ extension AIChatOverlay {
     }
 
     internal func startPilotTests() {
-        aiService.messages.append(AIChatMessage(
+        ai.messages.append(AIChatMessage(
             content: "🧪 Starting pilot test grid (this will take several minutes)...",
             isUser: false
         ))
@@ -192,7 +192,7 @@ extension AIChatOverlay {
 
     internal func handlePilotTestResults(_ report: PilotTestReport, runner: PilotTestRunner) {
         let summary = buildPilotTestSummary(report)
-        aiService.messages.append(AIChatMessage(content: summary, isUser: false))
+        ai.messages.append(AIChatMessage(content: summary, isUser: false))
 
         savePilotTestReports(report, runner: runner)
         app.showSuccessToast("Pilot Tests Complete", message: "\(report.completedRuns) runs")
@@ -238,7 +238,7 @@ extension AIChatOverlay {
             let textReport = runner.generateTextReport(report)
             try textReport.write(toFile: txtPath, atomically: true, encoding: .utf8)
 
-            aiService.messages.append(AIChatMessage(
+            ai.messages.append(AIChatMessage(
                 content: "📄 Reports saved:\n• \(jsonPath)\n• \(txtPath)",
                 isUser: false
             ))

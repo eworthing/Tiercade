@@ -94,6 +94,12 @@ final class AppState {
     }
 
     let modelContext: ModelContext
+
+    // MARK: - Injected Services (DI)
+    internal let persistenceStore: TierPersistenceStore
+    internal let listGenerator: UniqueListGenerating
+    internal let themeCatalog: ThemeCatalogProviding
+
     var tiers: Items = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []]
     var tierOrder: [String] = ["S", "A", "B", "C", "D", "F"]
     var searchQuery: String = ""
@@ -132,10 +138,9 @@ final class AppState {
     var tierListCreatorDraft: TierProjectDraft?
     var tierListCreatorIssues: [TierListDraftValidationIssue] = []
     var tierListCreatorExportPayload: String?
-    // AI Item Generation (Wizard)
-    var aiGenerationRequest: AIGenerationRequest?
-    var aiGeneratedCandidates: [AIGeneratedItemCandidate] = []
-    var aiGenerationInProgress: Bool = false
+    // MARK: - AI Generation State
+    /// Consolidated state for Apple Intelligence chat and AI generation
+    var aiGeneration: AIGenerationState
 
     // MARK: - Head-to-Head State
     /// Consolidated state for Head-to-Head ranking mode (replaces 17 scattered h2h* properties)
@@ -155,10 +160,6 @@ final class AppState {
     var isProcessingSearch: Bool = false
     var showAnalyticsSidebar: Bool = false
     var showingTierListBrowser: Bool = false
-    var showAIChat: Bool = false
-    #if DEBUG
-    var testConsoleMessages: [AIChatMessage] = []
-    #endif
     let bundledProjects: [BundledProject] = BundledProjects.all
     var activeTierList: TierListHandle?
     var recentTierLists: [TierListHandle] = []
@@ -186,13 +187,27 @@ final class AppState {
         || (quickMoveTarget != nil)
         || showThemeCreator
         || showTierListCreator
-        || (showAIChat && AppleIntelligenceService.isSupportedOnCurrentPlatform)
+        || (aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform)
     }
 
     var activeTierListEntity: TierListEntity?
 
-    internal init(modelContext: ModelContext) {
+    internal init(
+        modelContext: ModelContext,
+        persistenceStore: TierPersistenceStore? = nil,
+        listGenerator: UniqueListGenerating? = nil,
+        themeCatalog: ThemeCatalogProviding? = nil
+    ) {
         self.modelContext = modelContext
+
+        // Initialize services with provided implementations or defaults
+        self.persistenceStore = persistenceStore ?? SwiftDataPersistenceStore(modelContext: modelContext)
+        self.listGenerator = listGenerator ?? AppleIntelligenceListGenerator()
+        self.themeCatalog = themeCatalog ?? BundledThemeCatalog(modelContext: modelContext)
+
+        // Initialize AI generation state with injected list generator
+        self.aiGeneration = AIGenerationState(listGenerator: self.listGenerator)
+
         let didLoad = load()
         if !didLoad {
             seed()

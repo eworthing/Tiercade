@@ -306,7 +306,7 @@ internal struct ToolbarView: ToolbarContent {
         #endif
 
         // 5. Apple Intelligence (all platforms)
-        if AppleIntelligenceService.isSupportedOnCurrentPlatform {
+        if AIGenerationState.isSupportedOnCurrentPlatform {
             Button {
                 app.toggleAIChat()
             } label: {

@@ -241,7 +241,7 @@ internal struct TVToolbarView: View {
             .glassEffectID("themePickerButton", in: glassNamespace)
             #endif
 
-            if AppleIntelligenceService.isSupportedOnCurrentPlatform {
+            if AIGenerationState.isSupportedOnCurrentPlatform {
                 Button(action: { app.toggleAIChat() }, label: {
                     Image(systemName: "sparkles")
                         .font(.system(size: Metrics.toolbarIconSize))

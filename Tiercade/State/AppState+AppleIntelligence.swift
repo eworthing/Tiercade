@@ -44,72 +44,52 @@ internal func makeAntiDuplicateInstructions() -> Instructions {
 }
 #endif
 
-// MARK: - Apple Intelligence Chat State
+// MARK: - Apple Intelligence Chat State (Forwarding to AIGenerationState)
 @MainActor
 internal extension AppState {
     /// Toggle AI chat overlay visibility
     internal func toggleAIChat() {
-        guard AppleIntelligenceService.isSupportedOnCurrentPlatform else {
-            if showAIChat { showAIChat = false }
-            showToast(
-                type: .info,
-                title: "Unavailable",
-                message: "Apple Intelligence chat isn't supported on this platform."
-            )
-            return
-        }
-
-        #if !canImport(FoundationModels)
-        // FoundationModels not available at compile time (e.g., Catalyst SDK limitation)
-        showToast(
-            type: .info,
-            title: "Not Available",
-            message: "Apple Intelligence requires FoundationModels framework (macOS 26+)."
+        aiGeneration.toggleAIChat(
+            showToast: { [weak self] type, title, message in
+                self?.showToast(type: type, title: title, message: message)
+            },
+            logEvent: { [weak self] event in
+                self?.logEvent(event)
+            }
         )
-        return
-        #endif
-
-        showAIChat.toggle()
-        if showAIChat {
-            logEvent("🤖 Apple Intelligence chat opened")
-        }
     }
 
     /// Close AI chat overlay
     internal func closeAIChat() {
-        showAIChat = false
-        logEvent("🤖 Apple Intelligence chat closed")
+        aiGeneration.closeAIChat(logEvent: { [weak self] event in
+            self?.logEvent(event)
+        })
     }
 
     #if DEBUG
     /// Add a test console message (for streaming test progress)
     internal func appendTestMessage(_ content: String) {
-        testConsoleMessages.append(AIChatMessage(content: content, isUser: false))
+        aiGeneration.appendTestMessage(content)
     }
 
     /// Clear test console messages
     internal func clearTestMessages() {
-        testConsoleMessages.removeAll()
+        aiGeneration.clearTestMessages()
     }
     #endif
-}// MARK: - Chat Message Model
-internal struct AIChatMessage: Identifiable, Sendable {
-    let id = UUID()
-    let content: String
-    let isUser: Bool
-    let timestamp: Date
-
-    internal init(content: String, isUser: Bool) {
-        self.content = content
-        self.isUser = isUser
-        self.timestamp = Date()
-    }
 }
 
-// MARK: - Apple Intelligence Service (real integration where available)
+// Note: AIChatMessage is now defined in AIGenerationState.swift
+// Note: AppleIntelligenceService has been replaced by AIGenerationState (see State/AIGenerationState.swift)
+// The remaining code in this file provides advanced generation features that will be
+// integrated into AIGenerationState in future PRs
+
+#if false
+// MARK: - Legacy Apple Intelligence Service (DEPRECATED - use AIGenerationState)
+// This code is preserved for reference but should not be instantiated
 @MainActor
 @Observable
-final class AppleIntelligenceService {
+final class AppleIntelligenceService_DEPRECATED {
     var messages: [AIChatMessage] = []
     var isProcessing = false
     var estimatedTokenCount: Int = 0
@@ -646,3 +626,4 @@ final class AppleIntelligenceService {
     }
     #endif
 }
+#endif

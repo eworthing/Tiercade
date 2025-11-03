@@ -31,7 +31,7 @@ internal struct MainAppView: View {
         let themeCreatorPresented = app.showThemeCreator
         let tierCreatorPresented = app.showTierListCreator
         let quickMovePresented = app.quickMoveTarget != nil
-        let aiChatPresented = app.showAIChat && AppleIntelligenceService.isSupportedOnCurrentPlatform
+        let aiChatPresented = app.aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform
         // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
         // which provides automatic focus containment via separate presentation context
         // Use centralized overlay blocking check from AppState
@@ -221,7 +221,7 @@ internal struct MainAppView: View {
         }
 
         // AI Chat overlay
-        if app.showAIChat && AppleIntelligenceService.isSupportedOnCurrentPlatform {
+        if app.aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform {
             AccessibilityBridgeView(identifier: "AIChat_Overlay")
 
             ZStack {
@@ -232,7 +232,7 @@ internal struct MainAppView: View {
                         app.closeAIChat()
                     }
 
-                AIChatOverlay()
+                AIChatOverlay(ai: app.aiGeneration)
             }
             .transition(.opacity.combined(with: .scale(scale: 0.9)))
             .zIndex(55)
@@ -447,7 +447,7 @@ private extension MainAppView {
     }
 
     private func handleOverlayDismissals() -> Bool {
-        if app.showAIChat {
+        if app.aiGeneration.showAIChat {
             app.closeAIChat()
             return true
         }

@@ -206,8 +206,8 @@ struct TiercadeApp: App {
         // Auto-open AI Chat to stream test progress
         Task { @MainActor in
             // Open AI Chat overlay to display streaming progress
-            if !appState.showAIChat {
-                appState.showAIChat = true
+            if !appState.aiGeneration.showAIChat {
+                appState.aiGeneration.showAIChat = true
                 print("🤖 Auto-opened AI Chat for test progress")
             }
 
@@ -322,8 +322,8 @@ struct TiercadeApp: App {
 
         Task { @MainActor in
             if #available(iOS 26.0, macOS 26.0, *) {
-                if !appState.showAIChat {
-                    appState.showAIChat = true
+                if !appState.aiGeneration.showAIChat {
+                    appState.aiGeneration.showAIChat = true
                     print("🤖 Auto-opened AI Chat for experiment progress")
                 }
                 try? await Task.sleep(for: .milliseconds(400))
@@ -353,8 +353,8 @@ struct TiercadeApp: App {
 
         Task { @MainActor in
             if #available(iOS 26.0, macOS 26.0, *) {
-                if !appState.showAIChat {
-                    appState.showAIChat = true
+                if !appState.aiGeneration.showAIChat {
+                    appState.aiGeneration.showAIChat = true
                     print("🤖 Auto-opened AI Chat for experiment progress")
                 }
                 try? await Task.sleep(for: .milliseconds(400))
@@ -392,8 +392,8 @@ struct TiercadeApp: App {
 
         Task { @MainActor in
             if #available(iOS 26.0, macOS 26.0, *) {
-                if !appState.showAIChat {
-                    appState.showAIChat = true
+                if !appState.aiGeneration.showAIChat {
+                    appState.aiGeneration.showAIChat = true
                     print("🤖 Auto-opened AI Chat for experiment progress")
                 }
                 try? await Task.sleep(for: .milliseconds(400))
