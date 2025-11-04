@@ -3,8 +3,6 @@ import SwiftUI
 internal struct TierListBrowserScene: View {
     @Bindable var app: AppState
     @FocusState private var focus: FocusTarget?
-    @State private var lastFocus: FocusTarget?
-    @State private var suppressFocusReset = false
     #if swift(>=6.0)
     @Namespace private var glassNamespace
     #endif
@@ -65,26 +63,7 @@ internal struct TierListBrowserScene: View {
             .focusSection()
             #endif
             .onAppear {
-                suppressFocusReset = false
-                if let initial = defaultFocusTarget {
-                    focus = initial
-                    lastFocus = initial
-                } else {
-                    focus = .close
-                    lastFocus = .close
-                }
-            }
-            .onDisappear {
-                suppressFocusReset = true
-                focus = nil
-            }
-            .onChange(of: focus) { _, newValue in
-                guard !suppressFocusReset else { return }
-                if let newValue {
-                    lastFocus = newValue
-                } else if let lastFocus {
-                    focus = lastFocus
-                }
+                focus = defaultFocusTarget ?? .close
             }
         }
         #if os(tvOS)
