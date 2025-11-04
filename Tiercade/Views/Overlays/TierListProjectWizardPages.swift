@@ -11,7 +11,7 @@ internal protocol WizardPage {
 
 #if os(tvOS)
 internal extension View {
-    internal func wizardFieldDecoration() -> some View {
+    func wizardFieldDecoration() -> some View {
         self
             .padding(.vertical, Metrics.grid * 1.5)
             .padding(.horizontal, Metrics.grid * 2)
@@ -25,7 +25,7 @@ internal extension View {
             )
     }
 
-    internal func wizardTogglePadding() -> some View {
+    func wizardTogglePadding() -> some View {
         self.padding(.vertical, Metrics.grid)
     }
 }
