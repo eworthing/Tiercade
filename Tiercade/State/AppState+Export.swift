@@ -8,7 +8,7 @@ import TiercadeCore
 internal extension AppState {
     // MARK: - Export System
 
-    internal func exportToFormat(
+    func exportToFormat(
         _ format: ExportFormat,
         group: String = "All",
         themeName: String = "Default"
@@ -109,7 +109,7 @@ internal extension AppState {
         return (data, fileName)
     }
 
-    internal func exportText(group: String = "All", themeName: String = "Default") -> String {
+    func exportText(group: String = "All", themeName: String = "Default") -> String {
         let config = buildTierConfig()
         return ExportFormatter.generate(
             group: group,
@@ -120,7 +120,7 @@ internal extension AppState {
         )
     }
 
-    internal func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String) {
+    func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String) {
         try await exportToFormat(format, group: "All", themeName: "Default")
     }
 
@@ -155,7 +155,7 @@ internal extension AppState {
 
     /// Sanitizes CSV cell values to prevent formula injection attacks
     /// Prefixes formula-leading characters (=, +, -, @) with a single quote
-    internal static func sanitizeCSVCell(_ value: String) -> String {
+    static func sanitizeCSVCell(_ value: String) -> String {
         if value.hasPrefix("=") || value.hasPrefix("+") || value.hasPrefix("-") || value.hasPrefix("@") {
             return "'" + value
         }
@@ -276,7 +276,7 @@ internal extension AppState {
         return try encoder.encode(project)
     }
 
-    internal func buildProjectExportArtifacts(group: String, themeName: String) throws -> ProjectExportArtifacts {
+    func buildProjectExportArtifacts(group: String, themeName: String) throws -> ProjectExportArtifacts {
         let now = Date()
         let projectId = exportProjectIdentifier()
         let orderedTiers = exportTierOrderIncludingUnranked()

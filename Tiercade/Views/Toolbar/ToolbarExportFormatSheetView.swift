@@ -154,7 +154,7 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
                 exportFileName = filename
                 showingFileExporter = true
             }
-        } catch let error as ExportError {
+        } catch {
             await MainActor.run {
                 coordinator.showToast(type: .error, title: "Export Failed", message: error.localizedDescription)
             }
@@ -183,7 +183,7 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
                     )
                 }
             }
-        } catch let error as ExportError {
+        } catch {
             await MainActor.run {
                 coordinator.showToast(type: .error, title: "Export Failed", message: error.localizedDescription)
             }

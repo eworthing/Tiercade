@@ -35,7 +35,7 @@ private struct CodableTheme: Codable {
         }
     }
 
-    internal func toTheme() -> TierTheme {
+    func toTheme() -> TierTheme {
         let tierModels = tiers.map { tier in
             TierTheme.Tier(
                 id: tier.id,
@@ -59,7 +59,7 @@ private struct CodableTheme: Codable {
 internal extension AppState {
     // MARK: - SwiftData-backed persistence
 
-    internal func save() throws(PersistenceError) {
+    func save() throws(PersistenceError) {
         do {
             try persistActiveTierList()
             try modelContext.save()
@@ -72,22 +72,22 @@ internal extension AppState {
         }
     }
 
-    internal func saveAsync() async throws(PersistenceError) {
+    func saveAsync() async throws(PersistenceError) {
         try save()
     }
 
-    internal func autoSave() throws(PersistenceError) {
+    func autoSave() throws(PersistenceError) {
         guard persistence.hasUnsavedChanges else { return }
         try save()
     }
 
-    internal func autoSaveAsync() async {
+    func autoSaveAsync() async {
         guard persistence.hasUnsavedChanges else { return }
         try? save()
     }
 
     @discardableResult
-    internal func load() -> Bool {
+    func load() -> Bool {
         do {
             if let entity = try fetchActiveTierListEntity() {
                 persistence.activeTierListEntity = entity
@@ -100,7 +100,7 @@ internal extension AppState {
         return false
     }
 
-    internal func saveToFile(named fileName: String) throws(PersistenceError) {
+    func saveToFile(named fileName: String) throws(PersistenceError) {
         let sanitizedName = sanitizeFileName(fileName)
         do {
             let artifacts = try buildProjectExportArtifacts(
@@ -122,7 +122,7 @@ internal extension AppState {
     }
 
     @discardableResult
-    internal func loadFromFile(named fileName: String) -> Bool {
+    func loadFromFile(named fileName: String) -> Bool {
         let snapshot = captureTierSnapshot()
         do {
             let bundleURL = try fileURLForExport(named: fileName)
@@ -177,7 +177,7 @@ internal extension AppState {
         showSuccessToast("File Saved", message: "Saved as \(fileName).tierproj {file}")
     }
 
-    internal func fetchActiveTierListEntity() throws(PersistenceError) -> TierListEntity? {
+    func fetchActiveTierListEntity() throws(PersistenceError) -> TierListEntity? {
         if let cached = persistence.activeTierListEntity {
             return cached
         }
@@ -314,7 +314,7 @@ internal extension AppState {
         }
     }
 
-    internal func applyPersistedTierList(_ entity: TierListEntity) {
+    func applyPersistedTierList(_ entity: TierListEntity) {
         applyLoadedTierList(entity)
     }
 
@@ -401,11 +401,11 @@ internal extension AppState {
         self.theme.customThemeIDs = Set(restored.map(\TierTheme.id))
     }
 
-    internal func encodedCustomThemesData() -> Data? {
+    func encodedCustomThemesData() -> Data? {
         try? JSONEncoder().encode(self.theme.customThemes.map(CodableTheme.init))
     }
 
-    internal func encodedGlobalSortMode() -> Data? {
+    func encodedGlobalSortMode() -> Data? {
         try? JSONEncoder().encode(globalSortMode)
     }
 

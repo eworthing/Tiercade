@@ -28,7 +28,7 @@ internal extension AppState {
     /// - Note: Uses existing `withLoadingIndicator` for progress UI
     /// - Note: Only available on macOS/iOS 26+
     @available(iOS 26.0, macOS 26.0, *)
-    internal func generateItems(description: String, count: Int) async {
+    func generateItems(description: String, count: Int) async {
         let request = AIGenerationRequest(
             description: description,
             itemCount: count,
@@ -109,7 +109,7 @@ internal extension AppState {
     /// Toggle selection state for a candidate.
     ///
     /// - Parameter candidate: The candidate to toggle
-    internal func toggleCandidateSelection(_ candidate: AIGeneratedItemCandidate) {
+    func toggleCandidateSelection(_ candidate: AIGeneratedItemCandidate) {
         guard let index = aiGeneration.aiGeneratedCandidates.firstIndex(where: { $0.id == candidate.id }) else {
             return
         }
@@ -121,7 +121,7 @@ internal extension AppState {
     /// This deletes the candidate entirely (vs. just deselecting it).
     ///
     /// - Parameter candidate: The candidate to remove
-    internal func removeCandidate(_ candidate: AIGeneratedItemCandidate) {
+    func removeCandidate(_ candidate: AIGeneratedItemCandidate) {
         aiGeneration.aiGeneratedCandidates.removeAll { $0.id == candidate.id }
     }
 
@@ -137,7 +137,7 @@ internal extension AppState {
     ///
     /// - Note: Shows toast with import count and duplicate count
     /// - Note: Automatically dismisses overlay after successful import
-    internal func importSelectedCandidates(into draft: TierProjectDraft) {
+    func importSelectedCandidates(into draft: TierProjectDraft) {
         let selected = aiGeneration.aiGeneratedCandidates.filter { $0.isSelected }
 
         guard !selected.isEmpty else {

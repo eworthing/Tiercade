@@ -5,7 +5,7 @@ import TiercadeCore
 
 internal extension AppState {
     /// Applies the selected theme to all tiers
-    internal func applyTheme(_ theme: TierTheme) {
+    func applyTheme(_ theme: TierTheme) {
         self.theme.selectedTheme = theme
         self.theme.selectedThemeID = theme.id
         applyCurrentTheme()
@@ -14,19 +14,19 @@ internal extension AppState {
     }
 
     /// Applies the currently selected theme to all tier colors
-    internal func applyCurrentTheme() {
+    func applyCurrentTheme() {
         tierColors = theme.applyTheme(theme.selectedTheme, to: tierOrder)
         persistence.hasUnsavedChanges = true
     }
 
     /// Resets all tier colors to use the selected theme
-    internal func resetToThemeColors() {
+    func resetToThemeColors() {
         applyCurrentTheme()
         showSuccessToast("Colors reset to '\(self.theme.selectedTheme.displayName)' theme")
     }
 
     /// Toggles the theme picker overlay visibility
-    internal func toggleThemePicker() {
+    func toggleThemePicker() {
         // Close analysis when opening theme picker
         if !overlays.showThemePicker {
             showingAnalysis = false
@@ -39,7 +39,7 @@ internal extension AppState {
     }
 
     /// Dismisses the theme picker overlay
-    internal func dismissThemePicker() {
+    func dismissThemePicker() {
         overlays.dismissThemePicker()
     }
 }

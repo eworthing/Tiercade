@@ -66,8 +66,6 @@ internal final class ThemeState {
         selectedTheme = theme
         selectedThemeID = theme.id
 
-        let themeRankCount = theme.rankedTiers.count
-
         var colors: [String: String] = [:]
         for (index, tierId) in tierOrder.enumerated() {
             // colorHex(forRank:fallbackIndex:) handles fallbacks internally

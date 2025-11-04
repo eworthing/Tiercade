@@ -8,7 +8,7 @@ import TiercadeCore
 internal extension AppState {
     // MARK: - Persistence Helpers
 
-    internal func persistProjectDraft(_ draft: TierProjectDraft) throws -> TierListEntity {
+    func persistProjectDraft(_ draft: TierProjectDraft) throws -> TierListEntity {
         let now = Date()
         draft.audit?.updatedAt = now
         draft.updatedAt = now
@@ -185,7 +185,7 @@ internal extension AppState {
         return trimmed
     }
 
-    internal func buildProject(from draft: TierProjectDraft) throws -> Project {
+    func buildProject(from draft: TierProjectDraft) throws -> Project {
         let tiers = buildTiersFromDraft(draft)
         let items = buildItemsFromDraft(draft)
         let overrides = buildOverridesFromDraft(draft)
@@ -266,13 +266,13 @@ internal extension AppState {
         return overrides
     }
 
-    internal func normalizeTierOrdering(for draft: TierProjectDraft) {
+    func normalizeTierOrdering(for draft: TierProjectDraft) {
         for (index, tier) in orderedTiers(for: draft).enumerated() {
             tier.order = index
         }
     }
 
-    internal func project(from entity: TierListEntity, source: TierListSource) -> Project {
+    func project(from entity: TierListEntity, source: TierListSource) -> Project {
         let sortedTiers = entity.tiers.sorted { $0.order < $1.order }
         let (itemMap, projectTiers) = buildProjectComponents(sortedTiers: sortedTiers)
         let settings = buildProjectSettingsFromEntity(entity, projectTiers: projectTiers)
@@ -399,7 +399,7 @@ internal extension AppState {
         )
     }
 
-    internal func projectFromInMemoryState(source: TierListSource) -> Project {
+    func projectFromInMemoryState(source: TierListSource) -> Project {
         let orderedTiers = buildOrderedTiersIncludingUnranked()
         let (projectTiers, projectItems) = buildProjectTiersAndItems(orderedTiers: orderedTiers)
         let settings = buildInMemoryProjectSettings()
@@ -549,7 +549,7 @@ internal enum TierListCreatorPalette {
         "#FF2D55", "#5AC8FA", "#FF9F0A", "#FFD60A"
     ]
 
-    internal static func color(for index: Int) -> String {
+    static func color(for index: Int) -> String {
         guard index >= 0 else { return colors.first ?? "#FF3B30" }
         return colors[index % colors.count]
     }

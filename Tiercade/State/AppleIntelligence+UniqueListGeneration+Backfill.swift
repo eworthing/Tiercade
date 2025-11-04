@@ -20,7 +20,7 @@ extension UniqueListCoordinator {
         logger("  Requesting \(overGenCount) items (over-gen: \(overGenFormatted)x, budget: \(maxTok1) tokens)")
 
         let prompt1 = buildPass1Prompt(query: query, overGenCount: overGenCount)
-        var rawItems1 = try await fm.generate(
+        let rawItems1 = try await fm.generate(
             FMClient.GenerateParameters(
                 prompt: prompt1,
                 profile: .topP(0.92),
@@ -36,7 +36,7 @@ extension UniqueListCoordinator {
         logger("📥 Raw (Pass 1) model items (pre-placeholder, pre-dedup):\n• " + rawItems1.joined(separator: "\n• "))
 
         let placeholdersRemoved1 = rawItems1.count - filterPlaceholders(rawItems1).count
-        var items1 = filterPlaceholders(rawItems1)
+        let items1 = filterPlaceholders(rawItems1)
         logger("📝 Pass 1 (post-placeholder) returned \(items1.count) items:\n• " + items1.joined(separator: "\n• "))
 
         let beforeUniqueP1 = state.ordered.count
@@ -299,7 +299,7 @@ extension UniqueListCoordinator {
         let before = state.ordered.count
 
         do {
-            var rawItemsFill = try await fm.generate(
+            let rawItemsFill = try await fm.generate(
                 FMClient.GenerateParameters(
                     prompt: promptFill,
                     profile: .topP(0.92),
@@ -313,7 +313,7 @@ extension UniqueListCoordinator {
             // Pre-normalization, pre-dedup
             logger("📥 Raw (Guided backfill pass \(state.passCount)) model items (pre-placeholder):\n• " + rawItemsFill.joined(separator: "\n• "))
             let placeholdersRemoved = rawItemsFill.count - filterPlaceholders(rawItemsFill).count
-            var itemsFill = filterPlaceholders(rawItemsFill)
+            let itemsFill = filterPlaceholders(rawItemsFill)
             logger("📝 Guided backfill (pass \(state.passCount)) returned \(itemsFill.count) items:\n• " + itemsFill.joined(separator: "\n• "))
             let kept = state.ordered.count
             state.absorb(itemsFill, logger: logger)
@@ -501,7 +501,7 @@ extension UniqueListCoordinator {
             Also avoid: [\(avoidSample)]
             """
 
-            var rawItemsRetry = try await fm.generate(
+            let rawItemsRetry = try await fm.generate(
                 FMClient.GenerateParameters(
                     prompt: promptRetry,
                     profile: .topK(50),
@@ -514,7 +514,7 @@ extension UniqueListCoordinator {
             )
             logger("📥 Raw (Guided retry pass \(state.passCount)) model items (pre-placeholder):\n• " + rawItemsRetry.joined(separator: "\n• "))
             let placeholdersRemovedRetry = rawItemsRetry.count - filterPlaceholders(rawItemsRetry).count
-            var itemsRetry = filterPlaceholders(rawItemsRetry)
+            let itemsRetry = filterPlaceholders(rawItemsRetry)
             logger("📝 Guided retry (pass \(state.passCount)) returned \(itemsRetry.count) items:\n• " + itemsRetry.joined(separator: "\n• "))
             let kept = state.ordered.count
             state.absorb(itemsRetry, logger: logger)
@@ -588,7 +588,7 @@ extension UniqueListCoordinator {
         let before = state.ordered.count
 
         do {
-            var rawItemsFill = try await fm.generateTextArray(
+            let rawItemsFill = try await fm.generateTextArray(
                 FMClient.GenerateTextArrayParameters(
                     prompt: promptFill,
                     profile: .topK(40),
@@ -601,7 +601,7 @@ extension UniqueListCoordinator {
             )
             logger("📥 Raw (Unguided backfill pass \(state.passCount)) model items (pre-placeholder):\n• " + rawItemsFill.joined(separator: "\n• "))
             let placeholdersRemoved = rawItemsFill.count - filterPlaceholders(rawItemsFill).count
-            var itemsFill = filterPlaceholders(rawItemsFill)
+            let itemsFill = filterPlaceholders(rawItemsFill)
             logger("📝 Unguided backfill (pass \(state.passCount)) returned \(itemsFill.count) items:\n• " + itemsFill.joined(separator: "\n• "))
             let kept = state.ordered.count
             state.absorb(itemsFill, logger: logger)
@@ -689,7 +689,7 @@ extension UniqueListCoordinator {
             Return ONLY a JSON array with \(retryCount) string items.
             Format: ["item1", "item2", "item3", ...]
             """
-            var rawItemsRetry = try await fm.generateTextArray(
+            let rawItemsRetry = try await fm.generateTextArray(
                 FMClient.GenerateTextArrayParameters(
                     prompt: promptRetry,
                     profile: .topK(40),
@@ -702,7 +702,7 @@ extension UniqueListCoordinator {
             )
             logger("📥 Raw (Unguided retry pass \(state.passCount)) model items (pre-placeholder):\n• " + rawItemsRetry.joined(separator: "\n• "))
             let placeholdersRemovedRetry = rawItemsRetry.count - filterPlaceholders(rawItemsRetry).count
-            var itemsRetry = filterPlaceholders(rawItemsRetry)
+            let itemsRetry = filterPlaceholders(rawItemsRetry)
             logger("📝 Unguided retry returned \(itemsRetry.count) items:\n• " + itemsRetry.joined(separator: "\n• "))
             let kept = state.ordered.count
             state.absorb(itemsRetry, logger: logger)

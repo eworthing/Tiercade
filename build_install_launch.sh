@@ -20,6 +20,7 @@ Platforms:
   all         Build all platforms (tvOS, iOS, macOS)
   tvos        Build tvOS only
   ios         Build iOS only
+  ipad        Build for iPad mini only
   macos       Build macOS only
   mac         (alias for macos)
 
@@ -32,13 +33,14 @@ Examples:
   ./build_install_launch.sh                    # Build all platforms
   ./build_install_launch.sh all                # Build all platforms
   ./build_install_launch.sh tvos               # Build tvOS only
+  ./build_install_launch.sh ipad               # Build for iPad mini only
   ./build_install_launch.sh macos --no-launch  # Build macOS only without launching
 USAGE
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    all|tvos|ios|macos|mac)
+    all|tvos|ios|ipad|macos|mac)
       PLATFORMS+=("$1")
       shift
       ;;
@@ -141,6 +143,13 @@ for PLATFORM in "${FINAL_PLATFORMS[@]}"; do
       BUNDLE_ID='eworthing.Tiercade'
       EMOJI="📱"
       PLATFORM_NAME="iOS"
+      ;;
+    ipad)
+      DESTINATION='platform=iOS Simulator,name=iPad mini (A17 Pro),OS=latest'
+      DEVICE_NAME='iPad mini (A17 Pro)'
+      BUNDLE_ID='eworthing.Tiercade'
+      EMOJI="📱"
+      PLATFORM_NAME="iPad mini"
       ;;
     macos)
       DESTINATION='platform=macOS,name=My Mac'
@@ -248,7 +257,7 @@ for PLATFORM in "${FINAL_PLATFORMS[@]}"; do
   # Launch if not --no-launch
   if [ "$NO_LAUNCH" = "0" ]; then
     echo ""
-    if [ "$PLATFORM" = "tvos" ] || [ "$PLATFORM" = "ios" ]; then
+    if [ "$PLATFORM" = "tvos" ] || [ "$PLATFORM" = "ios" ] || [ "$PLATFORM" = "ipad" ]; then
       echo "📦 Installing to $PLATFORM_NAME simulator..."
       xcrun simctl boot "$DEVICE_NAME" 2>/dev/null || true
       open -a Simulator
@@ -304,6 +313,7 @@ for i in "${!RESULT_PLATFORMS[@]}"; do
   case "$PLATFORM" in
     tvos) EMOJI="📺"; PLATFORM_NAME="tvOS" ;;
     ios) EMOJI="📱"; PLATFORM_NAME="iOS" ;;
+    ipad) EMOJI="📱"; PLATFORM_NAME="iPad mini" ;;
     macos) EMOJI="💻"; PLATFORM_NAME="macOS" ;;
     *) EMOJI="❓"; PLATFORM_NAME="Unknown" ;;
   esac

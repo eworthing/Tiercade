@@ -61,7 +61,7 @@ internal final class TierThemeEntity {
 }
 
 private extension TierThemeEntity {
-    internal static func normalizeTiers(_ tiers: [TierColorEntity]) -> [TierColorEntity] {
+    static func normalizeTiers(_ tiers: [TierColorEntity]) -> [TierColorEntity] {
         var rankedKeys = Set<String>()
         var hasUnranked = false
 
@@ -79,11 +79,11 @@ private extension TierThemeEntity {
         }
     }
 
-    internal static func normalizedKey(for tier: TierColorEntity) -> String {
+    static func normalizedKey(for tier: TierColorEntity) -> String {
         "\(tier.index)|\(normalizeName(tier.name))"
     }
 
-    internal static func normalizeName(_ raw: String) -> String {
+    static func normalizeName(_ raw: String) -> String {
         raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }

@@ -48,7 +48,7 @@ internal func makeAntiDuplicateInstructions() -> Instructions {
 @MainActor
 internal extension AppState {
     /// Toggle AI chat overlay visibility
-    internal func toggleAIChat() {
+    func toggleAIChat() {
         aiGeneration.toggleAIChat(
             showToast: { [weak self] type, title, message in
                 self?.showToast(type: type, title: title, message: message)
@@ -60,7 +60,7 @@ internal extension AppState {
     }
 
     /// Close AI chat overlay
-    internal func closeAIChat() {
+    func closeAIChat() {
         aiGeneration.closeAIChat(logEvent: { [weak self] event in
             self?.logEvent(event)
         })
@@ -68,12 +68,12 @@ internal extension AppState {
 
     #if DEBUG
     /// Add a test console message (for streaming test progress)
-    internal func appendTestMessage(_ content: String) {
+    func appendTestMessage(_ content: String) {
         aiGeneration.appendTestMessage(content)
     }
 
     /// Clear test console messages
-    internal func clearTestMessages() {
+    func clearTestMessages() {
         aiGeneration.clearTestMessages()
     }
     #endif
@@ -108,10 +108,10 @@ final class AppleIntelligenceServiceDeprecated {
     var lastRunDiagnosticsJSON: String?
     var lastUserQuery: String?
 
-    internal static let maxContextTokens = 4096
-    internal static let instructionsTokenEstimate = 100 // Estimated tokens for our strong anti-duplicate instructions
+    static let maxContextTokens = 4096
+    static let instructionsTokenEstimate = 100 // Estimated tokens for our strong anti-duplicate instructions
 
-    internal static var isSupportedOnCurrentPlatform: Bool {
+    static var isSupportedOnCurrentPlatform: Bool {
         // Show button on platforms where Apple Intelligence is available
         #if os(iOS) || os(iPadOS) || os(macOS) || os(visionOS)
         return true
@@ -189,7 +189,7 @@ final class AppleIntelligenceServiceDeprecated {
     }
 
     /// Send a message to Apple Intelligence
-    internal func sendMessage(_ text: String) async {
+    func sendMessage(_ text: String) async {
         // Sanitize user input to mitigate prompt injection attacks
         let sanitizedText = PromptValidator.sanitize(text)
 
@@ -419,7 +419,7 @@ final class AppleIntelligenceServiceDeprecated {
     #endif
 
     /// Clear all messages
-    internal func clearHistory() {
+    func clearHistory() {
         messages.removeAll()
         estimatedTokenCount = 0
         resetSession()
@@ -524,7 +524,7 @@ final class AppleIntelligenceServiceDeprecated {
     }
 
     // MARK: - Ratings
-    internal func rateLastRun(upvote: Bool) {
+    func rateLastRun(upvote: Bool) {
         guard let items = lastGeneratedItems, let query = lastUserQuery else {
             messages.append(AIChatMessage(content: "⚠️ No recent run to rate.", isUser: false))
             return
@@ -594,7 +594,7 @@ final class AppleIntelligenceServiceDeprecated {
     ///
     /// - Note: Only available on macOS/iOS 26+ with FoundationModels framework
     @available(iOS 26.0, macOS 26.0, *)
-    internal func generateUniqueListForWizard(query: String, count: Int) async throws -> [String] {
+    func generateUniqueListForWizard(query: String, count: Int) async throws -> [String] {
         if #available(iOS 26.0, macOS 26.0, *) {
             ensureSession()
             guard let session else {

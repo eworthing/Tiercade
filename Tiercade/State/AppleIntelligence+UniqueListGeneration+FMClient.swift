@@ -362,18 +362,22 @@ extension FMClient {
         logger("🔍 [DEBUG] Unguided response preview: \(preview)")
 
         let debugFile = debugDir.appendingPathComponent("unguided_\(Date().timeIntervalSince1970).json")
-        let debugData: [String: Any] = [
+        var debugData: [String: Any] = [
             "timestamp": Date().timeIntervalSince1970,
             "attempt": attempt,
             "seed": params.initialSeed ?? 0,
-            "temperature": options.temperature,
-            "maxTokens": options.maximumResponseTokens ?? 0,
             "promptLength": params.prompt.count,
             "responseLength": response.content.count,
             "elapsedSec": elapsed,
             "promptSnippet": String(params.prompt.prefix(200)),
             "fullResponse": response.content
         ]
+        if let temperature = options.temperature {
+            debugData["temperature"] = temperature
+        }
+        if let maxTokens = options.maximumResponseTokens {
+            debugData["maxTokens"] = maxTokens
+        }
 
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: debugData, options: .prettyPrinted)

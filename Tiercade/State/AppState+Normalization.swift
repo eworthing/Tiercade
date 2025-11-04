@@ -4,7 +4,7 @@ import TiercadeCore
 @MainActor
 internal extension AppState {
     /// Ensure every item has canonical properties populated.
-    internal static func normalizedTiers(from tiers: Items) -> Items {
+    static func normalizedTiers(from tiers: Items) -> Items {
         var normalized: Items = [:]
         for (tier, items) in tiers {
             normalized[tier] = items.map { item in

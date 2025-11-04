@@ -6,7 +6,7 @@ import TiercadeCore
 internal extension AppState {
     // MARK: - Import System (JSON/CSV)
 
-    internal func importFromJSON(_ jsonString: String) async throws(ImportError) {
+    func importFromJSON(_ jsonString: String) async throws(ImportError) {
         do {
             try await withLoadingIndicator(message: "Importing JSON data...") {
                 updateProgress(0.2)
@@ -14,19 +14,21 @@ internal extension AppState {
                 let project = try await decodeProject(fromJSON: jsonString)
                 updateProgress(0.7)
                 let snapshot = captureTierSnapshot()
-                applyImportedProject(project, action: "Import JSON", fileName: nil as String?, undoSnapshot: snapshot)
+                applyImportedProject(project, action: "Import JSON", fileName: nil, undoSnapshot: snapshot)
                 updateProgress(1.0)
 
                 showSuccessToast("Import Complete", message: "Successfully imported tier list {import}")
             }
-        } catch let error as ImportError {
-            throw error
         } catch {
-            throw ImportError.parsingFailed("Unexpected error: \(error.localizedDescription)")
+            if let importError = error as? ImportError {
+                throw importError
+            } else {
+                throw ImportError.parsingFailed("Unexpected error: \(error.localizedDescription)")
+            }
         }
     }
 
-    internal func importFromCSV(_ csvString: String) async throws(ImportError) {
+    func importFromCSV(_ csvString: String) async throws(ImportError) {
         do {
             try await withLoadingIndicator(message: "Importing CSV data...") {
                 updateProgress(0.2)
@@ -54,10 +56,12 @@ internal extension AppState {
 
                 showSuccessToast("Import Complete", message: "Successfully imported CSV data {import}")
             }
-        } catch let error as ImportError {
-            throw error
         } catch {
-            throw ImportError.parsingFailed("Unexpected error: \(error.localizedDescription)")
+            if let importError = error as? ImportError {
+                throw importError
+            } else {
+                throw ImportError.parsingFailed("Unexpected error: \(error.localizedDescription)")
+            }
         }
     }
 
@@ -157,7 +161,7 @@ internal extension AppState {
         }
     }
 
-    internal func importFromJSON(url: URL) async throws(ImportError) {
+    func importFromJSON(url: URL) async throws(ImportError) {
         do {
             // File I/O and parsing on background thread pool
             let project = try await loadProjectFromFile(url)
@@ -195,7 +199,7 @@ internal extension AppState {
         }
     }
 
-    internal func importFromCSV(url: URL) async throws(ImportError) {
+    func importFromCSV(url: URL) async throws(ImportError) {
         // File I/O on background thread pool
         let content = try await loadCSVFromFile(url)
 
@@ -251,7 +255,7 @@ internal extension AppState {
 
     // MARK: - Canonical project helpers
 
-    internal func applyImportedProject(
+    func applyImportedProject(
         _ project: Project,
         action: String,
         fileName: String?,

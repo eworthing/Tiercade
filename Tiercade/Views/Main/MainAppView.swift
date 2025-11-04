@@ -26,12 +26,6 @@ internal struct MainAppView: View {
 
     internal var body: some View {
         @Bindable var app = app
-        let detailPresented = app.overlays.detailItem != nil
-        let headToHeadPresented = app.headToHead.isActive
-        let themeCreatorPresented = app.overlays.showThemeCreator
-        let tierCreatorPresented = app.overlays.showTierListCreator
-        let quickMovePresented = app.overlays.quickMoveTarget != nil
-        let aiChatPresented = app.aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform
         // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
         // which provides automatic focus containment via separate presentation context
         // Use centralized overlay blocking check from AppState

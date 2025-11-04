@@ -16,7 +16,7 @@ internal struct CardStyle: ViewModifier {
     }
 }
 
-internal extension View { internal func card() -> some View { modifier(CardStyle()) } }
+internal extension View { func card() -> some View { modifier(CardStyle()) } }
 
 internal struct PanelStyle: ViewModifier {
     internal func body(content: Content) -> some View {
@@ -28,7 +28,7 @@ internal struct PanelStyle: ViewModifier {
     }
 }
 
-internal extension View { internal func panel() -> some View { modifier(PanelStyle()) } }
+internal extension View { func panel() -> some View { modifier(PanelStyle()) } }
 
 internal struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -207,7 +207,7 @@ internal struct TVRemoteButtonStyle: ButtonStyle {
 }
 
 internal extension ButtonStyle where Self == TVRemoteButtonStyle {
-    internal static func tvRemote(_ role: TVRemoteButtonStyle.Role = .primary) -> TVRemoteButtonStyle {
+    static func tvRemote(_ role: TVRemoteButtonStyle.Role = .primary) -> TVRemoteButtonStyle {
         TVRemoteButtonStyle(role: role)
     }
 }
