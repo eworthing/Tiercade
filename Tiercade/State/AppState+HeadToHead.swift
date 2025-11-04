@@ -6,7 +6,7 @@ import TiercadeCore
 internal extension AppState {
     // MARK: - Head-to-Head lifecycle
 
-    internal func startH2H() {
+    func startH2H() {
         if headToHead.isActive {
             showInfoToast("Head-to-Head Already Active", message: "Finish or cancel the current matchup first")
             return
@@ -56,7 +56,7 @@ internal extension AppState {
         nextH2HPair()
     }
 
-    internal func nextH2HPair() {
+    func nextH2HPair() {
         guard headToHead.isActive else { return }
 
         if headToHead.pairsQueue.isEmpty, !headToHead.deferredPairs.isEmpty {
@@ -76,7 +76,7 @@ internal extension AppState {
         Logger.headToHead.debug("Next pair: \(pair.0.id)-\(pair.1.id), queue=\(self.headToHead.pairsQueue.count)")
     }
 
-    internal func voteH2H(winner: Item) {
+    func voteH2H(winner: Item) {
         guard headToHead.isActive, let pair = headToHead.currentPair else { return }
         let a = pair.0
         let b = pair.1
@@ -111,7 +111,7 @@ internal extension AppState {
         }
     }
 
-    internal func skipCurrentH2HPair() {
+    func skipCurrentH2HPair() {
         guard headToHead.isActive, let pair = headToHead.currentPair else { return }
         headToHead.deferredPairs.append(pair)
         headToHead.skippedPairKeys.insert(h2hPairKey(pair))
@@ -120,7 +120,7 @@ internal extension AppState {
         nextH2HPair()
     }
 
-    internal func finishH2H() {
+    func finishH2H() {
         guard headToHead.isActive else { return }
         handleCombinedCompletion()
     }
@@ -215,7 +215,7 @@ internal extension AppState {
         Logger.headToHead.info("H2H \(prefix): \(summary)")
     }
 
-    internal func cancelH2H(fromExitCommand: Bool = false) {
+    func cancelH2H(fromExitCommand: Bool = false) {
         guard headToHead.isActive else { return }
         #if os(tvOS)
         if fromExitCommand, let activatedAt = headToHead.activatedAt, Date().timeIntervalSince(activatedAt) < TVInteraction.exitCommandDebounce {

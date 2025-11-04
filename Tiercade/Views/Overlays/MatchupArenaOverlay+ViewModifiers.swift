@@ -4,7 +4,7 @@ import TiercadeCore
 // MARK: - View Modifiers for MatchupArenaOverlay
 
 internal extension View {
-    internal func applyOverlayModifiers(namespace: Namespace.ID) -> some View {
+    func applyOverlayModifiers(namespace: Namespace.ID) -> some View {
         self
             .tvGlassRounded(40)
             #if swift(>=6.0)
@@ -23,7 +23,7 @@ internal extension View {
             #endif
     }
 
-    internal func applyFocusModifiers(
+    func applyFocusModifiers(
         focusAnchor: FocusState<MatchupFocusAnchor?>.Binding,
         defaultFocus: MatchupFocusAnchor,
         onAppear: @escaping () -> Void,
@@ -35,7 +35,7 @@ internal extension View {
             .onChange(of: focusAnchor.wrappedValue) { _, newValue in onFocusChange(newValue) }
     }
 
-    internal func applyH2HPairTracking(
+    func applyH2HPairTracking(
         app: AppState,
         onSync: @escaping () -> Void,
         onDisappear: @escaping () -> Void
@@ -48,7 +48,7 @@ internal extension View {
     }
 
     #if os(tvOS)
-    internal func applyTVOSModifiers(
+    func applyTVOSModifiers(
         app: AppState,
         handleMove: @escaping (MoveCommandDirection) -> Void
     ) -> some View {
@@ -57,7 +57,7 @@ internal extension View {
             .onMoveCommand(perform: handleMove)
     }
     #else
-    internal func applyNonTVOSModifiers(
+    func applyNonTVOSModifiers(
         app: AppState,
         overlayHasFocus: FocusState<Bool>.Binding,
         handleInput: @escaping (DirectionalMove) -> Void,

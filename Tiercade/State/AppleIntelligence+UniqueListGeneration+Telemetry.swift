@@ -29,7 +29,7 @@ extension UniqueListCoordinator {
         }()
 
         var records: [RunTelemetry] = []
-        var passIndex = 1
+        let passIndex = 1
 
         for metric in telemetry {
             records.append(RunTelemetry(

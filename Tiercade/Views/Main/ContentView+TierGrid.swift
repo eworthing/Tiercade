@@ -42,10 +42,10 @@ internal struct TierGridView: View {
         .onKeyPress(.downArrow) { handleDirectionalInput(.down); return .handled }
         .onKeyPress(.leftArrow) { handleDirectionalInput(.left); return .handled }
         .onKeyPress(.rightArrow) { handleDirectionalInput(.right); return .handled }
-        .onChange(of: app.searchQuery) { _ in ensureHardwareFocusValid() }
-        .onChange(of: app.activeFilter) { _ in ensureHardwareFocusValid() }
-        .onChange(of: app.cardDensityPreference) { _ in ensureHardwareFocusValid() }
-        .onChange(of: app.tierOrder) { _ in ensureHardwareFocusValid() }
+        .onChange(of: app.searchQuery) { ensureHardwareFocusValid() }
+        .onChange(of: app.activeFilter) { ensureHardwareFocusValid() }
+        .onChange(of: app.cardDensityPreference) { ensureHardwareFocusValid() }
+        .onChange(of: app.tierOrder) { ensureHardwareFocusValid() }
         .onChange(of: hardwareFocus) { _, _ in gridHasFocus = true }
         .onTapGesture { gridHasFocus = true }
         #else

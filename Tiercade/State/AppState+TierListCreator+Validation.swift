@@ -8,7 +8,7 @@ import TiercadeCore
 internal extension AppState {
     // MARK: - Validation & Export
 
-    internal func validateTierListDraft() -> [TierListDraftValidationIssue] {
+    func validateTierListDraft() -> [TierListDraftValidationIssue] {
         guard let draft = tierListCreatorDraft else { return [] }
         var issues: [TierListDraftValidationIssue] = []
 
@@ -101,7 +101,7 @@ internal extension AppState {
         return issues
     }
 
-    internal func exportTierListDraftPayload() -> String? {
+    func exportTierListDraftPayload() -> String? {
         guard let draft = tierListCreatorDraft else { return nil }
         do {
             let project = try buildProject(from: draft)
@@ -117,7 +117,7 @@ internal extension AppState {
         }
     }
 
-    internal func saveTierListDraft(action: TierListDraftCommitAction) async {
+    func saveTierListDraft(action: TierListDraftCommitAction) async {
         guard let draft = tierListCreatorDraft else { return }
         let context = tierListWizardContext
         let issues = validateTierListDraft()

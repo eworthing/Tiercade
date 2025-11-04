@@ -61,7 +61,7 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
         assignColor(hex, to: activeTierID)
     }
 
-    internal func buildTheme(withSlug slugOverride: String? = nil) -> TierTheme {
+    func buildTheme(withSlug slugOverride: String? = nil) -> TierTheme {
         let finalSlug = slugOverride ?? slug
         let tierModels = tiers.map { tier in
             TierTheme.Tier(
@@ -81,7 +81,7 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
         )
     }
 
-    internal static func buildTierDrafts(baseTheme: TierTheme, tierOrder: [String]) -> [ThemeTierDraft] {
+    static func buildTierDrafts(baseTheme: TierTheme, tierOrder: [String]) -> [ThemeTierDraft] {
         var drafts: [ThemeTierDraft] = []
 
         for (index, tierName) in tierOrder.enumerated() {
@@ -137,7 +137,7 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
         return drafts
     }
 
-    internal static func slugify(_ value: String) -> String {
+    static func slugify(_ value: String) -> String {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return "custom-theme" }
         let lowercase = trimmed.lowercased()
@@ -152,7 +152,7 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
         return collapsed.isEmpty ? "custom-theme" : collapsed
     }
 
-    internal static func normalizeHex(_ value: String) -> String {
+    static func normalizeHex(_ value: String) -> String {
         let sanitized = value.trimmingCharacters(in: .whitespacesAndNewlines)
         if sanitized.hasPrefix("#") { return sanitized.uppercased() }
         return "#" + sanitized.uppercased()
@@ -172,48 +172,48 @@ internal extension AppState {
         }
     }
 
-    internal func isCustomTheme(_ theme: TierTheme) -> Bool {
+    func isCustomTheme(_ theme: TierTheme) -> Bool {
         self.theme.customThemeIDs.contains(theme.id)
     }
 
-    internal func theme(with id: UUID) -> TierTheme? {
+    func theme(with id: UUID) -> TierTheme? {
         if let bundled = TierThemeCatalog.theme(id: id) { return bundled }
         return self.theme.customThemes.first { $0.id == id }
     }
 
-    internal func beginThemeCreation(baseTheme: TierTheme? = nil) {
+    func beginThemeCreation(baseTheme: TierTheme? = nil) {
         let source = baseTheme ?? theme.selectedTheme
         theme.themeDraft = ThemeDraft(baseTheme: source, tierOrder: tierOrder)
         overlays.showThemePicker = false
         overlays.presentThemeCreator()
     }
 
-    internal func updateThemeDraftName(_ newName: String) {
+    func updateThemeDraftName(_ newName: String) {
         guard var draft = theme.themeDraft else { return }
         draft.setName(newName)
         theme.themeDraft = draft
     }
 
-    internal func updateThemeDraftDescription(_ newDescription: String) {
+    func updateThemeDraftDescription(_ newDescription: String) {
         guard var draft = theme.themeDraft else { return }
         draft.setDescription(newDescription)
         theme.themeDraft = draft
     }
 
-    internal func selectThemeDraftTier(_ tierID: UUID) {
+    func selectThemeDraftTier(_ tierID: UUID) {
         guard var draft = theme.themeDraft else { return }
         draft.selectTier(tierID)
         theme.themeDraft = draft
     }
 
-    internal func assignColorToActiveTier(_ hex: String) {
+    func assignColorToActiveTier(_ hex: String) {
         guard var draft = theme.themeDraft else { return }
         draft.applyColorToActiveTier(hex)
         theme.themeDraft = draft
         markAsChanged()
     }
 
-    internal func cancelThemeCreation(returnToThemePicker: Bool) {
+    func cancelThemeCreation(returnToThemePicker: Bool) {
         overlays.dismissThemeCreator()
         theme.themeDraft = nil
         if !returnToThemePicker {
@@ -221,7 +221,7 @@ internal extension AppState {
         }
     }
 
-    internal func completeThemeCreation() {
+    func completeThemeCreation() {
         guard var draft = theme.themeDraft else { return }
 
         let cleanedName = draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)

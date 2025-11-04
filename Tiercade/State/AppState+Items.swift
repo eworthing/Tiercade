@@ -4,7 +4,7 @@ import TiercadeCore
 @MainActor
 internal extension AppState {
     // MARK: - Item Management
-    internal func reset(showToast: Bool = false) {
+    func reset(showToast: Bool = false) {
         // Check if there's any data to reset
         let hasAnyData = (tierOrder + ["unranked"]).contains { tierName in
             (tiers[tierName] ?? []).count > 0
@@ -18,7 +18,7 @@ internal extension AppState {
         performReset(showToast: showToast)
     }
 
-    internal func performReset(showToast: Bool = false) {
+    func performReset(showToast: Bool = false) {
         let snapshot = captureTierSnapshot()
         if let defaultProject = bundledProjects.first {
             let state = resolvedTierState(for: defaultProject)
@@ -38,7 +38,7 @@ internal extension AppState {
         }
     }
 
-    internal func addItem(id: String, attributes: [String: String]? = nil) {
+    func addItem(id: String, attributes: [String: String]? = nil) {
         let snapshot = captureTierSnapshot()
         let item = Item(id: id, attributes: attributes)
         tiers["unranked", default: []].append(item)
@@ -48,7 +48,7 @@ internal extension AppState {
         announce("Added \(display) to unranked")
     }
 
-    internal func randomize() {
+    func randomize() {
         guard canRandomizeItems else {
             showInfoToast("Nothing to Randomize", message: "Add more items before shuffling tiers")
             return
@@ -67,7 +67,7 @@ internal extension AppState {
         performRandomize()
     }
 
-    internal func performRandomize() {
+    func performRandomize() {
         let snapshot = captureTierSnapshot()
         var (lockedTierItems, unlockedItems) = partitionItemsByLockState()
         guard !unlockedItems.isEmpty else { return }

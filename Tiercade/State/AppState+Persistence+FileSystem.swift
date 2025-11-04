@@ -6,7 +6,7 @@ import TiercadeCore
 // MARK: - File System Helpers
 
 internal extension AppState {
-    internal func getAvailableSaveFiles() -> [String] {
+    func getAvailableSaveFiles() -> [String] {
         do {
             let projects = try projectsDirectory()
             let fileURLs = try FileManager.default.contentsOfDirectory(at: projects, includingPropertiesForKeys: nil)
@@ -20,7 +20,7 @@ internal extension AppState {
         }
     }
 
-    internal func writeProjectBundle(
+    func writeProjectBundle(
         _ artifacts: ProjectExportArtifacts,
         to destination: URL
     ) throws(PersistenceError) {
@@ -69,7 +69,7 @@ internal extension AppState {
         }
     }
 
-    internal func loadProjectBundle(from url: URL) throws -> Project {
+    func loadProjectBundle(from url: URL) throws -> Project {
         let fileManager = FileManager.default
 
         do {
@@ -98,7 +98,7 @@ internal extension AppState {
         }
     }
 
-    internal func relocateProject(_ project: Project, extractedAt tempDirectory: URL) throws -> Project {
+    func relocateProject(_ project: Project, extractedAt tempDirectory: URL) throws -> Project {
         var updatedItems: [String: Project.Item] = [:]
         for (id, item) in project.items {
             var newItem = item
@@ -138,7 +138,7 @@ internal extension AppState {
         let primaryThumb: String?
     }
 
-    internal func relocateMediaList(
+    func relocateMediaList(
         _ mediaList: [Project.Media]?,
         extractedAt tempDirectory: URL
     ) throws -> MediaRelocationResult? {
@@ -157,7 +157,7 @@ internal extension AppState {
         return MediaRelocationResult(list: relocated, primaryThumb: firstThumb)
     }
 
-    internal func relocateMedia(_ media: Project.Media, extractedAt tempDirectory: URL) throws -> Project.Media {
+    func relocateMedia(_ media: Project.Media, extractedAt tempDirectory: URL) throws -> Project.Media {
         var updated = media
 
         let uri = media.uri
@@ -173,7 +173,7 @@ internal extension AppState {
         return updated
     }
 
-    internal func relocateFile(fromBundleURI uri: String, extractedAt tempDirectory: URL) throws -> URL? {
+    func relocateFile(fromBundleURI uri: String, extractedAt tempDirectory: URL) throws -> URL? {
         guard let relativePath = bundleRelativePath(from: uri) else { return nil }
 
         let fileManager = FileManager.default
@@ -199,35 +199,35 @@ internal extension AppState {
         return destinationURL
     }
 
-    internal func projectsDirectory() throws -> URL {
+    func projectsDirectory() throws -> URL {
         let root = try applicationSupportRoot()
         let directory = root.appendingPathComponent("Projects", isDirectory: true)
         try ensureDirectoryExists(at: directory)
         return directory
     }
 
-    internal func mediaStoreDirectory() throws -> URL {
+    func mediaStoreDirectory() throws -> URL {
         let root = try applicationSupportRoot()
         let directory = root.appendingPathComponent("Media", isDirectory: true)
         try ensureDirectoryExists(at: directory)
         return directory
     }
 
-    internal func thumbsStoreDirectory() throws -> URL {
+    func thumbsStoreDirectory() throws -> URL {
         let root = try applicationSupportRoot()
         let directory = root.appendingPathComponent("Thumbs", isDirectory: true)
         try ensureDirectoryExists(at: directory)
         return directory
     }
 
-    internal func applicationSupportRoot() throws -> URL {
+    func applicationSupportRoot() throws -> URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let root = base.appendingPathComponent("Tiercade", isDirectory: true)
         try ensureDirectoryExists(at: root)
         return root
     }
 
-    internal func ensureDirectoryExists(at url: URL) throws {
+    func ensureDirectoryExists(at url: URL) throws {
         var isDirectory: ObjCBool = false
         let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
         if exists {
@@ -245,7 +245,7 @@ internal extension AppState {
         }
     }
 
-    internal func copyReplacingItem(at source: URL, to destination: URL) throws {
+    func copyReplacingItem(at source: URL, to destination: URL) throws {
         let fileManager = FileManager.default
         try ensureDirectoryExists(at: destination.deletingLastPathComponent())
         if fileManager.fileExists(atPath: destination.path) {
@@ -260,7 +260,7 @@ internal extension AppState {
         }
     }
 
-    internal func bundleRelativePath(from uri: String) -> String? {
+    func bundleRelativePath(from uri: String) -> String? {
         guard uri.hasPrefix("file://") else { return nil }
         let trimmed = String(uri.dropFirst("file://".count))
         let path = trimmed.hasPrefix("/") ? String(trimmed.dropFirst()) : trimmed
@@ -293,7 +293,7 @@ internal extension AppState {
         return !normalized.isEmpty && !normalized.joined(separator: "/").hasPrefix("/")
     }
 
-    internal func sanitizeFileName(_ fileName: String) -> String {
+    func sanitizeFileName(_ fileName: String) -> String {
         let sanitized = fileName
             .replacingOccurrences(of: "[^A-Za-z0-9-_]+", with: "-", options: .regularExpression)
             .trimmingCharacters(in: CharacterSet(charactersIn: "-"))

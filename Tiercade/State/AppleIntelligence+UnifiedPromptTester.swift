@@ -73,7 +73,7 @@ final class UnifiedPromptTester {
         suiteId: String,
         onProgress: @escaping @MainActor (String) -> Void
     ) async throws -> TestReport {
-        await onProgress("📦 Loading test suite '\(suiteId)'...")
+        await MainActor.run { onProgress("📦 Loading test suite '\(suiteId)'...") }
 
         // 🔍 DEBUG: Log suite loading
         debugLog("╔═══════════════════════════════════════════════════════════════")
@@ -96,9 +96,9 @@ final class UnifiedPromptTester {
         let queriesLib = try loadTestQueries()
         let decodersLib = try loadDecodingConfigs()
 
-        await onProgress("✅ Loaded configurations")
-        await onProgress("📝 Suite: \(suite.name)")
-        await onProgress("📋 Description: \(suite.description)")
+        await MainActor.run { onProgress("✅ Loaded configurations") }
+        await MainActor.run { onProgress("📝 Suite: \(suite.name)") }
+        await MainActor.run { onProgress("📋 Description: \(suite.description)") }
 
         // 🔍 DEBUG: Log loaded config counts
         debugLog("📚 LOADED CONFIGURATION LIBRARIES:")
@@ -140,7 +140,7 @@ final class UnifiedPromptTester {
         debugLog("🧬 GUIDED MODES: \(suite.config.guidedModes)")
         debugLog("")
 
-        await onProgress("🎯 Test matrix: \(prompts.count) prompts × \(queries.count) queries × \(decoders.count) decoders × \(suite.config.seeds.count) seeds × \(suite.config.guidedModes.count) modes")
+        await MainActor.run { onProgress("🎯 Test matrix: \(prompts.count) prompts × \(queries.count) queries × \(decoders.count) decoders × \(suite.config.seeds.count) seeds × \(suite.config.guidedModes.count) modes") }
 
         // Build test runs
         let testRuns = buildTestRuns(
@@ -151,7 +151,7 @@ final class UnifiedPromptTester {
             guidedModes: suite.config.guidedModes
         )
 
-        await onProgress("🚀 Starting \(testRuns.count) test runs...")
+        await MainActor.run { onProgress("🚀 Starting \(testRuns.count) test runs...") }
 
         // Execute tests
         let results = await executeTestRuns(
@@ -224,32 +224,21 @@ final class UnifiedPromptTester {
             // Yield to allow UI updates before each test run
             await Task.yield()
 
-            let progress = TestProgress(
-                completedRuns: index,
-                totalRuns: runs.count,
-                currentRun: run,
-                estimatedTimeRemaining: estimateTimeRemaining(
-                    completed: index,
-                    total: runs.count,
-                    elapsed: Date().timeIntervalSince(startTime)
-                )
-            )
-
-            await onProgress("[\(index + 1)/\(runs.count)] Testing '\(run.prompt.name)' on '\(run.query.id)'...")
+            await MainActor.run { onProgress("[\(index + 1)/\(runs.count)] Testing '\(run.prompt.name)' on '\(run.query.id)'...") }
 
             let context = TestRunContext(run: run, maxTokensOverride: maxTokensOverride)
 
             do {
                 // Show that we're starting the test execution
-                await onProgress("⏳ Creating session and executing...")
+                await MainActor.run { onProgress("⏳ Creating session and executing...") }
 
                 let result = try await executeTestRun(run, context: context, timeoutSeconds: timeoutSeconds)
                 results.append(result)
 
                 let status = result.isSuccess ? "✅" : "❌"
-                await onProgress("\(status) \(result.uniqueItems)/\(run.effectiveTarget) unique (\(String(format: "%.1f", result.dupRate * 100))% dup)")
+                await MainActor.run { onProgress("\(status) \(result.uniqueItems)/\(run.effectiveTarget) unique (\(String(format: "%.1f", result.dupRate * 100))% dup)") }
             } catch {
-                await onProgress("❌ Error: \(error.localizedDescription)")
+                await MainActor.run { onProgress("❌ Error: \(error.localizedDescription)") }
 
                 // Create error result
                 let errorResult = createErrorResult(run: run, context: context, error: error)
@@ -262,13 +251,13 @@ final class UnifiedPromptTester {
                 let successCount = results.filter { $0.isSuccess }.count
                 let successRate = successCount * 100 / max(1, results.count)
                 let elapsed = Date().timeIntervalSince(startTime)
-                await onProgress("📊 Progress: \(index + 1)/\(runs.count) (\(percentage)%) - Success: \(successRate)% - Elapsed: \(String(format: "%.1f", elapsed))s")
+                await MainActor.run { onProgress("📊 Progress: \(index + 1)/\(runs.count) (\(percentage)%) - Success: \(successRate)% - Elapsed: \(String(format: "%.1f", elapsed))s") }
             }
 
             // Save checkpoint every 50 runs for crash recovery
             if (index + 1) % 50 == 0 {
                 saveCheckpoint(suite: suite, results: results, completed: index + 1, total: runs.count)
-                await onProgress("💾 Checkpoint saved (\(index + 1)/\(runs.count) tests)")
+                await MainActor.run { onProgress("💾 Checkpoint saved (\(index + 1)/\(runs.count) tests)") }
             }
 
             // Yield again after test completion to allow UI to update
@@ -295,7 +284,7 @@ final class UnifiedPromptTester {
             .targetCount: String(run.effectiveTarget),
             .domain: run.query.domain
         ]
-        let renderedPrompt = try template.render(substitutions: substitutions)
+        let renderedPrompt = template.render(substitutions: substitutions)
 
         // 🔍 DEBUG: Log prompt rendering details
         debugLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")

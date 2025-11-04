@@ -105,12 +105,12 @@ internal struct AddSchemaFieldSheet: View {
                 }
             }
         }
-        .onChange(of: fieldType) { newType in
-            guard newType != .multiSelect else { return }
-            if newType == .singleSelect {
+        .onChange(of: fieldType) {
+            guard fieldType != .multiSelect else { return }
+            if fieldType == .singleSelect {
                 allowMultiple = false
             }
-            if newType != .singleSelect {
+            if fieldType != .singleSelect {
                 options.removeAll()
             }
         }
@@ -188,12 +188,12 @@ internal struct AddSchemaFieldSheet: View {
                 }
             }
         }
-        .onChange(of: fieldType) { newType in
-            guard newType != .multiSelect else { return }
-            if newType == .singleSelect {
+        .onChange(of: fieldType) {
+            guard fieldType != .multiSelect else { return }
+            if fieldType == .singleSelect {
                 allowMultiple = false
             }
-            if newType != .singleSelect {
+            if fieldType != .singleSelect {
                 options.removeAll()
             }
         }

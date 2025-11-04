@@ -4,7 +4,7 @@ import TiercadeCore
 @MainActor
 internal extension AppState {
     // MARK: - Analysis
-    internal func generateAnalysis() async {
+    func generateAnalysis() async {
         analysisData = await withLoadingIndicator(message: "Generating analysis...") {
             updateProgress(0.1)
             let result = await buildAnalysis()
@@ -13,7 +13,7 @@ internal extension AppState {
         }
     }
 
-    internal func toggleAnalysis() {
+    func toggleAnalysis() {
         #if os(tvOS)
         toggleAnalyticsSidebar()
         #else
@@ -37,7 +37,7 @@ internal extension AppState {
         #endif
     }
 
-    internal func toggleAnalyticsSidebar() {
+    func toggleAnalyticsSidebar() {
         if overlays.showAnalyticsSidebar {
             overlays.showAnalyticsSidebar = false
             return
@@ -55,7 +55,7 @@ internal extension AppState {
         }
     }
 
-    internal func closeAnalyticsSidebar() {
+    func closeAnalyticsSidebar() {
         overlays.showAnalyticsSidebar = false
         showingAnalysis = false
     }

@@ -32,13 +32,13 @@ internal struct FocusTooltip: ViewModifier {
 
 internal extension View {
     /// Shows a tooltip label when the view is focused on tvOS
-    internal func focusTooltip(_ label: String) -> some View {
+    func focusTooltip(_ label: String) -> some View {
         modifier(FocusTooltip(label: label))
     }
 }
 #else
 internal extension View {
     /// No-op focus tooltip fallback for non-tvOS platforms
-    internal func focusTooltip(_ label: String) -> some View { self }
+    func focusTooltip(_ label: String) -> some View { self }
 }
 #endif

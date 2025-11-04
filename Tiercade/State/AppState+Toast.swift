@@ -6,7 +6,7 @@ import TiercadeCore
 internal extension AppState {
     // MARK: - Toast System
 
-    internal func showToast(type: ToastType, title: String, message: String? = nil, duration: TimeInterval = 3.0) {
+    func showToast(type: ToastType, title: String, message: String? = nil, duration: TimeInterval = 3.0) {
         let toast = ToastMessage(type: type, title: title, message: message, duration: duration)
         currentToast = toast
         logEvent("showToast: type=\(type) title=\(title) message=\(message ?? "") duration=\(duration)")
@@ -20,28 +20,28 @@ internal extension AppState {
         }
     }
 
-    internal func dismissToast() {
+    func dismissToast() {
         currentToast = nil
         logEvent("dismissToast")
     }
 
-    internal func showSuccessToast(_ title: String, message: String? = nil) {
+    func showSuccessToast(_ title: String, message: String? = nil) {
         showToast(type: .success, title: title, message: message)
     }
 
-    internal func showErrorToast(_ title: String, message: String? = nil) {
+    func showErrorToast(_ title: String, message: String? = nil) {
         showToast(type: .error, title: title, message: message)
     }
 
-    internal func showInfoToast(_ title: String, message: String? = nil) {
+    func showInfoToast(_ title: String, message: String? = nil) {
         showToast(type: .info, title: title, message: message)
     }
 
-    internal func showWarningToast(_ title: String, message: String? = nil) {
+    func showWarningToast(_ title: String, message: String? = nil) {
         showToast(type: .warning, title: title, message: message)
     }
 
-    internal func showToast(type: ToastType, title: String, message: String?) {
+    func showToast(type: ToastType, title: String, message: String?) {
         showToast(type: type, title: title, message: message, duration: 3.0)
     }
 }

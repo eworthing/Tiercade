@@ -280,10 +280,21 @@ private func dynamicTextOn(hex: String) -> Color {
 extension Color {
     internal func toHex() -> String? {
         #if os(tvOS) || os(iOS)
-        guard let components = UIColor(self).cgColor.components else { return nil }
+        let cgColor = UIColor(self).cgColor
         #else
-        guard let components = NSColor(self).cgColor.components else { return nil }
+        let cgColor = NSColor(self).cgColor
         #endif
+
+        // Convert to sRGB color space to ensure consistent component extraction
+        guard
+            let srgb = cgColor.converted(
+                to: CGColorSpace(name: CGColorSpace.sRGB)!,
+                intent: .defaultIntent,
+                options: nil
+            ),
+            let components = srgb.components,
+            components.count >= 3
+        else { return nil }
 
         let red = Int(components[0] * 255.0)
         let green = Int(components[1] * 255.0)
@@ -352,16 +363,14 @@ private struct TierLabelEditor: View {
     @Binding var showMenu: Bool
     @State private var label: String = ""
     @State private var colorHex: String = ""
-    @State private var showAdvancedColor: Bool = false
+    @State private var showAdvancedPicker: Bool = false
     @FocusState private var focusedField: FocusField?
 
     private enum FocusField: Hashable {
         case label
         case apply
         case colorOption(String)
-        case advancedToggle
-        case advancedHex
-        case advancedSet
+        case advancedPicker
         case lock
         case clear
         case close
@@ -390,10 +399,17 @@ private struct TierLabelEditor: View {
                     TextField("Rename", text: $label)
                         .textFieldStyle(.plain)
                         .padding(12)
-                        .background(Color.gray.opacity(0.2))
+                        .background(Color.black)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                        }
                         .cornerRadius(8)
                         .frame(width: 360)
                         .focused($focusedField, equals: .label)
+                        #if os(tvOS)
+                        .focusEffectDisabled(false)
+                        #endif
                     Button("Apply") {
                         app.setDisplayLabel(label, for: tierId)
                         app.showInfoToast("Renamed", message: "Tier \(tierId) → \(label)")
@@ -431,32 +447,16 @@ private struct TierLabelEditor: View {
                     }
                 }
 
-                // Advanced hex input
-                Button(action: { showAdvancedColor.toggle() }, label: {
+                // Advanced color picker
+                Button(action: { showAdvancedPicker = true }, label: {
                     HStack {
+                        Image(systemName: "slider.horizontal.3")
                         Text("Advanced")
-                        Image(systemName: showAdvancedColor ? "chevron.up" : "chevron.down")
                     }
                     .font(.caption)
                 })
-                .focused($focusedField, equals: .advancedToggle)
-
-                if showAdvancedColor {
-                    HStack(spacing: 12) {
-                        TextField("Hex Color (e.g., #E11D48)", text: $colorHex)
-                            .textFieldStyle(.plain)
-                            .padding(12)
-                            .background(Color.gray.opacity(0.2))
-                            .cornerRadius(8)
-                            .frame(width: 360)
-                            .focused($focusedField, equals: .advancedHex)
-                        Button("Set") {
-                            app.setDisplayColorHex(colorHex, for: tierId)
-                            app.showInfoToast("Recolored", message: colorHex)
-                        }
-                        .focused($focusedField, equals: .advancedSet)
-                    }
-                }
+                .buttonStyle(.bordered)
+                .focused($focusedField, equals: .advancedPicker)
             }
 
             // Actions
@@ -487,11 +487,58 @@ private struct TierLabelEditor: View {
         .focusSection()
         .defaultFocus($focusedField, .label)
         .onExitCommand { showMenu = false }
-        .onChange(of: showAdvancedColor) { _, isExpanded in
-            if !isExpanded,
-               focusedField == .advancedHex || focusedField == .advancedSet {
-                focusedField = .advancedToggle
+        .sheet(isPresented: $showAdvancedPicker) {
+            #if os(tvOS)
+            TVColorPickerView(
+                selection: Binding(
+                    get: { Color(hex: colorHex) ?? .gray },
+                    set: { newColor in
+                        if let hex = newColor.toHex() {
+                            colorHex = hex
+                            app.setDisplayColorHex(hex, for: tierId)
+                            app.showInfoToast("Recolored", message: hex)
+                        }
+                    }
+                ),
+                title: "Tier \(tierId) Color"
+            )
+            #else
+            VStack(spacing: 20) {
+                Text("Choose Color")
+                    .font(.headline)
+                    .padding(.top)
+
+                ColorPicker(
+                    "Select a color",
+                    selection: Binding(
+                        get: { Color(hex: colorHex) ?? .gray },
+                        set: { newColor in
+                            if let hex = newColor.toHex() {
+                                colorHex = hex
+                                app.setDisplayColorHex(hex, for: tierId)
+                            }
+                        }
+                    ),
+                    supportsOpacity: false
+                )
+                .labelsHidden()
+                .padding()
+
+                Text(colorHex)
+                    .font(.system(.body, design: .monospaced))
+                    .foregroundStyle(.secondary)
+
+                Button("Done") {
+                    showAdvancedPicker = false
+                    app.showInfoToast("Recolored", message: colorHex)
+                }
+                .buttonStyle(.borderedProminent)
+                .padding(.bottom)
             }
+            .padding(.horizontal)
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+            #endif
         }
     }
 }

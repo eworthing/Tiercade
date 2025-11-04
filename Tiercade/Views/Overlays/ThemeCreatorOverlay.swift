@@ -5,6 +5,7 @@ private enum FocusField: Hashable {
     case description
     case tier(UUID)
     case palette(Int)
+    case advancedPicker
     case save
     case cancel
 }
@@ -19,6 +20,7 @@ internal struct ThemeCreatorOverlay: View {
     @State private var paletteFocusIndex: Int = 0
     @State private var lastFocus: FocusField?
     @State private var suppressFocusReset = false
+    @State private var showAdvancedPicker = false
     #if !os(tvOS)
     @FocusState private var overlayHasFocus: Bool
     #endif
@@ -39,13 +41,23 @@ internal struct ThemeCreatorOverlay: View {
 
             VStack(spacing: 0) {
                 header
+                    .padding(24)
+                    .tvGlassRounded(0)  // Glass on header chrome only
+
                 Divider().opacity(0.15)
+
                 content
+                    .padding(24)
+                    .background(Color.black.opacity(0.7))
+
                 Divider().opacity(0.15)
+
                 footer
+                    .padding(24)
+                    .tvGlassRounded(0)  // Glass on footer chrome only
             }
             .frame(maxWidth: 1160, maxHeight: 880)
-            .tvGlassRounded(platformOverlayCornerRadius)
+            .background(Color.black.opacity(0.7), in: RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
                     .stroke(Color.white.opacity(0.16), lineWidth: 1.4)
@@ -92,6 +104,59 @@ internal struct ThemeCreatorOverlay: View {
                 } else if let lastFocus {
                     focusedElement = lastFocus
                 }
+            }
+            .sheet(isPresented: $showAdvancedPicker) {
+                #if os(tvOS)
+                if let activeTier = draft.activeTier {
+                    TVColorPickerView(
+                        selection: Binding(
+                            get: { ColorUtilities.color(hex: activeTier.colorHex) },
+                            set: { newColor in
+                                if let hex = newColor.toHex() {
+                                    appState.assignColorToActiveTier(hex)
+                                }
+                            }
+                        ),
+                        title: "Custom Color for \(activeTier.name)"
+                    )
+                }
+                #else
+                if let activeTier = draft.activeTier {
+                    VStack(spacing: 20) {
+                        Text("Choose Color for \(activeTier.name)")
+                            .font(.headline)
+                            .padding(.top)
+
+                        ColorPicker(
+                            "Select a color",
+                            selection: Binding(
+                                get: { ColorUtilities.color(hex: activeTier.colorHex) },
+                                set: { newColor in
+                                    if let hex = newColor.toHex() {
+                                        appState.assignColorToActiveTier(hex)
+                                    }
+                                }
+                            ),
+                            supportsOpacity: false
+                        )
+                        .labelsHidden()
+                        .padding()
+
+                        Text(activeTier.colorHex)
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(.secondary)
+
+                        Button("Done") {
+                            showAdvancedPicker = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding(.bottom)
+                    }
+                    .padding(.horizontal)
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
+                }
+                #endif
             }
         }
         #if os(tvOS)
@@ -195,19 +260,23 @@ private extension ThemeCreatorOverlay {
             Text("Tiers")
                 .font(.headline)
 
-            tvGlassContainer(spacing: 12) {
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(draft.tiers) { tier in
-                        Button {
-                            setActiveTier(tier.id)
-                        } label: {
-                            tierRow(for: tier)
-                        }
-                        .buttonStyle(.plain)
-                        .focused($focusedElement, equals: .tier(tier.id))
-                        .accessibilityIdentifier("ThemeCreator_Tier_\(tier.name)")
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(draft.tiers) { tier in
+                    Button {
+                        setActiveTier(tier.id)
+                    } label: {
+                        tierRow(for: tier)
                     }
+                    .buttonStyle(.plain)
+                    .focused($focusedElement, equals: .tier(tier.id))
+                    .accessibilityIdentifier("ThemeCreator_Tier_\(tier.name)")
                 }
+            }
+            .padding(16)
+            .background(Color.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 20))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
             }
         }
     }
@@ -259,23 +328,45 @@ private extension ThemeCreatorOverlay {
 
     var paletteSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Palette")
-                .font(.headline)
+            HStack {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Palette")
+                        .font(.headline)
 
-            Text("Select a color to apply to the active tier")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            tvGlassContainer(spacing: 18) {
-                LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: 18), count: paletteColumns),
-                    spacing: 18
-                ) {
-                    ForEach(Self.paletteHexes.indices, id: \.self) { index in
-                        let hex = Self.paletteHexes[index]
-                        paletteButton(for: hex, index: index)
-                    }
+                    Text("Select a color to apply to the active tier")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
+
+                Spacer()
+
+                Button(action: { showAdvancedPicker = true }, label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "slider.horizontal.3")
+                        Text("RGB Sliders")
+                    }
+                    .font(.caption)
+                })
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .focused($focusedElement, equals: .advancedPicker)
+                .accessibilityIdentifier("ThemeCreator_AdvancedPicker")
+            }
+
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 18), count: paletteColumns),
+                spacing: 18
+            ) {
+                ForEach(Self.paletteHexes.indices, id: \.self) { index in
+                    let hex = Self.paletteHexes[index]
+                    paletteButton(for: hex, index: index)
+                }
+            }
+            .padding(18)
+            .background(Color.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 20))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20)
+                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
             }
             .padding(.top, 8)
         }
@@ -393,6 +484,8 @@ private extension ThemeCreatorOverlay {
             handleTierMove(move, tierID: id)
         case .palette(let index):
             handlePaletteMove(move, index: index)
+        case .advancedPicker:
+            handleAdvancedPickerMove(move)
         case .save:
             handleSaveMove(move)
         case .cancel:
@@ -415,6 +508,8 @@ private extension ThemeCreatorOverlay {
                 appState.assignColorToActiveTier(hex)
             }
             setFocus(.palette(index))
+        case .advancedPicker:
+            showAdvancedPicker = true
         case .save:
             appState.completeThemeCreation()
         case .cancel:
@@ -472,9 +567,13 @@ private extension ThemeCreatorOverlay {
         case .left:
             setFocus(.tier(draft.activeTierID))
         case .up:
-            let target = max(index - paletteColumns, 0)
-            paletteFocusIndex = target
-            setFocus(.palette(target))
+            if index < paletteColumns {
+                setFocus(.advancedPicker)
+            } else {
+                let target = max(index - paletteColumns, 0)
+                paletteFocusIndex = target
+                setFocus(.palette(target))
+            }
         case .down:
             let target = index + paletteColumns
             if target < Self.paletteHexes.count {
@@ -487,6 +586,17 @@ private extension ThemeCreatorOverlay {
             let target = min(index + 1, Self.paletteHexes.count - 1)
             paletteFocusIndex = target
             setFocus(.palette(target))
+        }
+    }
+
+    func handleAdvancedPickerMove(_ move: DirectionalMove) {
+        switch move {
+        case .down:
+            setFocus(.palette(paletteFocusIndex))
+        case .left:
+            setFocus(.tier(draft.activeTierID))
+        default:
+            setFocus(.advancedPicker)
         }
     }
 

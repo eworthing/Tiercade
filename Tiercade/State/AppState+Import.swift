@@ -6,7 +6,7 @@ import TiercadeCore
 internal extension AppState {
     // MARK: - Import System (JSON/CSV)
 
-    internal func importFromJSON(_ jsonString: String) async throws(ImportError) {
+    func importFromJSON(_ jsonString: String) async throws(ImportError) {
         do {
             try await withLoadingIndicator(message: "Importing JSON data...") {
                 updateProgress(0.2)
@@ -14,19 +14,17 @@ internal extension AppState {
                 let project = try await decodeProject(fromJSON: jsonString)
                 updateProgress(0.7)
                 let snapshot = captureTierSnapshot()
-                applyImportedProject(project, action: "Import JSON", fileName: nil as String?, undoSnapshot: snapshot)
+                applyImportedProject(project, action: "Import JSON", fileName: nil, undoSnapshot: snapshot)
                 updateProgress(1.0)
 
                 showSuccessToast("Import Complete", message: "Successfully imported tier list {import}")
             }
-        } catch let error as ImportError {
-            throw error
         } catch {
-            throw ImportError.parsingFailed("Unexpected error: \(error.localizedDescription)")
+            throw error as! ImportError
         }
     }
 
-    internal func importFromCSV(_ csvString: String) async throws(ImportError) {
+    func importFromCSV(_ csvString: String) async throws(ImportError) {
         do {
             try await withLoadingIndicator(message: "Importing CSV data...") {
                 updateProgress(0.2)
@@ -54,10 +52,8 @@ internal extension AppState {
 
                 showSuccessToast("Import Complete", message: "Successfully imported CSV data {import}")
             }
-        } catch let error as ImportError {
-            throw error
         } catch {
-            throw ImportError.parsingFailed("Unexpected error: \(error.localizedDescription)")
+            throw error as! ImportError
         }
     }
 
@@ -157,25 +153,17 @@ internal extension AppState {
         }
     }
 
-    internal func importFromJSON(url: URL) async throws(ImportError) {
-        do {
-            // File I/O and parsing on background thread pool
-            let project = try await loadProjectFromFile(url)
-            let snapshot = captureTierSnapshot()
-            applyImportedProject(
-                project,
-                action: "Import Project",
-                fileName: url.deletingPathExtension().lastPathComponent,
-                undoSnapshot: snapshot
-            )
-            showSuccessToast("Import Complete", message: "Project loaded successfully {import}")
-        } catch let error as NSError where error.domain == "Tiercade" {
-            throw ImportError.invalidData(error.localizedDescription)
-        } catch let error as ImportError {
-            throw error
-        } catch {
-            throw ImportError.invalidData("Could not read JSON file: \(error.localizedDescription)")
-        }
+    func importFromJSON(url: URL) async throws(ImportError) {
+        // File I/O and parsing on background thread pool
+        let project = try await loadProjectFromFile(url)
+        let snapshot = captureTierSnapshot()
+        applyImportedProject(
+            project,
+            action: "Import Project",
+            fileName: url.deletingPathExtension().lastPathComponent,
+            undoSnapshot: snapshot
+        )
+        showSuccessToast("Import Complete", message: "Project loaded successfully {import}")
     }
 
     // Swift 6 (Swift 6.2 toolchain) pattern: file I/O and ModelResolver on background via Task.detached
@@ -184,18 +172,18 @@ internal extension AppState {
         do {
             return try await ModelResolver.loadProjectAsync(from: url)
         } catch {
+            // Fallback: read raw data, then decode using our typed ImportError path
+            let data: Data
             do {
-                let data = try Data(contentsOf: url)
-                return try await decodeProject(fromData: data)
-            } catch let error as ImportError {
-                throw error
+                data = try Data(contentsOf: url)
             } catch {
                 throw ImportError.invalidData("Could not load project: \(error.localizedDescription)")
             }
+            return try await decodeProject(fromData: data)
         }
     }
 
-    internal func importFromCSV(url: URL) async throws(ImportError) {
+    func importFromCSV(url: URL) async throws(ImportError) {
         // File I/O on background thread pool
         let content = try await loadCSVFromFile(url)
 
@@ -217,7 +205,7 @@ internal extension AppState {
         }
     }
 
-    nonisolated internal static func parseCSVLine(_ line: String) -> [String] {
+    nonisolated static func parseCSVLine(_ line: String) -> [String] {
         var fields: [String] = []
         var current = ""
         var insideQuotes = false
@@ -251,7 +239,7 @@ internal extension AppState {
 
     // MARK: - Canonical project helpers
 
-    internal func applyImportedProject(
+    func applyImportedProject(
         _ project: Project,
         action: String,
         fileName: String?,

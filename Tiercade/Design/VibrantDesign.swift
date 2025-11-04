@@ -137,7 +137,7 @@ internal struct PunchyFocusStyle: ViewModifier {
 }
 
 internal extension View {
-    internal func punchyFocus(tier: Tier, cornerRadius: CGFloat = 12) -> some View {
+    func punchyFocus(tier: Tier, cornerRadius: CGFloat = 12) -> some View {
         modifier(PunchyFocusStyle(tier: tier, cornerRadius: cornerRadius))
     }
 }
@@ -183,7 +183,7 @@ internal struct PunchyFocusStyleDynamic: ViewModifier {
 
 internal extension View {
     /// Apply focus effect with a dynamic color (supports custom tier colors)
-    internal func punchyFocus(color: Color, cornerRadius: CGFloat = 12) -> some View {
+    func punchyFocus(color: Color, cornerRadius: CGFloat = 12) -> some View {
         modifier(PunchyFocusStyleDynamic(color: color, cornerRadius: cornerRadius))
     }
 }

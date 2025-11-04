@@ -37,12 +37,12 @@ internal enum UniqueListGenerationFlags {
 // MARK: - Configuration Defaults
 
 internal enum Defaults {
-    nonisolated(unsafe) static let maxPasses = 3
-    nonisolated(unsafe) static let pass1OverGen = 1.6      // M = ceil(1.6 * N)
-    nonisolated(unsafe) static let minBackfillFrac = 0.4    // backfill delta floor
-    nonisolated(unsafe) static let tempDiverse = 0.8
-    nonisolated(unsafe) static let tempControlled = 0.7
-    nonisolated(unsafe) static let conservativeContextBudget = 3500
+    nonisolated static let maxPasses = 3
+    nonisolated static let pass1OverGen = 1.6      // M = ceil(1.6 * N)
+    nonisolated static let minBackfillFrac = 0.4    // backfill delta floor
+    nonisolated static let tempDiverse = 0.8
+    nonisolated static let tempControlled = 0.7
+    nonisolated static let conservativeContextBudget = 3500
 }
 
 // MARK: - Normalization Configuration
@@ -217,7 +217,7 @@ extension Array where Element == String {
 @available(iOS 26.0, macOS 26.0, *)
 extension GenerationOptions {
     /// Top-K sampling configuration
-    nonisolated(unsafe) static func topK(_ k: Int, temp: Double, seed: UInt64?, maxTok: Int) -> Self {
+    nonisolated static func topK(_ k: Int, temp: Double, seed: UInt64?, maxTok: Int) -> Self {
         .init(
             sampling: .random(top: k, seed: seed),
             temperature: temp,
@@ -226,7 +226,7 @@ extension GenerationOptions {
     }
 
     /// Top-P sampling configuration (requires iOS 26+/macOS 26+)
-    nonisolated(unsafe) static func topP(_ p: Double, temp: Double, seed: UInt64?, maxTok: Int) -> Self {
+    nonisolated static func topP(_ p: Double, temp: Double, seed: UInt64?, maxTok: Int) -> Self {
         .init(
             sampling: .random(probabilityThreshold: p, seed: seed),
             temperature: temp,
@@ -235,7 +235,7 @@ extension GenerationOptions {
     }
 
     /// Greedy deterministic sampling
-    nonisolated(unsafe) static var greedy: Self {
+    nonisolated static var greedy: Self {
         .init(
             sampling: .greedy,
             temperature: 0,
@@ -244,16 +244,12 @@ extension GenerationOptions {
     }
 
     /// Diverse sampling (uses top-p on supported platforms, falls back to top-k)
-    nonisolated(unsafe) static func diverse(seed: UInt64?, maxTok: Int) -> Self {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            return topP(0.92, temp: Defaults.tempDiverse, seed: seed, maxTok: maxTok)
-        } else {
-            return topK(50, temp: Defaults.tempDiverse, seed: seed, maxTok: maxTok)
-        }
+    nonisolated static func diverse(seed: UInt64?, maxTok: Int) -> Self {
+        topP(0.92, temp: Defaults.tempDiverse, seed: seed, maxTok: maxTok)
     }
 
     /// Controlled sampling (top-k with lower temperature)
-    nonisolated(unsafe) static func controlled(seed: UInt64?, maxTok: Int) -> Self {
+    nonisolated static func controlled(seed: UInt64?, maxTok: Int) -> Self {
         topK(40, temp: Defaults.tempControlled, seed: seed, maxTok: maxTok)
     }
 }

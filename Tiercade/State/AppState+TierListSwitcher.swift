@@ -75,7 +75,7 @@ internal extension AppState {
         return result
     }
 
-    internal func selectTierList(_ handle: TierListHandle) async {
+    func selectTierList(_ handle: TierListHandle) async {
         switch handle.source {
         case .bundled:
             guard let project = bundledProjects.first(where: { $0.id == handle.identifier }) else { return }
@@ -103,7 +103,7 @@ internal extension AppState {
         }
     }
 
-    internal func registerTierListSelection(_ handle: TierListHandle) {
+    func registerTierListSelection(_ handle: TierListHandle) {
         persistence.activeTierList = handle
         do {
             try deactivateOtherLists(except: handle.entityID)
@@ -124,18 +124,18 @@ internal extension AppState {
         refreshRecentTierListsFromStore()
     }
 
-    internal func presentTierListBrowser() {
+    func presentTierListBrowser() {
         logEvent("presentTierListBrowser called")
         overlays.showTierListBrowser = true
         logEvent("overlays.showTierListBrowser set to \(overlays.showTierListBrowser)")
     }
 
-    internal func dismissTierListBrowser() {
+    func dismissTierListBrowser() {
         logEvent("dismissTierListBrowser called")
         overlays.showTierListBrowser = false
     }
 
-    internal func tierListHandle(forFileNamed fileName: String) -> TierListHandle {
+    func tierListHandle(forFileNamed fileName: String) -> TierListHandle {
         TierListHandle(
             source: .file,
             identifier: fileName,
@@ -146,7 +146,7 @@ internal extension AppState {
         )
     }
 
-    internal func restoreTierListState() {
+    func restoreTierListState() {
         do {
             if let entity = try fetchActiveTierListEntity() {
                 persistence.activeTierListEntity = entity
@@ -158,7 +158,7 @@ internal extension AppState {
         }
     }
 
-    internal func loadActiveTierListIfNeeded() {
+    func loadActiveTierListIfNeeded() {
         guard let handle = persistence.activeTierList else { return }
 
         switch handle.source {

@@ -22,7 +22,7 @@ internal extension AppState {
 
     /// One-time migration utility for pre-1.0 save files
     /// Converts legacy flat JSON format to modern Items structure
-    internal func migrateLegacySaveFile(at url: URL) async throws -> Items {
+    func migrateLegacySaveFile(at url: URL) async throws -> Items {
         let data = try Data(contentsOf: url)
 
         // Try modern format first
@@ -102,7 +102,7 @@ internal extension AppState {
     }
 
     /// Save migrated file in modern format with backup
-    internal func saveMigratedFile(_ tiers: Items, originalURL: URL) async throws {
+    func saveMigratedFile(_ tiers: Items, originalURL: URL) async throws {
         // Create backup of original file
         let backupURL = originalURL.deletingPathExtension()
             .appendingPathExtension("legacy.backup.json")
@@ -127,7 +127,7 @@ internal extension AppState {
     }
 
     /// Check if a file needs migration
-    internal func needsMigration(at url: URL) -> Bool {
+    func needsMigration(at url: URL) -> Bool {
         guard let data = try? Data(contentsOf: url) else { return false }
 
         // If it decodes as modern format, no migration needed
