@@ -58,6 +58,10 @@ internal struct TiersWizardPage: View, WizardPage {
                     .overlay(Rectangle().stroke(Palette.stroke, lineWidth: 1))
             )
         }
+        #if os(tvOS)
+        // Scope default focus for tvOS so prefersDefaultFocus is reliable
+        .focusScope(defaultFocusNamespace)
+        #endif
         .sheet(isPresented: $showingTierDetailsSheet) {
             if let tier = currentTier {
                 TierDetailsSheet(appState: appState, draft: draft, tier: tier)

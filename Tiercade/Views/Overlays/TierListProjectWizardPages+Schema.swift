@@ -108,6 +108,8 @@ internal struct SchemaWizardPage: View, WizardPage {
                 persistSchemaChange()
             })
         }
+        // Scope default focus for tvOS so prefersDefaultFocus is reliable
+        .focusScope(defaultFocusNamespace)
         #else
         .sheet(isPresented: $showingAddField) {
         AddSchemaFieldSheet(onAdd: { field in
