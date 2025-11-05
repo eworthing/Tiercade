@@ -108,8 +108,8 @@ for attempt in 0..<maxRetries {
 
 > **DerivedData location:** Xcode and the build script always emit products to `~/Library/Developer/Xcode/DerivedData/`. Nothing lands in `./build/`, so upload artifacts and inspect logs from DerivedData when debugging.
 
-1. **Build & launch tvOS** – `Cmd` + `Shift` + `B` in VS Code (task **Build, Install & Launch tvOS**). Script flow: 🧹 clean → 🔨 build → 📦 install → 🚀 launch. Confirm the timestamp printed at the end and the in-app `BuildInfoView` (DEBUG) match the current time.
-2. **Run native macOS** – `./build_install_launch.sh macos`. This cleanly builds, installs, and launches the native macOS app. Use it before validating cross-platform fixes.
+1. **Build all platforms** – `Cmd` + `Shift` + `B` in VS Code (task **Build, Install & Launch tvOS**). Script flow per platform: 🧹 clean → 🔨 build → 📦 install → 🚀 launch. Builds tvOS, iOS, iPadOS, and macOS by default. Confirm the timestamp and `BuildInfoView` (DEBUG) match.
+2. **Single platform builds** – Use `./build_install_launch.sh tvos|ios|ipad|macos` to build individual platforms when iterating on platform-specific code.
 3. **Run package tests** – `cd TiercadeCore && swift test`. The `TiercadeCoreTests` target covers tier manipulation, head-to-head heuristics, bundled catalog metadata, and model decoding using Swift Testing (`@Test`, `#expect`) under the same strict concurrency flags.
 4. **Manual focus sweep** – With the tvOS 26 Apple TV 4K simulator open, cycle focus with the remote/arrow keys to confirm overlays and default focus behave. Capture issues with `/tmp/tiercade_debug.log` (see Operational Notes).
 
@@ -148,7 +148,7 @@ UI automation relies on accessibility IDs and short paths—prefer existence che
 
 - Asset refresh: manage bundled artwork directly in `Tiercade/Assets.xcassets` and keep paths aligned with `AppState+BundledProjects`.
 - Debug logging: `AppState.appendDebugFile` writes to `/tmp/tiercade_debug.log`; the CI pipeline emits `tiercade_build_and_test.log` plus before/after screenshots under `pipeline-artifacts/`. Attach those files when filing issues.
-- **Build script feature flags**: `./build_install_launch.sh macos --enable-advanced-generation` (see `docs/AppleIntelligence/FEATURE_FLAG_USAGE.md`)
+- **Build script feature flags**: `./build_install_launch.sh --enable-advanced-generation` (all platforms) or `./build_install_launch.sh macos --enable-advanced-generation` (single platform) - see `docs/AppleIntelligence/FEATURE_FLAG_USAGE.md`
 - **AI test runner**: `./run_all_ai_tests.sh` with result analysis via `python3 analyze_test_results.py results/run-<TIMESTAMP>/`
   - Test suite configs: `Tiercade/TestConfigs/TestSuites.json`
   - Framework docs: `Tiercade/TestConfigs/TESTING_FRAMEWORK.md`
@@ -235,11 +235,14 @@ import AppKit
 
 **Build script:**
 ```bash
-# tvOS (default)
+# All platforms (tvOS, iOS, iPadOS, macOS) - RECOMMENDED
 ./build_install_launch.sh
 
-# Native macOS
-./build_install_launch.sh macos
+# Individual platforms
+./build_install_launch.sh tvos   # tvOS only
+./build_install_launch.sh ios    # iOS only
+./build_install_launch.sh ipad   # iPadOS only
+./build_install_launch.sh macos  # Native macOS only
 ```
 
 **NavigationSplitView guardrails (macOS/iPad):**
@@ -295,14 +298,14 @@ func moveItem(_ id: String, to tier: String) {
 
 **Mandatory build verification (prevents cross-platform regressions like [f662d34](https://github.com/eworthing/Tiercade/commit/f662d34)):**
 ```bash
-# Build tvOS
+# Build ALL platforms (tvOS, iOS, iPadOS, macOS)
 ./build_install_launch.sh
-
-# Build native macOS
-./build_install_launch.sh macos
 ```
 
-Both platforms **must** build successfully before merging structural splits. Native macOS often surfaces visibility issues that tvOS doesn't catch.
+All four platforms **must** build successfully before merging structural splits. Each platform can surface different visibility and API availability issues:
+- Native macOS often catches visibility issues that tvOS doesn't
+- iOS/iPadOS may reveal UIKit-specific problems
+- Platform-specific APIs must be properly gated with `#if os(...)`
 
 **Pattern from recent splits:**
 - [f662d34](https://github.com/eworthing/Tiercade/commit/f662d34) - Fixed macOS build errors: `private` → `internal` for cross-file access
@@ -522,14 +525,39 @@ VStack {
 ## Build & Test
 
 ### Build Commands
+
+**⚠️ CRITICAL: Always build ALL platforms before merging**
+
+The default build script builds all four platforms to catch platform-specific issues early.
+
 **Primary**: VS Code task "Build, Install & Launch tvOS" (Cmd+Shift+B) — runs `./build_install_launch.sh`
-**Manual:**
+
+**Multi-platform builds:**
 ```bash
-# tvOS
+# Build all platforms (tvOS, iOS, iPadOS, macOS) - RECOMMENDED
 ./build_install_launch.sh
-# Native macOS
+# or explicitly
+./build_install_launch.sh all
+
+# Build all platforms without launching
+./build_install_launch.sh --no-launch
+```
+
+**Single platform builds:**
+```bash
+# tvOS only
+./build_install_launch.sh tvos
+
+# iOS only (iPhone)
+./build_install_launch.sh ios
+
+# iPadOS only (iPad)
+./build_install_launch.sh ipad
+
+# Native macOS only
 ./build_install_launch.sh macos
-# Manual tvOS build only
+
+# Manual tvOS build (low-level)
 xcodebuild clean -project Tiercade.xcodeproj -scheme Tiercade -configuration Debug
 xcodebuild -project Tiercade.xcodeproj -scheme Tiercade \
   -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation),OS=latest' build
@@ -552,10 +580,11 @@ TiercadeCore owns package tests. Run `swift test` inside `TiercadeCore/` (Swift 
 - [ ] Edge-case tier names (special characters, long names) export cleanly
 
 **Cross-Platform:**
-- [ ] After UI refactors or access-level changes, build succeeds on both platforms:
-  - `./build_install_launch.sh` (tvOS)
-  - `./build_install_launch.sh macos` (native macOS)
+- [ ] **CRITICAL**: After UI refactors or access-level changes, build succeeds on ALL platforms:
+  - `./build_install_launch.sh` (builds tvOS, iOS, iPadOS, macOS)
+  - OR individually: `./build_install_launch.sh tvos`, `./build_install_launch.sh ios`, `./build_install_launch.sh ipad`, `./build_install_launch.sh macos`
 - [ ] Visibility modifiers allow cross-file access within module
+- [ ] Platform-specific code properly gated with `#if os(tvOS)`, `#if os(iOS)`, `#if os(macOS)`
 
 ### UI test minimalism
 - Prefer existence checks and stable accessibility IDs over long remote navigation. Target < 12 s per focus path.
@@ -598,10 +627,14 @@ Before merging a new overlay, verify:
 - [ ] Custom directional navigation (if any) is routing, not trapping
 
 **Platform Compatibility:**
-- [ ] Builds successfully on tvOS (`./build_install_launch.sh`)
-- [ ] Builds successfully on native macOS (`./build_install_launch.sh macos`)
+- [ ] **CRITICAL**: Builds successfully on ALL platforms (`./build_install_launch.sh`)
+  - [ ] tvOS (Apple TV 4K simulator)
+  - [ ] iOS (iPhone 17 Pro simulator)
+  - [ ] iPadOS (iPad mini A17 Pro simulator)
+  - [ ] macOS (native Mac app)
 - [ ] Uses platform-appropriate presentation (fullScreenCover vs sheet)
 - [ ] Glass effects only on chrome, not on focusable backgrounds
+- [ ] Platform-specific features properly gated
 
 **Manual Testing:**
 - [ ] Complete focus sweep with Siri Remote / keyboard arrows
