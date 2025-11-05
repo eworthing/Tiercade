@@ -13,8 +13,6 @@ internal struct MatchupArenaOverlay: View {
     @Bindable var app: AppState
     @Namespace private var glassNamespace
     @FocusState private var focusAnchor: MatchupFocusAnchor?
-    @State private var lastFocus: MatchupFocusAnchor = .primary
-    @State private var suppressFocusReset = false
     #if !os(tvOS)
     @FocusState private var overlayHasFocus: Bool
     #endif
@@ -48,13 +46,12 @@ internal struct MatchupArenaOverlay: View {
             .applyFocusModifiers(
                 focusAnchor: $focusAnchor,
                 defaultFocus: defaultFocus,
-                onAppear: handleAppear,
-                onFocusChange: handleFocusAnchorChange
+                onAppear: handleAppear
             )
             .applyH2HPairTracking(
                 app: app,
                 onSync: synchronizeFocus,
-                onDisappear: { suppressFocusReset = true }
+                onDisappear: {}
             )
             .applyTVOSModifiers(
                 app: app,
@@ -66,8 +63,7 @@ internal struct MatchupArenaOverlay: View {
             .applyFocusModifiers(
                 focusAnchor: $focusAnchor,
                 defaultFocus: defaultFocus,
-                onAppear: handleAppear,
-                onFocusChange: handleFocusAnchorChange
+                onAppear: handleAppear
             )
             .applyH2HPairTracking(
                 app: app,
@@ -97,15 +93,6 @@ internal struct MatchupArenaOverlay: View {
             .padding(.vertical, verticalPadding)
             .padding(.horizontal, horizontalPadding)
             .frame(maxWidth: maxWidth)
-        }
-    }
-
-    private func handleFocusAnchorChange(newValue: MatchupFocusAnchor?) {
-        guard !suppressFocusReset else { return }
-        if let newValue {
-            lastFocus = newValue
-        } else {
-            focusAnchor = lastFocus
         }
     }
 
@@ -306,7 +293,6 @@ internal struct MatchupArenaOverlay: View {
     }
 
     private func handleAppear() {
-        suppressFocusReset = false
         synchronizeFocus()
         #if !os(tvOS)
         overlayHasFocus = true
@@ -315,9 +301,7 @@ internal struct MatchupArenaOverlay: View {
 
     private func synchronizeFocus() {
         Task { @MainActor in
-            let target = defaultFocus
-            focusAnchor = target
-            lastFocus = target
+            focusAnchor = defaultFocus
         }
     }
 
@@ -329,11 +313,10 @@ internal struct MatchupArenaOverlay: View {
     #endif
 
     private func handleDirectionalInput(_ move: DirectionalMove) {
-        guard !suppressFocusReset else { return }
         #if !os(tvOS)
         overlayHasFocus = true
         #endif
-        let current = focusAnchor ?? lastFocus
+        guard let current = focusAnchor else { return }
         guard let next = nextFocusAnchor(from: current, direction: move) else { return }
         focusAnchor = next
     }

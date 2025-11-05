@@ -77,8 +77,8 @@ for attempt in 0..<maxRetries {
 
 ## tvOS-first UX rules
 
-- **Modal overlays** (ThemePicker, TierListBrowser, MatchupArena/HeadToHead, Analytics) use `.fullScreenCover()` which provides **automatic focus containment** via separate presentation context. This is Apple's recommended pattern for modal presentations that must trap focus.
-- **Transient overlays** (QuickMove, QuickRank) remain as ZStack overlays using `.focusSection()` and `.focusable()`. For these, keep background content interactive by toggling `.allowsHitTesting(!overlayActive)`—never `.disabled()`.
+- **Modal overlays** (ThemePicker, TierListBrowser, MatchupArena/HeadToHead, Analytics, QuickMove) use `.fullScreenCover()` which provides **automatic focus containment** via separate presentation context. This is Apple's recommended pattern for modal presentations that must trap focus.
+- **Transient overlays** (QuickRank) remain as ZStack overlays using `.focusSection()` and `.focusable()`. For these, keep background content interactive by toggling `.allowsHitTesting(!overlayActive)`—never `.disabled()`.
 - **Critical**: `.allowsHitTesting()` only blocks pointer interactions (taps/clicks), **not focus navigation**. For true focus containment, use `.fullScreenCover()` or `.sheet()` presentation modifiers.
 - **Overlay Accessibility Pattern**: When adding new overlays for iOS/macOS, use `AccessibilityBridgeView` to ensure immediate accessibility tree presence. See `Tiercade/Views/OVERLAY_ACCESSIBILITY_PATTERN.md` for full pattern documentation. This solves async timing issues between state updates and accessibility registration on non-tvOS platforms.
 - Accessibility IDs must follow `{Component}_{Action}` on leaf elements (e.g. `Toolbar_H2H`, `QuickMove_Overlay`). Avoid placing IDs on containers using `.accessibilityElement(children: .contain)`.
@@ -313,8 +313,8 @@ await withLoadingIndicator(message: "Loading...") {
 ## tvOS UX & Focus Management
 
 ### Focus System
-- **Modal overlays:** Use `.fullScreenCover()` for automatic focus containment (ThemePicker, TierListBrowser, MatchupArena, Analytics)
-- **Transient overlays:** ZStack overlays use `.focusSection()` + `.focusable()` (QuickMove, QuickRank)
+- **Modal overlays:** Use `.fullScreenCover()` for automatic focus containment (ThemePicker, TierListBrowser, MatchupArena, Analytics, QuickMove)
+- **Transient overlays:** ZStack overlays use `.focusSection()` + `.focusable()` (QuickRank)
 - **Focus containment:** `.allowsHitTesting()` only blocks pointer input, **not focus**. For true focus trapping, use modal presentation modifiers (`.fullScreenCover()`, `.sheet()`)
 - **Background interaction:** Set `.allowsHitTesting(!modalActive)` on background (never `.disabled()`) for transient overlays so scroll inertia and VoiceOver remain intact
 - **Accessibility IDs:** Required for UI tests. Convention: `{Component}_{Action}` (e.g., `Toolbar_H2H`, `QuickMove_Overlay`, `ActionBar_MultiSelect`)

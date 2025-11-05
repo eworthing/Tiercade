@@ -18,8 +18,6 @@ internal struct ThemeCreatorOverlay: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var focusNamespace
     @State private var paletteFocusIndex: Int = 0
-    @State private var lastFocus: FocusField?
-    @State private var suppressFocusReset = false
     @State private var showAdvancedPicker = false
     #if !os(tvOS)
     @FocusState private var overlayHasFocus: Bool
@@ -72,15 +70,12 @@ internal struct ThemeCreatorOverlay: View {
             .defaultFocus($focusedElement, .tier(draft.activeTierID))
             #endif
             .onAppear {
-                suppressFocusReset = false
                 paletteFocusIndex = paletteIndex(for: draft.activeTier?.colorHex)
-                setFocus(.tier(draft.activeTierID))
+                focusedElement = .tier(draft.activeTierID)
                 FocusUtils.seedFocus()
             }
             .onDisappear {
-                suppressFocusReset = true
                 focusedElement = nil
-                lastFocus = nil
             }
             #if os(tvOS)
             .onExitCommand { dismiss(returnToPicker: true) }
@@ -97,14 +92,6 @@ internal struct ThemeCreatorOverlay: View {
             .onKeyPress(.space) { handlePrimaryAction(); return .handled }
             .onKeyPress(.return) { handlePrimaryAction(); return .handled }
             #endif
-            .onChange(of: focusedElement) { _, newValue in
-                guard !suppressFocusReset else { return }
-                if let newValue {
-                    lastFocus = newValue
-                } else if let lastFocus {
-                    focusedElement = lastFocus
-                }
-            }
             .sheet(isPresented: $showAdvancedPicker) {
                 #if os(tvOS)
                 if let activeTier = draft.activeTier {
@@ -494,7 +481,7 @@ private extension ThemeCreatorOverlay {
     }
 
     func handlePrimaryAction() {
-        guard let focus = focusedElement ?? lastFocus else { return }
+        guard let focus = focusedElement else { return }
         switch focus {
         case .name, .description:
             // Let system handle text field activation
@@ -654,7 +641,6 @@ private extension ThemeCreatorOverlay {
 
     private func setFocus(_ target: FocusField) {
         focusedElement = target
-        lastFocus = target
     }
 }
 
