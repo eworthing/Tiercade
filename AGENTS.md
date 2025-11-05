@@ -80,6 +80,25 @@ for attempt in 0..<maxRetries {
 - **Modal overlays** (ThemePicker, TierListBrowser, MatchupArena/HeadToHead, Analytics, QuickMove) use `.fullScreenCover()` which provides **automatic focus containment** via separate presentation context. This is Apple's recommended pattern for modal presentations that must trap focus.
 - **Transient overlays** (QuickRank) remain as ZStack overlays using `.focusSection()` and `.focusable()`. For these, keep background content interactive by toggling `.allowsHitTesting(!overlayActive)`—never `.disabled()`.
 - **Critical**: `.allowsHitTesting()` only blocks pointer interactions (taps/clicks), **not focus navigation**. For true focus containment, use `.fullScreenCover()` or `.sheet()` presentation modifiers.
+
+### Modal vs Transient: Decision Tree
+
+**When to use `.fullScreenCover()` (Modal):**
+- ✅ User must complete or cancel the overlay (blocking interaction)
+- ✅ Overlay content is the sole focus of attention
+- ✅ Background should not be interactive during overlay
+- ✅ Focus must be contained within overlay
+- **Examples:** ThemePicker, TierListBrowser, MatchupArena, QuickMove, Analytics
+
+**When to use ZStack + `.focusSection()` (Transient):**
+- ✅ Overlay provides contextual information only
+- ✅ User may want to interact with background simultaneously
+- ✅ Overlay appears/dismisses frequently (lightweight)
+- ✅ Focus containment not required
+- **Examples:** QuickRank tooltip, contextual hints, non-blocking notifications
+
+**If unsure:** Default to `.fullScreenCover()` - it's easier to relax to transient than to fix focus escape bugs later.
+
 - **Overlay Accessibility Pattern**: When adding new overlays for iOS/macOS, use `AccessibilityBridgeView` to ensure immediate accessibility tree presence. See `Tiercade/Views/OVERLAY_ACCESSIBILITY_PATTERN.md` for full pattern documentation. This solves async timing issues between state updates and accessibility registration on non-tvOS platforms.
 - Accessibility IDs must follow `{Component}_{Action}` on leaf elements (e.g. `Toolbar_H2H`, `QuickMove_Overlay`). Avoid placing IDs on containers using `.accessibilityElement(children: .contain)`.
 - Head-to-head overlay contract: render skip card with `arrow.uturn.left.circle`, maintain `H2H_SkippedCount`, call `cancelH2H(fromExitCommand:)` from `.onExitCommand`.
@@ -355,6 +374,63 @@ tvOS Exit button (Menu/⌘) should dismiss modals, not exit app:
 #endif
 ```
 
+### ⚠️ Focus Anti-Pattern: Manual Focus Reset Loops
+
+**CRITICAL: DO NOT manually reset focus when it becomes nil**
+
+❌ **ANTI-PATTERN (DO NOT USE):**
+```swift
+@State private var lastFocus: SomeType?
+@State private var suppressFocusReset = false
+
+.onChange(of: focusedElement) { _, newValue in
+    guard !suppressFocusReset else { return }
+    if let newValue {
+        lastFocus = newValue
+    } else if let lastFocus {
+        focusedElement = lastFocus  // ❌ Fighting the focus system!
+    }
+}
+```
+
+**Why this is wrong:**
+- Fights against natural tvOS focus navigation
+- Doesn't actually contain focus (hardware navigation still escapes)
+- Creates brittle state with suppressFocusReset flags
+- Goes against Apple's principle: "Focus should almost always be under user control"
+
+✅ **CORRECT PATTERN:**
+```swift
+// For modal overlays that must contain focus:
+.fullScreenCover(isPresented: $showOverlay) {
+    MyOverlay()  // ✅ Automatic focus containment
+}
+
+// For transient overlays that don't need containment:
+ZStack {
+    MyTransientOverlay()
+}
+.focusSection()  // ✅ Guides focus but doesn't trap
+```
+
+**Key Distinction:**
+- ❌ **Manual Focus TRAPPING**: Preventing escape by resetting when nil (anti-pattern)
+- ✅ **Custom Focus ROUTING**: Guiding arrow keys within complex layouts (legitimate)
+
+**Legitimate Custom Navigation Example:**
+```swift
+// ✅ CORRECT: Custom grid navigation
+func handleMoveCommand(_ direction: MoveCommandDirection) {
+    switch direction {
+    case .left: focusAdjacentItem(offset: -1)   // Route within grid
+    case .right: focusAdjacentItem(offset: +1)  // Route within grid
+    // ...
+    }
+}
+```
+
+**See Also:** `FOCUS_ANTI_PATTERN_AUDIT.md` for comprehensive analysis and examples.
+
 ### Head-to-Head (Matchup Arena) Overlay Specifics
 - **Pass tile:** Centered with `arrow.uturn.left.circle` icon, live counter (`MatchupOverlay_SkippedBadge`)
 - **Focus default:** Primary contender when a pair is active
@@ -501,6 +577,40 @@ TiercadeCore owns package tests. Run `swift test` inside `TiercadeCore/` (Swift 
 ### Manual Verification
 - Validate visuals in the latest tvOS 26 Apple TV 4K simulator; that environment mirrors the focus halos and Liquid Glass chrome we care about.
 - After builds: Keep simulator open, test focus/dismissal with Siri Remote simulator (or Mac keyboard arrows/Space/ESC)
+
+### New Overlay Verification Checklist
+
+Before merging a new overlay, verify:
+
+**Focus Containment (Modal overlays only):**
+- [ ] Uses `.fullScreenCover()` (tvOS/iOS) or `.sheet()` (macOS)
+- [ ] Does NOT have manual focus reset logic (`.onChange(of: focus)` to prevent nil)
+- [ ] Does NOT use `lastFocus` / `suppressFocusReset` state variables
+- [ ] Default focus lands on primary action via `.defaultFocus()` or `.prefersDefaultFocus()`
+- [ ] Exit command (Menu button) dismisses overlay with `.onExitCommand`
+- [ ] Cannot escape to background via arrow keys (test thoroughly!)
+
+**Focus Navigation (All overlays):**
+- [ ] Primary control receives focus on `.onAppear`
+- [ ] Arrow key navigation works as expected for complex layouts
+- [ ] Focus ring visible and appropriately styled
+- [ ] Accessibility IDs follow `{Component}_{Action}` convention on leaf elements
+- [ ] Custom directional navigation (if any) is routing, not trapping
+
+**Platform Compatibility:**
+- [ ] Builds successfully on tvOS (`./build_install_launch.sh`)
+- [ ] Builds successfully on native macOS (`./build_install_launch.sh macos`)
+- [ ] Uses platform-appropriate presentation (fullScreenCover vs sheet)
+- [ ] Glass effects only on chrome, not on focusable backgrounds
+
+**Manual Testing:**
+- [ ] Complete focus sweep with Siri Remote / keyboard arrows
+- [ ] Attempt to escape overlay in all four directions
+- [ ] Verify glass effects don't interfere with focus overlays
+- [ ] Test Exit command behavior (dismisses overlay, doesn't exit app)
+- [ ] Verify overlay appears in accessibility hierarchy immediately
+
+**See Also:** `FOCUS_ANTI_PATTERN_AUDIT.md` for detailed examples and anti-patterns to avoid.
 
 ## Data Contracts & Patterns
 
