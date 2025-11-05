@@ -63,6 +63,10 @@ internal struct ItemsWizardPage: View, WizardPage {
             addItemBar
         }
         .background(Palette.bg)
+        #if os(tvOS)
+        // Ensure default focus is evaluated within a defined scope
+        .focusScope(defaultFocusNamespace)
+        #endif
         #if os(macOS)
         .sheet(isPresented: $showingItemEditor) {
             if let item = currentItem {

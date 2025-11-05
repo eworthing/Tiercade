@@ -26,13 +26,11 @@ internal extension View {
     func applyFocusModifiers(
         focusAnchor: FocusState<MatchupFocusAnchor?>.Binding,
         defaultFocus: MatchupFocusAnchor,
-        onAppear: @escaping () -> Void,
-        onFocusChange: @escaping (MatchupFocusAnchor?) -> Void
+        onAppear: @escaping () -> Void
     ) -> some View {
         self
             .defaultFocus(focusAnchor, defaultFocus)
             .onAppear { onAppear() }
-            .onChange(of: focusAnchor.wrappedValue) { _, newValue in onFocusChange(newValue) }
     }
 
     func applyH2HPairTracking(

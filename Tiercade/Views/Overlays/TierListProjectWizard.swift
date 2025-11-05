@@ -59,6 +59,8 @@ internal struct TierListProjectWizard: View {
                 toolbarContent
             }
             .focusSection()
+            // Scope default focus for toolbar buttons
+            .focusScope(toolbarFocusNamespace)
             #else
             toolbarContent
                 .background(.ultraThinMaterial)
@@ -183,6 +185,10 @@ internal struct TierListProjectWizard: View {
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
+            #if os(tvOS)
+            // Scope default focus for tab buttons when declaring prefersDefaultFocus
+            .focusScope(tabFocusNamespace)
+            #endif
 
             Divider()
         }

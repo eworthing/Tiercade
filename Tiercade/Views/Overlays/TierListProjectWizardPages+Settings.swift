@@ -31,6 +31,10 @@ internal struct SettingsWizardPage: View, WizardPage {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         #if os(tvOS)
+        // Scope default focus for tvOS so prefersDefaultFocus is reliable
+        .focusScope(defaultFocusNamespace)
+        #endif
+        #if os(tvOS)
         .onAppear { focusedField = .title }
         #endif
     }

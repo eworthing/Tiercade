@@ -66,7 +66,6 @@ internal struct QuickMoveOverlay: View {
                 )
                 .shadow(color: Color.black.opacity(0.22), radius: 24, y: 8)
                 .focusScope(quickMoveFocusScope)
-                .onMoveCommand(perform: handleMoveCommand)
                 .defaultFocus($focusedElement, defaultFocus(
                     currentTier: currentTier,
                     allTiers: allTiers,
@@ -183,35 +182,6 @@ internal struct QuickMoveOverlay: View {
         }
 
         return allTiers.first.map { .tier($0) } ?? .cancel
-    }
-
-    private func handleMoveCommand(_ direction: MoveCommandDirection) {
-        let allTiers = app.tierOrder + [TierIdentifier.unranked.rawValue]
-
-        // Trap up-arrow when at first tier
-        if direction == .up {
-            if case .tier(let tierName) = focusedElement,
-               tierName == allTiers.first {
-                focusedElement = .tier(allTiers.first ?? TierIdentifier.unranked.rawValue)
-                return
-            }
-        }
-
-        // Trap down-arrow when at bottom
-        if direction == .down {
-            if focusedElement == .cancel {
-                focusedElement = .cancel
-                return
-            }
-        }
-
-        // Trap left/right to prevent horizontal escape
-        if direction == .left || direction == .right {
-            if case .tier(let tierName) = focusedElement {
-                focusedElement = .tier(tierName)
-                return
-            }
-        }
     }
 }
 

@@ -26,9 +26,10 @@ internal struct MainAppView: View {
 
     internal var body: some View {
         @Bindable var app = app
-        // Note: ThemePicker, TierListBrowser, and Analytics now use .fullScreenCover()
-        // which provides automatic focus containment via separate presentation context
-        // Use centralized overlay blocking check from AppState
+        // Note: Modal overlays (ThemePicker, TierListBrowser, MatchupArena, Analytics)
+        // use .fullScreenCover() which provides automatic focus containment via separate
+        // presentation context. This follows Apple's recommended pattern for modal presentations.
+        // Use centralized overlay blocking check from AppState for remaining ZStack overlays
         let modalBlockingFocus = app.blocksBackgroundFocus
 
         return Group {
@@ -142,6 +143,84 @@ internal struct MainAppView: View {
             AnalysisView(app: app)
         }
         #endif
+        // MARK: Focus-contained modal presentations
+        #if os(macOS)
+        .sheet(isPresented: Binding(
+            get: { app.overlays.showTierListBrowser },
+            set: { app.overlays.showTierListBrowser = $0 }
+        )) {
+            TierListBrowserScene(app: app)
+        }
+        .sheet(isPresented: Binding(
+            get: { app.overlays.showThemePicker },
+            set: { app.overlays.showThemePicker = $0 }
+        )) {
+            ThemeLibraryOverlay()
+        }
+        .sheet(isPresented: Binding(
+            get: { app.headToHead.isActive },
+            set: { if !$0 { app.cancelH2H() } }
+        )) {
+            MatchupArenaOverlay(app: app)
+        }
+        #else
+        .fullScreenCover(isPresented: Binding(
+            get: { app.overlays.showTierListBrowser },
+            set: { app.overlays.showTierListBrowser = $0 }
+        )) {
+            TierListBrowserScene(app: app)
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { app.overlays.showThemePicker },
+            set: { app.overlays.showThemePicker = $0 }
+        )) {
+            ThemeLibraryOverlay()
+        }
+        .fullScreenCover(isPresented: Binding(
+            get: { app.headToHead.isActive },
+            set: { if !$0 { app.cancelH2H() } }
+        )) {
+            MatchupArenaOverlay(app: app)
+        }
+        #endif
+        #if os(tvOS)
+        .fullScreenCover(isPresented: Binding(
+            get: { app.overlays.showAnalyticsSidebar },
+            set: { app.overlays.showAnalyticsSidebar = $0 }
+        )) {
+            // Maintain sidebar visual: transparent left, content right
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                AnalyticsSidebarView()
+                    .frame(maxHeight: .infinity)
+            }
+        }
+        .fullScreenCover(item: Binding(
+            get: { app.overlays.quickMoveTarget },
+            set: { app.overlays.quickMoveTarget = $0 }
+        )) { _ in
+            QuickMoveOverlay(app: app)
+        }
+        #endif
+        #if os(macOS)
+        .sheet(isPresented: Binding(
+            get: { app.overlays.showThemeCreator },
+            set: { app.overlays.showThemeCreator = $0 }
+        )) {
+            if let draft = app.theme.themeDraft {
+                ThemeCreatorOverlay(appState: app, draft: draft)
+            }
+        }
+        #else
+        .fullScreenCover(isPresented: Binding(
+            get: { app.overlays.showThemeCreator },
+            set: { app.overlays.showThemeCreator = $0 }
+        )) {
+            if let draft = app.theme.themeDraft {
+                ThemeCreatorOverlay(appState: app, draft: draft)
+            }
+        }
+        #endif
     }
 
     // MARK: - Overlay Composition
@@ -165,54 +244,9 @@ internal struct MainAppView: View {
                 .zIndex(OverlayZIndex.standardOverlay)
         }
 
-        #if os(tvOS)
-        // Quick Move overlay (unified item actions overlay)
-        QuickMoveOverlay(app: app)
-            .zIndex(OverlayZIndex.quickMove)
-        #endif
-
-        // Head-to-Head overlay
-        if app.headToHead.isActive {
-            AccessibilityBridgeView(identifier: "MatchupOverlay_Root")
-
-            MatchupArenaOverlay(app: app)
-                .zIndex(OverlayZIndex.standardOverlay)
-        }
-
-        #if os(tvOS)
-        if app.overlays.showAnalyticsSidebar {
-            HStack(spacing: 0) {
-                Spacer(minLength: 0)
-                AnalyticsSidebarView()
-                    .frame(maxHeight: .infinity)
-            }
-            .allowsHitTesting(true)
-            .zIndex(OverlayZIndex.analytics)
-        }
-        #endif
-
-        if app.overlays.showTierListBrowser {
-            TierListBrowserScene(app: app)
-                .transition(.opacity)
-                .zIndex(OverlayZIndex.browser)
-        }
-
-        // Theme picker overlay
-        if app.overlays.showThemePicker {
-            AccessibilityBridgeView()
-
-            // In UI tests, avoid transitions so the overlay appears in the
-            // accessibility tree immediately. Transitions can delay when
-            // XCTest sees elements, causing flaky existence checks.
-            if ProcessInfo.processInfo.arguments.contains("-uiTest") {
-                ThemeLibraryOverlay()
-                    .zIndex(OverlayZIndex.themePicker)
-            } else {
-                ThemeLibraryOverlay()
-                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                    .zIndex(OverlayZIndex.themePicker)
-            }
-        }
+        // Note: QuickMove, MatchupArena (Head-to-Head), AnalyticsSidebar, TierListBrowser,
+        // and ThemePicker now presented as fullScreenCover modals for proper focus containment
+        // (see modal presentations after body)
 
         // AI Chat overlay
         if app.aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform {
@@ -230,14 +264,6 @@ internal struct MainAppView: View {
             }
             .transition(.opacity.combined(with: .scale(scale: 0.9)))
             .zIndex(OverlayZIndex.modalOverlay)
-        }
-
-        if app.overlays.showThemeCreator, let draft = app.theme.themeDraft {
-            AccessibilityBridgeView()
-
-            ThemeCreatorOverlay(appState: app, draft: draft)
-                .transition(.opacity.combined(with: .scale(scale: 0.94)))
-                .zIndex(OverlayZIndex.modalOverlay)
         }
 
         // Toast messages (bottom)

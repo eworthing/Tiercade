@@ -73,15 +73,6 @@ private extension ThemeLibraryOverlay {
         .onKeyPress(.rightArrow) { handleDirectionalInput(.right); return .handled }
         .onKeyPress(.space) { activateFocusedTheme(); return .handled }
         .onKeyPress(.return) { activateFocusedTheme(); return .handled }
-        .onChange(of: overlayHasFocus) { _, newValue in
-        guard !newValue, appState.overlays.showThemePicker else { return }
-        Task { @MainActor in
-        try? await Task.sleep(for: FocusWorkarounds.reassertDelay)
-        if appState.overlays.showThemePicker {
-        overlayHasFocus = true
-        }
-        }
-        }
         #endif
         .onChange(of: appState.theme.availableThemes) { ensureValidFocus() }
         .onChange(of: appState.theme.selectedTheme.id) { assignFocusToSelectedTheme() }
