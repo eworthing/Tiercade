@@ -100,7 +100,7 @@ for attempt in 0..<maxRetries {
 **If unsure:** Default to `.fullScreenCover()` - it's easier to relax to transient than to fix focus escape bugs later.
 
 - **Overlay Accessibility Pattern**: When adding new overlays for iOS/macOS, use `AccessibilityBridgeView` to ensure immediate accessibility tree presence. See `Tiercade/Views/OVERLAY_ACCESSIBILITY_PATTERN.md` for full pattern documentation. This solves async timing issues between state updates and accessibility registration on non-tvOS platforms.
-- Accessibility IDs must follow `{Component}_{Action}` on leaf elements (e.g. `Toolbar_H2H`, `QuickMove_Overlay`). Avoid placing IDs on containers using `.accessibilityElement(children: .contain)`.
+- Accessibility IDs must follow `{Component}_{Action}` on leaf elements (e.g. `Toolbar_H2H`, `TierMove_Sheet`). Avoid placing IDs on containers using `.accessibilityElement(children: .contain)`.
 - Head-to-head overlay contract: render skip card with `arrow.uturn.left.circle`, maintain `H2H_SkippedCount`, call `cancelH2H(fromExitCommand:)` from `.onExitCommand`.
 - Apply glass effects via `glassEffect`, `GlassEffectContainer`, or `.buttonStyle(.glass)` when touching toolbars/overlays; validate focus halos in the Apple TV 4K (3rd gen) tvOS 26 simulator.
 
@@ -339,7 +339,7 @@ await withLoadingIndicator(message: "Loading...") {
 - **Transient overlays:** ZStack overlays use `.focusSection()` + `.focusable()` (QuickRank)
 - **Focus containment:** `.allowsHitTesting()` only blocks pointer input, **not focus**. For true focus trapping, use modal presentation modifiers (`.fullScreenCover()`, `.sheet()`)
 - **Background interaction:** Set `.allowsHitTesting(!modalActive)` on background (never `.disabled()`) for transient overlays so scroll inertia and VoiceOver remain intact
-- **Accessibility IDs:** Required for UI tests. Convention: `{Component}_{Action}` (e.g., `Toolbar_H2H`, `QuickMove_Overlay`, `ActionBar_MultiSelect`)
+- **Accessibility IDs:** Required for UI tests. Convention: `{Component}_{Action}` (e.g., `Toolbar_H2H`, `TierMove_Sheet`, `ActionBar_MultiSelect`)
 
 | Accessibility ID | Purpose |
 | --- | --- |
@@ -348,7 +348,7 @@ await withLoadingIndicator(message: "Loading...") {
 | `Toolbar_Analysis` | Opens/closes analytics overlay |
 | `Toolbar_Themes` | Presents theme library |
 | `ActionBar_MoveBatch` | Batch move button in selection mode |
-| `QuickMove_Overlay` | tvOS quick-move overlay root – ensures UI tests can wait for presentation |
+| `TierMove_Sheet` | Cross-platform tier move modal – ensures UI tests can wait for presentation |
 | `MatchupOverlay_Apply` | Commit action for head-to-head queue |
 | `AIGenerator_Overlay` | AI item generation overlay (macOS/iOS only; tvOS shows platform notice) |
 - **tvOS 26 interactions:** Use `.focusable(interactions: .activate)` for action-only surfaces and opt into additional interactions (text entry, directional input) only when needed so the new multi-mode focus model stays predictable on remote hardware.
@@ -593,7 +593,7 @@ TiercadeCore owns package tests. Run `swift test` inside `TiercadeCore/` (Swift 
 | --- | --- | --- |
 | Toolbar | `Toolbar_NewTierList` | Exists, isEnabled before launching wizard |
 | Head-to-Head overlay | `MatchupOverlay_Apply` | Appears once queue empties |
-| Quick Move | `QuickMove_Overlay` | Presented before accepting commands |
+| Tier Move | `TierMove_Sheet` | Presented before accepting commands |
 | Batch bar | `ActionBar_MoveBatch` | Visible only when selection count > 0 |
 | Analytics | `Toolbar_Analysis` | Toggles analytics sidebar |
 

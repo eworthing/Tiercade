@@ -238,7 +238,7 @@ All button styles avoid communicating state through color alone—focus adds wei
 - **Reduce Motion** – Short-circuit animations when [`accessibilityReduceMotion`](https://developer.apple.com/documentation/swiftui/environmentvalues/accessibilityreducemotion/) is enabled.
 - **Focus order** – Group overlays with `focusSection()` and land default focus using `@FocusState`. Re-evaluate defaults with `resetFocus(in:)` when the dataset changes.
 - **Hit testing** – Disable background interaction via [`allowsHitTesting(false)`](https://developer.apple.com/documentation/swiftui/view/allowshittesting(_:)/) instead of `.disabled(true)` so VoiceOver retains focus routing.
-- **Identifiers** – Apply [`accessibilityIdentifier(_:)`](https://developer.apple.com/documentation/swiftui/view/accessibilityidentifier(_:)) to leaf controls using the `{Component}_{Action}` pattern (`Toolbar_H2H`, `QuickMove_Overlay`, etc.)—never attach IDs to containers with `.accessibilityElement(children: .contain)`.
+- **Identifiers** – Apply [`accessibilityIdentifier(_:)`](https://developer.apple.com/documentation/swiftui/view/accessibilityidentifier(_:)) to leaf controls using the `{Component}_{Action}` pattern (`Toolbar_H2H`, `TierMove_Sheet`, etc.)—never attach IDs to containers with `.accessibilityElement(children: .contain)`.
 
 ## Usage Examples
 

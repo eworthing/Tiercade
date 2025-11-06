@@ -199,7 +199,7 @@ internal struct MainAppView: View {
             get: { app.overlays.quickMoveTarget },
             set: { app.overlays.quickMoveTarget = $0 }
         )) { _ in
-            QuickMoveOverlay(app: app)
+            TierMoveSheet(app: app)
         }
         #endif
         #if os(macOS)
@@ -211,6 +211,12 @@ internal struct MainAppView: View {
                 ThemeCreatorOverlay(appState: app, draft: draft)
             }
         }
+        .sheet(item: Binding(
+            get: { app.overlays.quickMoveTarget },
+            set: { app.overlays.quickMoveTarget = $0 }
+        )) { _ in
+            TierMoveSheet(app: app)
+        }
         #else
         .fullScreenCover(isPresented: Binding(
             get: { app.overlays.showThemeCreator },
@@ -219,6 +225,12 @@ internal struct MainAppView: View {
             if let draft = app.theme.themeDraft {
                 ThemeCreatorOverlay(appState: app, draft: draft)
             }
+        }
+        .fullScreenCover(item: Binding(
+            get: { app.overlays.quickMoveTarget },
+            set: { app.overlays.quickMoveTarget = $0 }
+        )) { _ in
+            TierMoveSheet(app: app)
         }
         #endif
     }
@@ -244,8 +256,8 @@ internal struct MainAppView: View {
                 .zIndex(OverlayZIndex.standardOverlay)
         }
 
-        // Note: QuickMove, MatchupArena (Head-to-Head), AnalyticsSidebar, TierListBrowser,
-        // and ThemePicker now presented as fullScreenCover modals for proper focus containment
+        // Note: TierMove, MatchupArena (Head-to-Head), AnalyticsSidebar, TierListBrowser,
+        // and ThemePicker are presented as fullScreenCover modals for proper focus containment
         // (see modal presentations after body)
 
         // AI Chat overlay
@@ -279,6 +291,12 @@ internal struct MainAppView: View {
         // Detail overlay (all platforms)
         if let detail = app.overlays.detailItem {
             detailOverlay(for: detail)
+        }
+
+        // Accessibility bridge for Tier Move sheet across platforms.
+        // Ensures immediate accessibility presence instead of attaching IDs to containers.
+        if app.overlays.quickMoveTarget != nil {
+            AccessibilityBridgeView(identifier: "TierMove_Sheet")
         }
     }
 
