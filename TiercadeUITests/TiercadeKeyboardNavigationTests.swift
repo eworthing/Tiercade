@@ -275,31 +275,31 @@ internal final class TiercadeKeyboardNavigationTests: XCTestCase {
         let window = primaryWindow(in: app)
         attachDebugHierarchy(of: app, named: "Post-launch hierarchy")
 
-        // Try keyboard navigation (Tab up to 20 times to reach H2H button)
-        let h2hButton = app.buttons["Toolbar_H2H"]
-        waitForElement(h2hButton, in: app)
+        // Try keyboard navigation (Tab up to 20 times to reach HeadToHead button)
+        let headToHeadButton = app.buttons["Toolbar_HeadToHead"]
+        waitForElement(headToHeadButton, in: app)
 
         var reachedViaKeyboard = false
         for _ in 0..<20 {
             sendKey(.tab, to: window)
             RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-            if elementHasKeyboardFocus(h2hButton) {
+            if elementHasKeyboardFocus(headToHeadButton) {
                 reachedViaKeyboard = true
                 break
             }
         }
 
-        // If Tab reached the H2H button, activate it with Space
+        // If Tab reached the HeadToHead button, activate it with Space
         if reachedViaKeyboard {
             sendKey(.space, to: window)
             RunLoop.current.run(until: Date().addingTimeInterval(0.3))
         } else {
             // Fallback: tap the button directly
-            h2hButton.tap()
+            headToHeadButton.tap()
             RunLoop.current.run(until: Date().addingTimeInterval(0.3))
         }
 
-        let h2hOverlay = app.otherElements["MatchupOverlay_Root"]
-        waitForElement(h2hOverlay, in: app, timeout: 15.0)
+        let headToHeadOverlay = app.otherElements["HeadToHeadOverlay_Root"]
+        waitForElement(headToHeadOverlay, in: app, timeout: 15.0)
     }
 }

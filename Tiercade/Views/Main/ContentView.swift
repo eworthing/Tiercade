@@ -14,7 +14,7 @@ import TiercadeCore
 
 internal struct AppTier: Identifiable, Hashable { let id: String; var name: String }
 // (Several view components — ToastView, ProgressIndicatorView, DragTargetHighlight,
-// QuickRank / H2H overlays, toolbar, sidebar and grid subviews — were moved to
+// QuickRank / HeadToHead overlays, toolbar, sidebar and grid subviews — were moved to
 // smaller files under `Tiercade/Views/ContentView+*.swift` to reduce compile
 // specialization cost and keep this file focused. See those files for implementations.)
 
@@ -23,7 +23,7 @@ internal struct ContentView: View {
     @Environment(\.undoManager) private var undoManager
     @State private var showingAddItems = false
     #if os(tvOS)
-    private var canStartH2HFromRemote: Bool {
+    private var canStartHeadToHeadFromRemote: Bool {
         app.quickRankTarget == nil && app.canStartHeadToHead
     }
     #endif
@@ -63,7 +63,7 @@ private extension Gradient {
 // etc.) were moved to `Tiercade/Views/ContentView+Overlays.swift`.
 
 // MARK: - JSON FileDocument
-// Head-to-head, quick-rank and overlay components are implemented in
+// HeadToHead, quick-rank and overlay components are implemented in
 // `Tiercade/Views/ContentView+Overlays.swift`.
 
 // Analysis and statistics views were moved to `Tiercade/Views/ContentView+Analysis.swift`

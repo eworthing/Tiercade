@@ -186,7 +186,7 @@ struct HeadToHeadInternalsTests {
         )
 
         // Trim frontier to a single boundary to force predictable pairs.
-        artifacts = H2HArtifacts(
+        artifacts = HeadToHeadArtifacts(
             tierNames: artifacts.tierNames,
             rankable: artifacts.rankable,
             undersampled: [],
@@ -210,13 +210,13 @@ struct HeadToHeadInternalsTests {
         #expect(Set(candidates.map { HeadToHeadLogic.PairKey($0.pair.0, $0.pair.1) }).count == candidates.count)
     }
 
-    private func sampleDataset() -> (pool: [Item], records: [String: H2HRecord], tierOrder: [String], baseTiers: Items) {
+    private func sampleDataset() -> (pool: [Item], records: [String: HeadToHeadRecord], tierOrder: [String], baseTiers: Items) {
         let alpha = Item(id: "alpha", name: "Alpha")
         let beta = Item(id: "beta", name: "Beta")
         let gamma = Item(id: "gamma", name: "Gamma")
         let delta = Item(id: "delta", name: "Delta")
 
-        var records: [String: H2HRecord] = [:]
+        var records: [String: HeadToHeadRecord] = [:]
         records["alpha"] = makeRecord(wins: 6, losses: 1)
         records["beta"] = makeRecord(wins: 4, losses: 3)
         records["gamma"] = makeRecord(wins: 2, losses: 1)
@@ -238,8 +238,8 @@ struct HeadToHeadInternalsTests {
         )
     }
 
-    private func makeRecord(wins: Int, losses: Int) -> H2HRecord {
-        var record = H2HRecord()
+    private func makeRecord(wins: Int, losses: Int) -> HeadToHeadRecord {
+        var record = HeadToHeadRecord()
         record.wins = wins
         record.losses = losses
         return record

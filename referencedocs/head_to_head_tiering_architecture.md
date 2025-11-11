@@ -1,8 +1,8 @@
-# Head-to-Head Tiering Architecture
+# HeadToHead Tiering Architecture
 
 <!-- markdownlint-disable MD013 -->
 
-This document captures the architecture, evolution, and design rationale of Tiercade's head-to-head (H2H) ranking system. It is intended to help future maintainers and LLM copilots understand how the algorithm works, why the current guardrails exist, and what constraints guided the latest iterations.
+This document captures the architecture, evolution, and design rationale of Tiercade's HeadToHead ranking system (previously labeled H2H). It is intended to help future maintainers and LLM copilots understand how the algorithm works, why the current guardrails exist, and what constraints guided the latest iterations.
 
 ## High-Level Goals
 
@@ -19,10 +19,10 @@ This document captures the architecture, evolution, and design rationale of Tier
 
 ### Stage 0 – Pool construction
 
-When the user starts H2H (`AppState.startH2H`):
+When the user starts HeadToHead (`AppState.startHeadToHead`):
 
 1. Build the pool from the active tier list:
-   - Include all items from the special "unranked" tier and every **unlocked** named tier (locked tiers remain untouched during H2H).
+   - Include all items from the special "unranked" tier and every **unlocked** named tier (locked tiers remain untouched during HeadToHead).
    - Locked tiers still contribute priors (see below) but their members are excluded from the voting pool.
 2. Compute a per-item target via `quickPhaseTargetComparisons`:
    - Pools ≥ 10 members: target 3 comparisons per item.
@@ -36,8 +36,8 @@ When the user starts H2H (`AppState.startH2H`):
 
 During the quick pass the user works through the warmed queue:
 
-- `voteH2H` records the winner, increments `h2hCompletedComparisons`, and runs `HeadToHeadLogic.vote` to update Wilson statistics.
-- Deferred/ skipped pairs (`h2hDeferredPairs`) are recycled automatically once the queue empties.
+- `voteHeadToHead` records the winner, increments `completedComparisons`, and runs `HeadToHeadLogic.vote` to update Wilson statistics.
+- Deferred/ skipped pairs (`deferredPairs`) are recycled automatically once the queue empties.
 - After the queue drains we run `HeadToHeadLogic.quickTierPass`:
 
  1. Partition the pool by comparisons. Items with fewer than
@@ -56,11 +56,11 @@ During the quick pass the user works through the warmed queue:
      order.
  4. Apply quantile cuts via `quantileCuts(count, tierCount)`. For tier count *k* we compute `round(i * n / k)` (nearest integer) for `i = 1...(k-1)` and deduplicate the cut list to keep them strictly increasing. Example: `n=12`, `k=6` → `[2,4,6,8,10]`.
  5. Assign items to tiers using these cuts and sort members within each tier by Wilson lower bound (`sortTierMembers`).
- 6. If no refinement pairs are requested (`H2HArtifacts.suggestedPairs` empty), we finalize immediately; otherwise we transition to refinement.
+ 6. If no refinement pairs are requested (`HeadToHeadArtifacts.suggestedPairs` empty), we finalize immediately; otherwise we transition to refinement.
 
 ### Stage 2 – Refinement
 
-When suggested refinement pairs exist, `finishH2H` reruns with
+When suggested refinement pairs exist, `finishHeadToHead` reruns with
 `HeadToHeadLogic.finalizeTiers`:
 
 1. Recompute metrics with z = `Tun.zStd` (1.28). If the average comparisons per item is < 3, we temporarily fall back to z = 1.0 (`zRefineEarly`) to keep early intervals wide.
@@ -115,7 +115,7 @@ The final tier assignment uses the refined metrics and the same `orderedItems` s
 4. `nameKey` (case-insensitive name) ascending
 5. `id` ascending
 
-Direct head-to-head outcomes are not used as a secondary tie break (comparisons are typically insufficient); the forced top/bottom probes give us the data we need to differentiate tied clusters.
+Direct HeadToHead outcomes are not used as a secondary tie break (comparisons are typically insufficient); the forced top/bottom probes give us the data we need to differentiate tied clusters.
 
 ### Quantile example
 
@@ -167,8 +167,8 @@ These cuts are the baseline. Refinement only shifts boundaries when gap scores a
 
 ## Interpreting Logs
 
-- `[AppState] startH2H` – Reports pool size, quick target, and initial queue length.
-- `[AppState] nextH2HPair` / `voteH2H` – Show the order of comparisons; the first pairs in refinement will be the forced top/bottom probes.
+- `[AppState] startHeadToHead` – Reports pool size, quick target, and initial queue length.
+- `[AppState] nextHeadToHeadPair` / `voteHeadToHead` – Show the order of comparisons; the first pairs in refinement will be the forced top/bottom probes.
 - `[Tiering] finalize …` – Lists per-item wins, comparisons, Wilson lower/upper bounds, and `zRefine` in use.
 - `[Tiering] quantCuts=… refinedCuts=…` – Reveals how elastic cuts shifted from the baseline.
 - `[Tiering] churn=… useRefined=…` – Indicates whether refined cuts were accepted or quantiles were used.

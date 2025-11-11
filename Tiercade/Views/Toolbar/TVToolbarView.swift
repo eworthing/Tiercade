@@ -11,7 +11,7 @@ internal struct TVToolbarView: View {
     @State private var showingSortPicker = false
 
     private enum Control: Hashable {
-        case undo, redo, randomize, reset, library, newTierList, multiSelect, h2h, analytics, sort, applySort, density, theme, aiChat
+        case undo, redo, randomize, reset, library, newTierList, multiSelect, headToHead, analytics, sort, applySort, density, theme, aiChat
     }
 
     internal var body: some View {
@@ -24,9 +24,9 @@ internal struct TVToolbarView: View {
             : "Add more items before randomizing tiers"
         let randomizeTooltip = randomizeEnabled ? "Randomize" : "Add more items to randomize"
         let headToHeadHint = headToHeadEnabled
-            ? "Start head-to-head comparisons"
-            : "Add at least two items before starting head-to-head"
-        let headToHeadTooltip = headToHeadEnabled ? "Head to Head" : "Add two items to start"
+            ? "Start HeadToHead comparisons"
+            : "Add at least two items before starting HeadToHead"
+        let headToHeadTooltip = headToHeadEnabled ? "Start HeadToHead" : "Add two items to start"
         let analyticsHint: String = {
             if analyticsEnabled {
                 return analyticsActive
@@ -149,22 +149,22 @@ internal struct TVToolbarView: View {
                 focusedControl = .multiSelect
             }
 
-            Button(action: { app.startH2H() }, label: {
+            Button(action: { app.startHeadToHead() }, label: {
                 Image(systemName: "person.line.dotted.person.fill")
                     .font(.system(size: Metrics.toolbarIconSize * 0.9))
                     .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
             })
             .buttonStyle(.tvRemote(.primary))
-            .accessibilityIdentifier("Toolbar_H2H")
+            .accessibilityIdentifier("Toolbar_HeadToHead")
             .disabled(!headToHeadEnabled)
             .focusEffectDisabled(!headToHeadEnabled)
             .opacity(headToHeadEnabled ? 1 : 0.35)
-            .focused($focusedControl, equals: .h2h)
-            .accessibilityLabel("Head to Head")
+            .focused($focusedControl, equals: .headToHead)
+            .accessibilityLabel("HeadToHead")
             .accessibilityHint(headToHeadHint)
             .focusTooltip(headToHeadTooltip)
             #if swift(>=6.0)
-            .glassEffectID("h2hButton", in: glassNamespace)
+            .glassEffectID("headToHeadButton", in: glassNamespace)
             #endif
 
             Button(action: { app.toggleAnalyticsSidebar() }, label: {

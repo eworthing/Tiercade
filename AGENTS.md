@@ -95,7 +95,7 @@ for attempt in 0..<maxRetries {
 
 ## tvOS-first UX rules
 
-- **Modal overlays** (ThemePicker, TierListBrowser, MatchupArena/HeadToHead, Analytics, QuickMove) use `.fullScreenCover()` which provides **automatic focus containment** via separate presentation context. This is Apple's recommended pattern for modal presentations that must trap focus.
+- **Modal overlays** (ThemePicker, TierListBrowser, HeadToHead/HeadToHead, Analytics, QuickMove) use `.fullScreenCover()` which provides **automatic focus containment** via separate presentation context. This is Apple's recommended pattern for modal presentations that must trap focus.
 - **Transient overlays** (QuickRank) remain as ZStack overlays using `.focusSection()` and `.focusable()`. For these, keep background content interactive by toggling `.allowsHitTesting(!overlayActive)`—never `.disabled()`.
 - **Critical**: `.allowsHitTesting()` only blocks pointer interactions (taps/clicks), **not focus navigation**. For true focus containment, use `.fullScreenCover()` or `.sheet()` presentation modifiers.
 
@@ -106,7 +106,7 @@ for attempt in 0..<maxRetries {
 - ✅ Overlay content is the sole focus of attention
 - ✅ Background should not be interactive during overlay
 - ✅ Focus must be contained within overlay
-- **Examples:** ThemePicker, TierListBrowser, MatchupArena, QuickMove, Analytics
+- **Examples:** ThemePicker, TierListBrowser, HeadToHead, QuickMove, Analytics
 
 **When to use ZStack + `.focusSection()` (Transient):**
 - ✅ Overlay provides contextual information only
@@ -118,8 +118,8 @@ for attempt in 0..<maxRetries {
 **If unsure:** Default to `.fullScreenCover()` - it's easier to relax to transient than to fix focus escape bugs later.
 
 - **Overlay Accessibility Pattern**: When adding new overlays for iOS/macOS, use `AccessibilityBridgeView` to ensure immediate accessibility tree presence. See `Tiercade/Views/OVERLAY_ACCESSIBILITY_PATTERN.md` for full pattern documentation. This solves async timing issues between state updates and accessibility registration on non-tvOS platforms.
-- Accessibility IDs must follow `{Component}_{Action}` on leaf elements (e.g. `Toolbar_H2H`, `TierMove_Sheet`). Avoid placing IDs on containers using `.accessibilityElement(children: .contain)`.
-- Head-to-head overlay contract: render skip card with `arrow.uturn.left.circle`, maintain `H2H_SkippedCount`, call `cancelH2H(fromExitCommand:)` from `.onExitCommand`.
+- Accessibility IDs must follow `{Component}_{Action}` on leaf elements (e.g. `Toolbar_HeadToHead`, `TierMove_Sheet`). Avoid placing IDs on containers using `.accessibilityElement(children: .contain)`.
+- HeadToHead overlay contract: render skip card with `arrow.uturn.left.circle`, surface skip count in the metrics row, call `cancelHeadToHead(fromExitCommand:)` from `.onExitCommand`.
 - Apply glass effects via `glassEffect`, `GlassEffectContainer`, or `.buttonStyle(.glass)` when touching toolbars/overlays; validate focus halos in the Apple TV 4K (3rd gen) tvOS 26 simulator.
 
 ## Build · Test · Verify
@@ -128,7 +128,7 @@ for attempt in 0..<maxRetries {
 
 1. **Build all platforms** – `Cmd` + `Shift` + `B` in VS Code (task **Build, Install & Launch tvOS**). Script flow per platform: 🧹 clean → 🔨 build → 📦 install → 🚀 launch. Builds tvOS, iOS, iPadOS, and macOS by default. Confirm the timestamp and `BuildInfoView` (DEBUG) match.
 2. **Single platform builds** – Use `./build_install_launch.sh tvos|ios|ipad|macos` to build individual platforms when iterating on platform-specific code.
-3. **Run package tests** – `cd TiercadeCore && swift test`. The `TiercadeCoreTests` target covers tier manipulation, head-to-head heuristics, bundled catalog metadata, and model decoding using Swift Testing (`@Test`, `#expect`) under the same strict concurrency flags.
+3. **Run package tests** – `cd TiercadeCore && swift test`. The `TiercadeCoreTests` target covers tier manipulation, HeadToHead heuristics, bundled catalog metadata, and model decoding using Swift Testing (`@Test`, `#expect`) under the same strict concurrency flags.
 4. **Manual focus sweep** – With the tvOS 26 Apple TV 4K simulator open, cycle focus with the remote/arrow keys to confirm overlays and default focus behave. Capture issues with `/tmp/tiercade_debug.log` (see Operational Notes).
 
 Optional coverage pass:
@@ -290,7 +290,7 @@ import AppKit
 var tiers: Items = ["S":[],"A":[],"B":[],"C":[],"D":[],"F":[],"unranked":[]]
 var tierOrder: [String] = ["S","A","B","C","D","F"]
 var selection: Set<String> = []
-var h2hActive: Bool, h2hPair: (Item, Item)?
+var headToHead = HeadToHeadState()
 var tierLabels: [String: String], tierColors: [String: String]
 var selectedTheme: TierTheme
 ```
@@ -328,7 +328,7 @@ All four platforms **must** build successfully before merging structural splits.
 
 **Pattern from recent splits:**
 - [f662d34](https://github.com/eworthing/Tiercade/commit/f662d34) - Fixed macOS build errors: `private` → `internal` for cross-file access
-- [5fe41fe](https://github.com/eworthing/Tiercade/commit/5fe41fe), [0060169](https://github.com/eworthing/Tiercade/commit/0060169) - MatchupArenaOverlay, TierListProjectWizardPages splits required visibility updates
+- [5fe41fe](https://github.com/eworthing/Tiercade/commit/5fe41fe), [0060169](https://github.com/eworthing/Tiercade/commit/0060169) - HeadToHeadOverlay, TierListProjectWizardPages splits required visibility updates
 
 ### Async Operations & Progress
 Wrap long operations with loading indicators and progress tracking:
@@ -354,21 +354,21 @@ await withLoadingIndicator(message: "Loading...") {
 ## tvOS UX & Focus Management
 
 ### Focus System
-- **Modal overlays:** Use `.fullScreenCover()` for automatic focus containment (ThemePicker, TierListBrowser, MatchupArena, Analytics, QuickMove)
+- **Modal overlays:** Use `.fullScreenCover()` for automatic focus containment (ThemePicker, TierListBrowser, HeadToHead, Analytics, QuickMove)
 - **Transient overlays:** ZStack overlays use `.focusSection()` + `.focusable()` (QuickRank)
 - **Focus containment:** `.allowsHitTesting()` only blocks pointer input, **not focus**. For true focus trapping, use modal presentation modifiers (`.fullScreenCover()`, `.sheet()`)
 - **Background interaction:** Set `.allowsHitTesting(!modalActive)` on background (never `.disabled()`) for transient overlays so scroll inertia and VoiceOver remain intact
-- **Accessibility IDs:** Required for UI tests. Convention: `{Component}_{Action}` (e.g., `Toolbar_H2H`, `TierMove_Sheet`, `ActionBar_MultiSelect`)
+- **Accessibility IDs:** Required for UI tests. Convention: `{Component}_{Action}` (e.g., `Toolbar_HeadToHead`, `TierMove_Sheet`, `ActionBar_MultiSelect`)
 
 | Accessibility ID | Purpose |
 | --- | --- |
 | `Toolbar_NewTierList` | Primary entry point for the tier list wizard |
-| `Toolbar_H2H` | Head-to-head launch action (enabled when enough items) |
+| `Toolbar_HeadToHead` | HeadToHead launch action (enabled when enough items) |
 | `Toolbar_Analysis` | Opens/closes analytics overlay |
 | `Toolbar_Themes` | Presents theme library |
 | `ActionBar_MoveBatch` | Batch move button in selection mode |
 | `TierMove_Sheet` | Cross-platform tier move modal – ensures UI tests can wait for presentation |
-| `MatchupOverlay_Apply` | Commit action for head-to-head queue |
+| `HeadToHeadOverlay_Apply` | Commit action for HeadToHead queue |
 | `AIGenerator_Overlay` | AI item generation overlay (macOS/iOS only; tvOS shows platform notice) |
 - **tvOS 26 interactions:** Use `.focusable(interactions: .activate)` for action-only surfaces and opt into additional interactions (text entry, directional input) only when needed so the new multi-mode focus model stays predictable on remote hardware.
 - **Default focus:** Use `.prefersDefaultFocus(true, in:)` and a scoped `@FocusState` to land on the primary control when overlays appear.
@@ -453,11 +453,12 @@ func handleMoveCommand(_ direction: MoveCommandDirection) {
 
 **See Also:** `FOCUS_ANTI_PATTERN_AUDIT.md` for comprehensive analysis and examples.
 
-### Head-to-Head (Matchup Arena) Overlay Specifics
-- **Pass tile:** Centered with `arrow.uturn.left.circle` icon, live counter (`MatchupOverlay_SkippedBadge`)
-- **Focus default:** Primary contender when a pair is active
-- **Queue exhaustion:** Auto-show Commit button (`MatchupOverlay_Apply`) when queue empties
-- **Exit handling:** Route through `cancelH2H(fromExitCommand:)` for debounce
+### HeadToHead Overlay Specifics
+- **Phase badge + metrics rail:** Header shows the current phase, overall progress dial, and metric tiles for completed, remaining, and skipped comparisons.
+- **Pass tile:** Centered with `arrow.uturn.left.circle` icon and accessibility hint; live counter surfaces in the metrics row.
+- **Focus default:** Primary contender when a pair is active, Commit button when the queue is empty. Custom directional routing keeps focus predictable.
+- **Queue exhaustion:** Auto-show Commit button (`HeadToHeadOverlay_Apply`) when queue empties, plus completion panel messaging.
+- **Exit handling:** Route through `cancelHeadToHead(fromExitCommand:)` for debounce.
 
 ### Design Tokens
 **Use `Design/` helpers exclusively** — no hardcoded values
@@ -631,7 +632,7 @@ TiercadeCore owns package tests. Run `swift test` inside `TiercadeCore/` (Swift 
 | Screen | ID to assert | Expectation |
 | --- | --- | --- |
 | Toolbar | `Toolbar_NewTierList` | Exists, isEnabled before launching wizard |
-| Head-to-Head overlay | `MatchupOverlay_Apply` | Appears once queue empties |
+| HeadToHead overlay | `HeadToHeadOverlay_Apply` | Appears once queue empties |
 | Tier Move | `TierMove_Sheet` | Presented before accepting commands |
 | Batch bar | `ActionBar_MoveBatch` | Visible only when selection count > 0 |
 | Analytics | `Toolbar_Analysis` | Toggles analytics sidebar |

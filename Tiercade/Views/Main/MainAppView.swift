@@ -25,7 +25,7 @@ internal struct MainAppView: View {
 
     internal var body: some View {
         @Bindable var app = app
-        // Note: Modal overlays (ThemePicker, TierListBrowser, MatchupArena, Analytics)
+        // Note: Modal overlays (ThemePicker, TierListBrowser, HeadToHead, Analytics)
         // use .fullScreenCover() which provides automatic focus containment via separate
         // presentation context. This follows Apple's recommended pattern for modal presentations.
         // Use centralized overlay blocking check from AppState for remaining ZStack overlays
@@ -104,7 +104,11 @@ internal struct MainAppView: View {
         }
         #endif
 
-        // Note: TierMove, MatchupArena (Head-to-Head), AnalyticsSidebar, TierListBrowser,
+        if app.headToHead.isActive {
+            AccessibilityBridgeView(identifier: "HeadToHeadOverlay_Root")
+        }
+
+        // Note: TierMove, HeadToHead, AnalyticsSidebar, TierListBrowser,
         // and ThemePicker are presented as fullScreenCover modals for proper focus containment
         // (see modal presentations after body)
 
@@ -357,7 +361,7 @@ private extension MainAppView {
             return true
         }
         if app.headToHead.isActive {
-            app.cancelH2H(fromExitCommand: true)
+            app.cancelHeadToHead(fromExitCommand: true)
             return true
         }
         return false
@@ -482,7 +486,7 @@ extension View {
             }
             #endif
             // MARK: Focus-contained modal presentations
-            // Tier List Browser, Theme Picker, Head-to-Head
+            // Tier List Browser, Theme Picker, HeadToHead
             #if os(macOS)
             .sheet(isPresented: Binding(
                 get: { app.overlays.showTierListBrowser },
@@ -498,9 +502,9 @@ extension View {
             }
             .sheet(isPresented: Binding(
                 get: { app.headToHead.isActive },
-                set: { if !$0 { app.cancelH2H() } }
+                set: { if !$0 { app.cancelHeadToHead() } }
             )) {
-                MatchupArenaOverlay(app: app)
+                HeadToHeadOverlay(app: app)
             }
             #else
             .fullScreenCover(isPresented: Binding(
@@ -517,9 +521,9 @@ extension View {
             }
             .fullScreenCover(isPresented: Binding(
                 get: { app.headToHead.isActive },
-                set: { if !$0 { app.cancelH2H() } }
+                set: { if !$0 { app.cancelHeadToHead() } }
             )) {
-                MatchupArenaOverlay(app: app)
+                HeadToHeadOverlay(app: app)
             }
             #endif
             // Analytics Sidebar (tvOS only)

@@ -30,7 +30,7 @@ extension Logger {
     /// General application state changes and lifecycle events
     internal static let appState = Logger(subsystem: subsystem, category: "AppState")
 
-    /// Head-to-Head matchup system logs
+    /// HeadToHead matchup system logs
     internal static let headToHead = Logger(subsystem: subsystem, category: "HeadToHead")
 
     /// Persistence, save, and load operations

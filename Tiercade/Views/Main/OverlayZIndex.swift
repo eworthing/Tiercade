@@ -37,6 +37,6 @@ internal enum OverlayZIndex {
     /// Quick move overlay (tvOS unified item actions)
     static let quickMove: Double = 45
 
-    /// Standard overlays (quick rank, head-to-head, general overlays)
+    /// Standard overlays (quick rank, HeadToHead, general overlays)
     static let standardOverlay: Double = 40
 }

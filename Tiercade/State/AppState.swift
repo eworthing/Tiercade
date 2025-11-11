@@ -122,8 +122,8 @@ final class AppState {
     /// Consolidated state for Apple Intelligence chat and AI generation
     var aiGeneration: AIGenerationState
 
-    // MARK: - Head-to-Head State
-    /// Consolidated state for Head-to-Head ranking mode (replaces 17 scattered h2h* properties)
+    // MARK: - HeadToHead State
+    /// Consolidated state for HeadToHead ranking mode (replaces 17 scattered h2h* properties)
     var headToHead = HeadToHeadState()
 
     // MARK: - Persistence State

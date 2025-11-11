@@ -1,38 +1,38 @@
 import Foundation
 import TiercadeCore
 
-/// Phase of a Head-to-Head ranking session
-internal enum H2HSessionPhase: Sendable {
+/// Phase of a HeadToHead ranking session
+internal enum HeadToHeadPhase: Sendable {
     case quick
     case refinement
 }
 
-/// Consolidated state for Head-to-Head ranking mode
+/// Consolidated state for HeadToHead ranking mode
 ///
 /// Previously scattered across 17+ properties in AppState with `h2h` prefix.
 /// Consolidation benefits:
-/// - Single source of truth for H2H session data
+/// - Single source of truth for HeadToHead session data
 /// - Semantic grouping of related properties
 /// - Improved autocomplete (no more `h2h` prefix pollution)
 /// - Self-documenting structure
 internal struct HeadToHeadState: Sendable {
     // MARK: - Session Control
 
-    /// Whether a Head-to-Head session is currently active
+    /// Whether a HeadToHead session is currently active
     var isActive: Bool = false
 
     /// Timestamp when the session was activated (for exit command debouncing)
     var activatedAt: Date?
 
-    /// Current phase of the Head-to-Head session
-    var phase: H2HSessionPhase = .quick
+    /// Current phase of the HeadToHead session
+    var phase: HeadToHeadPhase = .quick
 
-    /// Snapshot of tier state before H2H session started (for undo)
+    /// Snapshot of tier state before HeadToHead session started (for undo)
     var initialSnapshot: TierListState.TierStateSnapshot?
 
     // MARK: - Item Pool & Pairing
 
-    /// Items participating in the Head-to-Head session
+    /// Items participating in the HeadToHead session
     var pool: [Item] = []
 
     /// Current pair being compared (nil if between comparisons)
@@ -50,7 +50,7 @@ internal struct HeadToHeadState: Sendable {
     // MARK: - Comparison Records
 
     /// Win/loss records for each item (keyed by item ID)
-    var records: [String: H2HRecord] = [:]
+    var records: [String: HeadToHeadRecord] = [:]
 
     /// Set of skipped pair keys (for deduplication)
     var skippedPairKeys: Set<String> = []
@@ -74,7 +74,7 @@ internal struct HeadToHeadState: Sendable {
     // MARK: - Artifacts
 
     /// Artifacts generated after quick phase (tier assignments, confidence scores)
-    var artifacts: H2HArtifacts?
+    var artifacts: HeadToHeadArtifacts?
 
     // MARK: - Computed Properties
 

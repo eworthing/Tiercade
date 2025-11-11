@@ -1,13 +1,11 @@
 import SwiftUI
 import TiercadeCore
 
-internal struct MatchupProgressDial: View {
+internal struct HeadToHeadProgressDial: View {
     internal let progress: Double
     internal let label: String
 
-    private var clampedProgress: Double {
-        min(max(progress, 0), 1)
-    }
+    private var clampedProgress: Double { min(max(progress, 0), 1) }
 
     internal var body: some View {
         ZStack {
@@ -35,7 +33,7 @@ internal struct MatchupProgressDial: View {
             .padding(.horizontal, 12)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Matchup progress")
+        .accessibilityLabel("HeadToHead progress")
         .accessibilityValue(label)
     }
 
@@ -51,7 +49,7 @@ internal struct MatchupProgressDial: View {
     }
 }
 
-internal struct MatchupCandidateCard: View {
+internal struct HeadToHeadCandidateCard: View {
     enum AlignmentHint { case leading, trailing }
 
     internal let item: Item
@@ -149,7 +147,7 @@ internal struct MatchupCandidateCard: View {
     }
 }
 
-internal struct MatchupPassTile: View {
+internal struct HeadToHeadPassTile: View {
     internal let action: () -> Void
 
     internal var body: some View {
@@ -168,7 +166,7 @@ internal struct MatchupPassTile: View {
         #else
         .buttonStyle(.plain)
         #endif
-        .accessibilityLabel("Pass on this matchup")
+        .accessibilityLabel("Pass on this pairing")
         .accessibilityHint("Skip and revisit later")
     }
 
@@ -182,13 +180,13 @@ internal struct MatchupPassTile: View {
     }
 }
 
-internal struct MatchupCompletionPanel: View {
+internal struct HeadToHeadCompletionPanel: View {
     internal var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "crown.fill")
                 .font(.system(size: 64, weight: .bold))
                 .symbolRenderingMode(.hierarchical)
-            Text("Every matchup reviewed")
+            Text("All comparisons complete")
                 .font(.title2.weight(.semibold))
             Text("Choose Commit Rankings to apply your results or leave the session to discard them.")
                 .font(TypeScale.body)
@@ -206,6 +204,63 @@ internal struct MatchupCompletionPanel: View {
                         .stroke(Color.white.opacity(0.22), lineWidth: 1.4)
                 )
         )
-        .accessibilityIdentifier("MatchupOverlay_Complete")
+        .accessibilityIdentifier("HeadToHeadOverlay_Complete")
+    }
+}
+
+internal struct HeadToHeadPhaseBadge: View {
+    internal let phase: HeadToHeadPhase
+
+    internal var body: some View {
+        Label {
+            Text(phaseLabel)
+                .font(.footnote.weight(.semibold))
+        } icon: {
+            Image(systemName: phaseIcon)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 12)
+        .background(Capsule().fill(Color.white.opacity(0.12)))
+        .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
+        .accessibilityLabel("HeadToHead phase \(phaseLabel)")
+    }
+
+    private var phaseLabel: String {
+        switch phase {
+        case .quick: return "Quick pass"
+        case .refinement: return "Refinement"
+        }
+    }
+
+    private var phaseIcon: String {
+        switch phase {
+        case .quick: return "bolt.fill"
+        case .refinement: return "sparkles"
+        }
+    }
+}
+
+internal struct HeadToHeadMetricTile: View {
+    internal let title: String
+    internal let value: String
+    internal let footnote: String?
+
+    internal var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title.uppercased())
+                .font(.caption)
+                .kerning(1.1)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.title2.weight(.semibold))
+            if let footnote {
+                Text(footnote)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
     }
 }

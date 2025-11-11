@@ -195,7 +195,7 @@ internal final class TierListState {
         totalItemCount > 0
     }
 
-    /// Whether there are enough items for pairing (H2H mode)
+    /// Whether there are enough items for pairing (HeadToHead mode)
     internal var hasEnoughForPairing: Bool {
         totalItemCount >= 2
     }
