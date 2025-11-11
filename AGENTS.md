@@ -451,7 +451,7 @@ func handleMoveCommand(_ direction: MoveCommandDirection) {
 }
 ```
 
-**See Also:** `FOCUS_ANTI_PATTERN_AUDIT.md` for comprehensive analysis and examples.
+**See Also:** [Focus Anti-Pattern Reference](#focus-anti-pattern-reference-nov-2025) for comprehensive analysis and examples.
 
 ### HeadToHead Overlay Specifics
 - **Phase badge + metrics rail:** Header shows the current phase, overall progress dial, and metric tiles for completed, remaining, and skipped comparisons.
@@ -561,6 +561,62 @@ ItemCardView(item: item)
 - tvOS: Long-press on Play/Pause button works but may conflict with focus UX—test thoroughly
 
 **Accessibility:** Ensure all context menu actions have keyboard/VoiceOver equivalents in toolbars or menus.
+
+## Focus Anti-Pattern Reference (Nov 2025)
+
+The November 2025 sweep cataloged every place we tried to “trap” focus manually. Treat this as a living checklist for future overlays.
+
+### Manual reset loop (never reintroduce)
+
+```swift
+// ❌ Anti-pattern: fighting the focus system
+@State private var lastFocus: HeadToHeadFocusAnchor?
+@State private var suppressReset = false
+
+.onChange(of: focusAnchor) { _, newValue in
+    guard !suppressReset else { return }
+    if let newValue { lastFocus = newValue }
+    else if let lastFocus { focusAnchor = lastFocus } // <-- wrong
+}
+```
+
+- Breaks tvOS hardware navigation and VoiceOver.
+- **Correct fix:** use modal presentation (`.fullScreenCover()`/`.sheet()`), declare a `@FocusState` default, and use helper methods to route arrows INSIDE the overlay rather than forcing focus back to a stored value.
+
+### Legitimate custom routing
+
+```swift
+func handleMoveCommand(_ direction: MoveCommandDirection) {
+    switch direction {
+    case .left:  focusAnchor = anchorToLeft(of: focusAnchor)
+    case .right: focusAnchor = anchorToRight(of: focusAnchor)
+    case .up:    focusAnchor = anchorAbove(focusAnchor)
+    case .down:  focusAnchor = anchorBelow(focusAnchor)
+    }
+}
+```
+
+Use this when the grid/layout is too custom for the default focus engine; it *guides* focus without trapping it.
+
+### Overlay status snapshot
+
+| Overlay | Status (Nov 2025) |
+| --- | --- |
+| HeadToHeadOverlay.swift | ✅ Modal + `@FocusState`, no manual reset |
+| QuickMoveOverlay.swift | ✅ Converted to modal |
+| TierListBrowserScene.swift | ✅ Converted to modal |
+| ThemeCreatorOverlay.swift | ⚠️ Keep verifying it stays modal after edits |
+| ThemeLibraryOverlay.swift | ⚠️ Ensure obsolete `.onChange` workarounds stay removed |
+
+### Checklist for any new overlay
+
+1. Presented with `.fullScreenCover()` / `.sheet()` when it must trap focus?
+2. Default focus assigned via `@FocusState` and `.prefersDefaultFocus`?
+3. No `lastFocus` / `suppress*` variables or focus reassignments on `.onChange`?
+4. `.onExitCommand` routes to the overlay’s cancel action?
+5. Directional routing (if needed) uses helper methods rather than forcing focus to a stored anchor?
+
+If any answer is “no,” fix the focus model before merging. This keeps us compliant with Apple’s guidance and prevents the regressions documented during the audit.
 
 ## Build & Test
 
@@ -683,7 +739,7 @@ Before merging a new overlay, verify:
 - [ ] Test Exit command behavior (dismisses overlay, doesn't exit app)
 - [ ] Verify overlay appears in accessibility hierarchy immediately
 
-**See Also:** `FOCUS_ANTI_PATTERN_AUDIT.md` for detailed examples and anti-patterns to avoid.
+**See Also:** [Focus Anti-Pattern Reference](#focus-anti-pattern-reference-nov-2025) for detailed examples and anti-patterns to avoid.
 
 ## Data Contracts & Patterns
 
