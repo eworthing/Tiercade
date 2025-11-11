@@ -73,10 +73,9 @@ internal extension View {
             .onChange(of: overlayHasFocus.wrappedValue) { _, newValue in
                 guard !newValue, app.headToHead.isActive else { return }
                 Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(50))
-                    if app.headToHead.isActive {
-                        overlayHasFocus.wrappedValue = true
-                    }
+                    try? await Task.sleep(for: FocusWorkarounds.reassertDelay)
+                    guard app.headToHead.isActive else { return }
+                    overlayHasFocus.wrappedValue = true
                 }
             }
             .accessibilityAddTraits(.isModal)

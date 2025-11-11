@@ -285,7 +285,8 @@ internal struct QuickRankOverlay: View {
                 .onChange(of: overlayHasFocus) { _, newValue in
                 if !newValue {
                 Task { @MainActor in
-                try? await Task.sleep(for: .milliseconds(50))
+                try? await Task.sleep(for: FocusWorkarounds.reassertDelay)
+                guard app.quickRankTarget != nil else { return }
                 overlayHasFocus = true
                 }
                 }

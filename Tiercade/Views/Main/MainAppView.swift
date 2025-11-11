@@ -332,6 +332,10 @@ private extension MainAppView {
             app.closeAIChat()
             return true
         }
+        if app.overlays.showThemePicker {
+            app.dismissThemePicker()
+            return true
+        }
         if app.overlays.showTierListBrowser {
             app.dismissTierListBrowser()
             return true

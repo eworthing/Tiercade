@@ -38,6 +38,16 @@ internal struct ThemeLibraryOverlay: View {
             overlayHasFocus = false
             #endif
         }
+        #if !os(tvOS)
+        .onChange(of: overlayHasFocus) { _, newValue in
+            guard !newValue else { return }
+            Task { @MainActor in
+                try? await Task.sleep(for: FocusWorkarounds.reassertDelay)
+                guard appState.overlays.showThemePicker else { return }
+                overlayHasFocus = true
+            }
+        }
+        #endif
     }
 }
 
