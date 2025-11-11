@@ -19,7 +19,7 @@ internal struct TierMoveSheet: View {
     private var title: String {
         if isBatchMode {
             return "\(app.selection.count) Item\(app.selection.count == 1 ? "" : "s")"
-        } else if let item = app.overlays.quickMoveTarget {
+        } else if let item = app.overlays.quickMoveTarget ?? app.quickRankTarget {
             return item.name ?? item.id
         }
         return "Move Item"
@@ -31,7 +31,7 @@ internal struct TierMoveSheet: View {
 
     private var currentTier: String? {
         guard !isBatchMode,
-              let item = app.overlays.quickMoveTarget else { return nil }
+              let item = app.overlays.quickMoveTarget ?? app.quickRankTarget else { return nil }
         return app.currentTier(of: item.id)
     }
 
@@ -194,7 +194,7 @@ internal struct TierMoveSheet: View {
     @ViewBuilder
     private var actionButtons: some View {
         HStack(spacing: 12) {
-            if !isBatchMode, let item = app.overlays.quickMoveTarget {
+            if !isBatchMode, let item = app.overlays.quickMoveTarget ?? app.quickRankTarget {
                 #if os(iOS)
                 if let editMode, editMode.wrappedValue == .active {
                     Button(app.isSelected(item.id) ? "Remove from Selection" : "Add to Selection") {
@@ -205,13 +205,16 @@ internal struct TierMoveSheet: View {
                 }
                 #endif
 
-                Button("View Details") {
-                    app.overlays.detailItem = item
-                    dismiss()
-                    app.cancelQuickMove()
+                // Only show View Details for QuickMove (not QuickRank)
+                if app.overlays.quickMoveTarget != nil {
+                    Button("View Details") {
+                        app.overlays.detailItem = item
+                        dismiss()
+                        app.cancelQuickMove()
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("TierMove_ViewDetails")
                 }
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("TierMove_ViewDetails")
             }
         }
     }
@@ -220,7 +223,12 @@ internal struct TierMoveSheet: View {
     // MARK: - Actions
 
     private func moveTo(_ tierName: String) {
-        app.commitQuickMove(to: tierName)
+        // Handle both QuickMove and QuickRank
+        if app.overlays.quickMoveTarget != nil {
+            app.commitQuickMove(to: tierName)
+        } else if app.quickRankTarget != nil {
+            app.commitQuickRank(to: tierName)
+        }
         dismiss()
     }
 
@@ -322,55 +330,53 @@ private struct TierMoveRow: View {
                 action()
             }
         }) {
-            HStack(spacing: rowSpacing) {
-                // Tier color swatch for quick recognition
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
+            HStack(spacing: 0) {
+                // Left accent bar (Hybrid design element)
+                Rectangle()
                     .fill(tierColor)
-                    .frame(width: colorSwatchSize, height: colorSwatchSize)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                    )
+                    .frame(width: leftBarWidth)
 
-                // Tier label
-                Text(displayLabel)
-                    .font(labelFont)
-                    .fontWeight(.bold)
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: rowSpacing) {
+                    // Tier label (in tier color - Hybrid design)
+                    Text(displayLabel)
+                        .font(labelFont)
+                        .fontWeight(.heavy)  // Bolder for prominence
+                        .foregroundStyle(tierColor)  // Colored text instead of primary
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer(minLength: 12)
+                    Spacer(minLength: 12)
 
-                // Item count
-                if itemCount > 0 {
-                    Text("\(itemCount)")
-                        .font(countFont)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+                    // Item count
+                    if itemCount > 0 {
+                        Text("\(itemCount)")
+                            .font(countFont)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+
+                    // Current tier indicator (palette rendering - Hybrid design)
+                    if isCurrentTier {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(iconFont)
+                            .foregroundStyle(tierColor, secondaryIconColor)
+                            .symbolRenderingMode(.palette)
+                    } else {
+                        Image(systemName: "arrow.right.circle")
+                            .font(iconFont)
+                            .foregroundStyle(tierColor, secondaryIconColor)
+                            .symbolRenderingMode(.palette)
+                            .opacity(isFocused ? 1 : 0)
+                    }
                 }
-
-                // Current tier indicator
-                if isCurrentTier {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(iconFont)
-                        .foregroundStyle(tierColor)
-                        .symbolRenderingMode(.hierarchical)
-                } else {
-                    Image(systemName: "arrow.right.circle")
-                        .font(iconFont)
-                        .foregroundStyle(.tertiary)
-                        .symbolRenderingMode(.hierarchical)
-                        .opacity(isFocused ? 1 : 0)
-                }
+                .padding(.horizontal, rowHorizontalPadding)
+                .padding(.vertical, rowVerticalPadding)
             }
-            .padding(.horizontal, rowHorizontalPadding)
-            .padding(.vertical, rowVerticalPadding)
             .frame(maxWidth: .infinity)
-            .background(rowBackground)
+            .background(rowBackground)  // Includes tier-tinted background
             .overlay(rowBorder)
             .contentShape(Rectangle())
         }
@@ -385,6 +391,18 @@ private struct TierMoveRow: View {
     }
 
     // MARK: - Layout Helpers
+
+    private var secondaryIconColor: Color {
+        Color.white.opacity(0.85)
+    }
+
+    private var leftBarWidth: CGFloat {
+        #if os(tvOS)
+        return 12
+        #else
+        return 10
+        #endif
+    }
 
     private var rowSpacing: CGFloat {
         #if os(tvOS)
@@ -430,48 +448,60 @@ private struct TierMoveRow: View {
         #if os(tvOS)
         return .title3
         #else
-        return .title3
-        #endif
-    }
+    // MARK: - Opacity Constants
 
-    private var colorSwatchSize: CGFloat {
-        #if os(tvOS)
-        return 18
-        #else
-        return 12
-        #endif
-    }
+    private let focusedBackgroundOpacity: Double = 0.18
+    private let unfocusedBackgroundOpacity: Double = 0.12
 
     @ViewBuilder
     private var rowBackground: some View {
+        // Hybrid design: tier-tinted background
         #if os(tvOS)
         RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
-            .fill(Color.black.opacity(0.6))
+            .fill(tierColor.opacity(isFocused ? focusedBackgroundOpacity : unfocusedBackgroundOpacity))
+            .background(
+                RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
+                    .fill(Color.black.opacity(0.6))
+            )
         #else
         RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(Palette.cardBackground)
+            .fill(tierColor.opacity(unfocusedBackgroundOpacity))
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Palette.cardBackground)
+            )
+        #endif
+    }
+                    .fill(Palette.cardBackground)
+            )
         #endif
     }
 
     @ViewBuilder
     private var rowBorder: some View {
+        // Hybrid design: tier-colored border
         #if os(tvOS)
         RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
             .strokeBorder(borderColor, lineWidth: borderWidth)
         #else
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .strokeBorder(borderColor, lineWidth: 2)
-        #endif
-    }
+    private let currentTierBorderOpacity: Double = 0.8
+    private let defaultBorderOpacity: Double = 0.35
 
     private var borderColor: Color {
-        if isCurrentTier {
-            return tierColor.opacity(0.8)
-        }
         #if os(tvOS)
-        return isFocused ? Color.white : tierColor.opacity(0.3)
+        // tvOS: white on focus, tier color otherwise
+        if isFocused {
+            return Color.white
+        }
+        return tierColor.opacity(isCurrentTier ? currentTierBorderOpacity : defaultBorderOpacity)
         #else
-        return Palette.stroke
+        // iOS/macOS: tier color always
+        return tierColor.opacity(isCurrentTier ? currentTierBorderOpacity : defaultBorderOpacity)
+        #endif
+    }
+        #else
+        // iOS/macOS: tier color always
+        return tierColor.opacity(isCurrentTier ? 0.8 : 0.35)
         #endif
     }
 

@@ -1,6 +1,5 @@
 import SwiftUI
 import TiercadeCore
-// HIG-aligned tvOS layout metrics
 #if os(tvOS)
 import Foundation
 #endif
@@ -32,7 +31,41 @@ internal struct MainAppView: View {
         // Use centralized overlay blocking check from AppState for remaining ZStack overlays
         let modalBlockingFocus = app.blocksBackgroundFocus
 
-        return Group {
+        platformContent(modalBlockingFocus: modalBlockingFocus)
+            #if os(iOS) || os(tvOS)
+            .environment(\.editMode, $editMode)
+            #endif
+            #if os(tvOS)
+            .task { FocusUtils.seedFocus() }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active { FocusUtils.seedFocus() }
+            }
+            .onExitCommand { handleBackCommand() }
+            #endif
+            .overlay {
+                // Compose overlays here so they appear on all platforms (including tvOS)
+                ZStack { overlayStack }
+            }
+            #if !os(tvOS)
+            .overlay(alignment: .topLeading) {
+                Button(action: { handleBackCommand() }, label: {
+                    EmptyView()
+                })
+                .keyboardShortcut(.cancelAction)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+            }
+            #endif
+            .applyDetailSheet(app: app)
+            .applyAlerts(app: app)
+            .applyModalPresentations(app: app)
+    }
+
+    // MARK: - Content Helpers
+
+    @ViewBuilder
+    private func platformContent(modalBlockingFocus: Bool) -> some View {
+        Group {
             #if os(tvOS)
             tvOSPrimaryContent(modalBlockingFocus: modalBlockingFocus)
             #elseif os(macOS)
@@ -47,198 +80,11 @@ internal struct MainAppView: View {
             platformPrimaryContent(modalBlockingFocus: modalBlockingFocus)
             #endif
         }
-        #if os(iOS) || os(tvOS)
-        .environment(\.editMode, $editMode)
-        #endif
-        #if os(tvOS)
-        .task { FocusUtils.seedFocus() }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active { FocusUtils.seedFocus() }
-        }
-        .onExitCommand { handleBackCommand() }
-        #endif
-        .overlay {
-            // Compose overlays here so they appear on all platforms (including tvOS)
-            ZStack { overlayStack }
-        }
-        #if !os(tvOS)
-        .overlay(alignment: .topLeading) {
-            Button(action: { handleBackCommand() }, label: {
-                EmptyView()
-            })
-            .keyboardShortcut(.cancelAction)
-            .frame(width: 0, height: 0)
-            .accessibilityHidden(true)
-        }
-        #endif
-        #if !os(tvOS)
-        .sheet(item: Binding(
-            get: { app.overlays.detailItem },
-            set: { app.overlays.detailItem = $0 }
-        )) { detail in
-            NavigationStack {
-                DetailView(item: detail)
-                    .navigationTitle(detail.name ?? detail.id)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Close") { app.overlays.detailItem = nil }
-                        }
-                    }
-            }
-            .presentationDetents([.medium, .large])
-        }
-        #endif
-        .alert("Randomize Tiers?", isPresented: Binding(
-            get: { app.showRandomizeConfirmation },
-            set: { app.showRandomizeConfirmation = $0 }
-        )) {
-            Button("Cancel", role: .cancel) {
-                app.showRandomizeConfirmation = false
-            }
-            Button("Randomize", role: .destructive) {
-                app.showRandomizeConfirmation = false
-                app.performRandomize()
-            }
-        } message: {
-            Text("This will randomly redistribute all items across tiers.")
-        }
-        .alert("Reset Tier List?", isPresented: Binding(
-            get: { app.showResetConfirmation },
-            set: { app.showResetConfirmation = $0 }
-        )) {
-            Button("Cancel", role: .cancel) {
-                app.showResetConfirmation = false
-            }
-            Button("Reset", role: .destructive) {
-                app.showResetConfirmation = false
-                app.performReset(showToast: true)
-            }
-        } message: {
-            Text("This will delete all items and reset the tier list. This action cannot be undone.")
-        }
-        #if os(macOS)
-        .sheet(isPresented: Binding(
-            get: { app.overlays.showTierListCreator },
-            set: { app.overlays.showTierListCreator = $0 }
-        )) {
-            if let draft = app.tierListCreatorDraft {
-                TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
-            }
-        }
-        #else
-        .fullScreenCover(isPresented: Binding(
-            get: { app.overlays.showTierListCreator },
-            set: { app.overlays.showTierListCreator = $0 }
-        )) {
-            if let draft = app.tierListCreatorDraft {
-                TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
-            }
-        }
-        #endif
-        #if !os(tvOS)
-        .sheet(isPresented: Binding(
-            get: { app.showingAnalysis },
-            set: { app.showingAnalysis = $0 }
-        )) {
-            AnalysisView(app: app)
-        }
-        #endif
-        // MARK: Focus-contained modal presentations
-        #if os(macOS)
-        .sheet(isPresented: Binding(
-            get: { app.overlays.showTierListBrowser },
-            set: { app.overlays.showTierListBrowser = $0 }
-        )) {
-            TierListBrowserScene(app: app)
-        }
-        .sheet(isPresented: Binding(
-            get: { app.overlays.showThemePicker },
-            set: { app.overlays.showThemePicker = $0 }
-        )) {
-            ThemeLibraryOverlay()
-        }
-        .sheet(isPresented: Binding(
-            get: { app.headToHead.isActive },
-            set: { if !$0 { app.cancelH2H() } }
-        )) {
-            MatchupArenaOverlay(app: app)
-        }
-        #else
-        .fullScreenCover(isPresented: Binding(
-            get: { app.overlays.showTierListBrowser },
-            set: { app.overlays.showTierListBrowser = $0 }
-        )) {
-            TierListBrowserScene(app: app)
-        }
-        .fullScreenCover(isPresented: Binding(
-            get: { app.overlays.showThemePicker },
-            set: { app.overlays.showThemePicker = $0 }
-        )) {
-            ThemeLibraryOverlay()
-        }
-        .fullScreenCover(isPresented: Binding(
-            get: { app.headToHead.isActive },
-            set: { if !$0 { app.cancelH2H() } }
-        )) {
-            MatchupArenaOverlay(app: app)
-        }
-        #endif
-        #if os(tvOS)
-        .fullScreenCover(isPresented: Binding(
-            get: { app.overlays.showAnalyticsSidebar },
-            set: { app.overlays.showAnalyticsSidebar = $0 }
-        )) {
-            // Maintain sidebar visual: transparent left, content right
-            HStack(spacing: 0) {
-                Spacer(minLength: 0)
-                AnalyticsSidebarView()
-                    .frame(maxHeight: .infinity)
-            }
-        }
-        .fullScreenCover(item: Binding(
-            get: { app.overlays.quickMoveTarget },
-            set: { app.overlays.quickMoveTarget = $0 }
-        )) { _ in
-            TierMoveSheet(app: app)
-        }
-        #endif
-        #if os(macOS)
-        .sheet(isPresented: Binding(
-            get: { app.overlays.showThemeCreator },
-            set: { app.overlays.showThemeCreator = $0 }
-        )) {
-            if let draft = app.theme.themeDraft {
-                ThemeCreatorOverlay(appState: app, draft: draft)
-            }
-        }
-        .sheet(item: Binding(
-            get: { app.overlays.quickMoveTarget },
-            set: { app.overlays.quickMoveTarget = $0 }
-        )) { _ in
-            TierMoveSheet(app: app)
-        }
-        #else
-        .fullScreenCover(isPresented: Binding(
-            get: { app.overlays.showThemeCreator },
-            set: { app.overlays.showThemeCreator = $0 }
-        )) {
-            if let draft = app.theme.themeDraft {
-                ThemeCreatorOverlay(appState: app, draft: draft)
-            }
-        }
-        .fullScreenCover(item: Binding(
-            get: { app.overlays.quickMoveTarget },
-            set: { app.overlays.quickMoveTarget = $0 }
-        )) { _ in
-            TierMoveSheet(app: app)
-        }
-        #endif
     }
 
     // MARK: - Overlay Composition
     @ViewBuilder
     private var overlayStack: some View {
-        // Progress indicator (centered)
         if app.isLoading {
             ProgressIndicatorView(
                 isLoading: app.isLoading,
@@ -248,19 +94,20 @@ internal struct MainAppView: View {
             .zIndex(OverlayZIndex.progress)
         }
 
-        // Quick Rank overlay
+        // Quick Rank overlay (tvOS only - other platforms use modal)
+        #if os(tvOS)
         if app.quickRankTarget != nil {
             AccessibilityBridgeView(identifier: "QuickRank_Overlay")
 
             QuickRankOverlay(app: app)
                 .zIndex(OverlayZIndex.standardOverlay)
         }
+        #endif
 
         // Note: TierMove, MatchupArena (Head-to-Head), AnalyticsSidebar, TierListBrowser,
         // and ThemePicker are presented as fullScreenCover modals for proper focus containment
         // (see modal presentations after body)
 
-        // AI Chat overlay
         if app.aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform {
             AccessibilityBridgeView(identifier: "AIChat_Overlay")
 
@@ -278,7 +125,6 @@ internal struct MainAppView: View {
             .zIndex(OverlayZIndex.modalOverlay)
         }
 
-        // Toast messages (bottom)
         if let toast = app.currentToast {
             VStack {
                 Spacer()
@@ -288,7 +134,6 @@ internal struct MainAppView: View {
             .zIndex(OverlayZIndex.toast)
         }
 
-        // Detail overlay (all platforms)
         if let detail = app.overlays.detailItem {
             detailOverlay(for: detail)
         }
@@ -428,12 +273,10 @@ internal struct MainAppView: View {
     @ViewBuilder
     private func tvOSPrimaryContent(modalBlockingFocus: Bool) -> some View {
         ZStack {
-            // Grid content with focus section
             tierGridLayer(modalBlockingFocus: modalBlockingFocus)
                 .focusSection()
         }
         .overlay(alignment: .top) {
-            // Toolbar pinned to top edge
             TVToolbarView(
                 app: app,
                 modalActive: modalBlockingFocus,
@@ -544,6 +387,212 @@ private extension MainAppView {
     }
 }
 
+// MARK: - View Modifier Extensions
+
+extension View {
+    @ViewBuilder
+    func applyDetailSheet(app: AppState) -> some View {
+        self
+            #if !os(tvOS)
+            .sheet(item: Binding(
+                get: { app.overlays.detailItem },
+                set: { app.overlays.detailItem = $0 }
+            )) { detail in
+                NavigationStack {
+                    DetailView(item: detail)
+                        .navigationTitle(detail.name ?? detail.id)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Close") { app.overlays.detailItem = nil }
+                            }
+                        }
+                }
+                .presentationDetents([.medium, .large])
+            }
+            #endif
+    }
+
+    @ViewBuilder
+    func applyAlerts(app: AppState) -> some View {
+        self
+            .alert("Randomize Tiers?", isPresented: Binding(
+                get: { app.showRandomizeConfirmation },
+                set: { app.showRandomizeConfirmation = $0 }
+            )) {
+                Button("Cancel", role: .cancel) {
+                    app.showRandomizeConfirmation = false
+                }
+                Button("Randomize", role: .destructive) {
+                    app.showRandomizeConfirmation = false
+                    app.performRandomize()
+                }
+            } message: {
+                Text("This will randomly redistribute all items across tiers.")
+            }
+            .alert("Reset Tier List?", isPresented: Binding(
+                get: { app.showResetConfirmation },
+                set: { app.showResetConfirmation = $0 }
+            )) {
+                Button("Cancel", role: .cancel) {
+                    app.showResetConfirmation = false
+                }
+                Button("Reset", role: .destructive) {
+                    app.showResetConfirmation = false
+                    app.performReset(showToast: true)
+                }
+            } message: {
+                Text("This will delete all items and reset the tier list. This action cannot be undone.")
+            }
+    }
+
+    @ViewBuilder
+    func applyModalPresentations(app: AppState) -> some View {
+        self
+            // Tier List Creator
+            #if os(macOS)
+            .sheet(isPresented: Binding(
+                get: { app.overlays.showTierListCreator },
+                set: { app.overlays.showTierListCreator = $0 }
+            )) {
+                if let draft = app.tierListCreatorDraft {
+                    TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
+                }
+            }
+            #else
+            .fullScreenCover(isPresented: Binding(
+                get: { app.overlays.showTierListCreator },
+                set: { app.overlays.showTierListCreator = $0 }
+            )) {
+                if let draft = app.tierListCreatorDraft {
+                    TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
+                }
+            }
+            #endif
+            // Analysis View
+            #if !os(tvOS)
+            .sheet(isPresented: Binding(
+                get: { app.showingAnalysis },
+                set: { app.showingAnalysis = $0 }
+            )) {
+                AnalysisView(app: app)
+            }
+            #endif
+            // MARK: Focus-contained modal presentations
+            // Tier List Browser, Theme Picker, Head-to-Head
+            #if os(macOS)
+            .sheet(isPresented: Binding(
+                get: { app.overlays.showTierListBrowser },
+                set: { app.overlays.showTierListBrowser = $0 }
+            )) {
+                TierListBrowserScene(app: app)
+            }
+            .sheet(isPresented: Binding(
+                get: { app.overlays.showThemePicker },
+                set: { app.overlays.showThemePicker = $0 }
+            )) {
+                ThemeLibraryOverlay()
+            }
+            .sheet(isPresented: Binding(
+                get: { app.headToHead.isActive },
+                set: { if !$0 { app.cancelH2H() } }
+            )) {
+                MatchupArenaOverlay(app: app)
+            }
+            #else
+            .fullScreenCover(isPresented: Binding(
+                get: { app.overlays.showTierListBrowser },
+                set: { app.overlays.showTierListBrowser = $0 }
+            )) {
+                TierListBrowserScene(app: app)
+            }
+            .fullScreenCover(isPresented: Binding(
+                get: { app.overlays.showThemePicker },
+                set: { app.overlays.showThemePicker = $0 }
+            )) {
+                ThemeLibraryOverlay()
+            }
+            .fullScreenCover(isPresented: Binding(
+                get: { app.headToHead.isActive },
+                set: { if !$0 { app.cancelH2H() } }
+            )) {
+                MatchupArenaOverlay(app: app)
+            }
+            #endif
+            // Analytics Sidebar (tvOS only)
+            #if os(tvOS)
+            .fullScreenCover(isPresented: Binding(
+                get: { app.overlays.showAnalyticsSidebar },
+                set: { app.overlays.showAnalyticsSidebar = $0 }
+            )) {
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    AnalyticsSidebarView()
+                        .frame(maxHeight: .infinity)
+                }
+            }
+            .fullScreenCover(item: Binding(
+                get: { app.overlays.quickMoveTarget },
+                set: { app.overlays.quickMoveTarget = $0 }
+            )) { _ in
+                TierMoveSheet(app: app)
+            }
+            #endif
+            // Theme Creator and Tier Move/Rank
+            #if os(macOS)
+            .sheet(isPresented: Binding(
+                get: { app.overlays.showThemeCreator },
+                set: { app.overlays.showThemeCreator = $0 }
+            )) {
+                if let draft = app.theme.themeDraft {
+                    ThemeCreatorOverlay(appState: app, draft: draft)
+                }
+            }
+            .sheet(item: Binding(
+                get: { app.overlays.quickMoveTarget },
+                set: { app.overlays.quickMoveTarget = $0 }
+            )) { _ in
+                TierMoveSheet(app: app)
+            }
+            .sheet(item: Binding(
+                get: { app.quickRankTarget },
+                set: { app.quickRankTarget = $0 }
+            )) { _ in
+                QuickRankOverlay(app: app)
+            }
+            #else
+            .fullScreenCover(isPresented: Binding(
+                get: { app.overlays.showThemeCreator },
+                set: { app.overlays.showThemeCreator = $0 }
+            )) {
+                if let draft = app.theme.themeDraft {
+                    ThemeCreatorOverlay(appState: app, draft: draft)
+                }
+            }
+            .fullScreenCover(item: Binding(
+                get: { app.overlays.quickMoveTarget },
+                set: { app.overlays.quickMoveTarget = $0 }
+            )) { _ in
+                TierMoveSheet(app: app)
+            }
+            .fullScreenCover(item: Binding(
+                get: { app.quickRankTarget },
+                set: { app.quickRankTarget = $0 }
+            )) { _ in
+                QuickRankOverlay(app: app)
+            }
+            #endif
+            // Design Demo (DEBUG only)
+            #if DEBUG
+            .sheet(isPresented: Binding(
+                get: { app.showDesignDemo },
+                set: { app.showDesignDemo = $0 }
+            )) {
+                TierMoveDesignDemo()
+            }
+            #endif
+    }
+}
+
 // Small preview
 #Preview("Main") { MainAppView() }
 
@@ -564,7 +613,3 @@ private struct AccessibilityBridgeView: View {
             .accessibilityElement(children: .ignore)
     }
 }
-
-#if os(tvOS)
-// Simple tvOS-friendly toolbar exposing essential actions as buttons.
-#endif

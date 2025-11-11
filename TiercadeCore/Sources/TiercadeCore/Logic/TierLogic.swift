@@ -38,7 +38,8 @@ public enum TierLogic {
     }
 
     public static func validateTiersShape(_ tiers: Items) -> Bool {
-        // In Swift typing already constrains shape, but keep parity placeholder
+        // Swift typing already constrains shape; keep this function to preserve
+        // API compatibility with prior versions that exposed a validator hook.
         true
     }
 }

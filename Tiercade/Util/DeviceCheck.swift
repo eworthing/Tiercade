@@ -2,12 +2,13 @@ import Foundation
 
 internal enum DeviceCheck {
     internal static var isLowMemoryTV: Bool {
-        // Very rough placeholder: Apple TV HD devices are older; refine if needed
-        // Since we don't have UIDevice on tvOS publicly exposing model identifiers, use OS version as proxy
+        // Only applicable on tvOS. Return false there (no low-memory gating by default).
+        // On non-tvOS platforms, return true to ensure this flag is never used to
+        // gate non-TV code paths by mistake.
         #if os(tvOS)
         return false
         #else
-        return false
+        return true
         #endif
     }
 }

@@ -297,7 +297,7 @@ internal struct CardView: View {
         }
         .buttonStyle(.plain)
         #if !os(tvOS)
-        .focusable()  // Enable keyboard event handling (Space/Return) on Catalyst/iOS
+        .focusable()  // Enable keyboard event handling (Space/Return) on iOS/macOS
         .onKeyPress(.space) {
             onTapFocus?()  // Update focus state
             if !isMultiSelectActive {
@@ -386,7 +386,7 @@ internal struct CardView: View {
             app.beginQuickMove(item)
         }
         #else
-        // On Catalyst, clicking a card updates focus for keyboard navigation
+        // On macOS, clicking a card updates focus for keyboard navigation
         // The actual QuickRank action is triggered by Space/Return on the grid
         if isMultiSelectActive {
             app.toggleSelection(item.id)

@@ -70,17 +70,16 @@ struct ToastMessage: Identifiable {
     }
 }
 
-// Use the canonical core package types directly - no TL-prefixed fallbacks or
-// typealias shims. This file retains a small, explicit extension on the core
-// Item to provide a convenient attributes bag for code that prefers that view
-// of the model, but we do not create alias types or TL* fallbacks.
+// Use the canonical core package types directly — no TL‑prefixed fallbacks or
+// typealias shims. Intentionally keep this file focused on UI helpers and
+// small app‑only types.
 
-// Intentionally keep this file focused on UI helpers and small app-only types.
-// The compatibility extensions that exposed a legacy `attributes` bag and
-// aliases for `season`/`thumbUri` have been removed in favor of using the
-// canonical `TiercadeCore.Item` API directly (name, seasonString/seasonNumber,
-// imageUrl, videoUrl, etc.). This repository is in a migration phase and the
-// app code has been updated to reference the canonical fields.
+// Notes on attributes: The convenience `init(id:attributes:)` that accepts a
+// generic attributes bag now lives in TiercadeCore.Item (see
+// TiercadeCore/Sources/TiercadeCore/Models/Models.swift). We do not add any
+// Item extensions here. App code should reference the canonical Item fields
+// (name, seasonString/seasonNumber, imageUrl, videoUrl, etc.) or use the
+// core package initializer when mapping from loose dictionaries.
 
 // MARK: - Color helpers
 // Note: Basic hex parsing for backward compatibility. Full color utilities in ColorUtilities.swift

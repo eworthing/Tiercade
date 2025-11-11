@@ -117,10 +117,10 @@ struct TiercadeApp: App {
         // Acceptance tests require macOS/iOS - fail immediately on tvOS
         #if os(tvOS)
         bootLog("❌ FATAL: Acceptance tests cannot run on tvOS (requires macOS 26.0+ or iOS 26.0+)")
-        bootLog("ℹ️  Run tests on Mac Catalyst instead: ./build_install_launch.sh catalyst")
+        bootLog("ℹ️  Run tests on macOS instead: ./build_install_launch.sh macos")
         print("\n❌ ERROR: -runAcceptanceTests flag is not supported on tvOS")
         print("ℹ️  Acceptance tests require macOS 26.0+ or iOS 26.0+")
-        print("ℹ️  Use Mac Catalyst build: ./build_install_launch.sh catalyst\n")
+        print("ℹ️  Use native macOS build: ./build_install_launch.sh macos\n")
         exit(99)
         #endif
 

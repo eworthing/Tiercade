@@ -133,5 +133,6 @@ internal nonisolated enum ColorUtilities {
 
 // MARK: - Color Extensions
 
-// Note: Color(hex:) extension is defined in SharedCore.swift for backward compatibility
-// This extension provides the wideGamut static method as a convenience wrapper
+// Note: A lightweight `Color(hex:)` initializer exists in SharedCore.swift for
+// basic hex parsing. Prefer using ColorUtilities.color(hex:alpha:) when you
+// need Display P3–aware color creation and contrast helpers in this module.

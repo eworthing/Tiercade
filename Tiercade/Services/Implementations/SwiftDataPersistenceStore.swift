@@ -5,10 +5,9 @@ import os
 
 /// SwiftData-backed persistence store for tier lists
 ///
-/// **PR 1 NOTE**: This is a stub implementation for dependency injection infrastructure.
-/// The actual persistence logic will be implemented in PR 3 when we extract PersistenceState.
-///
-/// For now, this just wraps the existing AppState persistence methods.
+/// Stub implementation for dependency injection infrastructure.
+/// Concrete persistence logic is handled by AppState today and will migrate
+/// into a dedicated store implementation in a future change.
 @MainActor
 internal final class SwiftDataPersistenceStore: TierPersistenceStore {
     private let modelContext: ModelContext
@@ -16,7 +15,7 @@ internal final class SwiftDataPersistenceStore: TierPersistenceStore {
 
     internal init(modelContext: ModelContext) {
         self.modelContext = modelContext
-        logger.info("SwiftDataPersistenceStore initialized (PR 1 stub)")
+        logger.info("SwiftDataPersistenceStore initialized (stub)")
     }
 
     internal nonisolated var isAvailable: Bool {

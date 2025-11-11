@@ -44,6 +44,24 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 - Long work must use `withLoadingIndicator` / `updateProgress` from `AppState+Progress`; success and failure feedback flows through `AppState+Toast`.
 - Persistence & import/export: `AppState+Persistence` auto-saves to UserDefaults; `AppState+Export` and `+Import` wrap async file IO with typed errors (`ExportError`, `ImportError`). tvOS excludes PDF export via `#if os(tvOS)`.
 
+### Parallelizing Independent Operations
+
+Use `async let` to run independent async operations concurrently:
+
+```swift
+// ❌ Sequential (slow): waits for export before starting analysis
+let exportResult = await generateExport()
+let analysisResult = await computeAnalysis()
+
+// ✅ Parallel (fast): both run simultaneously
+async let exportResult = generateExport()
+async let analysisResult = computeAnalysis()
+let (export, analysis) = await (exportResult, analysisResult)
+```
+
+**When to use:** Operations have no dependencies and don't need sequencing
+**Examples in Tiercade:** Export + Analysis, theme fetch + catalog refresh, concurrent tier calculations
+
 ### AI Generation Loop Invariants
 **When working with Apple Intelligence retry logic** (AppleIntelligence+UniqueListGeneration.swift), preserve these critical state semantics:
 
@@ -175,9 +193,10 @@ A SwiftUI tier list management app targeting tvOS 26+/iOS 26+ with Swift 6 stric
 - **Testing:** Swift Testing (`@Test`, `#expect`) for new tests. Migrate XCTest incrementally
 - **Persistence:** SwiftData (`@Model`, `@Query`) for new features. Migrate Core Data gradually
 - **Dependencies:** SwiftPM only. Use SPM traits: `traits: [.featureFlag("feature-name")]`
-- **Complexity:** `cyclomatic_complexity` warning at 8, error at 12
+- **Complexity:** `cyclomatic_complexity` warning at 8, error at 12. Enforces testability and prevents reactive cleanup cycles (see commits 7f9fb84, 373d731 where 700+ line files required splitting)
+- **Form Flow:** Multi-field forms use `.submitLabel(.next/.done)` + `.onSubmit { }` + `@FocusState` for keyboard Return key navigation
 
-**Migration priorities:** `ObservableObject`→`@Observable` | Combine→`AsyncSequence` | `NavigationView`→`NavigationStack` | Core Data→SwiftData | XCTest→Swift Testing | callbacks→`async/await` | queues→actors | String `+`→String interpolation | Test RTL text handling
+**Migration priorities:** `ObservableObject`→`@Observable` | Combine→`AsyncSequence` | `NavigationView`→`NavigationStack` | Core Data→SwiftData | XCTest→Swift Testing | callbacks→`async/await` | queues→actors | String `+`→String interpolation | Test RTL text handling | destructive `alert`→`confirmationDialog`
 
 ## Platform Strategy: Native macOS ✅ (Completed Oct 2025)
 
@@ -521,6 +540,26 @@ VStack {
 - ✅ **Apply glass** only to toolbars, headers, and button chrome
 - ✅ **Enable focus effects** with `.focusEffectDisabled(false)` on text fields
 - ✅ **Test focus** in tvOS simulator to verify keyboard and focus overlays are readable
+
+### Context Menus (iOS/macOS)
+
+Provide long-press/right-click actions on items:
+
+```swift
+ItemCardView(item: item)
+    .contextMenu {
+        Button("Move to S") { app.moveItem(item.id, to: "S") }
+        Button("Edit") { app.editItem(item.id) }
+        Button("Delete", role: .destructive) { app.deleteItem(item.id) }
+    }
+```
+
+**Platform considerations:**
+- iOS/iPadOS: Long-press reveals menu
+- macOS: Right-click or two-finger tap
+- tvOS: Long-press on Play/Pause button works but may conflict with focus UX—test thoroughly
+
+**Accessibility:** Ensure all context menu actions have keyboard/VoiceOver equivalents in toolbars or menus.
 
 ## Build & Test
 
