@@ -79,3 +79,9 @@ test_configs.json
 
 # NPM lock files (if not using npm)
 package-lock.json
+
+# Documentation
+docs/books/
+
+# Claude Code MCP configuration (personal)
+.mcp.json

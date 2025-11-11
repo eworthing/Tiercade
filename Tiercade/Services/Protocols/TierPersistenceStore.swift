@@ -6,8 +6,8 @@ import TiercadeCore
 /// Implementations handle the actual storage mechanism (SwiftData, UserDefaults, etc.)
 /// while keeping the persistence logic testable through mock implementations.
 ///
-/// **PR 1 NOTE**: This is infrastructure-only for dependency injection.
-/// The actual persistence implementation will be completed in PR 3.
+/// Infrastructure-only protocol for dependency injection.
+/// A concrete implementation can use SwiftData, files, or other storage.
 internal protocol TierPersistenceStore: Sendable {
     /// Indicates whether this store is available and ready to use
     var isAvailable: Bool { get }

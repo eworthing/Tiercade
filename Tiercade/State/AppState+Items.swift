@@ -5,7 +5,6 @@ import TiercadeCore
 internal extension AppState {
     // MARK: - Item Management
     func reset(showToast: Bool = false) {
-        // Check if there's any data to reset
         let hasAnyData = (tierOrder + ["unranked"]).contains { tierName in
             (tiers[tierName] ?? []).count > 0
         }

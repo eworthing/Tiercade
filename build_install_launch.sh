@@ -16,11 +16,11 @@ usage() {
 Usage: ./build_install_launch.sh [platform] [options]
 
 Platforms:
-  (none)      Build all platforms (tvOS, iOS, macOS) - default
-  all         Build all platforms (tvOS, iOS, macOS)
+  (none)      Build all platforms (tvOS, iOS, iPadOS, macOS) - default
+  all         Build all platforms (tvOS, iOS, iPadOS, macOS)
   tvos        Build tvOS only
   ios         Build iOS only
-  ipad        Build for iPad mini only
+  ipad        Build for iPad (iPadOS)
   macos       Build macOS only
   mac         (alias for macos)
 
@@ -79,7 +79,7 @@ EXPANDED_PLATFORMS=()
 for platform in "${PLATFORMS[@]}"; do
   case "$platform" in
     all)
-      EXPANDED_PLATFORMS+=("tvos" "ios" "macos")
+      EXPANDED_PLATFORMS+=("tvos" "ios" "ipad" "macos")
       ;;
     mac)
       EXPANDED_PLATFORMS+=("macos")

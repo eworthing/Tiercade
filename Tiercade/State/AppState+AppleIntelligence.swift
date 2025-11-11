@@ -234,7 +234,7 @@ final class AppleIntelligenceServiceDeprecated {
     /// - Returns: true if available and can proceed, false if unavailable (error message added)
     private func validateModelAvailability() -> Bool {
         print("🤖 [AI] Checking model availability...")
-        // Check system model availability (iOS/iPadOS/macOS/Catalyst/visionOS 26+)
+        // Check system model availability (iOS/iPadOS/macOS/visionOS 26+)
         let model = SystemLanguageModel.default
         switch model.availability {
         case .available:

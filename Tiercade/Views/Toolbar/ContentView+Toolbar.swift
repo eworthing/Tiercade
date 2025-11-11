@@ -40,6 +40,39 @@ internal struct ToolbarView: ToolbarContent {
         }
         #endif
 
+        // Debug Demo button (DEBUG builds only, all platforms)
+        #if DEBUG
+        #if os(iOS)
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                app.showDesignDemo = true
+            } label: {
+                Label("Design Demo", systemImage: "square.grid.3x3")
+            }
+            .accessibilityIdentifier("Toolbar_DesignDemo")
+        }
+        #elseif os(macOS)
+        ToolbarItem(placement: .primaryAction) {
+            Button {
+                app.showDesignDemo = true
+            } label: {
+                Label("Design Demo", systemImage: "square.grid.3x3")
+            }
+            .accessibilityIdentifier("Toolbar_DesignDemo")
+            .help("View Tier Row Design Options")
+        }
+        #elseif os(tvOS)
+        ToolbarItem(placement: .automatic) {
+            Button {
+                app.showDesignDemo = true
+            } label: {
+                Label("Design Demo", systemImage: "square.grid.3x3")
+            }
+            .accessibilityIdentifier("Toolbar_DesignDemo")
+        }
+        #endif
+        #endif
+
         // Primary actions - iOS uses topBarTrailing, macOS uses automatic
         #if os(iOS)
         ToolbarItemGroup(placement: .topBarTrailing) {

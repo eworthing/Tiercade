@@ -1,6 +1,6 @@
 @preconcurrency import XCTest
 
-/// Convenience abstraction for the hardware keys we need to exercise in Mac Catalyst UI tests.
+/// Convenience abstraction for the hardware keys we need to exercise in macOS UI tests.
 internal enum HardwareKey {
     case left, right, up, down, enter, returnKey, escape, space, tab
 
@@ -27,7 +27,7 @@ extension XCUIElement {
 }
 
 extension XCTestCase {
-    /// Boot the Catalyst build with the standard UI-test arguments.
+    /// Boot the macOS build with the standard UI-test arguments.
     @discardableResult
     internal func launchTiercade(arguments extraArguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
@@ -159,7 +159,7 @@ extension XCTestCase {
     }
 }
 
-/// Keyboard navigation smoke tests for the Catalyst build.
+/// Keyboard navigation smoke tests for the macOS build.
 internal final class TiercadeKeyboardNavigationTests: XCTestCase {
     internal override func tearDownWithError() throws {
         XCUIApplication().terminate()
@@ -187,7 +187,7 @@ internal final class TiercadeKeyboardNavigationTests: XCTestCase {
     }
 
     /// Validates that arrow keys can navigate between cards without requiring mouse clicks,
-    /// matching tvOS spatial navigation behavior on Mac Catalyst.
+    /// matching tvOS spatial navigation behavior on macOS.
     @MainActor internal func testArrowKeyNavigationBetweenCards() throws {
         let app = launchTiercade()
         let window = primaryWindow(in: app)

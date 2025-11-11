@@ -31,10 +31,9 @@ internal actor AppleIntelligenceListGenerator: UniqueListGenerating {
 
         logger.info("Generating \(count) items for topic: \(topic)")
 
-        // For PR 1, we're just setting up the protocol infrastructure
-        // The actual implementation will be wired in PR 2 when we extract AIGenerationState
-        // For now, return an empty array to satisfy the protocol
-        logger.warning("AppleIntelligenceListGenerator not yet wired to FoundationModels (PR 1 infrastructure only)")
+        // Stub: FoundationModels integration not implemented yet. Returning an
+        // empty result keeps protocol contract intact until integration lands.
+        logger.warning("AppleIntelligenceListGenerator not yet wired to FoundationModels (stub)")
         return []
 
         #else

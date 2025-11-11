@@ -7,7 +7,7 @@ import os
 
 import TiercadeCore
 
-// Use core Item/Items and core logic directly (breaking change)
+//
 
 // MARK: - Export & Import System Types
 
@@ -105,8 +105,13 @@ final class AppState {
     var currentToast: ToastMessage?
     var quickRankTarget: Item?
     var batchQuickMoveActive: Bool = false
-    // Layout preferences
+    // MARK: - Layout Preferences
     var cardDensityPreference: CardDensityPreference = .compact
+
+    // MARK: - Debug/Demo
+    #if DEBUG
+    var showDesignDemo: Bool = false
+    #endif
     // Tier List Creator state (active flags for focus management)
     var tierListCreatorActive: Bool = false
     var tierListWizardContext: TierListWizardContext = .create
@@ -137,13 +142,13 @@ final class AppState {
     /// Consolidated state for loading indicators and progress tracking
     var progress = ProgressState()
 
-    // Progress Tracking & Visual Feedback
+    // MARK: - Progress Tracking & Visual Feedback
     var dragTargetTier: String?
     var draggingId: String?
     var isProcessingSearch: Bool = false
     let bundledProjects: [BundledProject] = BundledProjects.all
 
-    // Confirmation alerts
+    
     var showRandomizeConfirmation: Bool = false
     var showResetConfirmation: Bool = false
 
@@ -168,18 +173,14 @@ final class AppState {
     ) {
         self.modelContext = modelContext
 
-        // Initialize services with provided implementations or defaults
         self.persistenceStore = persistenceStore ?? SwiftDataPersistenceStore(modelContext: modelContext)
         self.listGenerator = listGenerator ?? AppleIntelligenceListGenerator()
         self.themeCatalog = themeCatalog ?? BundledThemeCatalog(modelContext: modelContext)
 
-        // Initialize AI generation state with injected list generator
         self.aiGeneration = AIGenerationState(listGenerator: self.listGenerator)
 
-        // Initialize persistence state with injected persistence store
         self.persistence = PersistenceState(persistenceStore: self.persistenceStore)
 
-        // Initialize theme state with injected theme catalog
         self.theme = ThemeState(themeCatalog: self.themeCatalog)
 
         let didLoad = load()
@@ -209,9 +210,6 @@ final class AppState {
     }
 
     // MARK: - Logging
-    // Logging now uses Swift's unified logging system (os.Logger)
-    // See Util/Logging.swift for logger definitions
-    // Logs are viewable in Console.app and automatically integrated with system logging
 
     private func setupAutosave() {
         autosaveTask?.cancel()
@@ -330,8 +328,7 @@ final class AppState {
             self?.markAsChanged()
         }
 
-        // Show toast for undo/redo operations
-        if tierList.undoManager?.isUndoing == true {
+                if tierList.undoManager?.isUndoing == true {
             showInfoToast("Undone", message: "\(action) reverted {undo}")
         } else if tierList.undoManager?.isRedoing == true {
             showInfoToast("Redone", message: "\(action) repeated {redo}")
@@ -398,12 +395,6 @@ final class AppState {
     var canRandomizeItems: Bool { tierList.canRandomizeItems }
     var canStartHeadToHead: Bool { !headToHead.isActive && hasEnoughForPairing }
     var canShowAnalysis: Bool { hasAnyItems }
-
-    // MARK: - Enhanced Persistence
-
-    // MARK: - Async File Operations with Progress Tracking
-
-    // Export/import helpers moved to AppState+ExportImport.swift
 
     // MARK: - Analysis & Statistics System
 

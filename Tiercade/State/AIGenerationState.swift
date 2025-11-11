@@ -192,9 +192,9 @@ internal final class AIGenerationState {
         }
 
         #if canImport(FoundationModels)
-        // For PR 2, we're setting up the infrastructure
-        // The actual FoundationModels integration will be completed when we have time
-        // For now, add a placeholder response
+        // Stub path: infrastructure is in place; full FoundationModels
+        // integration will be implemented in a follow-up.
+        // Provide a placeholder response for now.
         try? await Task.sleep(for: .seconds(0.5))
         messages.append(AIChatMessage(
             content: "AI generation infrastructure is set up. Full FoundationModels integration will be added in a follow-up.",
