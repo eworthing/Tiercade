@@ -12,7 +12,7 @@
 - Verified Dynamic Type guidance by referencing Apple’s “Applying custom fonts to text” article, which also documents the `ScaledMetric` pattern we rely on for sizing ([source](https://developer.apple.com/documentation/swiftui/applying-custom-fonts-to-text/)).
 - Confirmed layout best practices (flexible containers vs. fixed frames) via the SwiftUI “Layout fundamentals” collection ([source](https://developer.apple.com/documentation/swiftui/layout-fundamentals/)).
 - Checked current `TypeScale` definitions directly in `Tiercade/Design/DesignTokens.swift`; only `h2`, `h3`, `body`, `label`, and `metadata` tokens exist today.
-- Apple’s public typography HIG page requires JavaScript and doesn’t surface static point sizes through the docs tooling; because we couldn’t corroborate the numeric table that was here previously, those values have been removed instead of repeating unverified data. The recommendations below now focus on semantic token usage rather than assumed point sizes.
+- Apple’s public typography HIG page requires JavaScript in order to expose the platform-specific point-size table, so we rendered it with Playwright (Chromium) to capture the authoritative values for iOS/iPadOS, macOS, tvOS, visionOS, and watchOS. Those numbers are now cited in the Apple Guidelines section below.
 - All references to “violates Dynamic Type guidelines” now target the actual offending cases (absolute `.font(.system(size: ...))` usages). Instances that already use SwiftUI text styles but bypass our design tokens are flagged as AGENTS.md compliance gaps instead.
 - Where statements previously claimed guaranteed accessibility conformance (e.g., “WCAG 2.1 Level AA ✅”), they’ve been rephrased as goals because we haven’t run the required audits yet.
 
@@ -270,6 +270,20 @@ internal static let metadata = Font.title3.weight(.semibold)
 - Apple stresses choosing flexible layout containers (stacks, grids, `ViewThatFits`, etc.) so content can adapt to different interface dimensions.
 - Fine-grained adjustments (alignment, spacing, padding) should respond to dynamic metrics instead of fixed constants, especially in modal overlays where available width varies dramatically (tvOS vs. macOS windowed).
 - These principles reinforce the plan to pair flexible stacks with `@ScaledMetric` so the overlay remains legible from 10-foot (tvOS) and arm’s-length (iOS/macOS) contexts without introducing per-platform forks.
+
+### Platform Default & Minimum Text Sizes
+
+**Source:** Apple Typography HIG (captured via Playwright-rendered page on 2025-11-13).
+
+| Platform | Default size | Minimum size |
+|----------|--------------|--------------|
+| iOS / iPadOS | 17 pt | 11 pt |
+| macOS | 13 pt | 10 pt |
+| tvOS | 29 pt | 23 pt |
+| visionOS | 17 pt | 12 pt |
+| watchOS | 16 pt | 12 pt |
+
+Apple’s guidance: “Use font sizes that most people can read easily. Follow the recommended default and minimum text sizes for each platform—for both custom and system fonts—to ensure your text is legible on all devices.” Rendering the page with Playwright is necessary because the static HTML returned to non-JS clients omits the table entirely.
 
 ### ScaledMetric Usage Pattern
 
