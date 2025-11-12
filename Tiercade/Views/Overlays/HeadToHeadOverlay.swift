@@ -19,6 +19,11 @@ internal struct HeadToHeadOverlay: View {
 
     private let minOverlayWidth: CGFloat = 960
 
+    // MARK: - Scaled Dimensions
+    @ScaledMetric(relativeTo: .title3) private var progressDialSize = ScaledDimensions.progressDialSize
+    @ScaledMetric(relativeTo: .body) private var buttonMinWidthSmall = ScaledDimensions.buttonMinWidthSmall
+    @ScaledMetric(relativeTo: .body) private var buttonMinWidthLarge = ScaledDimensions.buttonMinWidthLarge
+
     internal var body: some View {
         ZStack {
             LinearGradient(
@@ -135,9 +140,9 @@ internal struct HeadToHeadOverlay: View {
     }
 
     private var overviewSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: Metrics.grid * 2) {
             HStack(alignment: .firstTextBaseline, spacing: Metrics.grid * 1.5) {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: Metrics.grid) {
                     Text("HeadToHead Arena")
                         .font(TypeScale.h2)
                     Text("Compare contenders, resolve ties, and keep your rankings focused.")
@@ -150,14 +155,14 @@ internal struct HeadToHeadOverlay: View {
             }
             HStack(alignment: .center, spacing: Metrics.grid * 3) {
                 HeadToHeadProgressDial(progress: app.headToHead.overallProgress, label: progressLabel)
-                    .frame(width: 150, height: 150)
+                    .frame(width: progressDialSize, height: progressDialSize)
                     .accessibilityIdentifier("HeadToHeadOverlay_Progress")
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Metrics.grid * 1.5) {
                     Text(statusSummary)
-                        .font(.title3.weight(.semibold))
+                        .font(TypeScale.h3)
                     Text(secondaryStatus)
-                        .font(.body)
+                        .font(TypeScale.body)
                         .foregroundStyle(.secondary)
 
                     HStack(spacing: Metrics.grid * 2.5) {
@@ -239,7 +244,12 @@ internal struct HeadToHeadOverlay: View {
             } label: {
                 Label("Leave Session", systemImage: "xmark.circle")
                     .labelStyle(.titleAndIcon)
-                    .frame(minWidth: 220)
+                    #if os(tvOS)
+                    // tvOS buttons size themselves appropriately with .glass styles; avoid fixed widths
+                    .frame(minWidth: 0)
+                    #else
+                    .frame(minWidth: buttonMinWidthSmall)
+                    #endif
             }
             #if os(tvOS)
             .buttonStyle(.glass)
@@ -257,7 +267,11 @@ internal struct HeadToHeadOverlay: View {
             } label: {
                 Label("Commit Rankings", systemImage: "checkmark.seal")
                     .labelStyle(.titleAndIcon)
-                    .frame(minWidth: 260)
+                    #if os(tvOS)
+                    .frame(minWidth: 0)
+                    #else
+                    .frame(minWidth: buttonMinWidthLarge)
+                    #endif
             }
             #if os(tvOS)
             .buttonStyle(.glassProminent)

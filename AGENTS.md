@@ -367,7 +367,8 @@ Keep the header’s phase badge + metrics rail, surface the pass tile with `arro
 ### Design Tokens
 **Use `Design/` helpers exclusively** — no hardcoded values
 - Colors: `Palette.primary`, `Palette.text`, `Palette.brand`
-- Typography: `TypeScale.h1`, `TypeScale.body`, etc.
+- Typography: `TypeScale.*` for every text surface; apply `TypeScale.IconScale` (or text-style-driven `.imageScale`) to SF Symbols so they inherit Dynamic Type. Never use `.font(.system(size: …))` for icons or inline glyphs outside of prototypes.
+- Layout: Prefer `ScaledDimensions` with `@ScaledMetric(relativeTo:)` for any fixed width/height/padding that must react to Dynamic Type. Avoid raw numeric frames unless the size truly never changes.
 - Spacing: `Metrics.padding`, `Metrics.cardPadding`, `TVMetrics.topBarHeight`
 - Effects: Apply Liquid Glass with SwiftUI's tvOS 26 APIs — `glassEffect(_:in:)`, `GlassEffectContainer`, and `buttonStyle(.glass)`/`GlassProminentButtonStyle` — for chrome surfaces in our tvOS 26 target; fallbacks are optional and only necessary if we later choose to support older devices.
 
