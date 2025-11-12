@@ -7,11 +7,22 @@
 
 ---
 
+## Validation Notes (2025-11-13)
+
+- Verified Dynamic Type guidance by referencing Apple’s “Applying custom fonts to text” article, which also documents the `ScaledMetric` pattern we rely on for sizing ([source](https://developer.apple.com/documentation/swiftui/applying-custom-fonts-to-text/)).
+- Confirmed layout best practices (flexible containers vs. fixed frames) via the SwiftUI “Layout fundamentals” collection ([source](https://developer.apple.com/documentation/swiftui/layout-fundamentals/)).
+- Checked current `TypeScale` definitions directly in `Tiercade/Design/DesignTokens.swift`; only `h2`, `h3`, `body`, `label`, and `metadata` tokens exist today.
+- Apple’s public typography HIG page requires JavaScript and doesn’t surface static point sizes through the docs tooling; because we couldn’t corroborate the numeric table that was here previously, those values have been removed instead of repeating unverified data. The recommendations below now focus on semantic token usage rather than assumed point sizes.
+- All references to “violates Dynamic Type guidelines” now target the actual offending cases (absolute `.font(.system(size: ...))` usages). Instances that already use SwiftUI text styles but bypass our design tokens are flagged as AGENTS.md compliance gaps instead.
+- Where statements previously claimed guaranteed accessibility conformance (e.g., “WCAG 2.1 Level AA ✅”), they’ve been rephrased as goals because we haven’t run the required audits yet.
+
+---
+
 ## Executive Summary
 
-The HeadToHead overlay was recently rebuilt with correct modal presentation patterns but violates Apple's Dynamic Type guidelines and our AGENTS.md design token requirements. This document provides a complete remediation plan to enable proper scaling across all platforms while maintaining tvOS-first design principles.
+The HeadToHead overlay was recently rebuilt with correct modal presentation patterns but still violates our AGENTS.md design-token requirements and leaves a few controls (notably iconography) locked to absolute typographic sizes. This document provides a complete remediation plan to enable proper scaling across all platforms while maintaining tvOS-first design principles that align with Apple’s Dynamic Type and layout guidance.
 
-**Impact:** Users with accessibility needs cannot adjust text size. tvOS users experience poor readability at 10-foot viewing distances.
+**Impact:** Portions of the overlay ignore user text-size preferences (fixed-size SF Symbols, rigid frames), creating legibility issues—especially on tvOS at a 10-foot viewing distance.
 
 **Effort:** ~3.5 hours implementation + testing
 **Priority:** HIGH - Affects accessibility compliance and tvOS UX
@@ -70,36 +81,39 @@ Tiercade/Views/Overlays/HeadToHeadOverlay+HelperViews.swift # Cards, tiles, badg
 
 **File: HeadToHeadOverlay.swift**
 
-| Line | Current Code | Type |
-|------|-------------|------|
-| 142 | `.font(TypeScale.h2)` | ✅ Correct |
-| 144 | `.font(TypeScale.body)` | ✅ Correct |
-| 158 | `.font(.title3.weight(.semibold))` | ❌ Hardcoded |
-| 160 | `.font(.body)` | ❌ Hardcoded |
+| Line | Current Code | Evaluation | Notes |
+|------|-------------|------------|-------|
+| 142 | `.font(TypeScale.h2)` | ✅ Tokenized | Uses platform-aware token from `TypeScale`. |
+| 144 | `.font(TypeScale.body)` | ✅ Tokenized | Matches AGENTS guidance. |
+| 158 | `.font(.title3.weight(.semibold))` | ⚠️ Token bypass | Still Dynamic Type friendly, but bypasses `TypeScale`. |
+| 160 | `.font(.body)` | ⚠️ Token bypass | Same as above. |
 
 **File: HeadToHeadOverlay+HelperViews.swift**
 
-| Line | Current Code | Component | Issue |
-|------|-------------|-----------|-------|
-| 28 | `.font(.system(size: 26, weight: .semibold))` | Progress icon | ❌ Fixed size |
-| 30 | `.font(.headline)` | Progress label | ❌ Not TypeScale |
-| 87 | `.font(TypeScale.h3)` | Card title | ✅ Correct |
-| 92 | `.font(.headline)` | Card season | ❌ Not TypeScale |
-| 106 | `.font(TypeScale.body)` | Card description | ✅ Correct |
-| 121 | `.font(TypeScale.metadata)` | Card metadata | ⚠️ Wrong token |
-| 157 | `.font(.system(size: 48, weight: .semibold))` | Pass icon | ❌ Fixed size |
-| 159 | `.font(.headline)` | Pass label | ❌ Not TypeScale |
-| 187 | `.font(.system(size: 64, weight: .bold))` | Completion icon | ❌ Fixed size |
-| 190 | `.font(.title2.weight(.semibold))` | Completion title | ❌ Hardcoded |
-| 192 | `.font(TypeScale.body)` | Completion text | ✅ Correct |
-| 217 | `.font(.footnote.weight(.semibold))` | Phase badge | ❌ Hardcoded |
-| 251 | `.font(.caption)` | Metric label | ❌ Hardcoded |
-| 255 | `.font(.title2.weight(.semibold))` | Metric value | ❌ Hardcoded |
-| 258 | `.font(.caption)` | Metric footnote | ❌ Hardcoded |
+| Line | Current Code | Component | Evaluation |
+|------|-------------|-----------|------------|
+| 28 | `.font(.system(size: 26, weight: .semibold))` | Progress icon | ❌ Absolute size (ignores Dynamic Type). |
+| 30 | `.font(.headline)` | Progress label | ⚠️ Token bypass (still Dynamic Type). |
+| 87 | `.font(TypeScale.h3)` | Card title | ✅ Tokenized. |
+| 92 | `.font(.headline)` | Card season | ⚠️ Token bypass. |
+| 106 | `.font(TypeScale.body)` | Card description | ✅ Tokenized. |
+| 121 | `.font(TypeScale.metadata)` | Card metadata | ✅ Tokenized; already matches design spec. |
+| 157 | `.font(.system(size: 48, weight: .semibold))` | Pass icon | ❌ Absolute size. |
+| 159 | `.font(.headline)` | Pass label | ⚠️ Token bypass. |
+| 187 | `.font(.system(size: 64, weight: .bold))` | Completion icon | ❌ Absolute size. |
+| 190 | `.font(.title2.weight(.semibold))` | Completion title | ⚠️ Token bypass. |
+| 192 | `.font(TypeScale.body)` | Completion text | ✅ Tokenized. |
+| 217 | `.font(.footnote.weight(.semibold))` | Phase badge | ⚠️ Token bypass. |
+| 251 | `.font(.caption)` | Metric label | ⚠️ Token bypass. |
+| 255 | `.font(.title2.weight(.semibold))` | Metric value | ⚠️ Token bypass. |
+| 258 | `.font(.caption)` | Metric footnote | ⚠️ Token bypass. |
 
 **Summary:**
-- ✅ Correct: 4/17 occurrences (24%)
-- ❌ Violations: 13/17 occurrences (76%)
+- Absolute point-size fonts that truly ignore Dynamic Type: **3** (lines 28, 157, 187).
+- Direct SwiftUI text styles that work with Dynamic Type but bypass `TypeScale`: **10** occurrences (lines 30, 92, 158, 160, 159, 190, 217, 251, 255, 258).
+- Already tokenized with `TypeScale`: **6** occurrences (lines 142, 144, 87, 106, 121, 192).
+
+> **Note:** SwiftUI text styles such as `.headline` or `.title2` *do* scale with Dynamic Type (per Apple’s documentation), but AGENTS.md requires us to expose all typography through `TypeScale` so that tvOS/iOS/macOS share a single source of truth. The plan below treats these as design-token gaps rather than Dynamic Type violations.
 
 ### Frame Size Audit
 
@@ -154,7 +168,7 @@ HelperViews.swift:
 
 **Apple Guideline:** [Applying custom fonts to text](https://developer.apple.com/documentation/swiftui/applying-custom-fonts-to-text/)
 
-> SwiftUI's adaptive text display scales the font automatically using Dynamic Type... Use semantic text styles that automatically respond to Dynamic Type settings.
+> “SwiftUI’s adaptive text display scales the font automatically using Dynamic Type.”
 
 **Current violations:**
 ```swift
@@ -168,7 +182,7 @@ HelperViews.swift:
 1. Font size is absolute, doesn't scale with user preferences
 2. No relationship to semantic text hierarchy
 3. Breaks accessibility for users who need larger text
-4. tvOS users at 10-foot distance may find text too small
+4. tvOS users at 10-foot distance may find text too small because the icon label never scales up
 
 ### Violation 2: Direct SwiftUI Font References
 
@@ -178,9 +192,9 @@ HelperViews.swift:
 > **Use `Design/` helpers exclusively** — no hardcoded values
 > Typography: `TypeScale.h1`, `TypeScale.body`, etc.
 
-**Current violations:**
+**Current violations (design-token gap):**
 ```swift
-// ❌ WRONG: Direct SwiftUI font, bypasses TypeScale
+// ⚠️ Token bypass: still Dynamic Type friendly, but skips TypeScale
 .font(.headline)
 .font(.body)
 .font(.title2.weight(.semibold))
@@ -189,10 +203,10 @@ HelperViews.swift:
 ```
 
 **Why this is wrong:**
-1. iOS/macOS/tvOS have different optimal sizes for 10-foot vs. arm's length viewing
-2. TypeScale provides platform-specific scaling
-3. Inconsistent visual hierarchy across overlays
-4. Harder to maintain—changes require updating multiple files
+1. AGENTS.md mandates that typography flow through `TypeScale` to keep tvOS/iOS/macOS aligned.
+2. Without tokens, we must touch every direct `.font()` call when adjusting typographic scale.
+3. Cross-overlay hierarchy drifts because some controls inherit TypeScale updates while others do not.
+4. Design reviews increasingly rely on token searches (`TypeScale.`) to verify compliance; raw text styles are easy to miss.
 
 ### Violation 3: Missing ScaledMetric for Layout Dimensions
 
@@ -213,7 +227,7 @@ HelperViews.swift:
 1. When users increase text size, containers stay fixed → clipping
 2. Button hit targets don't grow proportionally
 3. Visual balance breaks at different accessibility sizes
-4. Fails WCAG 2.1 Level AA requirements for reflow
+4. Risks violating WCAG 2.1 reflow guidance (1.4.10) because content can’t reflow within the available viewport
 
 ### Violation 4: Incomplete TypeScale Token Coverage
 
@@ -243,30 +257,19 @@ internal static let metadata = Font.title3.weight(.semibold)
 
 ### Dynamic Type Support
 
-**Source:** [Scaling Fonts Automatically (UIKit)](https://developer.apple.com/documentation/uikit/scaling-fonts-automatically/)
+**Source:** [Applying custom fonts to text](https://developer.apple.com/documentation/swiftui/applying-custom-fonts-to-text/)
 
-Key principles:
-1. **Use text styles, not point sizes** - `.largeTitle`, `.title`, `.headline`, `.body`, etc.
-2. **Test at all Dynamic Type sizes** - Xcode accessibility inspector
-3. **Allow layout to adapt** - Use flexible frames, avoid fixed sizes
-4. **Scale non-text elements** - Icons, padding, spacing should scale proportionally
+- SwiftUI already scales built-in text styles automatically (“SwiftUI’s adaptive text display scales the font automatically using Dynamic Type.”).
+- When you need custom typography, Apple recommends tying it back to a text style via `relativeTo:` so it participates in Dynamic Type adjustments.
+- The same article highlights using `ScaledMetric` to resize non-text affordances (padding, icon sizes, etc.) in lockstep with accessibility settings.
 
-### Text Style Hierarchy
+### Layout Responsiveness
 
-**tvOS Recommended Sizes (from Apple HIG):**
+**Source:** [Layout fundamentals](https://developer.apple.com/documentation/swiftui/layout-fundamentals/)
 
-| Style | Use Case | tvOS Size | iOS Size |
-|-------|----------|-----------|----------|
-| Extra Large Title | Hero content | 96pt | 48pt |
-| Large Title | Page titles | 76pt | 34pt |
-| Title | Section headers | 57pt | 28pt |
-| Headline | Card titles | 38pt | 17pt |
-| Body | Primary content | 29pt | 17pt |
-| Callout | Secondary content | 31pt | 16pt |
-| Footnote | Metadata | 25pt | 13pt |
-| Caption | Fine print | 23pt | 12pt |
-
-**Note:** These are base sizes; actual rendering scales with Dynamic Type settings.
+- Apple stresses choosing flexible layout containers (stacks, grids, `ViewThatFits`, etc.) so content can adapt to different interface dimensions.
+- Fine-grained adjustments (alignment, spacing, padding) should respond to dynamic metrics instead of fixed constants, especially in modal overlays where available width varies dramatically (tvOS vs. macOS windowed).
+- These principles reinforce the plan to pair flexible stacks with `@ScaledMetric` so the overlay remains legible from 10-foot (tvOS) and arm’s-length (iOS/macOS) contexts without introducing per-platform forks.
 
 ### ScaledMetric Usage Pattern
 
@@ -1500,7 +1503,7 @@ grep -n "\.font(\\.system(size: TypeScale\." Tiercade/Views/Overlays/HeadToHead*
 
 ### Cross-Platform Comparison
 
-**Expected platform differences:**
+**Expected platform differences:** *(values derived from the proposed `TypeScale`/`ScaledDimensions` base sizes — they are design targets, not Apple-provided numbers)*
 
 | Element | tvOS | iOS/macOS |
 |---------|------|-----------|
@@ -1584,28 +1587,29 @@ grep -n "\.font(\\.system(size: TypeScale\." Tiercade/Views/Overlays/HeadToHead*
 
 ### Accessibility Compliance
 
-- ✅ **WCAG 2.1 Level AA** - Text scales to 200% without loss of content
-- ✅ **Apple Accessibility Guidelines** - Dynamic Type fully supported
-- ✅ **Platform Best Practices** - Semantic text styles throughout
+- **Goal:** Meet WCAG 2.1 Level AA reflow expectations (text remains readable at 200% without losing content).
+- **Goal:** Align with Apple accessibility guidance by ensuring every element that conveys information participates in Dynamic Type or `ScaledMetric`.
+- **Goal:** Preserve tvOS-focused hierarchy (semantic text styles first, consistent focus affordances).
 
 ### Code Quality
 
-- ✅ **AGENTS.md compliance** - All design tokens used correctly
-- ✅ **Apple guidelines** - ScaledMetric for layout dimensions
-- ✅ **Consistency** - All spacing uses `Metrics.grid`
-- ✅ **Maintainability** - Single source of truth for all sizes
+- **Goal:** Achieve full AGENTS.md compliance by routing all typography through `TypeScale`.
+- **Goal:** Apply `@ScaledMetric` (per Apple documentation) anywhere a frame/padding value should flex with accessibility settings.
+- **Goal:** Normalize spacing via `Metrics.grid`/`TVMetrics` to keep overlays consistent and easier to audit.
 
 ### Metrics
 
-**Pre-remediation violations:**
-- Hardcoded fonts: 13/17 occurrences (76%)
-- Fixed dimensions: 6 locations
-- Raw spacing literals: ~50% of spacing declarations
+**Pre-remediation snapshot:**
+- Absolute point-size fonts (true Dynamic Type breaks): **3**
+- Direct SwiftUI styles that bypass `TypeScale`: **10**
+- Fixed dimensions: **6** locations
+- Raw spacing literals: roughly **50 %** of spacing declarations
 
-**Post-remediation:**
-- Hardcoded fonts: 0 (0%)
-- Fixed dimensions: 0 (all ScaledMetric)
-- Raw spacing literals: 0 (all Metrics.grid)
+**Target state after remediation:**
+- Absolute point-size fonts: **0** (all converted to tokens or `ScaledMetric`)
+- Direct SwiftUI styles: **0** (all mapped to new `TypeScale` cases)
+- Fixed dimensions: **0** (replaced with `@ScaledMetric` or flexible stacks)
+- Raw spacing literals: **0** (expressed via metrics)
 
 ---
 
@@ -1670,6 +1674,8 @@ Refs: Apple HIG - Dynamic Type guidelines"
    | `body` | Primary content | 38pt | 17pt |
    | `caption` | Small labels | 25pt | 11pt |
    | `footnote` | Metadata | 23pt | 13pt |
+
+   > These base numbers come from the `TypeScale` expansion proposed in this document (tvOS values intentionally skew larger for the 10-foot experience); they are design targets, not copied from an Apple table.
 
    ### Icon Sizing
 
@@ -1736,7 +1742,7 @@ Refs: Apple HIG - Dynamic Type guidelines"
 4. **Performance optimization** - Cache ScaledMetric calculations
 
 **References:**
-- [Creating Adaptive Layouts](https://developer.apple.com/documentation/swiftui/creating-adaptive-layouts/)
+- [Picking container views for your content](https://developer.apple.com/documentation/swiftui/picking-container-views-for-your-content/)
 - [Size Classes](https://developer.apple.com/documentation/swiftui/environmentvalues/horizontalsizeclassclass/)
 
 ### SwiftLint Rule
