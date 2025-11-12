@@ -20,22 +20,19 @@ internal struct HeadToHeadOverlay: View {
     private let minOverlayWidth: CGFloat = 960
 
     internal var body: some View {
-        if app.headToHead.isActive {
-            ZStack {
-                LinearGradient(
-                    colors: [Palette.bg.opacity(0.65), Palette.surfHi.opacity(0.85)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-                .accessibilityHidden(true)
+        ZStack {
+            LinearGradient(
+                colors: [Palette.bg.opacity(0.65), Palette.surfHi.opacity(0.85)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
 
-                GeometryReader { proxy in
-                    overlayContent(maxWidth: overlayMaxWidth(for: proxy))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                }
+            GeometryReader { proxy in
+                overlayContent(maxWidth: overlayMaxWidth(for: proxy))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
-            .transition(.opacity)
         }
     }
 
