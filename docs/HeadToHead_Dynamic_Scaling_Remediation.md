@@ -97,7 +97,7 @@ Tiercade/Views/Overlays/HeadToHeadOverlay+HelperViews.swift # Cards, tiles, badg
 | 87 | `.font(TypeScale.h3)` | Card title | ✅ Tokenized. |
 | 92 | `.font(.headline)` | Card season | ⚠️ Token bypass. |
 | 106 | `.font(TypeScale.body)` | Card description | ✅ Tokenized. |
-| 121 | `.font(TypeScale.metadata)` | Card metadata | ✅ Tokenized; already matches design spec. |
+| 121 | `.font(TypeScale.metadata)` | Card metadata | ⚠️ Token semantics mismatch (secondary text should use `footnote`). |
 | 157 | `.font(.system(size: 48, weight: .semibold))` | Pass icon | ❌ Absolute size. |
 | 159 | `.font(.headline)` | Pass label | ⚠️ Token bypass. |
 | 187 | `.font(.system(size: 64, weight: .bold))` | Completion icon | ❌ Absolute size. |
@@ -285,6 +285,13 @@ internal static let metadata = Font.title3.weight(.semibold)
 
 Apple’s guidance: “Use font sizes that most people can read easily. Follow the recommended default and minimum text sizes for each platform—for both custom and system fonts—to ensure your text is legible on all devices.” Rendering the page with Playwright is necessary because the static HTML returned to non-JS clients omits the table entirely.
 
+### SF Symbol Scaling
+
+**Source:** [Configuring and displaying symbol images in your UI](https://developer.apple.com/documentation/uikit/configuring-and-displaying-symbol-images-in-your-ui/)
+
+- Apple explicitly recommends applying a text style (or semantic image scale) to SF Symbols so “symbol images … scale to match the current Dynamic Type setting.”
+- Using `.font(.system(size:))` with a fixed point size defeats this scaling. The remediation plan therefore swaps numeric icon sizes for semantic `Image.Scale` values (or text-style-driven `.imageScale`) so icons grow/shrink alongside adjacent text.
+
 ### ScaledMetric Usage Pattern
 
 **Source:** [Applying custom fonts to text - ScaledMetric section](https://developer.apple.com/documentation/swiftui/applying-custom-fonts-to-text/)
@@ -420,16 +427,18 @@ internal enum TypeScale {
     /// Emphasized metadata (38pt base) - Stats, highlighted metrics
     internal static let metadata = Font.title3.weight(.semibold)
 
-    // MARK: - Icon Sizing (use with SF Symbols)
+    // MARK: - SF Symbol Scaling
 
-    /// Large icons (64pt) - Hero symbols, primary actions in large UI
-    internal static let iconLarge: CGFloat = 64
+    internal enum IconScale {
+        /// Inline icons aligned with body text. tvOS needs a larger baseline, so default to `.medium`.
+        internal static let small: Image.Scale = .medium
 
-    /// Medium icons (48pt) - Standard action buttons, primary UI elements
-    internal static let iconMedium: CGFloat = 48
+        /// Primary action icons (buttons, tiles) – rendered at `.large` on tvOS for 10-foot legibility.
+        internal static let medium: Image.Scale = .large
 
-    /// Small icons (26pt) - Inline symbols, decorative elements
-    internal static let iconSmall: CGFloat = 26
+        /// Hero icons (completion states) – tvOS also uses `.large`; combine with `fontWeight` for emphasis.
+        internal static let large: Image.Scale = .large
+    }
 
     #else
     // iOS/iPadOS/macOS: Arm's length viewing distance
@@ -461,11 +470,11 @@ internal enum TypeScale {
     /// Emphasized metadata (15pt base) - Stats, metrics
     internal static let metadata = Font.subheadline.weight(.semibold)
 
-    // MARK: - Icon Sizing
-
-    internal static let iconLarge: CGFloat = 36
-    internal static let iconMedium: CGFloat = 28
-    internal static let iconSmall: CGFloat = 20
+    internal enum IconScale {
+        internal static let small: Image.Scale = .small
+        internal static let medium: Image.Scale = .medium
+        internal static let large: Image.Scale = .large
+    }
 
     #endif
 }
@@ -484,9 +493,9 @@ internal enum TypeScale {
 | `caption` | Small labels | "Pass for Now", season indicators |
 | `footnote` | Fine print | Phase badge, metric footnotes |
 | `metadata` | Stats | Metric values (currently misused) |
-| `iconLarge` | Hero icons | Completion crown (64pt) |
-| `iconMedium` | Action icons | Pass tile icon (48pt) |
-| `iconSmall` | Inline icons | Progress dial icon (26pt) |
+| `IconScale.large` | Hero icons | Completion crown |
+| `IconScale.medium` | Action icons | Pass tile icon |
+| `IconScale.small` | Inline icons | Progress dial icon |
 
 **Testing this change:**
 
@@ -781,7 +790,8 @@ internal struct HeadToHeadProgressDial: View {
 
             VStack(spacing: Metrics.grid * 0.75) {
                 Image(systemName: symbolName)
-                    .font(.system(size: TypeScale.iconSmall, weight: .semibold))
+                    .imageScale(TypeScale.IconScale.small)
+                    .fontWeight(.semibold)
                 Text(label)
                     .font(TypeScale.caption)
                     .multilineTextAlignment(.center)
@@ -808,7 +818,7 @@ internal struct HeadToHeadProgressDial: View {
 
 **Changes:**
 - Line 26: `spacing: 6` → `spacing: Metrics.grid * 0.75`
-- Line 28: `.font(.system(size: 26...))` → `.font(.system(size: TypeScale.iconSmall...))`
+- Line 28: `.font(.system(size: 26...))` → `.imageScale(TypeScale.IconScale.small)`
 - Line 30: `.font(.headline)` → `.font(TypeScale.caption)`
 - Line 33: `.padding(.horizontal, 12)` → `.padding(.horizontal, Metrics.grid * 1.5)`
 
@@ -876,7 +886,7 @@ internal struct HeadToHeadCandidateCard: View {
         return VStack(alignment: alignment, spacing: 6) {
             ForEach(metadataTokens, id: \.self) { token in
                 Text(token)
-                    .font(TypeScale.metadata)
+                    .font(TypeScale.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(self.alignment == .leading ? .leading : .trailing)
             }
@@ -1060,7 +1070,8 @@ internal struct HeadToHeadPassTile: View {
         Button(action: action) {
             VStack(spacing: Metrics.grid * 2) {
                 Image(systemName: "arrow.uturn.left.circle")
-                    .font(.system(size: TypeScale.iconMedium, weight: .semibold))
+                    .imageScale(TypeScale.IconScale.medium)
+                    .fontWeight(.semibold)
                 Text("Pass for Now")
                     .font(TypeScale.caption)
             }
@@ -1090,7 +1101,7 @@ internal struct HeadToHeadPassTile: View {
 **Changes:**
 - Added `@ScaledMetric` for tile size (line 4)
 - Line 8: `spacing: 16` → `spacing: Metrics.grid * 2`
-- Line 10: `.font(.system(size: 48...))` → `.font(.system(size: TypeScale.iconMedium...))`
+- Line 10: `.font(.system(size: 48...))` → `.imageScale(TypeScale.IconScale.medium)`
 - Line 12: `.font(.headline)` → `.font(TypeScale.caption)`
 - Line 14: Fixed dimensions → `tileSize` property
 
@@ -1137,7 +1148,8 @@ internal struct HeadToHeadCompletionPanel: View {
     internal var body: some View {
         VStack(spacing: Metrics.grid * 2) {
             Image(systemName: "crown.fill")
-                .font(.system(size: TypeScale.iconLarge, weight: .bold))
+                .imageScale(TypeScale.IconScale.large)
+                .fontWeight(.bold)
                 .symbolRenderingMode(.hierarchical)
             Text("All comparisons complete")
                 .font(TypeScale.h3)
@@ -1165,7 +1177,7 @@ internal struct HeadToHeadCompletionPanel: View {
 **Changes:**
 - Added `@ScaledMetric` for text width (line 2)
 - Line 5: `spacing: 16` → `spacing: Metrics.grid * 2`
-- Line 7: `.font(.system(size: 64...))` → `.font(.system(size: TypeScale.iconLarge...))`
+- Line 7: `.font(.system(size: 64...))` → `.imageScale(TypeScale.IconScale.large)`
 - Line 10: `.font(.title2.weight(.semibold))` → `.font(TypeScale.h3)`
 - Line 15: Fixed dimension → `textMaxWidth` property
 
@@ -1693,11 +1705,11 @@ Refs: Apple HIG - Dynamic Type guidelines"
 
    ### Icon Sizing
 
-   Use `TypeScale.iconLarge`, `iconMedium`, `iconSmall` with SF Symbols:
+   Use `TypeScale.IconScale.*` with SF Symbols:
 
    ```swift
    Image(systemName: "star.fill")
-       .font(.system(size: TypeScale.iconMedium))
+       .imageScale(TypeScale.IconScale.medium)
    ```
 
    ### Dynamic Layout
@@ -1726,7 +1738,7 @@ Refs: Apple HIG - Dynamic Type guidelines"
    - ❌ `.font(.headline)`
 
    Correct patterns:
-   - ✅ `.font(.system(size: TypeScale.iconMedium))`
+   - ✅ `.imageScale(TypeScale.IconScale.medium)`
    - ✅ `@ScaledMetric private var size = ScaledDimensions.passTileSize`
    - ✅ `.font(TypeScale.caption)`
    ```
@@ -1800,9 +1812,9 @@ Is this text...
 └─ Button label?                        → (Use Button's default, or label if custom)
 
 Is this an icon...
-├─ Hero/completion state? (>60pt)       → iconLarge
-├─ Primary action button? (40-50pt)     → iconMedium
-└─ Inline/decorative? (<30pt)           → iconSmall
+├─ Hero/completion state?               → `TypeScale.IconScale.large`
+├─ Primary action button?               → `TypeScale.IconScale.medium`
+└─ Inline/decorative?                   → `TypeScale.IconScale.small`
 ```
 
 ### Quick Reference: ScaledMetric relativeTo
