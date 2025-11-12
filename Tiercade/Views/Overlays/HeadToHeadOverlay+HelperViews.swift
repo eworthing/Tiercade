@@ -57,6 +57,7 @@ internal struct HeadToHeadCandidateCard: View {
     internal let accentColor: Color
     internal let alignment: AlignmentHint
     internal let action: () -> Void
+    internal var compact: Bool = false
 
     @ScaledMetric(relativeTo: .title) private var cardMinWidth = ScaledDimensions.candidateCardMinWidth
     @ScaledMetric(relativeTo: .title) private var cardMaxWidth = ScaledDimensions.candidateCardMaxWidth
@@ -70,8 +71,8 @@ internal struct HeadToHeadCandidateCard: View {
             }
             .padding(Metrics.grid * 3)
             .frame(
-                minWidth: cardMinWidth,
-                maxWidth: cardMaxWidth,
+                minWidth: compact ? 0 : cardMinWidth,
+                maxWidth: compact ? .infinity : cardMaxWidth,
                 minHeight: cardMinHeight,
                 alignment: alignment == .leading ? .topLeading : .topTrailing
             )

@@ -153,29 +153,58 @@ internal struct HeadToHeadOverlay: View {
                 Spacer()
                 HeadToHeadPhaseBadge(phase: app.headToHead.phase)
             }
-            HStack(alignment: .center, spacing: Metrics.grid * 3) {
-                HeadToHeadProgressDial(progress: app.headToHead.overallProgress, label: progressLabel)
-                    .frame(width: progressDialSize, height: progressDialSize)
-                    .accessibilityIdentifier("HeadToHeadOverlay_Progress")
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: Metrics.grid * 3) {
+                    HeadToHeadProgressDial(progress: app.headToHead.overallProgress, label: progressLabel)
+                        .frame(width: progressDialSize, height: progressDialSize)
+                        .accessibilityIdentifier("HeadToHeadOverlay_Progress")
 
-                VStack(alignment: .leading, spacing: Metrics.grid * 1.5) {
-                    Text(statusSummary)
-                        .font(TypeScale.h3)
-                    Text(secondaryStatus)
-                        .font(TypeScale.body)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: Metrics.grid * 1.5) {
+                        Text(statusSummary)
+                            .font(TypeScale.h3)
+                            .layoutPriority(1)
+                        Text(secondaryStatus)
+                            .font(TypeScale.body)
+                            .foregroundStyle(.secondary)
 
-                    HStack(spacing: Metrics.grid * 2.5) {
-                        ForEach(metricTiles, id: \.title) { metric in
-                            HeadToHeadMetricTile(
-                                title: metric.title,
-                                value: metric.value,
-                                footnote: metric.caption
-                            )
+                        HStack(spacing: Metrics.grid * 2.5) {
+                            ForEach(metricTiles, id: \.title) { metric in
+                                HeadToHeadMetricTile(
+                                    title: metric.title,
+                                    value: metric.value,
+                                    footnote: metric.caption
+                                )
+                            }
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(1)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: Metrics.grid * 2) {
+                    HeadToHeadProgressDial(progress: app.headToHead.overallProgress, label: progressLabel)
+                        .frame(width: progressDialSize, height: progressDialSize)
+                        .accessibilityIdentifier("HeadToHeadOverlay_Progress")
+
+                    VStack(alignment: .leading, spacing: Metrics.grid * 1.5) {
+                        Text(statusSummary)
+                            .font(TypeScale.h3)
+                        Text(secondaryStatus)
+                            .font(TypeScale.body)
+                            .foregroundStyle(.secondary)
+
+                        HStack(spacing: Metrics.grid * 2.5) {
+                            ForEach(metricTiles, id: \.title) { metric in
+                                HeadToHeadMetricTile(
+                                    title: metric.title,
+                                    value: metric.value,
+                                    footnote: metric.caption
+                                )
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
         .accessibilityElement(children: .contain)
@@ -205,30 +234,47 @@ internal struct HeadToHeadOverlay: View {
     private var comparisonSection: some View {
         Group {
             if let pair = app.headToHead.currentPair {
-                HStack(alignment: .top, spacing: pairSpacing) {
-                    HeadToHeadCandidateCard(
-                        item: pair.0,
-                        accentColor: Palette.brand,
-                        alignment: .leading,
-                        action: { app.voteHeadToHead(winner: pair.0) }
-                    )
-                    .focused($focusAnchor, equals: .primary)
-                    .accessibilityIdentifier("HeadToHeadOverlay_Primary")
+                GeometryReader { sectionProxy in
+                    let width = sectionProxy.size.width
+                    let isWide = width >= minimumComparisonWidth()
 
-                    HeadToHeadPassTile(action: { app.skipCurrentHeadToHeadPair() })
-                        .focused($focusAnchor, equals: .pass)
-                        .accessibilityIdentifier("HeadToHeadOverlay_Pass")
+                    let layout = isWide ? AnyLayout(HStackLayout(spacing: pairSpacing))
+                                        : AnyLayout(VStackLayout(spacing: pairSpacing))
 
-                    HeadToHeadCandidateCard(
-                        item: pair.1,
-                        accentColor: Palette.tierColor("S"),
-                        alignment: .trailing,
-                        action: { app.voteHeadToHead(winner: pair.1) }
-                    )
-                    .focused($focusAnchor, equals: .secondary)
-                    .accessibilityIdentifier("HeadToHeadOverlay_Secondary")
+                    layout {
+                        HeadToHeadCandidateCard(
+                            item: pair.0,
+                            accentColor: Palette.brand,
+                            alignment: .leading,
+                            action: { app.voteHeadToHead(winner: pair.0) },
+                            compact: !isWide
+                        )
+                        .focused($focusAnchor, equals: .primary)
+                        .accessibilityIdentifier("HeadToHeadOverlay_Primary")
+
+                        HeadToHeadPassTile(action: { app.skipCurrentHeadToHeadPair() })
+                            .focused($focusAnchor, equals: .pass)
+                            .accessibilityIdentifier("HeadToHeadOverlay_Pass")
+
+                        HeadToHeadCandidateCard(
+                            item: pair.1,
+                            accentColor: Palette.tierColor("S"),
+                            alignment: .trailing,
+                            action: { app.voteHeadToHead(winner: pair.1) },
+                            compact: !isWide
+                        )
+                        .focused($focusAnchor, equals: .secondary)
+                        .accessibilityIdentifier("HeadToHeadOverlay_Secondary")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .accessibilityIdentifier("HeadToHeadOverlay_Comparison")
+                    #if DEBUG
+                    .onAppear {
+                        Logger.headToHead.debug("comparison width=\(width, privacy: .public) isWide=\(isWide, privacy: .public) min=\(minimumComparisonWidth(), privacy: .public)")
+                    }
+                    #endif
                 }
-                .accessibilityIdentifier("HeadToHeadOverlay_Comparison")
+                .frame(minHeight: 0)
             } else {
                 HeadToHeadCompletionPanel()
                     .frame(maxWidth: .infinity)
@@ -237,50 +283,92 @@ internal struct HeadToHeadOverlay: View {
         }
     }
 
+    private func minimumComparisonWidth() -> CGFloat {
+        let cards = ScaledDimensions.candidateCardMinWidth * 2
+        let pass = ScaledDimensions.passTileSize
+        let gaps = pairSpacing * 2
+        return cards + pass + gaps
+    }
+
     private var controlBar: some View {
-        HStack(spacing: Metrics.grid * 3) {
-            Button(role: .destructive) {
-                app.cancelHeadToHead()
-            } label: {
-                Label("Leave Session", systemImage: "xmark.circle")
-                    .labelStyle(.titleAndIcon)
-                    #if os(tvOS)
-                    // tvOS buttons size themselves appropriately with .glass styles; avoid fixed widths
-                    .frame(minWidth: 0)
-                    #else
-                    .frame(minWidth: buttonMinWidthSmall)
-                    #endif
-            }
-            #if os(tvOS)
-            .buttonStyle(.glass)
-            #else
-            .buttonStyle(.borderedProminent)
-            .keyboardShortcut(.cancelAction)
-            #endif
-            .focused($focusAnchor, equals: .cancel)
-            .accessibilityIdentifier("HeadToHeadOverlay_Cancel")
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Metrics.grid * 3) {
+                Button(role: .destructive) {
+                    app.cancelHeadToHead()
+                } label: {
+                    Label("Leave Session", systemImage: "xmark.circle")
+                        .labelStyle(.titleAndIcon)
+                        #if os(tvOS)
+                        .frame(minWidth: 0)
+                        #else
+                        .frame(minWidth: buttonMinWidthSmall)
+                        #endif
+                }
+                #if os(tvOS)
+                .buttonStyle(.glass)
+                #else
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.cancelAction)
+                #endif
+                .focused($focusAnchor, equals: .cancel)
+                .accessibilityIdentifier("HeadToHeadOverlay_Cancel")
 
-            Spacer(minLength: Metrics.grid * 4)
+                Spacer(minLength: Metrics.grid * 4)
 
-            Button {
-                app.finishHeadToHead()
-            } label: {
-                Label("Commit Rankings", systemImage: "checkmark.seal")
-                    .labelStyle(.titleAndIcon)
-                    #if os(tvOS)
-                    .frame(minWidth: 0)
-                    #else
-                    .frame(minWidth: buttonMinWidthLarge)
-                    #endif
+                Button {
+                    app.finishHeadToHead()
+                } label: {
+                    Label("Commit Rankings", systemImage: "checkmark.seal")
+                        .labelStyle(.titleAndIcon)
+                        #if os(tvOS)
+                        .frame(minWidth: 0)
+                        #else
+                        .frame(minWidth: buttonMinWidthLarge)
+                        #endif
+                }
+                #if os(tvOS)
+                .buttonStyle(.glassProminent)
+                #else
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                #endif
+                .focused($focusAnchor, equals: .commit)
+                .accessibilityIdentifier("HeadToHeadOverlay_Apply")
             }
-            #if os(tvOS)
-            .buttonStyle(.glassProminent)
-            #else
-            .buttonStyle(.borderedProminent)
-            .keyboardShortcut(.defaultAction)
-            #endif
-            .focused($focusAnchor, equals: .commit)
-            .accessibilityIdentifier("HeadToHeadOverlay_Apply")
+
+            VStack(spacing: Metrics.grid * 2) {
+                Button(role: .destructive) {
+                    app.cancelHeadToHead()
+                } label: {
+                    Label("Leave Session", systemImage: "xmark.circle")
+                        .labelStyle(.titleAndIcon)
+                        .frame(maxWidth: .infinity)
+                }
+                #if os(tvOS)
+                .buttonStyle(.glass)
+                #else
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.cancelAction)
+                #endif
+                .focused($focusAnchor, equals: .cancel)
+                .accessibilityIdentifier("HeadToHeadOverlay_Cancel")
+
+                Button {
+                    app.finishHeadToHead()
+                } label: {
+                    Label("Commit Rankings", systemImage: "checkmark.seal")
+                        .labelStyle(.titleAndIcon)
+                        .frame(maxWidth: .infinity)
+                }
+                #if os(tvOS)
+                .buttonStyle(.glassProminent)
+                #else
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+                #endif
+                .focused($focusAnchor, equals: .commit)
+                .accessibilityIdentifier("HeadToHeadOverlay_Apply")
+            }
         }
     }
 
