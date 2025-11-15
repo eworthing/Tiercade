@@ -21,7 +21,7 @@ extension HeadToHeadLogic {
     /// INVARIANT: lhs <= rhs (lexicographically)
     ///
     /// This canonical ordering ensures (A, B) and (B, A) produce identical hash keys,
-    /// preventing duplicate comparisons in the head-to-head queue. Without this,
+    /// preventing duplicate comparisons in the HeadToHead queue. Without this,
     /// the algorithm would waste ~50% of comparisons on duplicate pairs.
     ///
     /// Example:
@@ -57,7 +57,7 @@ extension HeadToHeadLogic {
     /// Statistical and algorithmic parameters for the Wilson score ranking system.
     ///
     /// These constants control confidence intervals, overlap thresholds, and tie-breaking
-    /// behavior in the head-to-head comparison algorithm. Derived from empirical testing
+    /// behavior in the HeadToHead comparison algorithm. Derived from empirical testing
     /// across pool sizes from 5-100 items.
     internal enum Tun {
         // MARK: - Capacity Limits
@@ -135,7 +135,7 @@ extension HeadToHeadLogic {
 
     internal static func partitionByComparisons(
         _ pool: [Item],
-        records: [String: H2HRecord],
+        records: [String: HeadToHeadRecord],
         minimumComparisons: Int
     ) -> (rankable: [Item], undersampled: [Item]) {
         var rankable: [Item] = []
@@ -181,12 +181,12 @@ extension HeadToHeadLogic {
 
     internal static func metricsDictionary(
         for items: [Item],
-        records: [String: H2HRecord],
+        records: [String: HeadToHeadRecord],
         z: Double,
         priors: [String: Prior]
     ) -> [String: HeadToHeadMetrics] {
         Dictionary(uniqueKeysWithValues: items.map { item in
-            let record = records[item.id] ?? H2HRecord()
+            let record = records[item.id] ?? HeadToHeadRecord()
             let prior = priors[item.id] ?? Prior(alpha: 0, beta: 0)
             let effectiveWins = Double(record.wins) + prior.alpha
             let effectiveLosses = Double(record.losses) + prior.beta
@@ -210,11 +210,11 @@ extension HeadToHeadLogic {
 
     internal static func metricsDictionary(
         for items: [Item],
-        records: [String: H2HRecord],
+        records: [String: HeadToHeadRecord],
         z: Double
     ) -> [String: HeadToHeadMetrics] {
         Dictionary(uniqueKeysWithValues: items.map { item in
-            let record = records[item.id] ?? H2HRecord()
+            let record = records[item.id] ?? HeadToHeadRecord()
             let displayName = item.name?.trimmingCharacters(in: .whitespacesAndNewlines)
             let keySource = (displayName?.isEmpty == false ? displayName! : item.id)
             return (
@@ -264,11 +264,11 @@ extension HeadToHeadLogic {
         return Array(Set(cuts)).sorted()
     }
 
-    internal static func buildAudits(orderedCount n: Int, cuts: [Int], width w: Int) -> [H2HFrontier] {
+    internal static func buildAudits(orderedCount n: Int, cuts: [Int], width w: Int) -> [HeadToHeadFrontier] {
         cuts.map { cut in
             let upper = max(0, cut - w)..<cut
             let lower = cut..<min(n, cut + w)
-            return H2HFrontier(index: cut, upperRange: upper, lowerRange: lower)
+            return HeadToHeadFrontier(index: cut, upperRange: upper, lowerRange: lower)
         }
     }
 

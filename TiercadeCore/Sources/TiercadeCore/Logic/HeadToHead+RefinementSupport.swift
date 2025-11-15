@@ -97,7 +97,7 @@ extension HeadToHeadLogic {
     }
 
     internal static func frontierCandidatePairs(
-        artifacts: H2HArtifacts,
+        artifacts: HeadToHeadArtifacts,
         metrics: [String: HeadToHeadMetrics],
         seen: inout Set<PairKey>
     ) -> [CandidatePair] {
@@ -131,8 +131,8 @@ extension HeadToHeadLogic {
     }
 
     internal static func averageComparisons(
-        for artifacts: H2HArtifacts,
-        records: [String: H2HRecord]
+        for artifacts: HeadToHeadArtifacts,
+        records: [String: HeadToHeadRecord]
     ) -> Double {
         guard !artifacts.rankable.isEmpty else { return 0 }
         let total = artifacts.rankable.reduce(into: 0) { partial, item in
@@ -181,8 +181,8 @@ extension HeadToHeadLogic {
     }
 
     internal static func makeRefinementComputation(
-        artifacts: H2HArtifacts,
-        records: [String: H2HRecord],
+        artifacts: HeadToHeadArtifacts,
+        records: [String: HeadToHeadRecord],
         tierCount: Int,
         requiredComparisons: Int
     ) -> RefinementComputation {
@@ -249,12 +249,12 @@ extension HeadToHeadLogic {
     }
 
     internal static func makeRefinedArtifacts(
-        artifacts: H2HArtifacts,
+        artifacts: HeadToHeadArtifacts,
         ordered: [Item],
         cuts: [Int],
         metrics: [String: HeadToHeadMetrics]
-    ) -> H2HArtifacts {
-        H2HArtifacts(
+    ) -> HeadToHeadArtifacts {
+        HeadToHeadArtifacts(
             tierNames: artifacts.tierNames,
             rankable: ordered,
             undersampled: artifacts.undersampled,

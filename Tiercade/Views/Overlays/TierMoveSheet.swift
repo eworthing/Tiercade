@@ -448,14 +448,19 @@ private struct TierMoveRow: View {
         #if os(tvOS)
         return .title3
         #else
-    // MARK: - Opacity Constants
+        return .title2
+        #endif
+    }
+
+    // MARK: - Visual Constants
 
     private let focusedBackgroundOpacity: Double = 0.18
     private let unfocusedBackgroundOpacity: Double = 0.12
+    private let currentTierBorderOpacity: Double = 0.8
+    private let defaultBorderOpacity: Double = 0.35
 
     @ViewBuilder
     private var rowBackground: some View {
-        // Hybrid design: tier-tinted background
         #if os(tvOS)
         RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
             .fill(tierColor.opacity(isFocused ? focusedBackgroundOpacity : unfocusedBackgroundOpacity))
@@ -472,36 +477,26 @@ private struct TierMoveRow: View {
             )
         #endif
     }
-                    .fill(Palette.cardBackground)
-            )
-        #endif
-    }
 
     @ViewBuilder
     private var rowBorder: some View {
-        // Hybrid design: tier-colored border
         #if os(tvOS)
         RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
             .strokeBorder(borderColor, lineWidth: borderWidth)
         #else
-    private let currentTierBorderOpacity: Double = 0.8
-    private let defaultBorderOpacity: Double = 0.35
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .strokeBorder(borderColor, lineWidth: 2)
+        #endif
+    }
 
     private var borderColor: Color {
         #if os(tvOS)
-        // tvOS: white on focus, tier color otherwise
         if isFocused {
             return Color.white
         }
         return tierColor.opacity(isCurrentTier ? currentTierBorderOpacity : defaultBorderOpacity)
         #else
-        // iOS/macOS: tier color always
         return tierColor.opacity(isCurrentTier ? currentTierBorderOpacity : defaultBorderOpacity)
-        #endif
-    }
-        #else
-        // iOS/macOS: tier color always
-        return tierColor.opacity(isCurrentTier ? 0.8 : 0.35)
         #endif
     }
 
@@ -534,4 +529,27 @@ private struct TierMoveRowButtonStyle: ButtonStyle {
             .focusEffectDisabled(false)
             #endif
     }
+}
+
+// MARK: - Previews
+
+@MainActor
+private struct TierMoveSheetPreview: View {
+    @State private var appState = PreviewHelpers.makeAppState()
+
+    init() {
+        // Seed a simple preview scenario: use the first available item if any.
+        if let firstTier = appState.tierOrder.first,
+           let firstItem = appState.tiers[firstTier]?.first {
+            appState.overlays.quickMoveTarget = firstItem
+        }
+    }
+
+    var body: some View {
+        TierMoveSheet(app: appState)
+    }
+}
+
+#Preview("Tier Move Sheet") {
+    TierMoveSheetPreview()
 }

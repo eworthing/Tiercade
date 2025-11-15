@@ -95,7 +95,7 @@ for attempt in 0..<maxRetries {
 
 ## tvOS-first UX rules
 
-- **Modal overlays** (ThemePicker, TierListBrowser, MatchupArena/HeadToHead, Analytics, QuickMove) use `.fullScreenCover()` which provides **automatic focus containment** via separate presentation context. This is Apple's recommended pattern for modal presentations that must trap focus.
+- **Modal overlays** (ThemePicker, TierListBrowser, HeadToHead/HeadToHead, Analytics, QuickMove) use `.fullScreenCover()` which provides **automatic focus containment** via separate presentation context. This is Apple's recommended pattern for modal presentations that must trap focus.
 - **Transient overlays** (QuickRank) remain as ZStack overlays using `.focusSection()` and `.focusable()`. For these, keep background content interactive by toggling `.allowsHitTesting(!overlayActive)`—never `.disabled()`.
 - **Critical**: `.allowsHitTesting()` only blocks pointer interactions (taps/clicks), **not focus navigation**. For true focus containment, use `.fullScreenCover()` or `.sheet()` presentation modifiers.
 
@@ -106,7 +106,7 @@ for attempt in 0..<maxRetries {
 - ✅ Overlay content is the sole focus of attention
 - ✅ Background should not be interactive during overlay
 - ✅ Focus must be contained within overlay
-- **Examples:** ThemePicker, TierListBrowser, MatchupArena, QuickMove, Analytics
+- **Examples:** ThemePicker, TierListBrowser, HeadToHead, QuickMove, Analytics
 
 **When to use ZStack + `.focusSection()` (Transient):**
 - ✅ Overlay provides contextual information only
@@ -118,8 +118,8 @@ for attempt in 0..<maxRetries {
 **If unsure:** Default to `.fullScreenCover()` - it's easier to relax to transient than to fix focus escape bugs later.
 
 - **Overlay Accessibility Pattern**: When adding new overlays for iOS/macOS, use `AccessibilityBridgeView` to ensure immediate accessibility tree presence. See `Tiercade/Views/OVERLAY_ACCESSIBILITY_PATTERN.md` for full pattern documentation. This solves async timing issues between state updates and accessibility registration on non-tvOS platforms.
-- Accessibility IDs must follow `{Component}_{Action}` on leaf elements (e.g. `Toolbar_H2H`, `TierMove_Sheet`). Avoid placing IDs on containers using `.accessibilityElement(children: .contain)`.
-- Head-to-head overlay contract: render skip card with `arrow.uturn.left.circle`, maintain `H2H_SkippedCount`, call `cancelH2H(fromExitCommand:)` from `.onExitCommand`.
+- Accessibility IDs must follow `{Component}_{Action}` on leaf elements (e.g. `Toolbar_HeadToHead`, `TierMove_Sheet`). Avoid placing IDs on containers using `.accessibilityElement(children: .contain)`.
+- HeadToHead overlay contract: render skip card with `arrow.uturn.left.circle`, surface skip count in the metrics row, call `cancelHeadToHead(fromExitCommand:)` from `.onExitCommand`.
 - Apply glass effects via `glassEffect`, `GlassEffectContainer`, or `.buttonStyle(.glass)` when touching toolbars/overlays; validate focus halos in the Apple TV 4K (3rd gen) tvOS 26 simulator.
 
 ## Build · Test · Verify
@@ -128,7 +128,7 @@ for attempt in 0..<maxRetries {
 
 1. **Build all platforms** – `Cmd` + `Shift` + `B` in VS Code (task **Build, Install & Launch tvOS**). Script flow per platform: 🧹 clean → 🔨 build → 📦 install → 🚀 launch. Builds tvOS, iOS, iPadOS, and macOS by default. Confirm the timestamp and `BuildInfoView` (DEBUG) match.
 2. **Single platform builds** – Use `./build_install_launch.sh tvos|ios|ipad|macos` to build individual platforms when iterating on platform-specific code.
-3. **Run package tests** – `cd TiercadeCore && swift test`. The `TiercadeCoreTests` target covers tier manipulation, head-to-head heuristics, bundled catalog metadata, and model decoding using Swift Testing (`@Test`, `#expect`) under the same strict concurrency flags.
+3. **Run package tests** – `cd TiercadeCore && swift test`. The `TiercadeCoreTests` target covers tier manipulation, HeadToHead heuristics, bundled catalog metadata, and model decoding using Swift Testing (`@Test`, `#expect`) under the same strict concurrency flags.
 4. **Manual focus sweep** – With the tvOS 26 Apple TV 4K simulator open, cycle focus with the remote/arrow keys to confirm overlays and default focus behave. Capture issues with `/tmp/tiercade_debug.log` (see Operational Notes).
 
 Optional coverage pass:
@@ -160,6 +160,11 @@ UI automation relies on accessibility IDs and short paths—prefer existence che
   - *Other Swift Flags* → add `-strict-concurrency=complete` for legacy configurations.
   - *Swift Language Version* = `Swift 6`; keep **Enable Upcoming Features** consistent with the package manifest.
   These mirror Apple’s Swift 6 migration notes and align with the README guardrails.
+- **State & UI expectations:** Views run on `@MainActor` data via `@Observable`/`@Bindable`; never fall back to `ObservableObject`, `@Published`, or deprecated `NavigationView`.
+- **Async & persistence:** Prefer structured concurrency (`async/await`, `AsyncSequence`, `TaskGroup`) plus SwiftData for new persistence flows; phase out Combine and legacy Core Data code paths.
+- **Testing & dependencies:** Add Swift Testing (`@Test`, `#expect`) coverage for new work and keep dependencies in SwiftPM with `traits: [.featureFlag("name")]`.
+- **Complexity & forms:** Keep files within lint thresholds (cyclomatic complexity warn=8, error=12) and wire multi-field forms with `.submitLabel(.next/.done)`, `.onSubmit {}`, and `@FocusState` to support keyboard navigation.
+- **Migration priorities:** Continue incrementally moving callbacks→`async/await`, queues→actors, string concatenation→interpolation, RTL test coverage, and destructive alerts→`confirmationDialog`.
 
 
 ## Tooling & diagnostics
@@ -183,21 +188,6 @@ UI automation relies on accessibility IDs and short paths—prefer existence che
 
 A SwiftUI tier list management app targeting tvOS 26+/iOS 26+ with Swift 6 strict concurrency. Primary platform is tvOS with remote-first UX patterns.
 
-## Swift 6 / OS 26 Modernization Mandates
-
-**Target:** iOS/iPadOS/tvOS/macOS 26 with Swift 6 strict concurrency
-- **Strict concurrency:** `.enableUpcomingFeature("StrictConcurrency")` + `.unsafeFlags(["-strict-concurrency=complete"])`
-- **State management:** `@Observable` + `@Bindable` + `@MainActor` (never `ObservableObject`/`@Published`)
-- **UI:** SwiftUI only. `NavigationStack`/`NavigationSplitView` (no deprecated `NavigationView`)
-- **Async:** Structured concurrency (`async`/`await`, `AsyncSequence`, `TaskGroup`). Phase out Combine
-- **Testing:** Swift Testing (`@Test`, `#expect`) for new tests. Migrate XCTest incrementally
-- **Persistence:** SwiftData (`@Model`, `@Query`) for new features. Migrate Core Data gradually
-- **Dependencies:** SwiftPM only. Use SPM traits: `traits: [.featureFlag("feature-name")]`
-- **Complexity:** `cyclomatic_complexity` warning at 8, error at 12. Enforces testability and prevents reactive cleanup cycles (see commits 7f9fb84, 373d731 where 700+ line files required splitting)
-- **Form Flow:** Multi-field forms use `.submitLabel(.next/.done)` + `.onSubmit { }` + `@FocusState` for keyboard Return key navigation
-
-**Migration priorities:** `ObservableObject`→`@Observable` | Combine→`AsyncSequence` | `NavigationView`→`NavigationStack` | Core Data→SwiftData | XCTest→Swift Testing | callbacks→`async/await` | queues→actors | String `+`→String interpolation | Test RTL text handling | destructive `alert`→`confirmationDialog`
-
 ## Platform Strategy: Native macOS ✅ (Completed Oct 2025)
 
 **Platforms:** tvOS 26+ (primary) | iOS/iPadOS 26+ | macOS 26+ (native)
@@ -211,31 +201,22 @@ A SwiftUI tier list management app targeting tvOS 26+/iOS 26+ with Swift 6 stric
 
 **Quick reference:** Reuse shared SwiftUI views whenever possible. macOS-specific UX (menu bar commands, hover affordances, toolbar customization) should be conditionally compiled behind `#if os(macOS)` checks.
 
-**Platform checks:**
+**Platform checks:** Prefer module-availability checks plus explicit OS scopes so platform-specific code stays isolated:
 ```swift
-// Correct: Check for UIKit availability (iOS/tvOS only)
 #if canImport(UIKit)
-import UIKit
+import UIKit  // iOS + tvOS helpers
 #endif
 
-// Correct: Check for AppKit availability (macOS only)
 #if canImport(AppKit)
-import AppKit
+import AppKit  // native mac features
 #endif
 
-// Correct: iOS-specific
-#if os(iOS)
-  // iOS and iPadOS code
-#endif
-
-// Correct: tvOS-specific
 #if os(tvOS)
-  // tvOS-only code
+// tvOS-only behaviour (remote navigation, focus routing)
 #endif
 
-// Correct: Native macOS-specific
-#if os(macOS)
-  // Native macOS code using AppKit
+#if os(iOS)
+// iOS/iPadOS-only behaviour (touch gestures, multitasking tweaks)
 #endif
 ```
 
@@ -245,24 +226,13 @@ import AppKit
 - `GlassEffects.swift` handles these decisions automatically via platform checks.
 
 **API availability differences:**
-- TabView `.page` style: Available on iOS/tvOS, NOT on native macOS. Use `.automatic` for macOS.
-- `fullScreenCover`: Available on iOS/tvOS, NOT on native macOS. Use `.sheet` for macOS.
-- `editMode` environment: Available on iOS/tvOS, NOT on native macOS.
-- `navigationBarTitleDisplayMode`: iOS-only. Use `.navigationTitle` for cross-platform.
-- Toolbar placements: `.topBarLeading`/`.topBarTrailing` are iOS-specific. Use `.principal`/`.automatic` for macOS.
-- UIKit APIs (UIApplication, UIImage, UIPasteboard): iOS/tvOS only. Use AppKit equivalents (NSWorkspace, NSImage, NSPasteboard) on macOS.
+- TabView `.page`: iOS/tvOS only — stick with `.automatic` on macOS.
+- `fullScreenCover`: iOS/tvOS only — present as `.sheet` on macOS.
+- `editMode` + `navigationBarTitleDisplayMode`: iOS-only — rely on `.navigationTitle` for macOS/tvOS.
+- Toolbar `.topBarLeading` / `.topBarTrailing`: iOS-only — use `.principal` / `.automatic` elsewhere.
+- UIKit types (`UIApplication`, `UIImage`, `UIPasteboard`, etc.) exist only on iOS/tvOS — swap for AppKit equivalents (`NSApplication`, `NSImage`, `NSPasteboard`) on macOS.
 
-**Build script:**
-```bash
-# All platforms (tvOS, iOS, iPadOS, macOS) - RECOMMENDED
-./build_install_launch.sh
-
-# Individual platforms
-./build_install_launch.sh tvos   # tvOS only
-./build_install_launch.sh ios    # iOS only
-./build_install_launch.sh ipad   # iPadOS only
-./build_install_launch.sh macos  # Native macOS only
-```
+**Build script:** Use `./build_install_launch.sh` (all or per-platform arguments) as detailed in [Build & Test](#build--test).
 
 **NavigationSplitView guardrails (macOS/iPad):**
 - Always feed production content into the active detail column. `NavigationSplitView` defaults to showing the detail pane, so leaving it empty hides the toolbar and tier grid.
@@ -290,7 +260,7 @@ import AppKit
 var tiers: Items = ["S":[],"A":[],"B":[],"C":[],"D":[],"F":[],"unranked":[]]
 var tierOrder: [String] = ["S","A","B","C","D","F"]
 var selection: Set<String> = []
-var h2hActive: Bool, h2hPair: (Item, Item)?
+var headToHead = HeadToHeadState()
 var tierLabels: [String: String], tierColors: [String: String]
 var selectedTheme: TierTheme
 ```
@@ -328,7 +298,7 @@ All four platforms **must** build successfully before merging structural splits.
 
 **Pattern from recent splits:**
 - [f662d34](https://github.com/eworthing/Tiercade/commit/f662d34) - Fixed macOS build errors: `private` → `internal` for cross-file access
-- [5fe41fe](https://github.com/eworthing/Tiercade/commit/5fe41fe), [0060169](https://github.com/eworthing/Tiercade/commit/0060169) - MatchupArenaOverlay, TierListProjectWizardPages splits required visibility updates
+- [5fe41fe](https://github.com/eworthing/Tiercade/commit/5fe41fe), [0060169](https://github.com/eworthing/Tiercade/commit/0060169) - HeadToHeadOverlay, TierListProjectWizardPages splits required visibility updates
 
 ### Async Operations & Progress
 Wrap long operations with loading indicators and progress tracking:
@@ -354,22 +324,13 @@ await withLoadingIndicator(message: "Loading...") {
 ## tvOS UX & Focus Management
 
 ### Focus System
-- **Modal overlays:** Use `.fullScreenCover()` for automatic focus containment (ThemePicker, TierListBrowser, MatchupArena, Analytics, QuickMove)
+- **Modal overlays:** Use `.fullScreenCover()` for automatic focus containment (ThemePicker, TierListBrowser, HeadToHead, Analytics, QuickMove)
 - **Transient overlays:** ZStack overlays use `.focusSection()` + `.focusable()` (QuickRank)
 - **Focus containment:** `.allowsHitTesting()` only blocks pointer input, **not focus**. For true focus trapping, use modal presentation modifiers (`.fullScreenCover()`, `.sheet()`)
 - **Background interaction:** Set `.allowsHitTesting(!modalActive)` on background (never `.disabled()`) for transient overlays so scroll inertia and VoiceOver remain intact
-- **Accessibility IDs:** Required for UI tests. Convention: `{Component}_{Action}` (e.g., `Toolbar_H2H`, `TierMove_Sheet`, `ActionBar_MultiSelect`)
+- **Accessibility IDs:** Required for UI tests. Convention: `{Component}_{Action}` (e.g., `Toolbar_HeadToHead`, `TierMove_Sheet`, `ActionBar_MultiSelect`)
 
-| Accessibility ID | Purpose |
-| --- | --- |
-| `Toolbar_NewTierList` | Primary entry point for the tier list wizard |
-| `Toolbar_H2H` | Head-to-head launch action (enabled when enough items) |
-| `Toolbar_Analysis` | Opens/closes analytics overlay |
-| `Toolbar_Themes` | Presents theme library |
-| `ActionBar_MoveBatch` | Batch move button in selection mode |
-| `TierMove_Sheet` | Cross-platform tier move modal – ensures UI tests can wait for presentation |
-| `MatchupOverlay_Apply` | Commit action for head-to-head queue |
-| `AIGenerator_Overlay` | AI item generation overlay (macOS/iOS only; tvOS shows platform notice) |
+- **Key IDs:** `Toolbar_NewTierList`, `Toolbar_HeadToHead`, `Toolbar_Analysis`, `Toolbar_Themes`, `ActionBar_MoveBatch`, `TierMove_Sheet`, `HeadToHeadOverlay_Apply`, `AIGenerator_Overlay`.
 - **tvOS 26 interactions:** Use `.focusable(interactions: .activate)` for action-only surfaces and opt into additional interactions (text entry, directional input) only when needed so the new multi-mode focus model stays predictable on remote hardware.
 - **Default focus:** Use `.prefersDefaultFocus(true, in:)` and a scoped `@FocusState` to land on the primary control when overlays appear.
 
@@ -398,71 +359,16 @@ tvOS Exit button (Menu/⌘) should dismiss modals, not exit app:
 
 ### ⚠️ Focus Anti-Pattern: Manual Focus Reset Loops
 
-**CRITICAL: DO NOT manually reset focus when it becomes nil**
+Never cache a `lastFocus` value or set focus back when it becomes `nil`. Use modal presentations (`.fullScreenCover()`/`.sheet()`) for containment, `.focusSection()` for guidance, and custom routing only to move focus predictably within complex grids. **See [Focus Anti-Pattern Reference](#focus-anti-pattern-reference-nov-2025)** for the full examples and rationale.
 
-❌ **ANTI-PATTERN (DO NOT USE):**
-```swift
-@State private var lastFocus: SomeType?
-@State private var suppressFocusReset = false
-
-.onChange(of: focusedElement) { _, newValue in
-    guard !suppressFocusReset else { return }
-    if let newValue {
-        lastFocus = newValue
-    } else if let lastFocus {
-        focusedElement = lastFocus  // ❌ Fighting the focus system!
-    }
-}
-```
-
-**Why this is wrong:**
-- Fights against natural tvOS focus navigation
-- Doesn't actually contain focus (hardware navigation still escapes)
-- Creates brittle state with suppressFocusReset flags
-- Goes against Apple's principle: "Focus should almost always be under user control"
-
-✅ **CORRECT PATTERN:**
-```swift
-// For modal overlays that must contain focus:
-.fullScreenCover(isPresented: $showOverlay) {
-    MyOverlay()  // ✅ Automatic focus containment
-}
-
-// For transient overlays that don't need containment:
-ZStack {
-    MyTransientOverlay()
-}
-.focusSection()  // ✅ Guides focus but doesn't trap
-```
-
-**Key Distinction:**
-- ❌ **Manual Focus TRAPPING**: Preventing escape by resetting when nil (anti-pattern)
-- ✅ **Custom Focus ROUTING**: Guiding arrow keys within complex layouts (legitimate)
-
-**Legitimate Custom Navigation Example:**
-```swift
-// ✅ CORRECT: Custom grid navigation
-func handleMoveCommand(_ direction: MoveCommandDirection) {
-    switch direction {
-    case .left: focusAdjacentItem(offset: -1)   // Route within grid
-    case .right: focusAdjacentItem(offset: +1)  // Route within grid
-    // ...
-    }
-}
-```
-
-**See Also:** `FOCUS_ANTI_PATTERN_AUDIT.md` for comprehensive analysis and examples.
-
-### Head-to-Head (Matchup Arena) Overlay Specifics
-- **Pass tile:** Centered with `arrow.uturn.left.circle` icon, live counter (`MatchupOverlay_SkippedBadge`)
-- **Focus default:** Primary contender when a pair is active
-- **Queue exhaustion:** Auto-show Commit button (`MatchupOverlay_Apply`) when queue empties
-- **Exit handling:** Route through `cancelH2H(fromExitCommand:)` for debounce
+### HeadToHead Overlay Specifics
+Keep the header’s phase badge + metrics rail, surface the pass tile with `arrow.uturn.left.circle`, focus the active contender (falling back to `HeadToHeadOverlay_Apply` when the queue is empty), and route `.onExitCommand` through `cancelHeadToHead(fromExitCommand:)`.
 
 ### Design Tokens
 **Use `Design/` helpers exclusively** — no hardcoded values
 - Colors: `Palette.primary`, `Palette.text`, `Palette.brand`
-- Typography: `TypeScale.h1`, `TypeScale.body`, etc.
+- Typography: `TypeScale.*` for every text surface; apply `TypeScale.IconScale` (or text-style-driven `.imageScale`) to SF Symbols so they inherit Dynamic Type. Never use `.font(.system(size: …))` for icons or inline glyphs outside of prototypes.
+- Layout: Prefer `ScaledDimensions` with `@ScaledMetric(relativeTo:)` for any fixed width/height/padding that must react to Dynamic Type. Avoid raw numeric frames unless the size truly never changes.
 - Spacing: `Metrics.padding`, `Metrics.cardPadding`, `TVMetrics.topBarHeight`
 - Effects: Apply Liquid Glass with SwiftUI's tvOS 26 APIs — `glassEffect(_:in:)`, `GlassEffectContainer`, and `buttonStyle(.glass)`/`GlassProminentButtonStyle` — for chrome surfaces in our tvOS 26 target; fallbacks are optional and only necessary if we later choose to support older devices.
 
@@ -473,73 +379,51 @@ func handleMoveCommand(_ direction: MoveCommandDirection) {
 - When using focus effects, prefer `.punchyFocus(color:)` over `.punchyFocus(tier:)` for custom tier color support
 
 ### Liquid Glass support matrix
-| Platform | Implementation | Helper |
-| --- | --- | --- |
-| tvOS 26+ | `glassEffect(_:in:)` with focus-ready spacing | See `GlassContainer` helper below |
-| iOS · iPadOS · macOS (native) | `.ultraThinMaterial` fallback inside the same shape | See `GlassContainer` helper below |
+- **tvOS 26+**: Use `glassEffect(_:in:)` with focus-safe spacing.
+- **iOS · iPadOS · macOS**: Fall back to `.ultraThinMaterial` inside the same shape.
 
 ```swift
 @ViewBuilder func GlassContainer<S: Shape, V: View>(_ shape: S, @ViewBuilder _ content: () -> V) -> some View {
-  #if os(tvOS)
+#if os(tvOS)
   content().glassEffect(.regular, in: shape)
-  #else
+#else
   content().background(.ultraThinMaterial, in: shape)
-  #endif
+#endif
 }
 ```
 
 ### ⚠️ Critical: Glass Effects and Focus Overlays
 
-**NEVER apply glass effects or translucent materials to section backgrounds, containers, or any layer behind focusable elements.**
+Keep glass on chrome, never behind focusable content—tvOS focus overlays turn unreadable when layered over translucent backgrounds.
 
-**Problem:** When tvOS text fields, keyboards, or other focusable controls receive focus, the system applies its own overlay effects. These overlays become **completely unreadable** when rendered through translucent glass backgrounds, appearing as illegible white films.
-
-**Solution:** Use glass effects **ONLY** on interactive UI chrome elements (toolbars, buttons, headers). All section backgrounds and containers must use solid, opaque backgrounds.
-
-**Correct pattern:**
 ```swift
-// ✅ CORRECT: Glass on toolbar/chrome only
 VStack {
-    HStack { /* toolbar buttons */ }
-        .glassEffect(.regular, in: Rectangle())  // Glass on chrome
+  HStack { /* toolbar buttons */ }
+    .glassEffect(.regular, in: Rectangle())  // chrome only
 
-    ScrollView {
-        VStack {
-            TextField("Name", text: $name)
-                .padding(12)
-                .background(Color.black)  // Solid background
-                .overlay {
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(Color.white.opacity(0.3), lineWidth: 2)
-                }
-                .focusEffectDisabled(false)  // Allow system focus
-        }
-        .padding(20)
-        .background(Color.black.opacity(0.6))  // Solid section background
-        .overlay {
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.white.opacity(0.15), lineWidth: 1)
-        }
-    }
+  TextField("Name", text: $name)
+    .padding(12)
+    .background(Color.black.opacity(0.7))    // solid background
+    .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white.opacity(0.2), lineWidth: 2))
 }
 ```
 
-**Incorrect pattern:**
+Solid backgrounds + subtle borders keep focus legible on every platform; validate in the tvOS 26 Apple TV 4K simulator.
+
+❌ **DON'T**
 ```swift
-// ❌ WRONG: Glass on backgrounds blocks focus overlays
 VStack {
-    TextField("Name", text: $name)
+  TextField("Name", text: $name)
 }
 .padding(20)
-.tvGlassRounded(20)  // ❌ Makes keyboard and focus unreadable!
+.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 20))  // focus overlay becomes unreadable
 ```
 
 **Best practices:**
-- ✅ **Use solid backgrounds** (`Color.black`, `Color.black.opacity(0.6)`) for all sections and containers
-- ✅ **Add borders** via `.overlay` with low-opacity strokes for definition
-- ✅ **Apply glass** only to toolbars, headers, and button chrome
-- ✅ **Enable focus effects** with `.focusEffectDisabled(false)` on text fields
-- ✅ **Test focus** in tvOS simulator to verify keyboard and focus overlays are readable
+- ✅ Apply glass to toolbars, headers, and buttons only.
+- ✅ Keep content sections on opaque fills (e.g., `Color.black.opacity(0.6)`) with subtle strokes for separation.
+- ✅ Leave `.focusEffectDisabled(false)` on text fields so the system halo stays visible.
+- ✅ Re-test in the tvOS 26 Apple TV 4K simulator after UI changes to confirm focus overlays remain legible.
 
 ### Context Menus (iOS/macOS)
 
@@ -560,6 +444,65 @@ ItemCardView(item: item)
 - tvOS: Long-press on Play/Pause button works but may conflict with focus UX—test thoroughly
 
 **Accessibility:** Ensure all context menu actions have keyboard/VoiceOver equivalents in toolbars or menus.
+
+## Focus Anti-Pattern Reference (Nov 2025)
+
+The November 2025 sweep cataloged every place we tried to “trap” focus manually. Treat this as a living checklist for future overlays.
+
+### Manual reset loop (never reintroduce)
+
+```swift
+// ❌ Anti-pattern: fighting the focus system
+@State private var lastFocus: HeadToHeadFocusAnchor?
+@State private var suppressReset = false
+
+.onChange(of: focusAnchor) { _, newValue in
+    guard !suppressReset else { return }
+    if let newValue { lastFocus = newValue }
+    else if let lastFocus { focusAnchor = lastFocus } // <-- wrong
+}
+```
+
+- Breaks tvOS hardware navigation and VoiceOver.
+- **Correct fix:** use modal presentation (`.fullScreenCover()`/`.sheet()`), declare a `@FocusState` default, and use helper methods to route arrows INSIDE the overlay rather than forcing focus back to a stored value.
+
+### Legitimate custom routing
+
+```swift
+func handleMoveCommand(_ direction: MoveCommandDirection) {
+    switch direction {
+    case .left:  focusAnchor = anchorToLeft(of: focusAnchor)
+    case .right: focusAnchor = anchorToRight(of: focusAnchor)
+    case .up:    focusAnchor = anchorAbove(focusAnchor)
+    case .down:  focusAnchor = anchorBelow(focusAnchor)
+    }
+}
+```
+
+Use this when the grid/layout is too custom for the default focus engine; it *guides* focus without trapping it.
+
+### Overlay status snapshot
+
+| Overlay | Status (Nov 2025) |
+| --- | --- |
+| HeadToHeadOverlay.swift | ✅ Modal + `@FocusState`, no manual reset |
+| QuickMoveOverlay.swift | ✅ Converted to modal |
+| TierListBrowserScene.swift | ✅ Converted to modal |
+| ThemeCreatorOverlay.swift | ⚠️ Keep verifying it stays modal after edits |
+| ThemeLibraryOverlay.swift | ⚠️ Ensure obsolete `.onChange` workarounds stay removed |
+
+### Checklist for any new overlay
+
+- [ ] Uses `.fullScreenCover()` (tvOS/iOS) or `.sheet()` (macOS) whenever focus must be contained; transient overlays rely on `.focusSection()`.
+- [ ] **Does NOT** use `lastFocus`, `suppressFocusReset`, or manual focus reassignment—default focus is established via `@FocusState` + `.prefersDefaultFocus`.
+- [ ] `.onExitCommand` routes to the overlay’s cancel method and hardware arrows cannot escape to background content in any direction.
+- [ ] Accessibility IDs follow `{Component}_{Action}` on leaf elements, and the overlay registers in the accessibility hierarchy immediately on iOS/macOS.
+- [ ] Glass effects stay on chrome (toolbars/buttons), while content areas use opaque backgrounds so focus halos remain legible.
+- [ ] Focus ring/halo is visible and readable in the tvOS 26 Apple TV 4K (3rd gen) simulator.
+- [ ] Full hardware sweep with Siri Remote / keyboard arrows shows predictable directional routing (no dead ends or traps).
+- [ ] Builds succeed on all platforms via `./build_install_launch.sh` (tvOS Apple TV 4K 3rd gen, iOS iPhone 17 Pro, iPadOS iPad mini A17 Pro, macOS native app).
+- [ ] Platform-specific behaviour is gated with `#if os(...)` and uses the correct presentation style per OS.
+- [ ] Overlay-specific accessibility actions (buttons, default controls) remain reachable via VoiceOver / Switch Control.
 
 ## Build & Test
 
@@ -631,7 +574,7 @@ TiercadeCore owns package tests. Run `swift test` inside `TiercadeCore/` (Swift 
 | Screen | ID to assert | Expectation |
 | --- | --- | --- |
 | Toolbar | `Toolbar_NewTierList` | Exists, isEnabled before launching wizard |
-| Head-to-Head overlay | `MatchupOverlay_Apply` | Appears once queue empties |
+| HeadToHead overlay | `HeadToHeadOverlay_Apply` | Appears once queue empties |
 | Tier Move | `TierMove_Sheet` | Presented before accepting commands |
 | Batch bar | `ActionBar_MoveBatch` | Visible only when selection count > 0 |
 | Analytics | `Toolbar_Analysis` | Toggles analytics sidebar |
@@ -645,44 +588,6 @@ TiercadeCore owns package tests. Run `swift test` inside `TiercadeCore/` (Swift 
 ### Manual Verification
 - Validate visuals in the latest tvOS 26 Apple TV 4K simulator; that environment mirrors the focus halos and Liquid Glass chrome we care about.
 - After builds: Keep simulator open, test focus/dismissal with Siri Remote simulator (or Mac keyboard arrows/Space/ESC)
-
-### New Overlay Verification Checklist
-
-Before merging a new overlay, verify:
-
-**Focus Containment (Modal overlays only):**
-- [ ] Uses `.fullScreenCover()` (tvOS/iOS) or `.sheet()` (macOS)
-- [ ] Does NOT have manual focus reset logic (`.onChange(of: focus)` to prevent nil)
-- [ ] Does NOT use `lastFocus` / `suppressFocusReset` state variables
-- [ ] Default focus lands on primary action via `.defaultFocus()` or `.prefersDefaultFocus()`
-- [ ] Exit command (Menu button) dismisses overlay with `.onExitCommand`
-- [ ] Cannot escape to background via arrow keys (test thoroughly!)
-
-**Focus Navigation (All overlays):**
-- [ ] Primary control receives focus on `.onAppear`
-- [ ] Arrow key navigation works as expected for complex layouts
-- [ ] Focus ring visible and appropriately styled
-- [ ] Accessibility IDs follow `{Component}_{Action}` convention on leaf elements
-- [ ] Custom directional navigation (if any) is routing, not trapping
-
-**Platform Compatibility:**
-- [ ] **CRITICAL**: Builds successfully on ALL platforms (`./build_install_launch.sh`)
-  - [ ] tvOS (Apple TV 4K simulator)
-  - [ ] iOS (iPhone 17 Pro simulator)
-  - [ ] iPadOS (iPad mini A17 Pro simulator)
-  - [ ] macOS (native Mac app)
-- [ ] Uses platform-appropriate presentation (fullScreenCover vs sheet)
-- [ ] Glass effects only on chrome, not on focusable backgrounds
-- [ ] Platform-specific features properly gated
-
-**Manual Testing:**
-- [ ] Complete focus sweep with Siri Remote / keyboard arrows
-- [ ] Attempt to escape overlay in all four directions
-- [ ] Verify glass effects don't interfere with focus overlays
-- [ ] Test Exit command behavior (dismisses overlay, doesn't exit app)
-- [ ] Verify overlay appears in accessibility hierarchy immediately
-
-**See Also:** `FOCUS_ANTI_PATTERN_AUDIT.md` for detailed examples and anti-patterns to avoid.
 
 ## Data Contracts & Patterns
 

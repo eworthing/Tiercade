@@ -25,7 +25,7 @@ advanced analytics, multiple export formats, and intelligent insights.
 ### **Advanced Operations**
 
 - **Quick Rank Mode** - Rapid tier assignment with gesture shortcuts
-- **Head-to-Head Voting** - Binary comparison system for difficult ranking decisions
+- **HeadToHead Voting** - Binary comparison system for difficult ranking decisions
 - **Search & Filter** - Real-time search with highlighting and advanced filtering options
 - **Undo/Redo System** - Comprehensive history management with unlimited undo/redo
 
@@ -61,9 +61,9 @@ advanced analytics, multiple export formats, and intelligent insights.
 
 - **Remote-First Navigation** - Optimized focus rings and directional layout tuned for the Siri Remote, with safe-area-aware spacing for comfortable living-room viewing.
 - **Dedicated Overlays** - Quick Move, Quick Rank, and Detail overlays appear as modal glass surfaces that pause background interaction until dismissed, keeping attention on the active task.
-- **Toolbar & Action Bar** - Floating top and bottom bars adapt to tvOS conventions, exposing undo/redo, head-to-head, analysis, and selection actions with clear focus targets.
+- **Toolbar & Action Bar** - Floating top and bottom bars adapt to tvOS conventions, exposing undo/redo, HeadToHead, analysis, and selection actions with clear focus targets.
 - **Exit Command Handling** - Pressing the remote’s ⌘/Menu (Exit) button inside modals dismisses the current overlay instead of backing out of the app, mirroring native tvOS behavior.
-- **Deferred Skip Flow** - The Head-to-Head overlay now features a dedicated Skip card with a recirculating clock icon, updates the skipped count live, and automatically resurfaces deferred pairs after all first-pass matchups.
+- **Deferred Skip Flow** - The HeadToHead overlay now features a dedicated Skip card with a recirculating clock icon, updates the skipped count live, and automatically resurfaces deferred pairs after all first-pass matchups.
 - **Focus Tooltips** - Custom tooltips surface helpful hints (e.g. “Randomize”, “Lock Tier”) when buttons receive focus, guiding new users through tier management on the TV.
 - **Media Playback** - Item detail pages can promote images and video with full-screen playback support that respects tvOS playback gestures.
 
@@ -172,7 +172,7 @@ TiercadeCore Logic → State Update → UI Refresh
 TiercadeCore ships with Swift Testing coverage for critical logic:
 
 - Core tier manipulation (`TierLogic`, `QuickRankLogic`)
-- Head-to-head quick pass, refinement heuristics, and warm-start queueing
+- HeadToHead quick pass, refinement heuristics, and warm-start queueing
 - Shared utilities (`RandomUtils`, `TierIdentifier`, `Formatters`, `DataLoader`)
 - Bundled project descriptors and model decoding/normalization paths
 
@@ -275,7 +275,7 @@ Tiercade/
 ├── TiercadeCore/              # Platform-agnostic Swift Package
 │   ├── Sources/
 │   │   ├── Models/            # Data structures & model resolution
-│   │   ├── Logic/             # Tiering, history, head-to-head logic
+│   │   ├── Logic/             # Tiering, history, HeadToHead logic
 │   │   └── Utilities/         # Formatters, data loaders, randomness
 │   └── README.md              # Core package overview (tests will return later)
 └── Tiercade.xcodeproj/        # Xcode project configuration

@@ -1,10 +1,9 @@
 import SwiftUI
-import TiercadeCore
 
-// MARK: - View Modifiers for MatchupArenaOverlay
+// MARK: - View Modifiers for HeadToHeadOverlay
 
 internal extension View {
-    func applyOverlayModifiers(namespace: Namespace.ID) -> some View {
+    func headToHeadOverlayChrome(namespace: Namespace.ID) -> some View {
         self
             .tvGlassRounded(40)
             #if swift(>=6.0)
@@ -16,16 +15,16 @@ internal extension View {
             )
             .shadow(color: Color.black.opacity(0.3), radius: 36, y: 18)
             .padding(.horizontal, Metrics.grid * 2)
-            .accessibilityIdentifier("MatchupOverlay_Root")
+            .accessibilityIdentifier("HeadToHeadOverlay_Root")
             .accessibilityElement(children: .contain)
             #if os(tvOS)
             .focusSection()
             #endif
     }
 
-    func applyFocusModifiers(
-        focusAnchor: FocusState<MatchupFocusAnchor?>.Binding,
-        defaultFocus: MatchupFocusAnchor,
+    func headToHeadFocusModifiers(
+        focusAnchor: FocusState<HeadToHeadFocusAnchor?>.Binding,
+        defaultFocus: HeadToHeadFocusAnchor,
         onAppear: @escaping () -> Void
     ) -> some View {
         self
@@ -33,7 +32,7 @@ internal extension View {
             .onAppear { onAppear() }
     }
 
-    func applyH2HPairTracking(
+    func trackHeadToHeadPairs(
         app: AppState,
         onSync: @escaping () -> Void,
         onDisappear: @escaping () -> Void
@@ -46,17 +45,16 @@ internal extension View {
     }
 
     #if os(tvOS)
-    func applyTVOSModifiers(
+    func headToHeadTVModifiers(
         app: AppState,
         handleMove: @escaping (MoveCommandDirection) -> Void
     ) -> some View {
         self
-            .onExitCommand { app.cancelH2H(fromExitCommand: true) }
+            .onExitCommand { app.cancelHeadToHead(fromExitCommand: true) }
             .onMoveCommand(perform: handleMove)
     }
     #else
-    func applyNonTVOSModifiers(
-        app: AppState,
+    func headToHeadMacOSModifiers(
         overlayHasFocus: FocusState<Bool>.Binding,
         handleInput: @escaping (DirectionalMove) -> Void,
         handleAction: @escaping () -> Void
@@ -70,15 +68,6 @@ internal extension View {
             .onKeyPress(.rightArrow) { handleInput(.right); return .handled }
             .onKeyPress(.space) { handleAction(); return .handled }
             .onKeyPress(.return) { handleAction(); return .handled }
-            .onChange(of: overlayHasFocus.wrappedValue) { _, newValue in
-                guard !newValue, app.headToHead.isActive else { return }
-                Task { @MainActor in
-                    try? await Task.sleep(for: .milliseconds(50))
-                    if app.headToHead.isActive {
-                        overlayHasFocus.wrappedValue = true
-                    }
-                }
-            }
             .accessibilityAddTraits(.isModal)
     }
     #endif
@@ -90,7 +79,7 @@ private struct GlassEffectModifier: ViewModifier {
 
     internal func body(content: Content) -> some View {
         content
-            .glassEffectID("matchupOverlay", in: namespace)
+            .glassEffectID("headToHeadOverlay", in: namespace)
             .glassEffectTransition(.matchedGeometry)
     }
 }

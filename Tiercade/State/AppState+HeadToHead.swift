@@ -4,16 +4,16 @@ import TiercadeCore
 
 @MainActor
 internal extension AppState {
-    // MARK: - Head-to-Head lifecycle
+    // MARK: - HeadToHead lifecycle
 
-    func startH2H() {
+    func startHeadToHead() {
         if headToHead.isActive {
-            showInfoToast("Head-to-Head Already Active", message: "Finish or cancel the current matchup first")
+            showInfoToast("HeadToHead Already Active", message: "Finish or cancel the current matchup first")
             return
         }
 
         guard hasEnoughForPairing else {
-            showInfoToast("Need More Items", message: "Add at least two items before starting Head-to-Head")
+            showInfoToast("Need More Items", message: "Add at least two items before starting HeadToHead")
             return
         }
 
@@ -28,7 +28,7 @@ internal extension AppState {
         )
 
         guard !pairs.isEmpty else {
-            showInfoToast("Not Enough Matchups", message: "Add more items before starting Head-to-Head")
+            showInfoToast("Not Enough Comparisons", message: "Add more items before starting HeadToHead")
             return
         }
 
@@ -50,13 +50,13 @@ internal extension AppState {
         headToHead.suggestedPairs = []
 
         Logger.headToHead.info(
-            "Started H2H: pool=\(self.headToHead.pool.count) target=\(targetComparisons) pairs=\(self.headToHead.totalComparisons)"
+            "Started HeadToHead: pool=\(self.headToHead.pool.count) target=\(targetComparisons) pairs=\(self.headToHead.totalComparisons)"
         )
 
-        nextH2HPair()
+        nextHeadToHeadPair()
     }
 
-    func nextH2HPair() {
+    func nextHeadToHeadPair() {
         guard headToHead.isActive else { return }
 
         if headToHead.pairsQueue.isEmpty, !headToHead.deferredPairs.isEmpty {
@@ -76,7 +76,7 @@ internal extension AppState {
         Logger.headToHead.debug("Next pair: \(pair.0.id)-\(pair.1.id), queue=\(self.headToHead.pairsQueue.count)")
     }
 
-    func voteH2H(winner: Item) {
+    func voteHeadToHead(winner: Item) {
         guard headToHead.isActive, let pair = headToHead.currentPair else { return }
         let a = pair.0
         let b = pair.1
@@ -84,7 +84,7 @@ internal extension AppState {
         let poolIds = Set(headToHead.pool.map(\.id))
         assert(
             poolIds.contains(a.id) && poolIds.contains(b.id),
-            "Voting on items that are no longer in the head-to-head pool"
+            "Voting on items that are no longer in the HeadToHead pool"
         )
         #endif
         HeadToHeadLogic.vote(a, b, winner: winner, records: &headToHead.records)
@@ -96,9 +96,9 @@ internal extension AppState {
         } else {
             headToHead.completedComparisons = min(headToHead.completedComparisons + 1, headToHead.totalComparisons)
         }
-        headToHead.skippedPairKeys.remove(h2hPairKey(pair))
+        headToHead.skippedPairKeys.remove(headToHeadPairKey(pair))
         headToHead.currentPair = nil
-        nextH2HPair()
+        nextHeadToHeadPair()
 
         autoAdvanceIfNeeded()
 
@@ -111,16 +111,16 @@ internal extension AppState {
         }
     }
 
-    func skipCurrentH2HPair() {
+    func skipCurrentHeadToHeadPair() {
         guard headToHead.isActive, let pair = headToHead.currentPair else { return }
         headToHead.deferredPairs.append(pair)
-        headToHead.skippedPairKeys.insert(h2hPairKey(pair))
+        headToHead.skippedPairKeys.insert(headToHeadPairKey(pair))
         headToHead.currentPair = nil
         Logger.headToHead.info("Skipped pair: \(pair.0.id)-\(pair.1.id), deferred=\(self.headToHead.deferredPairs.count)")
-        nextH2HPair()
+        nextHeadToHeadPair()
     }
 
-    func finishH2H() {
+    func finishHeadToHead() {
         guard headToHead.isActive else { return }
         handleCombinedCompletion()
     }
@@ -154,7 +154,7 @@ internal extension AppState {
         finalizeHeadToHead(with: quick.artifacts)
     }
 
-    private func transitionToRefinement(artifacts: H2HArtifacts, suggestedPairs: [(Item, Item)]) {
+    private func transitionToRefinement(artifacts: HeadToHeadArtifacts, suggestedPairs: [(Item, Item)]) {
         headToHead.artifacts = artifacts
         headToHead.suggestedPairs = suggestedPairs
         headToHead.pairsQueue = suggestedPairs
@@ -165,10 +165,10 @@ internal extension AppState {
         headToHead.phase = .refinement
 
         Logger.headToHead.info("Entering refinement phase: pairs=\(suggestedPairs.count)")
-        nextH2HPair()
+        nextHeadToHeadPair()
     }
 
-    private func finalizeHeadToHead(with artifacts: H2HArtifacts?) {
+    private func finalizeHeadToHead(with artifacts: HeadToHeadArtifacts?) {
         let snapshot = headToHead.initialSnapshot ?? captureTierSnapshot()
         if let artifacts {
             let result = HeadToHeadLogic.finalizeTiers(
@@ -180,18 +180,18 @@ internal extension AppState {
             tiers = result.tiers
         }
 
-        finalizeChange(action: "Head-to-Head Results", undoSnapshot: snapshot)
-        showSuccessToast("Head-to-Head Complete", message: "Results applied to your tiers.")
+        finalizeChange(action: "HeadToHead Results", undoSnapshot: snapshot)
+        showSuccessToast("HeadToHead Complete", message: "Results applied to your tiers.")
         logPhaseSummary(
             prefix: "combined phase complete",
             debugSuffix: "combined phase complete counts",
             summary: tierSummary()
         )
         headToHead.initialSnapshot = nil
-        resetH2HSession()
+        resetHeadToHeadSession()
     }
 
-    private func finalizeRefinement(using artifacts: H2HArtifacts) {
+    private func finalizeRefinement(using artifacts: HeadToHeadArtifacts) {
         let result = HeadToHeadLogic.finalizeTiers(
             artifacts: artifacts,
             records: headToHead.records,
@@ -212,10 +212,10 @@ internal extension AppState {
     }
 
     private func logPhaseSummary(prefix: String, debugSuffix: String, summary: String) {
-        Logger.headToHead.info("H2H \(prefix): \(summary)")
+        Logger.headToHead.info("HeadToHead \(prefix): \(summary)")
     }
 
-    func cancelH2H(fromExitCommand: Bool = false) {
+    func cancelHeadToHead(fromExitCommand: Bool = false) {
         guard headToHead.isActive else { return }
         #if os(tvOS)
         if fromExitCommand, let activatedAt = headToHead.activatedAt, Date().timeIntervalSince(activatedAt) < TVInteraction.exitCommandDebounce {
@@ -223,12 +223,12 @@ internal extension AppState {
             return
         }
         #endif
-        resetH2HSession()
-        showInfoToast("Head-to-Head Cancelled", message: "No changes were made.")
-        Logger.headToHead.info("H2H cancelled: trigger=\(fromExitCommand ? "exitCommand" : "user")")
+        resetHeadToHeadSession()
+        showInfoToast("HeadToHead Cancelled", message: "No changes were made.")
+        Logger.headToHead.info("HeadToHead cancelled: trigger=\(fromExitCommand ? "exitCommand" : "user")")
     }
 
-    private func resetH2HSession(clearRecords: Bool = true) {
+    private func resetHeadToHeadSession(clearRecords: Bool = true) {
         headToHead.isActive = false
         headToHead.currentPair = nil
         headToHead.pool = []
@@ -249,7 +249,7 @@ internal extension AppState {
         headToHead.initialSnapshot = nil
     }
 
-    private func h2hPairKey(_ pair: (Item, Item)) -> String {
+    private func headToHeadPairKey(_ pair: (Item, Item)) -> String {
         [pair.0.id, pair.1.id].sorted().joined(separator: "-")
     }
 
@@ -257,12 +257,12 @@ internal extension AppState {
         guard poolCount > 1 else { return 0 }
         let maxUnique = poolCount - 1
         let desired: Int
-        if poolCount >= H2HHeuristics.largePoolThreshold {
-            desired = H2HHeuristics.largeDesiredComparisons
-        } else if poolCount >= H2HHeuristics.mediumPoolThreshold {
-            desired = H2HHeuristics.mediumDesiredComparisons
+        if poolCount >= HeadToHeadHeuristics.largePoolThreshold {
+            desired = HeadToHeadHeuristics.largeDesiredComparisons
+        } else if poolCount >= HeadToHeadHeuristics.mediumPoolThreshold {
+            desired = HeadToHeadHeuristics.mediumDesiredComparisons
         } else {
-            desired = H2HHeuristics.smallDesiredComparisons
+            desired = HeadToHeadHeuristics.smallDesiredComparisons
         }
         return max(1, min(desired, maxUnique))
     }

@@ -6,10 +6,10 @@ extension HeadToHeadLogic {
         undersampled: [Item],
         baseTiers: Items,
         tierOrder: [String],
-        records: [String: H2HRecord]
-    ) -> H2HQuickResult {
+        records: [String: HeadToHeadRecord]
+    ) -> HeadToHeadQuickResult {
         guard !undersampled.isEmpty else {
-            return H2HQuickResult(tiers: tiers, artifacts: nil, suggestedPairs: [])
+            return HeadToHeadQuickResult(tiers: tiers, artifacts: nil, suggestedPairs: [])
         }
 
         var updatedTiers = tiers
@@ -17,13 +17,13 @@ extension HeadToHeadLogic {
         let priors = buildPriors(from: baseTiers, tierOrder: tierOrder)
         let metrics = metricsDictionary(for: undersampled, records: records, z: Tun.zQuick, priors: priors)
         updatedTiers[unrankedKey, default: []] = orderedItems(undersampled, metrics: metrics)
-        return H2HQuickResult(tiers: updatedTiers, artifacts: nil, suggestedPairs: [])
+        return HeadToHeadQuickResult(tiers: updatedTiers, artifacts: nil, suggestedPairs: [])
     }
 
     internal static func appendUndersampled(
         _ undersampled: [Item],
         to tiers: inout Items,
-        records: [String: H2HRecord],
+        records: [String: HeadToHeadRecord],
         priors: [String: Prior]
     ) {
         guard !undersampled.isEmpty else { return }
@@ -38,9 +38,9 @@ extension HeadToHeadLogic {
         operativeNames: [String],
         cuts: [Int],
         metrics: [String: HeadToHeadMetrics]
-    ) -> H2HArtifacts {
+    ) -> HeadToHeadArtifacts {
         let audits = buildAudits(orderedCount: ordered.count, cuts: cuts, width: Tun.frontierWidth)
-        return H2HArtifacts(
+        return HeadToHeadArtifacts(
             tierNames: operativeNames,
             rankable: ordered,
             undersampled: undersampled,

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct H2HRecord: Sendable {
+public struct HeadToHeadRecord: Sendable {
     public var wins: Int = 0
     public var losses: Int = 0
     public var total: Int { wins + losses }
@@ -38,7 +38,7 @@ public enum HeadToHeadLogic {
         return shuffled
     }
 
-    public static func vote(_ a: Item, _ b: Item, winner: Item, records: inout [String: H2HRecord]) {
+    public static func vote(_ a: Item, _ b: Item, winner: Item, records: inout [String: HeadToHeadRecord]) {
         if winner.id == a.id {
             records[a.id, default: .init()].wins += 1
             records[b.id, default: .init()].losses += 1
@@ -52,17 +52,17 @@ public enum HeadToHeadLogic {
 
     public static func quickTierPass(
         from pool: [Item],
-        records: [String: H2HRecord],
+        records: [String: HeadToHeadRecord],
         tierOrder: [String],
         baseTiers: Items
-    ) -> H2HQuickResult {
+    ) -> HeadToHeadQuickResult {
         guard !pool.isEmpty else {
-            return H2HQuickResult(tiers: baseTiers, artifacts: nil, suggestedPairs: [])
+            return HeadToHeadQuickResult(tiers: baseTiers, artifacts: nil, suggestedPairs: [])
         }
 
         let tierNames = normalizedTierNames(from: tierOrder)
         guard !tierNames.isEmpty else {
-            return H2HQuickResult(tiers: baseTiers, artifacts: nil, suggestedPairs: [])
+            return HeadToHeadQuickResult(tiers: baseTiers, artifacts: nil, suggestedPairs: [])
         }
 
         let (rankable, undersampled) = partitionByComparisons(
@@ -108,12 +108,12 @@ public enum HeadToHeadLogic {
             limit: suggestedPairLimit(for: artifacts)
         )
 
-        return H2HQuickResult(tiers: tiers, artifacts: artifacts, suggestedPairs: suggested)
+        return HeadToHeadQuickResult(tiers: tiers, artifacts: artifacts, suggestedPairs: suggested)
     }
 
     public static func refinementPairs(
-        artifacts: H2HArtifacts,
-        records: [String: H2HRecord],
+        artifacts: HeadToHeadArtifacts,
+        records: [String: HeadToHeadRecord],
         limit: Int
     ) -> [(Item, Item)] {
         guard artifacts.mode != .done,
@@ -148,7 +148,7 @@ public enum HeadToHeadLogic {
 
     public static func initialComparisonQueueWarmStart(
         from pool: [Item],
-        records: [String: H2HRecord],
+        records: [String: HeadToHeadRecord],
         tierOrder: [String],
         currentTiers: Items,
         targetComparisonsPerItem: Int
@@ -188,17 +188,17 @@ public enum HeadToHeadLogic {
     }
 
     /// Chooses how many refinement pairs to surface, ensuring we can touch every active boundary at least once.
-    private static func suggestedPairLimit(for artifacts: H2HArtifacts) -> Int {
+    private static func suggestedPairLimit(for artifacts: HeadToHeadArtifacts) -> Int {
         let cutsNeeded = max(artifacts.tierNames.count - 1, 1)
         return max(Tun.maxSuggestedPairs, cutsNeeded)
     }
 
     public static func finalizeTiers(
-        artifacts: H2HArtifacts,
-        records: [String: H2HRecord],
+        artifacts: HeadToHeadArtifacts,
+        records: [String: HeadToHeadRecord],
         tierOrder: [String],
         baseTiers: Items
-    ) -> (tiers: Items, updatedArtifacts: H2HArtifacts) {
+    ) -> (tiers: Items, updatedArtifacts: HeadToHeadArtifacts) {
         guard !artifacts.rankable.isEmpty else {
             return (baseTiers, artifacts)
         }
@@ -257,7 +257,7 @@ public enum HeadToHeadLogic {
     @available(*, deprecated, message: "Use quickTierPass / finalizeTiers for two-phase tiering")
     public static func rebuildTiers(
         from pool: [Item],
-        records: [String: H2HRecord],
+        records: [String: HeadToHeadRecord],
         tierOrder: [String],
         baseTiers: Items
     ) -> Items {
@@ -271,20 +271,20 @@ public enum HeadToHeadLogic {
 
 // MARK: - Public support types
 
-public struct H2HQuickResult: Sendable {
+public struct HeadToHeadQuickResult: Sendable {
     public let tiers: Items
-    public let artifacts: H2HArtifacts?
+    public let artifacts: HeadToHeadArtifacts?
     public let suggestedPairs: [(Item, Item)]
 }
 
-public struct H2HArtifacts: Sendable {
+public struct HeadToHeadArtifacts: Sendable {
     public enum Mode: Sendable { case quick, done }
 
     public let tierNames: [String]
     public let rankable: [Item]
     public let undersampled: [Item]
     public let provisionalCuts: [Int]
-    public let frontier: [H2HFrontier]
+    public let frontier: [HeadToHeadFrontier]
     public let warmUpComparisons: Int
     public let mode: Mode
     fileprivate let metrics: [String: HeadToHeadLogic.HeadToHeadMetrics]
@@ -294,7 +294,7 @@ public struct H2HArtifacts: Sendable {
         rankable: [Item],
         undersampled: [Item],
         provisionalCuts: [Int],
-        frontier: [H2HFrontier],
+        frontier: [HeadToHeadFrontier],
         warmUpComparisons: Int,
         mode: Mode,
         metrics: [String: HeadToHeadLogic.HeadToHeadMetrics]
@@ -310,7 +310,7 @@ public struct H2HArtifacts: Sendable {
     }
 }
 
-public struct H2HFrontier: Sendable {
+public struct HeadToHeadFrontier: Sendable {
     public let index: Int
     public let upperRange: Range<Int>
     public let lowerRange: Range<Int>

@@ -673,4 +673,20 @@ private struct TestSuitePickerSheet: View {
 }
 #endif
 
-// Preview intentionally omitted to keep compile times fast
+// MARK: - Previews
+
+@MainActor
+private struct AIChatOverlayPreview: View {
+    private let appState = PreviewHelpers.makeAppState { app in
+        app.aiGeneration.showAIChat = true
+    }
+
+    var body: some View {
+        AIChatOverlay(ai: appState.aiGeneration)
+            .environment(appState)
+    }
+}
+
+#Preview("AI Chat Overlay") {
+    AIChatOverlayPreview()
+}

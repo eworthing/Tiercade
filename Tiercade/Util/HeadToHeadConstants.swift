@@ -9,7 +9,7 @@ public enum TVInteraction {
 }
 #endif
 
-/// Head-to-Head phase weighting for progress calculation
+/// HeadToHead phase weighting for progress calculation
 public enum HeadToHeadWeights {
     /// Weight given to quick-phase comparisons in overall progress (75%)
     public static let quickPhase: Double = 0.75
@@ -19,7 +19,7 @@ public enum HeadToHeadWeights {
 }
 
 /// Heuristics for determining comparison requirements based on pool size
-public enum H2HHeuristics {
+public enum HeadToHeadHeuristics {
     /// Pool size threshold for "large" pools (10+ items)
     public static let largePoolThreshold = 10
 

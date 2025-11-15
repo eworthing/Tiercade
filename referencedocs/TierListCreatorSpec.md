@@ -13,7 +13,7 @@ Last updated: 2025-02-14
 ## 2. Scope
 
 - **In scope:** project metadata authoring, tier CRUD + ordering, item catalog management, override editing, validation, export/import, audit updates, inline preview.
-- **Out of scope:** head-to-head ranking UI, analytics dashboards, real-time collaboration edits (display-only for now), legacy OS backports.
+- **Out of scope:** HeadToHead ranking UI, analytics dashboards, real-time collaboration edits (display-only for now), legacy OS backports.
 
 ## 3. Experience Pillars
 

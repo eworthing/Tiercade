@@ -100,20 +100,63 @@ internal enum Metrics {
     #endif
 }
 
-internal enum TypeScale {
-    // Use dynamic, semantic text styles so SwiftUI can scale them for Accessibility / Dynamic Type
+// MARK: - Scaled Layout Dimensions
+
+internal enum ScaledDimensions {
     #if os(tvOS)
+    internal static let progressDialSize: CGFloat = 150
+    internal static let candidateCardMinWidth: CGFloat = 360
+    internal static let candidateCardMaxWidth: CGFloat = 520
+    internal static let candidateCardMinHeight: CGFloat = 280
+    internal static let passTileSize: CGFloat = 240
+    internal static let buttonMinWidthSmall: CGFloat = 220
+    internal static let buttonMinWidthLarge: CGFloat = 260
+    internal static let textContentMaxWidth: CGFloat = 520
+    #else
+    internal static let progressDialSize: CGFloat = 100
+    internal static let candidateCardMinWidth: CGFloat = 280
+    internal static let candidateCardMaxWidth: CGFloat = 400
+    internal static let candidateCardMinHeight: CGFloat = 220
+    internal static let passTileSize: CGFloat = 200
+    internal static let buttonMinWidthSmall: CGFloat = 180
+    internal static let buttonMinWidthLarge: CGFloat = 210
+    internal static let textContentMaxWidth: CGFloat = 420
+    #endif
+}
+
+internal enum TypeScale {
+    #if os(tvOS)
+    internal static let h1 = Font.system(size: 96, design: .default).weight(.heavy)
     internal static let h2 = Font.largeTitle.weight(.bold)
     internal static let h3 = Font.title.weight(.semibold)
     internal static let body = Font.title3
+    internal static let bodySmall = Font.callout
     internal static let label = Font.body
+    internal static let caption = Font.caption
+    internal static let footnote = Font.footnote
     internal static let metadata = Font.title3.weight(.semibold)
+
+    internal enum IconScale {
+        internal static let small: Image.Scale = .medium
+        internal static let medium: Image.Scale = .large
+        internal static let large: Image.Scale = .large
+    }
     #else
+    internal static let h1 = Font.system(size: 48, design: .default).weight(.heavy)
     internal static let h2 = Font.title.weight(.semibold)
     internal static let h3 = Font.title2.weight(.semibold)
     internal static let body = Font.body
+    internal static let bodySmall = Font.callout
     internal static let label = Font.caption
+    internal static let caption = Font.caption2.weight(.medium)
+    internal static let footnote = Font.footnote.weight(.regular)
     internal static let metadata = Font.subheadline.weight(.semibold)
+
+    internal enum IconScale {
+        internal static let small: Image.Scale = .small
+        internal static let medium: Image.Scale = .medium
+        internal static let large: Image.Scale = .large
+    }
     #endif
 }
 

@@ -38,6 +38,16 @@ internal struct ThemeLibraryOverlay: View {
             overlayHasFocus = false
             #endif
         }
+        #if !os(tvOS)
+        .onChange(of: overlayHasFocus) { _, newValue in
+            guard !newValue else { return }
+            Task { @MainActor in
+                try? await Task.sleep(for: FocusWorkarounds.reassertDelay)
+                guard appState.overlays.showThemePicker else { return }
+                overlayHasFocus = true
+            }
+        }
+        #endif
     }
 }
 
@@ -560,4 +570,28 @@ private struct SelectedBadge: View {
             )
             .accessibilityHidden(true)
     }
+}
+
+// MARK: - Previews
+
+@MainActor
+private struct ThemeLibraryOverlayPreview: View {
+    private let appState = PreviewHelpers.makeAppState { app in
+        app.overlays.showThemePicker = true
+    }
+
+    var body: some View {
+        ThemeLibraryOverlay()
+            .environment(appState)
+    }
+}
+
+#Preview("Theme Library – Light") {
+    ThemeLibraryOverlayPreview()
+        .preferredColorScheme(.light)
+}
+
+#Preview("Theme Library – Dark") {
+    ThemeLibraryOverlayPreview()
+        .preferredColorScheme(.dark)
 }

@@ -111,12 +111,12 @@ internal struct TiercadeCommands: Commands {
         // Tier menu commands (custom menu)
         CommandMenu("Tier") {
             Button {
-                appState.startH2H()
+                appState.startHeadToHead()
             } label: {
-                Label("Head-to-Head Ranking", systemImage: "person.line.dotted.person.fill")
+                Label("HeadToHead Ranking", systemImage: "person.line.dotted.person.fill")
             }
             .keyboardShortcut("h", modifiers: [.control, .command])
-            .help("Start head-to-head ranking (⌃⌘H)")
+            .help("Start HeadToHead ranking (⌃⌘H)")
             .disabled(!appState.canStartHeadToHead)
 
             Divider()

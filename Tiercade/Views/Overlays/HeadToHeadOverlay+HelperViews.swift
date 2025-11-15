@@ -1,13 +1,11 @@
 import SwiftUI
 import TiercadeCore
 
-internal struct MatchupProgressDial: View {
+internal struct HeadToHeadProgressDial: View {
     internal let progress: Double
     internal let label: String
 
-    private var clampedProgress: Double {
-        min(max(progress, 0), 1)
-    }
+    private var clampedProgress: Double { min(max(progress, 0), 1) }
 
     internal var body: some View {
         ZStack {
@@ -25,17 +23,18 @@ internal struct MatchupProgressDial: View {
                 )
                 .rotationEffect(.degrees(-90))
 
-            VStack(spacing: 6) {
+            VStack(spacing: Metrics.grid * 0.75) {
                 Image(systemName: symbolName)
-                    .font(.system(size: 26, weight: .semibold))
+                    .imageScale(TypeScale.IconScale.small)
+                    .fontWeight(.semibold)
                 Text(label)
-                    .font(.headline)
+                    .font(TypeScale.caption)
                     .multilineTextAlignment(.center)
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, Metrics.grid * 1.5)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Matchup progress")
+        .accessibilityLabel("HeadToHead progress")
         .accessibilityValue(label)
     }
 
@@ -51,25 +50,30 @@ internal struct MatchupProgressDial: View {
     }
 }
 
-internal struct MatchupCandidateCard: View {
+internal struct HeadToHeadCandidateCard: View {
     enum AlignmentHint { case leading, trailing }
 
     internal let item: Item
     internal let accentColor: Color
     internal let alignment: AlignmentHint
     internal let action: () -> Void
+    internal var compact: Bool = false
+
+    @ScaledMetric(relativeTo: .title) private var cardMinWidth = ScaledDimensions.candidateCardMinWidth
+    @ScaledMetric(relativeTo: .title) private var cardMaxWidth = ScaledDimensions.candidateCardMaxWidth
+    @ScaledMetric(relativeTo: .title) private var cardMinHeight = ScaledDimensions.candidateCardMinHeight
 
     internal var body: some View {
         Button(action: action) {
-            VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: 18) {
+            VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: Metrics.grid * 2.25) {
                 header
                 detail
             }
             .padding(Metrics.grid * 3)
             .frame(
-                minWidth: 360,
-                maxWidth: 520,
-                minHeight: 280,
+                minWidth: compact ? 0 : cardMinWidth,
+                maxWidth: compact ? .infinity : cardMaxWidth,
+                minHeight: cardMinHeight,
                 alignment: alignment == .leading ? .topLeading : .topTrailing
             )
             .background(backgroundShape)
@@ -83,32 +87,50 @@ internal struct MatchupCandidateCard: View {
         .accessibilityHint(item.description ?? "Choose this contender")
     }
 
+    private var candidateTitleFont: Font {
+        #if os(tvOS)
+        // Candidate name: use primary body size on tvOS
+        return TypeScale.body
+        #else
+        return TypeScale.h3
+        #endif
+    }
+
+    private var candidateDescriptionFont: Font {
+        #if os(tvOS)
+        // Description: secondary body size on tvOS
+        return TypeScale.bodySmall
+        #else
+        return TypeScale.body
+        #endif
+    }
+
     private var header: some View {
-        VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: 10) {
+        VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: Metrics.grid * 1.25) {
             Text(item.name ?? item.id)
-                .font(TypeScale.h3)
+                .font(candidateTitleFont)
                 .multilineTextAlignment(alignment == .leading ? .leading : .trailing)
                 .lineLimit(3)
             if let season = item.seasonString, !season.isEmpty {
                 Text("Season \(season)")
-                    .font(.headline)
+                    .font(TypeScale.caption)
                     .foregroundStyle(accentColor)
             }
         }
     }
 
     private var detail: some View {
-        VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: 12) {
+        VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: Metrics.grid * 1.5) {
             if !metadataTokens.isEmpty {
                 metadataStack
             }
 
             if let description = item.description, !description.isEmpty {
                 Text(description)
-                    .font(TypeScale.body)
+                    .font(candidateDescriptionFont)
                     .foregroundStyle(.primary)
                     .lineLimit(5)
-                    .lineSpacing(6)
+                    .lineSpacing(Metrics.grid * 0.75)
                     .multilineTextAlignment(alignment == .leading ? .leading : .trailing)
             }
         }
@@ -117,10 +139,10 @@ internal struct MatchupCandidateCard: View {
     private var metadataStack: some View {
         let alignment: HorizontalAlignment = self.alignment == .leading ? .leading : .trailing
 
-        return VStack(alignment: alignment, spacing: 6) {
+        return VStack(alignment: alignment, spacing: Metrics.grid * 0.75) {
             ForEach(metadataTokens, id: \.self) { token in
                 Text(token)
-                    .font(TypeScale.metadata)
+                    .font(TypeScale.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(self.alignment == .leading ? .leading : .trailing)
             }
@@ -149,18 +171,21 @@ internal struct MatchupCandidateCard: View {
     }
 }
 
-internal struct MatchupPassTile: View {
+internal struct HeadToHeadPassTile: View {
     internal let action: () -> Void
+
+    @ScaledMetric(relativeTo: .title2) private var tileSize = ScaledDimensions.passTileSize
 
     internal var body: some View {
         Button(action: action) {
-            VStack(spacing: 16) {
+            VStack(spacing: Metrics.grid * 2) {
                 Image(systemName: "arrow.uturn.left.circle")
-                    .font(.system(size: 48, weight: .semibold))
+                    .imageScale(TypeScale.IconScale.medium)
+                    .fontWeight(.semibold)
                 Text("Pass for Now")
-                    .font(.headline)
+                    .font(TypeScale.label)
             }
-            .frame(width: 240, height: 240)
+            .frame(width: tileSize, height: tileSize)
             .background(tileShape)
         }
         #if os(tvOS)
@@ -168,7 +193,7 @@ internal struct MatchupPassTile: View {
         #else
         .buttonStyle(.plain)
         #endif
-        .accessibilityLabel("Pass on this matchup")
+        .accessibilityLabel("Pass on this pairing")
         .accessibilityHint("Skip and revisit later")
     }
 
@@ -182,19 +207,38 @@ internal struct MatchupPassTile: View {
     }
 }
 
-internal struct MatchupCompletionPanel: View {
+internal struct HeadToHeadCompletionPanel: View {
+    @ScaledMetric(relativeTo: .body) private var textMaxWidth = ScaledDimensions.textContentMaxWidth
+
+    private var titleFont: Font {
+        #if os(tvOS)
+        return TypeScale.body
+        #else
+        return TypeScale.h3
+        #endif
+    }
+
+    private var bodyFont: Font {
+        #if os(tvOS)
+        return TypeScale.bodySmall
+        #else
+        return TypeScale.body
+        #endif
+    }
+
     internal var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: Metrics.grid * 2) {
             Image(systemName: "crown.fill")
-                .font(.system(size: 64, weight: .bold))
+                .imageScale(TypeScale.IconScale.large)
+                .fontWeight(.bold)
                 .symbolRenderingMode(.hierarchical)
-            Text("Every matchup reviewed")
-                .font(.title2.weight(.semibold))
+            Text("All comparisons complete")
+                .font(titleFont)
             Text("Choose Commit Rankings to apply your results or leave the session to discard them.")
-                .font(TypeScale.body)
+                .font(bodyFont)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 520)
+                .frame(maxWidth: textMaxWidth)
         }
         .padding(.vertical, Metrics.grid * 4)
         .padding(.horizontal, Metrics.grid * 5)
@@ -206,6 +250,72 @@ internal struct MatchupCompletionPanel: View {
                         .stroke(Color.white.opacity(0.22), lineWidth: 1.4)
                 )
         )
-        .accessibilityIdentifier("MatchupOverlay_Complete")
+        .accessibilityIdentifier("HeadToHeadOverlay_Complete")
+    }
+}
+
+internal struct HeadToHeadPhaseBadge: View {
+    internal let phase: HeadToHeadPhase
+
+    internal var body: some View {
+        Label {
+            Text(phaseLabel)
+                .font(TypeScale.footnote)
+        } icon: {
+            Image(systemName: phaseIcon)
+        }
+        .padding(.vertical, Metrics.grid * 0.75)
+        .padding(.horizontal, Metrics.grid * 1.5)
+        .background(Capsule().fill(Color.white.opacity(0.12)))
+        .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
+        .accessibilityLabel("HeadToHead phase \(phaseLabel)")
+    }
+
+    private var phaseLabel: String {
+        switch phase {
+        case .quick: return "Quick pass"
+        case .refinement: return "Refinement"
+        }
+    }
+
+    private var phaseIcon: String {
+        switch phase {
+        case .quick: return "bolt.fill"
+        case .refinement: return "sparkles"
+        }
+    }
+}
+
+internal struct HeadToHeadMetricTile: View {
+    internal let title: String
+    internal let value: String
+    internal let footnote: String?
+
+    private var valueFont: Font {
+        #if os(tvOS)
+        // Metric value: secondary body size on tvOS
+        return TypeScale.bodySmall
+        #else
+        return TypeScale.body
+        #endif
+    }
+
+    internal var body: some View {
+        VStack(alignment: .leading, spacing: Metrics.grid * 0.5) {
+            Text(title.uppercased())
+                .font(TypeScale.footnote)
+                .kerning(1.1)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(valueFont)
+            if let footnote {
+                Text(footnote)
+                    .font(TypeScale.footnote)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, Metrics.grid)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
     }
 }

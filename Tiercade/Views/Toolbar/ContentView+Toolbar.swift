@@ -284,21 +284,21 @@ internal struct ToolbarView: ToolbarContent {
         }
         #endif
 
-        // 4. Head-to-Head (iOS/macOS)
+        // 4. HeadToHead (iOS/macOS)
         #if !os(tvOS)
         Button {
-            print("🔍 [Toolbar] H2H handler triggered")
-            app.startH2H()
+            print("🔍 [Toolbar] HeadToHead handler triggered")
+            app.startHeadToHead()
         } label: {
-            Label("Head-to-Head", systemImage: "person.line.dotted.person.fill")
+            Label("HeadToHead", systemImage: "person.line.dotted.person.fill")
         }
         .disabled(!app.canStartHeadToHead)
-        .accessibilityIdentifier("Toolbar_H2H")
+        .accessibilityIdentifier("Toolbar_HeadToHead")
         #if os(iOS)
         .keyboardShortcut("r", modifiers: [.command])
         #elseif os(macOS)
         .keyboardShortcut("h", modifiers: [.control, .command])
-        .help("Start head-to-head ranking (⌃⌘H)")
+        .help("Start HeadToHead ranking (⌃⌘H)")
         #endif
         #endif
 
@@ -402,12 +402,12 @@ internal struct ToolbarView: ToolbarContent {
     @ViewBuilder
     internal var titleMenuContent: some View {
         Button {
-            app.startH2H()
+            app.startHeadToHead()
         } label: {
-            Label("Head-to-Head", systemImage: "person.line.dotted.person.fill")
+            Label("HeadToHead", systemImage: "person.line.dotted.person.fill")
         }
         .disabled(!app.canStartHeadToHead)
-        .accessibilityIdentifier("TitleMenu_H2H")
+        .accessibilityIdentifier("TitleMenu_HeadToHead")
 
         Button {
             app.toggleAnalysis()

@@ -34,7 +34,7 @@ struct HeadToHeadLogicTests {
     @Test("Vote tallies wins and losses for both contenders")
     func voteTalliesResults() {
         let pool = makePool()
-        var records: [String: H2HRecord] = [:]
+        var records: [String: HeadToHeadRecord] = [:]
 
         HeadToHeadLogic.vote(pool[0], pool[1], winner: pool[0], records: &records)
         HeadToHeadLogic.vote(pool[1], pool[2], winner: pool[2], records: &records)
