@@ -126,8 +126,8 @@ internal struct ExportRenderer {
     // Render to PNG data, clamped to max size by scaling the container view.
     @MainActor
     internal static func renderPNG(context: Context,
-                          targetSize: CGSize? = nil,
-                          cfg: Config = Config()) -> Data? {
+                                   targetSize: CGSize? = nil,
+                                   cfg: Config = Config()) -> Data? {
         let renderer = makeRenderer(context: context, cfg: cfg)
         renderer.scale = 1.0
 
@@ -147,8 +147,8 @@ internal struct ExportRenderer {
     // Render to vector PDF on iOS/macOS; tvOS doesn't support PDF context.
     @MainActor
     internal static func renderPDF(context: Context,
-                          targetSize: CGSize? = nil,
-                          cfg: Config = Config()) -> Data? {
+                                   targetSize: CGSize? = nil,
+                                   cfg: Config = Config()) -> Data? {
         #if os(tvOS)
         return nil
         #else

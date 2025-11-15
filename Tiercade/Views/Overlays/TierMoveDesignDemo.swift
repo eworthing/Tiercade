@@ -402,4 +402,3 @@ private struct GradientBarRow: View {
         .buttonStyle(.plain)
     }
 }
-

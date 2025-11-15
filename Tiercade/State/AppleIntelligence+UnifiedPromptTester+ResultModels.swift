@@ -3,6 +3,7 @@ import Foundation
 #if DEBUG && canImport(FoundationModels)
 
 // MARK: - Result Models (Output/Reporting)
+// swiftlint:disable nesting - Nested types namespace test result models
 
 @available(iOS 26.0, macOS 26.0, *)
 extension UnifiedPromptTester {

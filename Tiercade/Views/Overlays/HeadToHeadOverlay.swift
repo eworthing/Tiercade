@@ -2,6 +2,10 @@ import SwiftUI
 import os
 import TiercadeCore
 
+// swiftlint:disable type_body_length
+// HeadToHeadOverlay: Complex overlay with platform-specific presentation, focus management, and adaptive layouts
+// Type body length exception justified - splitting would fragment tightly-coupled presentation logic
+
 internal enum HeadToHeadFocusAnchor: Hashable {
     case primary
     case pass

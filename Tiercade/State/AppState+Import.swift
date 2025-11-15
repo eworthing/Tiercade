@@ -19,8 +19,10 @@ internal extension AppState {
 
                 showSuccessToast("Import Complete", message: "Successfully imported tier list {import}")
             }
+        } catch let importError as ImportError {
+            throw importError
         } catch {
-            throw error as! ImportError
+            throw ImportError.parsingFailed("Import failed: \(error.localizedDescription)")
         }
     }
 
@@ -52,8 +54,10 @@ internal extension AppState {
 
                 showSuccessToast("Import Complete", message: "Successfully imported CSV data {import}")
             }
+        } catch let importError as ImportError {
+            throw importError
         } catch {
-            throw error as! ImportError
+            throw ImportError.parsingFailed("Import failed: \(error.localizedDescription)")
         }
     }
 

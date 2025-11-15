@@ -5,6 +5,10 @@ import UniformTypeIdentifiers
 
 import TiercadeCore
 
+// swiftlint:disable file_length type_body_length
+// Toolbar: Comprehensive cross-platform toolbar with platform-specific commands
+// File length exception justified - splitting by platform would duplicate shared toolbar logic
+
 // MARK: - Toolbar and supporting components
 
 internal struct ToolbarView: ToolbarContent {

@@ -456,38 +456,57 @@ extension View {
     @ViewBuilder
     func applyModalPresentations(app: AppState) -> some View {
         self
-            // Tier List Creator
-            #if os(macOS)
-            .sheet(isPresented: Binding(
-                get: { app.overlays.showTierListCreator },
-                set: { app.overlays.showTierListCreator = $0 }
-            )) {
-                if let draft = app.tierListCreatorDraft {
-                    TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
-                }
+            .applyTierListCreatorModal(app: app)
+            .applyAnalysisModal(app: app)
+            .applyFocusContainedModals(app: app)
+            .applyAnalyticsSidebarModal(app: app)
+            .applyThemeCreatorAndMoveModals(app: app)
+            .applyDebugModals(app: app)
+    }
+
+    // MARK: - Modal Presentation Helpers
+
+    @ViewBuilder
+    private func applyTierListCreatorModal(app: AppState) -> some View {
+        #if os(macOS)
+        self.sheet(isPresented: Binding(
+            get: { app.overlays.showTierListCreator },
+            set: { app.overlays.showTierListCreator = $0 }
+        )) {
+            if let draft = app.tierListCreatorDraft {
+                TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
             }
-            #else
-            .fullScreenCover(isPresented: Binding(
-                get: { app.overlays.showTierListCreator },
-                set: { app.overlays.showTierListCreator = $0 }
-            )) {
-                if let draft = app.tierListCreatorDraft {
-                    TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
-                }
+        }
+        #else
+        self.fullScreenCover(isPresented: Binding(
+            get: { app.overlays.showTierListCreator },
+            set: { app.overlays.showTierListCreator = $0 }
+        )) {
+            if let draft = app.tierListCreatorDraft {
+                TierListProjectWizard(appState: app, draft: draft, context: app.tierListWizardContext)
             }
-            #endif
-            // Analysis View
-            #if !os(tvOS)
-            .sheet(isPresented: Binding(
-                get: { app.showingAnalysis },
-                set: { app.showingAnalysis = $0 }
-            )) {
-                AnalysisView(app: app)
-            }
-            #endif
-            // MARK: Focus-contained modal presentations
-            // Tier List Browser, Theme Picker, HeadToHead
-            #if os(macOS)
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private func applyAnalysisModal(app: AppState) -> some View {
+        #if !os(tvOS)
+        self.sheet(isPresented: Binding(
+            get: { app.showingAnalysis },
+            set: { app.showingAnalysis = $0 }
+        )) {
+            AnalysisView(app: app)
+        }
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    private func applyFocusContainedModals(app: AppState) -> some View {
+        #if os(macOS)
+        self
             .sheet(isPresented: Binding(
                 get: { app.overlays.showTierListBrowser },
                 set: { app.overlays.showTierListBrowser = $0 }
@@ -506,7 +525,8 @@ extension View {
             )) {
                 HeadToHeadOverlay(app: app)
             }
-            #else
+        #else
+        self
             .fullScreenCover(isPresented: Binding(
                 get: { app.overlays.showTierListBrowser },
                 set: { app.overlays.showTierListBrowser = $0 }
@@ -525,9 +545,13 @@ extension View {
             )) {
                 HeadToHeadOverlay(app: app)
             }
-            #endif
-            // Analytics Sidebar (tvOS only)
-            #if os(tvOS)
+        #endif
+    }
+
+    @ViewBuilder
+    private func applyAnalyticsSidebarModal(app: AppState) -> some View {
+        #if os(tvOS)
+        self
             .fullScreenCover(isPresented: Binding(
                 get: { app.overlays.showAnalyticsSidebar },
                 set: { app.overlays.showAnalyticsSidebar = $0 }
@@ -544,9 +568,15 @@ extension View {
             )) { _ in
                 TierMoveSheet(app: app)
             }
-            #endif
-            // Theme Creator and Tier Move/Rank
-            #if os(macOS)
+        #else
+        self
+        #endif
+    }
+
+    @ViewBuilder
+    private func applyThemeCreatorAndMoveModals(app: AppState) -> some View {
+        #if os(macOS)
+        self
             .sheet(isPresented: Binding(
                 get: { app.overlays.showThemeCreator },
                 set: { app.overlays.showThemeCreator = $0 }
@@ -567,7 +597,8 @@ extension View {
             )) { _ in
                 QuickRankOverlay(app: app)
             }
-            #else
+        #else
+        self
             .fullScreenCover(isPresented: Binding(
                 get: { app.overlays.showThemeCreator },
                 set: { app.overlays.showThemeCreator = $0 }
@@ -588,16 +619,21 @@ extension View {
             )) { _ in
                 QuickRankOverlay(app: app)
             }
-            #endif
-            // Design Demo (DEBUG only)
-            #if DEBUG
-            .sheet(isPresented: Binding(
-                get: { app.showDesignDemo },
-                set: { app.showDesignDemo = $0 }
-            )) {
-                TierMoveDesignDemo()
-            }
-            #endif
+        #endif
+    }
+
+    @ViewBuilder
+    private func applyDebugModals(app: AppState) -> some View {
+        #if DEBUG
+        self.sheet(isPresented: Binding(
+            get: { app.showDesignDemo },
+            set: { app.showDesignDemo = $0 }
+        )) {
+            TierMoveDesignDemo()
+        }
+        #else
+        self
+        #endif
     }
 }
 

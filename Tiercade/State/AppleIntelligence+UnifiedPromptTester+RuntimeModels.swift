@@ -4,6 +4,7 @@ import Foundation
 import FoundationModels
 
 // MARK: - Runtime Models (Internal Test Execution)
+// swiftlint:disable nesting - Nested types for test execution state
 
 @available(iOS 26.0, macOS 26.0, *)
 extension UnifiedPromptTester {
