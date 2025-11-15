@@ -87,10 +87,28 @@ internal struct HeadToHeadCandidateCard: View {
         .accessibilityHint(item.description ?? "Choose this contender")
     }
 
+    private var candidateTitleFont: Font {
+        #if os(tvOS)
+        // Candidate name: use primary body size on tvOS
+        return TypeScale.body
+        #else
+        return TypeScale.h3
+        #endif
+    }
+
+    private var candidateDescriptionFont: Font {
+        #if os(tvOS)
+        // Description: secondary body size on tvOS
+        return TypeScale.bodySmall
+        #else
+        return TypeScale.body
+        #endif
+    }
+
     private var header: some View {
         VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: Metrics.grid * 1.25) {
             Text(item.name ?? item.id)
-                .font(TypeScale.h3)
+                .font(candidateTitleFont)
                 .multilineTextAlignment(alignment == .leading ? .leading : .trailing)
                 .lineLimit(3)
             if let season = item.seasonString, !season.isEmpty {
@@ -109,7 +127,7 @@ internal struct HeadToHeadCandidateCard: View {
 
             if let description = item.description, !description.isEmpty {
                 Text(description)
-                    .font(TypeScale.body)
+                    .font(candidateDescriptionFont)
                     .foregroundStyle(.primary)
                     .lineLimit(5)
                     .lineSpacing(Metrics.grid * 0.75)
@@ -192,6 +210,22 @@ internal struct HeadToHeadPassTile: View {
 internal struct HeadToHeadCompletionPanel: View {
     @ScaledMetric(relativeTo: .body) private var textMaxWidth = ScaledDimensions.textContentMaxWidth
 
+    private var titleFont: Font {
+        #if os(tvOS)
+        return TypeScale.body
+        #else
+        return TypeScale.h3
+        #endif
+    }
+
+    private var bodyFont: Font {
+        #if os(tvOS)
+        return TypeScale.bodySmall
+        #else
+        return TypeScale.body
+        #endif
+    }
+
     internal var body: some View {
         VStack(spacing: Metrics.grid * 2) {
             Image(systemName: "crown.fill")
@@ -199,9 +233,9 @@ internal struct HeadToHeadCompletionPanel: View {
                 .fontWeight(.bold)
                 .symbolRenderingMode(.hierarchical)
             Text("All comparisons complete")
-                .font(TypeScale.h3)
+                .font(titleFont)
             Text("Choose Commit Rankings to apply your results or leave the session to discard them.")
-                .font(TypeScale.body)
+                .font(bodyFont)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: textMaxWidth)
@@ -257,6 +291,15 @@ internal struct HeadToHeadMetricTile: View {
     internal let value: String
     internal let footnote: String?
 
+    private var valueFont: Font {
+        #if os(tvOS)
+        // Metric value: secondary body size on tvOS
+        return TypeScale.bodySmall
+        #else
+        return TypeScale.body
+        #endif
+    }
+
     internal var body: some View {
         VStack(alignment: .leading, spacing: Metrics.grid * 0.5) {
             Text(title.uppercased())
@@ -264,7 +307,7 @@ internal struct HeadToHeadMetricTile: View {
                 .kerning(1.1)
                 .foregroundStyle(.secondary)
             Text(value)
-                .font(TypeScale.body)
+                .font(valueFont)
             if let footnote {
                 Text(footnote)
                     .font(TypeScale.footnote)

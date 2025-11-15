@@ -666,8 +666,28 @@ private extension Gradient {
     }
 }
 
-#Preview("iPhone") { ContentView() }
-#Preview("iPad") { ContentView() }
+// MARK: - Tier Grid Previews
+
+@MainActor
+private struct ContentViewTierGridPreview: View {
+    private let appState = AppState(inMemory: true)
+
+    var body: some View {
+        ContentView()
+            .environment(appState)
+    }
+}
+
+#Preview("iPhone") {
+    ContentViewTierGridPreview()
+}
+
+#Preview("iPad") {
+    ContentViewTierGridPreview()
+}
+
 #if os(tvOS)
-#Preview("tvOS") { ContentView() }
+#Preview("tvOS") {
+    ContentViewTierGridPreview()
+}
 #endif

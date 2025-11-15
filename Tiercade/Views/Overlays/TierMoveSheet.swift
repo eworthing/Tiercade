@@ -530,3 +530,26 @@ private struct TierMoveRowButtonStyle: ButtonStyle {
             #endif
     }
 }
+
+// MARK: - Previews
+
+@MainActor
+private struct TierMoveSheetPreview: View {
+    @State private var appState = PreviewHelpers.makeAppState()
+
+    init() {
+        // Seed a simple preview scenario: use the first available item if any.
+        if let firstTier = appState.tierOrder.first,
+           let firstItem = appState.tiers[firstTier]?.first {
+            appState.overlays.quickMoveTarget = firstItem
+        }
+    }
+
+    var body: some View {
+        TierMoveSheet(app: appState)
+    }
+}
+
+#Preview("Tier Move Sheet") {
+    TierMoveSheetPreview()
+}

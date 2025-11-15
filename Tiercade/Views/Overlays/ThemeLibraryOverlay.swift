@@ -571,3 +571,27 @@ private struct SelectedBadge: View {
             .accessibilityHidden(true)
     }
 }
+
+// MARK: - Previews
+
+@MainActor
+private struct ThemeLibraryOverlayPreview: View {
+    private let appState = PreviewHelpers.makeAppState { app in
+        app.overlays.showThemePicker = true
+    }
+
+    var body: some View {
+        ThemeLibraryOverlay()
+            .environment(appState)
+    }
+}
+
+#Preview("Theme Library – Light") {
+    ThemeLibraryOverlayPreview()
+        .preferredColorScheme(.light)
+}
+
+#Preview("Theme Library – Dark") {
+    ThemeLibraryOverlayPreview()
+        .preferredColorScheme(.dark)
+}

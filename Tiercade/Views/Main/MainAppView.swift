@@ -601,8 +601,27 @@ extension View {
     }
 }
 
-// Small preview
-#Preview("Main") { MainAppView() }
+// MARK: - Previews
+
+@MainActor
+private struct MainAppViewPreview: View {
+    private let appState = AppState(inMemory: true)
+
+    var body: some View {
+        MainAppView()
+            .environment(appState)
+    }
+}
+
+#Preview("Main – Light") {
+    MainAppViewPreview()
+        .preferredColorScheme(.light)
+}
+
+#Preview("Main – Dark") {
+    MainAppViewPreview()
+        .preferredColorScheme(.dark)
+}
 
 // File-scoped helper to expose an immediate accessibility element for UI tests.
 private struct AccessibilityBridgeView: View {

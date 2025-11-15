@@ -52,10 +52,30 @@ private extension Gradient {
     static var tierListBackground: Gradient { .init(colors: [Color.black.opacity(0.6), Color.blue.opacity(0.2)]) }
 }
 
-#Preview("iPhone") { ContentView() }
-#Preview("iPad") { ContentView() }
+// MARK: - Previews
+
+@MainActor
+private struct ContentViewPreview: View {
+    private let appState = AppState(inMemory: true)
+
+    var body: some View {
+        ContentView()
+            .environment(appState)
+    }
+}
+
+#Preview("iPhone") {
+    ContentViewPreview()
+}
+
+#Preview("iPad") {
+    ContentViewPreview()
+}
+
 #if os(tvOS)
-#Preview("tvOS") { ContentView() }
+#Preview("tvOS") {
+    ContentViewPreview()
+}
 #endif
 
 // MARK: - Quick Rank overlay

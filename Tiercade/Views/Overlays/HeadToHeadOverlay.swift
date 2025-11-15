@@ -1,4 +1,5 @@
 import SwiftUI
+import os
 import TiercadeCore
 
 internal enum HeadToHeadFocusAnchor: Hashable {
@@ -17,7 +18,13 @@ internal struct HeadToHeadOverlay: View {
     @FocusState private var overlayHasFocus: Bool
     #endif
 
+    // tvOS uses a wider, tv-optimized overlay width.
+    // Other platforms rely on overlayLayoutSize for adaptive sizing.
     private let minOverlayWidth: CGFloat = 960
+
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     // MARK: - Scaled Dimensions
     @ScaledMetric(relativeTo: .title3) private var progressDialSize = ScaledDimensions.progressDialSize
@@ -35,16 +42,30 @@ internal struct HeadToHeadOverlay: View {
             .accessibilityHidden(true)
 
             GeometryReader { proxy in
-                overlayContent(maxWidth: overlayMaxWidth(for: proxy))
+                #if os(tvOS)
+                let maxWidth = overlayMaxWidth(for: proxy)
+                overlayContent(maxWidth: maxWidth, maxHeight: proxy.size.height)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                #else
+                let layoutSize = overlayLayoutSize(
+                    availableSize: proxy.size,
+                    safeAreaInsets: proxy.safeAreaInsets
+                )
+
+                overlayContent(maxWidth: layoutSize.width, maxHeight: layoutSize.height)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                #endif
             }
         }
     }
 
-    private func overlayContent(maxWidth: CGFloat) -> some View {
+    private func overlayContent(maxWidth: CGFloat, maxHeight: CGFloat) -> some View {
+        let content = buildOverlayContainer()
+
         #if os(tvOS)
-        buildOverlayContainer(maxWidth: maxWidth)
+        return content
             .headToHeadOverlayChrome(namespace: glassNamespace)
+            .frame(maxWidth: maxWidth, maxHeight: maxHeight)
             .headToHeadFocusModifiers(
                 focusAnchor: $focusAnchor,
                 defaultFocus: defaultFocus,
@@ -60,8 +81,9 @@ internal struct HeadToHeadOverlay: View {
                 handleMove: handleMoveCommand
             )
         #else
-        buildOverlayContainer(maxWidth: maxWidth)
+        return content
             .headToHeadOverlayChrome(namespace: glassNamespace)
+            .frame(maxWidth: maxWidth, maxHeight: maxHeight)
             .headToHeadFocusModifiers(
                 focusAnchor: $focusAnchor,
                 defaultFocus: defaultFocus,
@@ -80,7 +102,7 @@ internal struct HeadToHeadOverlay: View {
         #endif
     }
 
-    private func buildOverlayContainer(maxWidth: CGFloat) -> some View {
+    private func buildOverlayContainer() -> some View {
         tvGlassContainer(spacing: 0) {
             VStack(alignment: .leading, spacing: sectionSpacing) {
                 overviewSection
@@ -92,7 +114,6 @@ internal struct HeadToHeadOverlay: View {
             }
             .padding(.vertical, verticalPadding)
             .padding(.horizontal, horizontalPadding)
-            .frame(maxWidth: maxWidth)
         }
     }
 
@@ -102,17 +123,79 @@ internal struct HeadToHeadOverlay: View {
 
     private func overlayMaxWidth(for proxy: GeometryProxy) -> CGFloat {
         #if os(tvOS)
-        let safeArea = proxy.safeAreaInsets
-        let available = max(proxy.size.width - safeArea.leading - safeArea.trailing, 0)
-        let horizontalMargin = Metrics.grid * 4
-        let desired = max(available - horizontalMargin, minOverlayWidth)
-        return min(desired, available)
+        let insets = proxy.safeAreaInsets
+        let safeWidth = max(proxy.size.width - insets.leading - insets.trailing, 0)
+
+        let outerMargin = Metrics.grid * 4
+        let available = max(safeWidth - outerMargin * 2, 0)
+
+        // Treat minOverlayWidth as a minimum target, not a maximum.
+        // If there's room, go at least that wide; if not, use whatever
+        // safe width is available.
+        let desired = max(available, minOverlayWidth)
+        let clamped = min(desired, safeWidth)
+
+        return clamped
         #else
         let available = proxy.size.width
         let horizontalMargin = Metrics.grid * 4
         let desired = max(available - horizontalMargin, 860)
         return min(desired, available)
         #endif
+    }
+
+    private func overlayLayoutSize(
+        availableSize: CGSize,
+        safeAreaInsets: EdgeInsets
+    ) -> CGSize {
+        let usableWidth = max(availableSize.width - safeAreaInsets.leading - safeAreaInsets.trailing, 0)
+        let usableHeight = max(availableSize.height - safeAreaInsets.top - safeAreaInsets.bottom, 0)
+
+        let outerHorizontalInset: CGFloat
+        let outerVerticalInset: CGFloat
+
+        #if os(tvOS)
+        outerHorizontalInset = TVMetrics.overlayPadding * 1.4
+        outerVerticalInset = TVMetrics.overlayPadding * 1.4
+        #else
+        outerHorizontalInset = Metrics.grid * 3.5
+        outerVerticalInset = Metrics.grid * 3.5
+        #endif
+
+        let maxWidth = max(usableWidth - outerHorizontalInset * 2, 320)
+        let maxHeight = max(usableHeight - outerVerticalInset * 2, 320)
+
+        var targetWidth: CGFloat
+        var targetHeight: CGFloat
+
+        #if os(tvOS)
+        targetWidth = 1400
+        targetHeight = 820
+        #else
+        let isRegularWidth = horizontalSizeClass == .regular || horizontalSizeClass == nil
+        if isRegularWidth {
+            targetWidth = 980
+            targetHeight = 720
+        } else {
+            targetWidth = 760
+            targetHeight = 640
+        }
+        #endif
+
+        // Give large Dynamic Type a bit more vertical room, similar
+        // to Apple's AnyLayout guidance that pivots layouts based
+        // on dynamicTypeSize.
+        if dynamicTypeSize >= .xLarge {
+            targetHeight *= 1.1
+        }
+        if dynamicTypeSize >= .accessibility1 {
+            targetHeight *= 1.2
+        }
+
+        let clampedWidth = min(targetWidth, maxWidth)
+        let clampedHeight = min(targetHeight, maxHeight)
+
+        return CGSize(width: clampedWidth, height: clampedHeight)
     }
 
     private var verticalPadding: CGFloat {
@@ -139,16 +222,39 @@ internal struct HeadToHeadOverlay: View {
         #endif
     }
 
+    private var titleFont: Font {
+        #if os(tvOS)
+        // Overlay title: smallest tvOS-safe heading
+        return TypeScale.body
+        #else
+        return TypeScale.h2
+        #endif
+    }
+
+    private var heroFont: Font {
+        #if os(tvOS)
+        // Status summary: one step below title on tvOS
+        return TypeScale.bodySmall
+        #else
+        return TypeScale.h3
+        #endif
+    }
+
+    private var supportingBodyFont: Font {
+        #if os(tvOS)
+        // Supporting copy in the header on tvOS
+        return TypeScale.bodySmall
+        #else
+        return TypeScale.body
+        #endif
+    }
+
     private var overviewSection: some View {
         VStack(alignment: .leading, spacing: Metrics.grid * 2) {
             HStack(alignment: .firstTextBaseline, spacing: Metrics.grid * 1.5) {
                 VStack(alignment: .leading, spacing: Metrics.grid) {
                     Text("HeadToHead Arena")
-                        .font(TypeScale.h2)
-                    Text("Compare contenders, resolve ties, and keep your rankings focused.")
-                        .font(TypeScale.body)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .font(titleFont)
                 }
                 Spacer()
                 HeadToHeadPhaseBadge(phase: app.headToHead.phase)
@@ -161,12 +267,8 @@ internal struct HeadToHeadOverlay: View {
 
                     VStack(alignment: .leading, spacing: Metrics.grid * 1.5) {
                         Text(statusSummary)
-                            .font(TypeScale.h3)
+                            .font(heroFont)
                             .layoutPriority(1)
-                        Text(secondaryStatus)
-                            .font(TypeScale.body)
-                            .foregroundStyle(.secondary)
-
                         HStack(spacing: Metrics.grid * 2.5) {
                             ForEach(metricTiles, id: \.title) { metric in
                                 HeadToHeadMetricTile(
@@ -188,10 +290,7 @@ internal struct HeadToHeadOverlay: View {
 
                     VStack(alignment: .leading, spacing: Metrics.grid * 1.5) {
                         Text(statusSummary)
-                            .font(TypeScale.h3)
-                        Text(secondaryStatus)
-                            .font(TypeScale.body)
-                            .foregroundStyle(.secondary)
+                            .font(heroFont)
 
                         HStack(spacing: Metrics.grid * 2.5) {
                             ForEach(metricTiles, id: \.title) { metric in
@@ -234,47 +333,15 @@ internal struct HeadToHeadOverlay: View {
     private var comparisonSection: some View {
         Group {
             if let pair = app.headToHead.currentPair {
-                GeometryReader { sectionProxy in
-                    let width = sectionProxy.size.width
-                    let isWide = width >= minimumComparisonWidth()
-
-                    let layout = isWide ? AnyLayout(HStackLayout(spacing: pairSpacing))
-                                        : AnyLayout(VStackLayout(spacing: pairSpacing))
-
-                    layout {
-                        HeadToHeadCandidateCard(
-                            item: pair.0,
-                            accentColor: Palette.brand,
-                            alignment: .leading,
-                            action: { app.voteHeadToHead(winner: pair.0) },
-                            compact: !isWide
-                        )
-                        .focused($focusAnchor, equals: .primary)
-                        .accessibilityIdentifier("HeadToHeadOverlay_Primary")
-
-                        HeadToHeadPassTile(action: { app.skipCurrentHeadToHeadPair() })
-                            .focused($focusAnchor, equals: .pass)
-                            .accessibilityIdentifier("HeadToHeadOverlay_Pass")
-
-                        HeadToHeadCandidateCard(
-                            item: pair.1,
-                            accentColor: Palette.tierColor("S"),
-                            alignment: .trailing,
-                            action: { app.voteHeadToHead(winner: pair.1) },
-                            compact: !isWide
-                        )
-                        .focused($focusAnchor, equals: .secondary)
-                        .accessibilityIdentifier("HeadToHeadOverlay_Secondary")
-                    }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .accessibilityIdentifier("HeadToHeadOverlay_Comparison")
-                    #if DEBUG
-                    .onAppear {
-                        Logger.headToHead.debug("comparison width=\(width, privacy: .public) isWide=\(isWide, privacy: .public) min=\(minimumComparisonWidth(), privacy: .public)")
-                    }
-                    #endif
+                #if os(tvOS)
+                comparisonLayout(for: pair)
+                #else
+                ScrollView {
+                    comparisonLayout(for: pair)
+                        .padding(.vertical, Metrics.grid * 1.5)
                 }
-                .frame(minHeight: 0)
+                .scrollIndicators(.hidden)
+                #endif
             } else {
                 HeadToHeadCompletionPanel()
                     .frame(maxWidth: .infinity)
@@ -283,55 +350,168 @@ internal struct HeadToHeadOverlay: View {
         }
     }
 
+    private enum ComparisonLayoutMode {
+        case wideRow
+        case stacked
+    }
+
+    private func comparisonLayoutMode(for width: CGFloat) -> ComparisonLayoutMode {
+        let isAccessibility = dynamicTypeSize >= .accessibility1
+        if isAccessibility || width < minimumComparisonWidth() {
+            return .stacked
+        }
+        return .wideRow
+    }
+
+    @ViewBuilder
+    private func comparisonLayout(for pair: (Item, Item)) -> some View {
+        GeometryReader { sectionProxy in
+            let width = sectionProxy.size.width
+            let mode = comparisonLayoutMode(for: width)
+            switch mode {
+            case .wideRow:
+                AnyLayout(HStackLayout(spacing: pairSpacing)) {
+                    HeadToHeadCandidateCard(
+                        item: pair.0,
+                        accentColor: Palette.brand,
+                        alignment: .leading,
+                        action: { app.voteHeadToHead(winner: pair.0) },
+                        compact: false
+                    )
+                    .focused($focusAnchor, equals: .primary)
+                    .accessibilityIdentifier("HeadToHeadOverlay_Primary")
+
+                    HeadToHeadCandidateCard(
+                        item: pair.1,
+                        accentColor: Palette.tierColor("S"),
+                        alignment: .trailing,
+                        action: { app.voteHeadToHead(winner: pair.1) },
+                        compact: false
+                    )
+                    .focused($focusAnchor, equals: .secondary)
+                    .accessibilityIdentifier("HeadToHeadOverlay_Secondary")
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityIdentifier("HeadToHeadOverlay_Comparison")
+                #if DEBUG
+                .onAppear {
+                    Logger.headToHead.debug("comparison width=\(width) mode=wideRow min=\(minimumComparisonWidth())")
+                }
+                #endif
+
+            case .stacked:
+                VStack(spacing: pairSpacing) {
+                    HeadToHeadCandidateCard(
+                        item: pair.0,
+                        accentColor: Palette.brand,
+                        alignment: .leading,
+                        action: { app.voteHeadToHead(winner: pair.0) },
+                        compact: true
+                    )
+                    .focused($focusAnchor, equals: .primary)
+                    .accessibilityIdentifier("HeadToHeadOverlay_Primary")
+
+                    HeadToHeadCandidateCard(
+                        item: pair.1,
+                        accentColor: Palette.tierColor("S"),
+                        alignment: .trailing,
+                        action: { app.voteHeadToHead(winner: pair.1) },
+                        compact: true
+                    )
+                    .focused($focusAnchor, equals: .secondary)
+                    .accessibilityIdentifier("HeadToHeadOverlay_Secondary")
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .accessibilityIdentifier("HeadToHeadOverlay_Comparison")
+                #if DEBUG
+                .onAppear {
+                    Logger.headToHead.debug("comparison width=\(width) mode=stacked min=\(minimumComparisonWidth())")
+                }
+                #endif
+            }
+        }
+        .frame(minHeight: 0)
+    }
+
     private func minimumComparisonWidth() -> CGFloat {
         let cards = ScaledDimensions.candidateCardMinWidth * 2
-        let pass = ScaledDimensions.passTileSize
-        let gaps = pairSpacing * 2
-        return cards + pass + gaps
+        let gaps = pairSpacing
+        return cards + gaps
     }
 
     private var controlBar: some View {
+        #if os(tvOS)
+        HStack(spacing: Metrics.grid * 3) {
+            Button(role: .destructive) {
+                app.cancelHeadToHead()
+            } label: {
+                Label("Cancel", systemImage: "xmark.circle")
+                    .labelStyle(.titleAndIcon)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glass)
+            .focused($focusAnchor, equals: .cancel)
+            .accessibilityIdentifier("HeadToHeadOverlay_Cancel")
+
+            Button {
+                app.skipCurrentHeadToHeadPair()
+            } label: {
+                Label("Skip Pair", systemImage: "arrow.uturn.left.circle")
+                    .labelStyle(.titleAndIcon)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glass)
+            .focused($focusAnchor, equals: .pass)
+            .accessibilityIdentifier("HeadToHeadOverlay_Pass")
+            .disabled(app.headToHead.currentPair == nil)
+
+            Button {
+                app.finishHeadToHead()
+            } label: {
+                Label("Finish Ranking", systemImage: "checkmark.seal")
+                    .labelStyle(.titleAndIcon)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glassProminent)
+            .focused($focusAnchor, equals: .commit)
+            .accessibilityIdentifier("HeadToHeadOverlay_Apply")
+        }
+        #else
         ViewThatFits(in: .horizontal) {
             HStack(spacing: Metrics.grid * 3) {
                 Button(role: .destructive) {
                     app.cancelHeadToHead()
                 } label: {
-                    Label("Leave Session", systemImage: "xmark.circle")
+                    Label("Cancel", systemImage: "xmark.circle")
                         .labelStyle(.titleAndIcon)
-                        #if os(tvOS)
-                        .frame(minWidth: 0)
-                        #else
-                        .frame(minWidth: buttonMinWidthSmall)
-                        #endif
+                        .frame(maxWidth: .infinity)
                 }
-                #if os(tvOS)
-                .buttonStyle(.glass)
-                #else
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.cancelAction)
-                #endif
                 .focused($focusAnchor, equals: .cancel)
                 .accessibilityIdentifier("HeadToHeadOverlay_Cancel")
 
-                Spacer(minLength: Metrics.grid * 4)
+                Button {
+                    app.skipCurrentHeadToHeadPair()
+                } label: {
+                    Label("Skip Pair", systemImage: "arrow.uturn.left.circle")
+                        .labelStyle(.titleAndIcon)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .focused($focusAnchor, equals: .pass)
+                .accessibilityIdentifier("HeadToHeadOverlay_Pass")
+                .disabled(app.headToHead.currentPair == nil)
 
                 Button {
                     app.finishHeadToHead()
                 } label: {
-                    Label("Commit Rankings", systemImage: "checkmark.seal")
+                    Label("Finish Ranking", systemImage: "checkmark.seal")
                         .labelStyle(.titleAndIcon)
-                        #if os(tvOS)
-                        .frame(minWidth: 0)
-                        #else
-                        .frame(minWidth: buttonMinWidthLarge)
-                        #endif
+                        .frame(maxWidth: .infinity)
                 }
-                #if os(tvOS)
-                .buttonStyle(.glassProminent)
-                #else
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                #endif
                 .focused($focusAnchor, equals: .commit)
                 .accessibilityIdentifier("HeadToHeadOverlay_Apply")
             }
@@ -340,36 +520,41 @@ internal struct HeadToHeadOverlay: View {
                 Button(role: .destructive) {
                     app.cancelHeadToHead()
                 } label: {
-                    Label("Leave Session", systemImage: "xmark.circle")
+                    Label("Cancel", systemImage: "xmark.circle")
                         .labelStyle(.titleAndIcon)
                         .frame(maxWidth: .infinity)
                 }
-                #if os(tvOS)
-                .buttonStyle(.glass)
-                #else
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.cancelAction)
-                #endif
                 .focused($focusAnchor, equals: .cancel)
                 .accessibilityIdentifier("HeadToHeadOverlay_Cancel")
 
                 Button {
-                    app.finishHeadToHead()
+                    app.skipCurrentHeadToHeadPair()
                 } label: {
-                    Label("Commit Rankings", systemImage: "checkmark.seal")
+                    Label("Skip Pair", systemImage: "arrow.uturn.left.circle")
                         .labelStyle(.titleAndIcon)
                         .frame(maxWidth: .infinity)
                 }
-                #if os(tvOS)
-                .buttonStyle(.glassProminent)
-                #else
+                .buttonStyle(.borderedProminent)
+                .focused($focusAnchor, equals: .pass)
+                .accessibilityIdentifier("HeadToHeadOverlay_Pass")
+                .disabled(app.headToHead.currentPair == nil)
+
+                Button {
+                    app.finishHeadToHead()
+                } label: {
+                    Label("Finish Ranking", systemImage: "checkmark.seal")
+                        .labelStyle(.titleAndIcon)
+                        .frame(maxWidth: .infinity)
+                }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                #endif
                 .focused($focusAnchor, equals: .commit)
                 .accessibilityIdentifier("HeadToHeadOverlay_Apply")
             }
         }
+        #endif
     }
 
     private var pairSpacing: CGFloat {
@@ -397,18 +582,6 @@ internal struct HeadToHeadOverlay: View {
         }
     }
 
-    private var secondaryStatus: String {
-        if app.headToHead.totalRemainingComparisons == 0 {
-            return "Choose Commit Rankings to apply the outcome."
-        }
-        switch app.headToHead.phase {
-        case .quick:
-            return "Keep comparing contenders to shape the tiers."
-        case .refinement:
-            return "Tightening boundaries with targeted matchups."
-        }
-    }
-
     private func handleAppear() {
         synchronizeFocus()
         #if !os(tvOS)
@@ -424,6 +597,10 @@ internal struct HeadToHeadOverlay: View {
 
     #if os(tvOS)
     private func handleMoveCommand(_ direction: MoveCommandDirection) {
+        // Let tvOS manage horizontal focus so HStack navigation feels natural.
+        // We only customize vertical moves to steer between the cards and the
+        // bottom action row, which the default engine can't infer from layout.
+        guard direction == .up || direction == .down else { return }
         guard let mapped = DirectionalMove(moveCommand: direction) else { return }
         handleDirectionalInput(mapped)
     }
@@ -452,28 +629,40 @@ internal struct HeadToHeadOverlay: View {
 
     private func moveLeft(from current: HeadToHeadFocusAnchor) -> HeadToHeadFocusAnchor? {
         switch current {
-        case .secondary: return .pass
-        case .pass: return .primary
-        case .commit: return .cancel
+        case .secondary:
+            return .primary
+        case .commit:
+            // When a pair is active, move toward the middle Skip button.
+            // Otherwise, step to the Cancel action.
+            return app.headToHead.currentPair != nil ? .pass : .cancel
+        case .pass:
+            return .cancel
         default: return nil
         }
     }
 
     private func moveRight(from current: HeadToHeadFocusAnchor) -> HeadToHeadFocusAnchor? {
         switch current {
-        case .primary: return app.headToHead.currentPair != nil ? .pass : .commit
-        case .pass: return .secondary
-        case .cancel: return .commit
+        case .primary:
+            return .secondary
+        case .cancel:
+            // With an active pair, move into the middle Skip action.
+            // After completion, skip directly to Finish.
+            return app.headToHead.currentPair != nil ? .pass : .commit
+        case .pass:
+            return .commit
         default: return nil
         }
     }
 
     private func moveUp(from current: HeadToHeadFocusAnchor) -> HeadToHeadFocusAnchor? {
         switch current {
-        case .commit, .cancel:
-            return app.headToHead.currentPair != nil ? .pass : nil
-        case .pass:
-            return .primary
+        case .cancel, .pass:
+            // Move back to the primary card when comparisons are active.
+            return app.headToHead.currentPair != nil ? .primary : nil
+        case .commit:
+            // The positive action lines up under the secondary card.
+            return app.headToHead.currentPair != nil ? .secondary : nil
         default:
             return nil
         }
@@ -481,7 +670,11 @@ internal struct HeadToHeadOverlay: View {
 
     private func moveDown(from current: HeadToHeadFocusAnchor) -> HeadToHeadFocusAnchor? {
         switch current {
-        case .primary, .secondary, .pass:
+        case .primary, .secondary:
+            // First vertical step from a card goes to Skip when a pair exists,
+            // or directly to Finish when we're in the completion state.
+            return app.headToHead.currentPair != nil ? .pass : .commit
+        case .pass:
             return .commit
         default:
             return nil
@@ -515,4 +708,23 @@ private struct HeadToHeadMetric: Identifiable {
     internal let caption: String?
 
     internal var id: String { title }
+}
+
+// MARK: - Previews
+
+@MainActor
+private struct HeadToHeadOverlayPreview: View {
+    @State private var appState = PreviewHelpers.makeAppState { app in
+        // Use the real lifecycle helper to seed a HeadToHead session
+        // from the preview fixture items.
+        app.startHeadToHead()
+    }
+
+    var body: some View {
+        HeadToHeadOverlay(app: appState)
+    }
+}
+
+#Preview("Head-to-Head Overlay") {
+    HeadToHeadOverlayPreview()
 }
