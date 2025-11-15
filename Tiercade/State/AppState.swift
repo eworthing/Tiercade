@@ -148,7 +148,6 @@ final class AppState {
     var isProcessingSearch: Bool = false
     let bundledProjects: [BundledProject] = BundledProjects.all
 
-    
     var showRandomizeConfirmation: Bool = false
     var showResetConfirmation: Bool = false
 

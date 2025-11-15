@@ -5,6 +5,7 @@ import FoundationModels
 #endif
 
 // MARK: - Configuration Models (JSON → Swift)
+// swiftlint:disable nesting - Nested types namespace related Codable models for JSON decoding
 
 #if DEBUG && canImport(FoundationModels)
 @available(iOS 26.0, macOS 26.0, *)

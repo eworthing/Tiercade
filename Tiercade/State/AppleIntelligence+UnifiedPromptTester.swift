@@ -3,6 +3,9 @@ import Foundation
 #if canImport(FoundationModels) && DEBUG
 import FoundationModels
 
+// swiftlint:disable file_length function_body_length type_body_length cyclomatic_complexity
+// Prototype test framework - comprehensive test orchestration justifies file size
+
 // MARK: - Generable Types
 
 /// Generable type for guided generation of string lists
@@ -140,6 +143,7 @@ final class UnifiedPromptTester {
         debugLog("🧬 GUIDED MODES: \(suite.config.guidedModes)")
         debugLog("")
 
+        // swiftlint:disable:next line_length - Progress message should remain readable as single line
         await MainActor.run { onProgress("🎯 Test matrix: \(prompts.count) prompts × \(queries.count) queries × \(decoders.count) decoders × \(suite.config.seeds.count) seeds × \(suite.config.guidedModes.count) modes") }
 
         // Build test runs

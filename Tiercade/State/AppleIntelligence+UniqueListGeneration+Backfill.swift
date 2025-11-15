@@ -3,6 +3,9 @@ import Foundation
 #if canImport(FoundationModels)
 import FoundationModels
 
+// swiftlint:disable file_length function_body_length
+// Prototype backfill logic - comprehensive retry/recovery justifies file size
+
 // MARK: - UniqueListCoordinator Backfill Methods
 
 @available(iOS 26.0, macOS 26.0, *)
