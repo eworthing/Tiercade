@@ -105,6 +105,8 @@ internal enum Metrics {
 internal enum ScaledDimensions {
     #if os(tvOS)
     internal static let progressDialSize: CGFloat = 150
+    internal static let candidateCardWidth: CGFloat = 260
+    internal static let candidateThumbnailHeight: CGFloat = 340
     internal static let candidateCardMinWidth: CGFloat = 360
     internal static let candidateCardMaxWidth: CGFloat = 520
     internal static let candidateCardMinHeight: CGFloat = 280
@@ -114,6 +116,8 @@ internal enum ScaledDimensions {
     internal static let textContentMaxWidth: CGFloat = 520
     #else
     internal static let progressDialSize: CGFloat = 100
+    internal static let candidateCardWidth: CGFloat = 200
+    internal static let candidateThumbnailHeight: CGFloat = 260
     internal static let candidateCardMinWidth: CGFloat = 280
     internal static let candidateCardMaxWidth: CGFloat = 400
     internal static let candidateCardMinHeight: CGFloat = 220

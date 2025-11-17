@@ -59,23 +59,19 @@ internal struct HeadToHeadCandidateCard: View {
     internal let action: () -> Void
     internal var compact: Bool = false
 
-    @ScaledMetric(relativeTo: .title) private var cardMinWidth = ScaledDimensions.candidateCardMinWidth
-    @ScaledMetric(relativeTo: .title) private var cardMaxWidth = ScaledDimensions.candidateCardMaxWidth
+    @ScaledMetric(relativeTo: .title) private var cardWidth = ScaledDimensions.candidateCardWidth
     @ScaledMetric(relativeTo: .title) private var cardMinHeight = ScaledDimensions.candidateCardMinHeight
+    @ScaledMetric(relativeTo: .title) private var thumbnailHeight = ScaledDimensions.candidateThumbnailHeight
 
     internal var body: some View {
         Button(action: action) {
-            VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: Metrics.grid * 2.25) {
-                header
-                detail
+            VStack(alignment: .center, spacing: Metrics.grid * 2) {
+                thumbnail
+                textContent
             }
-            .padding(Metrics.grid * 3)
-            .frame(
-                minWidth: compact ? 0 : cardMinWidth,
-                maxWidth: compact ? .infinity : cardMaxWidth,
-                minHeight: cardMinHeight,
-                alignment: alignment == .leading ? .topLeading : .topTrailing
-            )
+            .padding(Metrics.grid * 2.5)
+            .frame(width: compact ? nil : cardWidth)
+            .frame(maxWidth: compact ? .infinity : nil)
             .background(backgroundShape)
         }
         #if os(tvOS)
@@ -85,6 +81,93 @@ internal struct HeadToHeadCandidateCard: View {
         #endif
         .accessibilityLabel(item.name ?? item.id)
         .accessibilityHint(item.description ?? "Choose this contender")
+    }
+
+    private var thumbnail: some View {
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(Color.clear)
+            .frame(width: cardWidth - (Metrics.grid * 5), height: thumbnailHeight)
+            .overlay {
+                thumbnailContent
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+    }
+
+    @ViewBuilder
+    private var thumbnailContent: some View {
+        if let asset = item.imageUrl ?? item.videoUrl,
+           let url = URLValidator.allowedMediaURL(from: asset) {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .empty:
+                    thumbnailPlaceholder
+                        .overlay {
+                            ProgressView()
+                                .tint(.white.opacity(0.6))
+                        }
+                case .success(let image):
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                case .failure:
+                    thumbnailPlaceholder
+                        .overlay {
+                            Image(systemName: "photo")
+                                .imageScale(.large)
+                                .foregroundStyle(.white.opacity(0.4))
+                        }
+                @unknown default:
+                    thumbnailPlaceholder
+                }
+            }
+        } else {
+            thumbnailPlaceholder
+        }
+    }
+
+    private var thumbnailPlaceholder: some View {
+        Rectangle()
+            .fill(
+                LinearGradient(
+                    colors: [
+                        accentColor.opacity(0.3),
+                        accentColor.opacity(0.15)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+    }
+
+    private var textContent: some View {
+        VStack(alignment: .center, spacing: Metrics.grid * 1.25) {
+            Text(item.name ?? item.id)
+                .font(candidateTitleFont)
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+
+            if let season = item.seasonString, !season.isEmpty {
+                Text("Season \(season)")
+                    .font(TypeScale.caption)
+                    .foregroundStyle(accentColor)
+            }
+
+            if let status = item.status, !status.isEmpty {
+                Text(status)
+                    .font(TypeScale.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            if let description = item.description, !description.isEmpty {
+                Text(description)
+                    .font(candidateDescriptionFont)
+                    .foregroundStyle(.primary)
+                    .lineLimit(4)
+                    .lineSpacing(Metrics.grid * 0.75)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: cardWidth - (Metrics.grid * 3))
     }
 
     private var candidateTitleFont: Font {
@@ -103,62 +186,6 @@ internal struct HeadToHeadCandidateCard: View {
         #else
         return TypeScale.body
         #endif
-    }
-
-    private var header: some View {
-        VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: Metrics.grid * 1.25) {
-            Text(item.name ?? item.id)
-                .font(candidateTitleFont)
-                .multilineTextAlignment(alignment == .leading ? .leading : .trailing)
-                .lineLimit(3)
-            if let season = item.seasonString, !season.isEmpty {
-                Text("Season \(season)")
-                    .font(TypeScale.caption)
-                    .foregroundStyle(accentColor)
-            }
-        }
-    }
-
-    private var detail: some View {
-        VStack(alignment: alignment == .leading ? .leading : .trailing, spacing: Metrics.grid * 1.5) {
-            if !metadataTokens.isEmpty {
-                metadataStack
-            }
-
-            if let description = item.description, !description.isEmpty {
-                Text(description)
-                    .font(candidateDescriptionFont)
-                    .foregroundStyle(.primary)
-                    .lineLimit(5)
-                    .lineSpacing(Metrics.grid * 0.75)
-                    .multilineTextAlignment(alignment == .leading ? .leading : .trailing)
-            }
-        }
-    }
-
-    private var metadataStack: some View {
-        let alignment: HorizontalAlignment = self.alignment == .leading ? .leading : .trailing
-
-        return VStack(alignment: alignment, spacing: Metrics.grid * 0.75) {
-            ForEach(metadataTokens, id: \.self) { token in
-                Text(token)
-                    .font(TypeScale.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(self.alignment == .leading ? .leading : .trailing)
-            }
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    private var metadataTokens: [String] {
-        var tokens: [String] = []
-        if let season = item.seasonString, !season.isEmpty {
-            tokens.append("Season \(season)")
-        }
-        if let status = item.status, !status.isEmpty {
-            tokens.append(status)
-        }
-        return tokens
     }
 
     private var backgroundShape: some View {

@@ -148,6 +148,7 @@ final class AppState {
     var isProcessingSearch: Bool = false
     let bundledProjects: [BundledProject] = BundledProjects.all
 
+
     var showRandomizeConfirmation: Bool = false
     var showResetConfirmation: Bool = false
 
@@ -170,8 +171,6 @@ final class AppState {
         listGenerator: UniqueListGenerating? = nil,
         themeCatalog: ThemeCatalogProviding? = nil
     ) {
-        let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
-
         self.modelContext = modelContext
 
         self.persistenceStore = persistenceStore ?? SwiftDataPersistenceStore(modelContext: modelContext)
@@ -184,24 +183,17 @@ final class AppState {
 
         self.theme = ThemeState(themeCatalog: self.themeCatalog)
 
-        let didLoad: Bool
-        if isPreview {
-            // In Xcode previews, avoid touching on-disk persistence and heavy
-            // SwiftData flows. Preview fixtures will supply their own sample data.
-            didLoad = false
-        } else {
-            didLoad = load()
-            if !didLoad {
-                seed()
-            } else if isLegacyBundledListPlaceholder(tiers) {
-                logEvent("init: detected legacy bundled list placeholder; reseeding default project")
-                let defaults = UserDefaults.standard
-                defaults.removeObject(forKey: tierListStateKey)
-                defaults.removeObject(forKey: tierListRecentsKey)
-                seed()
-            }
-            setupAutosave()
+        let didLoad = load()
+        if !didLoad {
+            seed()
+        } else if isLegacyBundledListPlaceholder(tiers) {
+            logEvent("init: detected legacy bundled list placeholder; reseeding default project")
+            let defaults = UserDefaults.standard
+            defaults.removeObject(forKey: tierListStateKey)
+            defaults.removeObject(forKey: tierListRecentsKey)
+            seed()
         }
+        setupAutosave()
 
         let tierSummary = tierOrder
             .map { "\($0):\(tiers[$0]?.count ?? 0)" }
@@ -210,13 +202,11 @@ final class AppState {
         let unrankedCount = tiers[unrankedKey]?.count ?? 0
         let initMsg = "init: tiers counts=\(tierSummary) unranked=\(unrankedCount)"
         logEvent(initMsg)
-        if !isPreview {
-            restoreTierListState()
-            if !didLoad {
-                loadActiveTierListIfNeeded()
-            }
-            prefillBundledProjectsIfNeeded()
+        restoreTierListState()
+        if !didLoad {
+            loadActiveTierListIfNeeded()
         }
+        prefillBundledProjectsIfNeeded()
     }
 
     // MARK: - Logging

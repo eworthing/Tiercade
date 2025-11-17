@@ -155,62 +155,74 @@ private enum ItemsFactory {
         item(
             id: "richard-hatch",
             title: "Richard Hatch",
-            summary: "Borneo pioneer and original social strategist."
+            summary: "Borneo pioneer and original social strategist.",
+            imageUrl: "richard-hatch"
         ),
         item(
             id: "tina-wesson",
             title: "Tina Wesson",
-            summary: "Outback diplomat who mastered the jury."
+            summary: "Outback diplomat who mastered the jury.",
+            imageUrl: "tina-wesson"
         ),
         item(
             id: "sandra-diaz-twine",
             title: "Sandra Diaz-Twine",
-            summary: "Only two-time champ with the 'anyone but me' mantra."
+            summary: "Only two-time champ with the 'anyone but me' mantra.",
+            imageUrl: "sandra-diaz-twine"
         ),
         item(
             id: "amber-brkich",
             title: "Amber Brkich Mariano",
-            summary: "All-Stars closer with a flawless social game."
+            summary: "All-Stars closer with a flawless social game.",
+            imageUrl: "amber-brkich"
         ),
         item(
             id: "tom-westman",
             title: "Tom Westman",
-            summary: "Palau firefighter who dominated on all fronts."
+            summary: "Palau firefighter who dominated on all fronts.",
+            imageUrl: "tom-westman"
         ),
         item(
             id: "parvati-shallow",
             title: "Parvati Shallow",
-            summary: "Fans vs. Favorites siren and alliance architect."
+            summary: "Fans vs. Favorites siren and alliance architect.",
+            imageUrl: "parvati-shallow"
         ),
         item(
             id: "jeremy-collins",
             title: "Jeremy Collins",
-            summary: "Cambodia hero who reinvented with second-chance allies."
+            summary: "Cambodia hero who reinvented with second-chance allies.",
+            imageUrl: "jeremy-collins"
         ),
         item(
             id: "michele-fitzgerald",
             title: "Michele Fitzgerald",
-            summary: "Kaôh Rōng storyteller who charmed the jury."
+            summary: "Kaôh Rōng storyteller who charmed the jury.",
+            imageUrl: "michele-fitzgerald"
         ),
         item(
             id: "tony-vlachos",
             title: "Tony Vlachos",
-            summary: "Cagayan kingpin turned mastermind of Winners at War."
+            summary: "Cagayan kingpin turned mastermind of Winners at War.",
+            imageUrl: "tony-vlachos"
         ),
         item(
             id: "maryanne-oketch",
             title: "Maryanne Oketch",
-            summary: "Season 42's joyful wildcard who timed idols perfectly."
+            summary: "Season 42's joyful wildcard who timed idols perfectly.",
+            imageUrl: "maryanne-oketch"
         ),
         item(
             id: "mike-holloway",
             title: "Mike Holloway",
-            summary: "Worlds Apart challenge beast with grit to the end."
+            summary: "Worlds Apart challenge beast with grit to the end.",
+            imageUrl: "mike-holloway"
         ),
         item(
             id: "yul-kwon",
             title: "Yul Kwon",
-            summary: "Cook Islands strategist armed with the super idol."
+            summary: "Cook Islands strategist armed with the super idol.",
+            imageUrl: "yul-kwon"
         )
     ]
 
@@ -365,7 +377,22 @@ private enum ItemsFactory {
         )
     ]
 
-    static func item(id: String, title: String, summary: String) -> Project.Item {
-        Project.Item(id: id, title: title, summary: summary)
+    static func item(id: String, title: String, summary: String, imageUrl: String? = nil) -> Project.Item {
+        let media: [Project.Media]? = imageUrl.map { url in
+            [Project.Media(
+                id: "\(id)-thumb",
+                kind: .image,
+                uri: url,
+                mime: "image/png",
+                thumbUri: url
+            )]
+        }
+
+        return Project.Item(
+            id: id,
+            title: title,
+            summary: summary,
+            media: media
+        )
     }
 }

@@ -310,6 +310,29 @@ extension HeadToHeadLogic {
         }
     }
 
+    /// Calculate relative overlap epsilon based on interval widths.
+    ///
+    /// Instead of using a fixed absolute epsilon (1%), this uses a relative epsilon
+    /// that scales with the Wilson interval widths of the items being compared.
+    /// This provides more consistent behavior across different confidence levels.
+    ///
+    /// Research evidence: Absolute epsilon treats high-confidence tight intervals
+    /// (e.g., ±0.02) the same as low-confidence wide intervals (e.g., ±0.25),
+    /// leading to inconsistent boundary detection.
+    internal static func relativeOverlapEpsilon(
+        upper: HeadToHeadMetrics,
+        lower: HeadToHeadMetrics,
+        baseEpsilon: Double = Tun.softOverlapEps
+    ) -> Double {
+        let upperWidth = upper.wilsonUB - upper.wilsonLB
+        let lowerWidth = lower.wilsonUB - lower.wilsonLB
+        let avgWidth = (upperWidth + lowerWidth) / 2.0
+
+        // Use 25% of average interval width, with minimum of base epsilon
+        // This scales naturally with confidence: narrow intervals get smaller epsilon
+        return max(baseEpsilon, 0.25 * avgWidth)
+    }
+
     internal static func dropCuts(
         for ordered: [Item],
         metrics: [String: HeadToHeadMetrics],
@@ -321,6 +344,9 @@ extension HeadToHeadLogic {
         for index in 0..<(ordered.count - 1) {
             guard let upper = metrics[ordered[index].id],
                   let lower = metrics[ordered[index + 1].id] else { continue }
+
+            // TODO: Consider using relative epsilon in future once validated
+            // let epsilon = relativeOverlapEpsilon(upper: upper, lower: lower)
             let raw = (upper.wilsonLB - lower.wilsonUB) + overlapEps
             let delta = max(0, raw)
             if delta <= 0 { continue }

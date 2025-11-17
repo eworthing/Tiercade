@@ -254,37 +254,29 @@ internal struct HeadToHeadOverlay: View {
     }
 
     private var overviewSection: some View {
-        VStack(alignment: .leading, spacing: Metrics.grid * 2) {
-            HStack(alignment: .firstTextBaseline, spacing: Metrics.grid * 1.5) {
-                VStack(alignment: .leading, spacing: Metrics.grid) {
-                    Text("HeadToHead Arena")
-                        .font(titleFont)
-                }
-                Spacer()
-                HeadToHeadPhaseBadge(phase: app.headToHead.phase)
+        HStack(alignment: .top, spacing: Metrics.grid * 3) {
+            VStack(alignment: .leading, spacing: Metrics.grid) {
+                Text("HeadToHead Arena")
+                    .font(titleFont)
             }
+
+            Spacer()
+
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: Metrics.grid * 3) {
                     HeadToHeadProgressDial(progress: app.headToHead.overallProgress, label: progressLabel)
                         .frame(width: progressDialSize, height: progressDialSize)
                         .accessibilityIdentifier("HeadToHeadOverlay_Progress")
 
-                    VStack(alignment: .leading, spacing: Metrics.grid * 1.5) {
-                        Text(statusSummary)
-                            .font(heroFont)
-                            .layoutPriority(1)
-                        HStack(spacing: Metrics.grid * 2.5) {
-                            ForEach(metricTiles, id: \.title) { metric in
-                                HeadToHeadMetricTile(
-                                    title: metric.title,
-                                    value: metric.value,
-                                    footnote: metric.caption
-                                )
-                            }
+                    HStack(spacing: Metrics.grid * 2.5) {
+                        ForEach(metricTiles, id: \.title) { metric in
+                            HeadToHeadMetricTile(
+                                title: metric.title,
+                                value: metric.value,
+                                footnote: metric.caption
+                            )
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .layoutPriority(1)
                 }
 
                 VStack(alignment: .leading, spacing: Metrics.grid * 2) {
@@ -292,21 +284,15 @@ internal struct HeadToHeadOverlay: View {
                         .frame(width: progressDialSize, height: progressDialSize)
                         .accessibilityIdentifier("HeadToHeadOverlay_Progress")
 
-                    VStack(alignment: .leading, spacing: Metrics.grid * 1.5) {
-                        Text(statusSummary)
-                            .font(heroFont)
-
-                        HStack(spacing: Metrics.grid * 2.5) {
-                            ForEach(metricTiles, id: \.title) { metric in
-                                HeadToHeadMetricTile(
-                                    title: metric.title,
-                                    value: metric.value,
-                                    footnote: metric.caption
-                                )
-                            }
+                    HStack(spacing: Metrics.grid * 2.5) {
+                        ForEach(metricTiles, id: \.title) { metric in
+                            HeadToHeadMetricTile(
+                                title: metric.title,
+                                value: metric.value,
+                                footnote: metric.caption
+                            )
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
@@ -319,17 +305,17 @@ internal struct HeadToHeadOverlay: View {
             HeadToHeadMetric(
                 title: "Completed",
                 value: "\(app.headToHead.totalDecidedComparisons)",
-                caption: "of \(app.headToHead.totalComparisons + app.headToHead.refinementTotalComparisons)"
+                caption: nil
             ),
             HeadToHeadMetric(
                 title: "Remaining",
                 value: "\(app.headToHead.totalRemainingComparisons)",
-                caption: app.headToHead.phase == .quick ? "Quick phase" : "Refinement"
+                caption: nil
             ),
             HeadToHeadMetric(
                 title: "Skipped",
                 value: "\(app.headToHead.skippedCount)",
-                caption: "Will resurface later"
+                caption: nil
             )
         ]
     }
