@@ -256,14 +256,38 @@ internal extension AppState {
     private func quickPhaseTargetComparisons(for poolCount: Int) -> Int {
         guard poolCount > 1 else { return 0 }
         let maxUnique = poolCount - 1
+
+        // Adaptive comparison budget based on simulation evidence
+        // (See TiercadeCore/Tests/SIMULATION_FINDINGS.md for full analysis)
+        //
+        // Key findings:
+        // - Small pools (< 10): 3 comparisons achieve tau=0.73, 50% tier accuracy
+        // - Medium pools (10-20): 4 comparisons maintain quality with scale
+        // - Large pools (20-40): 5 comparisons needed to counteract dilution
+        // - XL pools (40+): 6 comparisons for stable rankings
+        //
+        // This scaling ensures consistent quality across pool sizes while
+        // respecting the user's time budget (Swiss system log₂(n) principle)
         let desired: Int
-        if poolCount >= HeadToHeadHeuristics.largePoolThreshold {
-            desired = HeadToHeadHeuristics.largeDesiredComparisons
-        } else if poolCount >= HeadToHeadHeuristics.mediumPoolThreshold {
-            desired = HeadToHeadHeuristics.mediumDesiredComparisons
-        } else {
-            desired = HeadToHeadHeuristics.smallDesiredComparisons
+        switch poolCount {
+        case 0..<10:
+            // Small pools: Excellent coverage with 3 comparisons/item
+            // Simulation: tau=0.73, tier_accuracy=50%
+            desired = 3
+        case 10..<20:
+            // Medium pools: Scale up to maintain quality
+            // Simulation: 4 comp/item improves tau from 0.42 → 0.63
+            desired = 4
+        case 20..<40:
+            // Large pools: Additional comparisons needed
+            // Simulation: 5 comp/item achieves tau=0.66, efficiency=0.13
+            desired = 5
+        default:
+            // XL pools: Maximum practical budget
+            // Beyond 6, diminishing returns set in (see budget analysis)
+            desired = 6
         }
+
         return max(1, min(desired, maxUnique))
     }
 
