@@ -4,6 +4,7 @@ import TiercadeCore
 internal struct HeadToHeadProgressDial: View {
     internal let progress: Double
     internal let label: String
+    internal let accentColor: Color
 
     private var clampedProgress: Double { min(max(progress, 0), 1) }
 
@@ -16,7 +17,7 @@ internal struct HeadToHeadProgressDial: View {
                 .trim(from: 0, to: clampedProgress)
                 .stroke(
                     AngularGradient(
-                        gradient: Gradient(colors: [Palette.brand, Palette.tierColor("S"), Palette.brand]),
+                        gradient: Gradient(colors: [Palette.brand, accentColor, Palette.brand]),
                         center: .center
                     ),
                     style: StrokeStyle(lineWidth: 14, lineCap: .round)

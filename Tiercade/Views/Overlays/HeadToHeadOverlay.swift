@@ -101,7 +101,8 @@ internal struct HeadToHeadOverlay: View {
             .headToHeadMacOSModifiers(
                 overlayHasFocus: $overlayHasFocus,
                 handleInput: handleDirectionalInput,
-                handleAction: handlePrimaryAction
+                handleAction: handlePrimaryAction,
+                handleCancel: { app.cancelHeadToHead() }
             )
         #endif
     }
@@ -264,7 +265,11 @@ internal struct HeadToHeadOverlay: View {
 
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: Metrics.grid * 3) {
-                    HeadToHeadProgressDial(progress: app.headToHead.overallProgress, label: progressLabel)
+                    HeadToHeadProgressDial(
+                        progress: app.headToHead.overallProgress,
+                        label: progressLabel,
+                        accentColor: Palette.tierColor("S", from: app.tierColors)
+                    )
                         .frame(width: progressDialSize, height: progressDialSize)
                         .accessibilityIdentifier("HeadToHeadOverlay_Progress")
 
@@ -280,7 +285,11 @@ internal struct HeadToHeadOverlay: View {
                 }
 
                 VStack(alignment: .leading, spacing: Metrics.grid * 2) {
-                    HeadToHeadProgressDial(progress: app.headToHead.overallProgress, label: progressLabel)
+                    HeadToHeadProgressDial(
+                        progress: app.headToHead.overallProgress,
+                        label: progressLabel,
+                        accentColor: Palette.tierColor("S", from: app.tierColors)
+                    )
                         .frame(width: progressDialSize, height: progressDialSize)
                         .accessibilityIdentifier("HeadToHeadOverlay_Progress")
 
@@ -297,7 +306,6 @@ internal struct HeadToHeadOverlay: View {
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("HeadToHeadOverlay_Header")
     }
 
     private var metricTiles: [HeadToHeadMetric] {
@@ -373,7 +381,7 @@ internal struct HeadToHeadOverlay: View {
 
                     HeadToHeadCandidateCard(
                         item: pair.1,
-                        accentColor: Palette.tierColor("S"),
+                        accentColor: Palette.tierColor("S", from: app.tierColors),
                         alignment: .trailing,
                         action: { app.voteHeadToHead(winner: pair.1) },
                         compact: false
@@ -403,7 +411,7 @@ internal struct HeadToHeadOverlay: View {
 
                     HeadToHeadCandidateCard(
                         item: pair.1,
-                        accentColor: Palette.tierColor("S"),
+                        accentColor: Palette.tierColor("S", from: app.tierColors),
                         alignment: .trailing,
                         action: { app.voteHeadToHead(winner: pair.1) },
                         compact: true
@@ -580,9 +588,7 @@ internal struct HeadToHeadOverlay: View {
     }
 
     private func synchronizeFocus() {
-        Task { @MainActor in
-            focusAnchor = defaultFocus
-        }
+        focusAnchor = defaultFocus
     }
 
     #if os(tvOS)

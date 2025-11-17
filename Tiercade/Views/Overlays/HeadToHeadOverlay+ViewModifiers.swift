@@ -15,7 +15,6 @@ internal extension View {
             )
             .shadow(color: Color.black.opacity(0.3), radius: 36, y: 18)
             .padding(.horizontal, Metrics.grid * 2)
-            .accessibilityIdentifier("HeadToHeadOverlay_Root")
             .accessibilityElement(children: .contain)
             #if os(tvOS)
             .focusSection()
@@ -57,7 +56,8 @@ internal extension View {
     func headToHeadMacOSModifiers(
         overlayHasFocus: FocusState<Bool>.Binding,
         handleInput: @escaping (DirectionalMove) -> Void,
-        handleAction: @escaping () -> Void
+        handleAction: @escaping () -> Void,
+        handleCancel: @escaping () -> Void
     ) -> some View {
         self
             .focusable()
@@ -68,6 +68,7 @@ internal extension View {
             .onKeyPress(.rightArrow) { handleInput(.right); return .handled }
             .onKeyPress(.space) { handleAction(); return .handled }
             .onKeyPress(.return) { handleAction(); return .handled }
+            .onKeyPress(.escape) { handleCancel(); return .handled }
             .accessibilityAddTraits(.isModal)
     }
     #endif

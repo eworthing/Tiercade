@@ -161,7 +161,7 @@ UI automation relies on accessibility IDs and short paths—prefer existence che
   - *Swift Language Version* = `Swift 6`; keep **Enable Upcoming Features** consistent with the package manifest.
   These mirror Apple’s Swift 6 migration notes and align with the README guardrails.
 - **State & UI expectations:** Views run on `@MainActor` data via `@Observable`/`@Bindable`; never fall back to `ObservableObject`, `@Published`, or deprecated `NavigationView`.
-- **Async & persistence:** Prefer structured concurrency (`async/await`, `AsyncSequence`, `TaskGroup`) plus SwiftData for new persistence flows; phase out Combine and legacy Core Data code paths.
+- **Async & persistence:** Prefer structured concurrency (`async/await`, `AsyncSequence`, `TaskGroup`) plus SwiftData for new persistence flows; phase out Combine and legacy Core Data code paths. Use SwiftData (`ModelContext`, `@Model`) only in app targets; keep TiercadeCore free of SwiftUI/SwiftData so it stays a pure logic module.
 - **Testing & dependencies:** Add Swift Testing (`@Test`, `#expect`) coverage for new work and keep dependencies in SwiftPM with `traits: [.featureFlag("name")]`.
 - **Complexity & forms:** Keep files within lint thresholds (cyclomatic complexity warn=8, error=12) and wire multi-field forms with `.submitLabel(.next/.done)`, `.onSubmit {}`, and `@FocusState` to support keyboard navigation.
 - **Migration priorities:** Continue incrementally moving callbacks→`async/await`, queues→actors, string concatenation→interpolation, RTL test coverage, and destructive alerts→`confirmationDialog`.
@@ -176,6 +176,7 @@ UI automation relies on accessibility IDs and short paths—prefer existence che
   - Test suite configs: `Tiercade/TestConfigs/TestSuites.json`
   - Framework docs: `Tiercade/TestConfigs/TESTING_FRAMEWORK.md`
 - SourceKit often flags "No such module 'TiercadeCore'"; defer to `xcodebuild` results before debugging module wiring.
+- SwiftUI previews: use `PreviewHelpers.makeAppState` and static fixtures so views in `Views/Components` and `Views/Overlays` compile and render in isolation without wiring the full app.
 
 ## Collaboration norms
 
@@ -276,6 +277,7 @@ func moveItem(_ id: String, to tier: String) {
     finalizeChange(action: "Move Item", undoSnapshot: snapshot)
 }
 ```
+Don’t introduce separate view models for core tier logic; views bind `AppState` (via `@Bindable`) and call `AppState+*.swift` methods for all mutations.
 
 ### File Splitting & Access Control
 **When splitting files for SwiftLint compliance,** manage Swift's visibility rules carefully:
