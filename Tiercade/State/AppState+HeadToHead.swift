@@ -105,12 +105,13 @@ internal extension AppState {
 
         autoAdvanceIfNeeded()
 
+        let pairDesc = "\(a.id)-\(b.id)"
         if headToHead.phase == .refinement {
-            // swiftlint:disable:next line_length
-            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(a.id)-\(b.id) target=\(self.headToHead.refinementCompletedComparisons)/\(self.headToHead.refinementTotalComparisons)")
+            let progress = "\(headToHead.refinementCompletedComparisons)/\(headToHead.refinementTotalComparisons)"
+            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(pairDesc) refine=\(progress)")
         } else {
-            // swiftlint:disable:next line_length
-            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(a.id)-\(b.id) progress=\(self.headToHead.completedComparisons)/\(self.headToHead.totalComparisons)")
+            let progress = "\(headToHead.completedComparisons)/\(headToHead.totalComparisons)"
+            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(pairDesc) progress=\(progress)")
         }
     }
 
