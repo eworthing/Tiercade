@@ -119,8 +119,7 @@ internal struct MainAppView: View {
                 Palette.bg.opacity(0.5)
                     .ignoresSafeArea()
                     .allowsHitTesting(true)
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityLabel("Close chat")
+                    .accessibilityHidden(true)  // Dimmer is tap-to-dismiss; explicit close button exists in overlay
                     .onTapGesture {
                         app.closeAIChat()
                     }

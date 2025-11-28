@@ -35,8 +35,7 @@ internal struct ThemeCreatorOverlay: View {
         ZStack {
             Color.black.opacity(0.75)
                 .ignoresSafeArea()
-                .accessibilityAddTraits(.isButton)
-                .accessibilityLabel("Close theme creator")
+                .accessibilityHidden(true)  // Dimmer is tap-to-dismiss; explicit close button exists in header
                 .onTapGesture { dismiss(returnToPicker: true) }
 
             VStack(spacing: 0) {

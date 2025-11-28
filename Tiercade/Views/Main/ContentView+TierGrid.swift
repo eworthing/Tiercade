@@ -48,9 +48,7 @@ internal struct TierGridView: View {
         .onChange(of: app.cardDensityPreference) { ensureHardwareFocusValid() }
         .onChange(of: app.tierOrder) { ensureHardwareFocusValid() }
         .onChange(of: hardwareFocus) { _, _ in gridHasFocus = true }
-        // Focus management tap - not semantically a button but required for accessibility trait rule
-        .accessibilityAddTraits(.isButton)
-        .accessibilityLabel("Focus grid")
+        .accessibilityHidden(true)  // Focus management only, not user-actionable
         .onTapGesture { gridHasFocus = true }
         #else
         ScrollView {
