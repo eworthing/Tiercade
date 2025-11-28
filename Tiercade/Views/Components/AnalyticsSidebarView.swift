@@ -19,7 +19,7 @@ internal struct AnalyticsSidebarView: View {
             let width = proxy.size.width * 0.65
             ZStack(alignment: .trailing) {
                 // Background dimming (non-focusable; tap to dismiss)
-                Color.black.opacity(0.55)
+                Palette.bg.opacity(0.55)
                     .ignoresSafeArea()
                     .onTapGesture { app.closeAnalyticsSidebar() }
                     .accessibilityHidden(true)
@@ -131,7 +131,7 @@ internal struct AnalyticsSidebarView: View {
                     x: .value("Items", tier.count),
                     y: .value("Tier", tier.tier)
                 )
-                .foregroundStyle(Palette.tierColor(tier.tierId))
+                .foregroundStyle(Palette.tierColor(tier.tierId, from: app.tierColors))
                 .annotation(position: .trailing) {
                     Text(percentageText(for: tier.percentage))
                         .font(TypeScale.analyticsBadge)
