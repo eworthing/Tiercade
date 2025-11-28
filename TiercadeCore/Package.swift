@@ -15,6 +15,7 @@ let package = Package(
         .target(
             name: "TiercadeCore",
             swiftSettings: [
+                .swiftLanguageMode(.v6),
                 // Strict concurrency checking for data-race safety
                 .enableUpcomingFeature("StrictConcurrency"),
                 .unsafeFlags(["-strict-concurrency=complete"])
@@ -26,6 +27,7 @@ let package = Package(
             name: "TiercadeCoreTests",
             dependencies: ["TiercadeCore"],
             swiftSettings: [
+                .swiftLanguageMode(.v6),
                 .enableUpcomingFeature("StrictConcurrency"),
                 .unsafeFlags(["-strict-concurrency=complete"])
             ]

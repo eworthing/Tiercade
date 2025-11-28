@@ -143,7 +143,7 @@ internal struct UnrankedView: View {
             .overlay {
                 DragTargetHighlight(
                     isTarget: app.dragTargetTier == "unranked",
-                    color: Palette.tierColor("unranked")
+                    color: Palette.tierColor("unranked", from: app.tierColors)
                 )
             }
             #if !os(tvOS)

@@ -190,7 +190,7 @@ public struct TVColorPickerView: View {
 
             HStack(spacing: 16) {
                 Text(state.hex)
-                    .font(.system(size: 32, weight: .semibold, design: .monospaced))
+                    .font(TypeScale.monoLarge)
 
                 Button {
                     hexDraft = state.hex
@@ -283,7 +283,7 @@ public struct TVColorPickerView: View {
             }
             .buttonStyle(.glass)
             .focused($focus, equals: .cancel)
-            .frame(width: 280)
+            .frame(width: ScaledDimensions.actionButtonWidth)
 
             Button("Apply Color") {
                 selection = state.color
@@ -291,7 +291,7 @@ public struct TVColorPickerView: View {
             .buttonStyle(.glassProminent)
             .tint(.blue)
             .focused($focus, equals: .apply)
-            .frame(width: 280)
+            .frame(width: ScaledDimensions.actionButtonWidth)
         }
         .focusSection()
     }
@@ -308,7 +308,7 @@ public struct TVColorPickerView: View {
                     state.load(fromHex: hexDraft)
                     showHexEditor = false
                 }
-                .font(.system(size: 32, design: .monospaced))
+                .font(TypeScale.monoBody)
                 .frame(maxWidth: 600)
                 .padding(20)
                 .background(Palette.surface)

@@ -5,10 +5,6 @@ import UniformTypeIdentifiers
 
 import TiercadeCore
 
-// swiftlint:disable file_length type_body_length
-// Toolbar: Comprehensive cross-platform toolbar with platform-specific commands
-// File length exception justified - splitting by platform would duplicate shared toolbar logic
-
 // MARK: - Toolbar and supporting components
 
 internal struct ToolbarView: ToolbarContent {
@@ -306,7 +302,7 @@ internal struct ToolbarView: ToolbarContent {
         #endif
         #endif
 
-        // 3. Analysis (iOS/macOS)
+        // 5. Analysis (iOS/macOS)
         #if !os(tvOS)
         Button {
             app.toggleAnalysis()
@@ -326,7 +322,7 @@ internal struct ToolbarView: ToolbarContent {
         #endif
         #endif
 
-        // 4. Themes (iOS/macOS)
+        // 6. Themes (iOS/macOS)
         #if !os(tvOS)
         Button {
             app.toggleThemePicker()
@@ -342,7 +338,7 @@ internal struct ToolbarView: ToolbarContent {
         #endif
         #endif
 
-        // 5. Apple Intelligence (all platforms)
+        // 7. Apple Intelligence (all platforms)
         if AIGenerationState.isSupportedOnCurrentPlatform {
             Button {
                 app.toggleAIChat()
@@ -355,7 +351,7 @@ internal struct ToolbarView: ToolbarContent {
             #endif
         }
 
-        // 6. Multi-Select (iOS only)
+        // 8. Multi-Select (iOS only)
         #if os(iOS)
         let multiSelectActive = editMode?.wrappedValue == .active
         Button {
@@ -401,131 +397,7 @@ internal struct ToolbarView: ToolbarContent {
         return false
     }
 
-    #if os(iOS)
-    // iOS title menu content (tap navigation title to reveal)
-    @ViewBuilder
-    internal var titleMenuContent: some View {
-        Button {
-            app.startHeadToHead()
-        } label: {
-            Label("HeadToHead", systemImage: "person.line.dotted.person.fill")
-        }
-        .disabled(!app.canStartHeadToHead)
-        .accessibilityIdentifier("TitleMenu_HeadToHead")
-
-        Button {
-            app.toggleAnalysis()
-        } label: {
-            Label(
-                app.showingAnalysis ? "Hide Analysis" : "Show Analysis",
-                systemImage: app.showingAnalysis ? "chart.bar.fill" : "chart.bar"
-            )
-        }
-        .disabled(!app.canShowAnalysis && !app.showingAnalysis)
-        .accessibilityIdentifier("TitleMenu_Analysis")
-
-        Button {
-            app.toggleThemePicker()
-        } label: {
-            Label("Themes", systemImage: "paintpalette")
-        }
-        .accessibilityIdentifier("TitleMenu_Themes")
-
-        Menu("Sort") {
-            // Current sort mode indicator
-            Section {
-                Label(
-                    "Current: \(app.globalSortMode.displayName)",
-                    systemImage: "checkmark.circle"
-                )
-            }
-
-            Divider()
-
-            // Manual order
-            Button {
-                app.setGlobalSortMode(.custom)
-            } label: {
-                Label(
-                    "Manual Order",
-                    systemImage: app.globalSortMode.isCustom ? "checkmark" : ""
-                )
-            }
-
-            // Alphabetical
-            Button {
-                app.setGlobalSortMode(.alphabetical(ascending: true))
-            } label: {
-                let isSelected = {
-                    if case .alphabetical(let asc) = app.globalSortMode, asc { return true }
-                    return false
-                }()
-                Label("A → Z", systemImage: isSelected ? "checkmark" : "")
-            }
-
-            Button {
-                app.setGlobalSortMode(.alphabetical(ascending: false))
-            } label: {
-                let isSelected = {
-                    if case .alphabetical(let asc) = app.globalSortMode, !asc { return true }
-                    return false
-                }()
-                Label("Z → A", systemImage: isSelected ? "checkmark" : "")
-            }
-
-            // Discovered attributes
-            let discovered = app.discoverSortableAttributes()
-            if !discovered.isEmpty {
-                Divider()
-
-                ForEach(Array(discovered.keys.sorted()), id: \.self) { key in
-                    if let type = discovered[key] {
-                        Menu(key.capitalized) {
-                            Button {
-                                app.setGlobalSortMode(.byAttribute(key: key, ascending: true, type: type))
-                            } label: {
-                                let isSelected = {
-                                    if case .byAttribute(let k, let asc, _) = app.globalSortMode,
-                                       k == key, asc { return true }
-                                    return false
-                                }()
-                                Label("\(key.capitalized) ↑", systemImage: isSelected ? "checkmark" : "")
-                            }
-
-                            Button {
-                                app.setGlobalSortMode(.byAttribute(key: key, ascending: false, type: type))
-                            } label: {
-                                let isSelected = {
-                                    if case .byAttribute(let k, let asc, _) = app.globalSortMode,
-                                       k == key, !asc { return true }
-                                    return false
-                                }()
-                                Label("\(key.capitalized) ↓", systemImage: isSelected ? "checkmark" : "")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        .accessibilityIdentifier("TitleMenu_Sort")
-
-        Menu("Card Size") {
-            ForEach(CardDensityPreference.allCases, id: \.self) { density in
-                Button {
-                    app.setCardDensityPreference(density)
-                } label: {
-                    Label(
-                        density.displayName,
-                        systemImage: app.cardDensityPreference == density ? "checkmark" : ""
-                    )
-                }
-            }
-        }
-        .accessibilityIdentifier("TitleMenu_CardSize")
-    }
-    #endif
-
-    private func handleExportFormatSelection(_ format: ExportFormat) {
+    internal func handleExportFormatSelection(_ format: ExportFormat) {
         selectedExportFormat = format
         #if os(iOS)
         if format == .json {
@@ -540,27 +412,7 @@ internal struct ToolbarView: ToolbarContent {
     }
 }
 
-#if os(iOS)
-internal struct TiersDocument: FileDocument {
-    internal static var readableContentTypes: [UTType] { [.json] }
-    internal var tiers: Items = [:]
-
-    internal init() {}
-    internal init(tiers: Items) { self.tiers = tiers }
-
-    internal init(configuration: ReadConfiguration) throws {
-        guard let data = configuration.file.regularFileContents else {
-            throw CocoaError(.fileReadCorruptFile)
-        }
-        tiers = try JSONDecoder().decode(Items.self, from: data)
-    }
-
-    internal func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
-        let data = try JSONEncoder().encode(tiers)
-        return .init(regularFileWithContents: data)
-    }
-}
-#endif
+// MARK: - Secondary Toolbar Actions
 
 internal struct SecondaryToolbarActions: ToolbarContent {
     @Bindable var app: AppState
@@ -644,179 +496,6 @@ internal struct SecondaryToolbarActions: ToolbarContent {
         }
     }
 }
-
-#if os(iOS)
-internal struct BottomToolbarSheets: ToolbarContent {
-    @Bindable var app: AppState
-    @Binding var exportText: String
-    @Binding var showingSettings: Bool
-    @Binding var showingExportFormatSheet: Bool
-    @Binding var selectedExportFormat: ExportFormat
-    @Binding var exportingJSON: Bool
-    @Binding var importingJSON: Bool
-    @Binding var jsonDoc: TiersDocument
-    @Binding var showingImportSheet: Bool
-    @Binding var showingSaveDialog: Bool
-    @Binding var showingLoadDialog: Bool
-    @Binding var saveFileName: String
-
-    internal var body: some ToolbarContent {
-        ToolbarItem(placement: .bottomBar) {
-            EmptyView()
-                .sheet(isPresented: $showingSettings) {
-                    SettingsView(app: app)
-                }
-                .sheet(isPresented: $showingExportFormatSheet) {
-                    ExportFormatSheetView(
-                        coordinator: app,
-                        exportFormat: selectedExportFormat,
-                        isPresented: $showingExportFormatSheet
-                    )
-                }
-                .fileExporter(
-                    isPresented: $exportingJSON,
-                    document: jsonDoc,
-                    contentType: .json,
-                    defaultFilename: "tiers.json"
-                ) { result in
-                    switch result {
-                    case let .failure(error):
-                        app.showToast(
-                            type: .error,
-                            title: "JSON Export Failed",
-                            message: error.localizedDescription
-                        )
-                    case .success:
-                        app.showToast(
-                            type: .success,
-                            title: "JSON Export Complete",
-                            message: "File saved successfully"
-                        )
-                    }
-                }
-                .fileImporter(
-                    isPresented: $importingJSON,
-                    allowedContentTypes: [.json]
-                ) { result in
-                    if case .success(let url) = result {
-                        Task {
-                            do {
-                                try await app.importFromJSON(url: url)
-                            } catch {
-                                app.showToast(
-                                    type: .error,
-                                    title: "Import Failed",
-                                    message: error.localizedDescription
-                                )
-                            }
-                        }
-                    }
-                }
-                .fileImporter(
-                    isPresented: $showingImportSheet,
-                    allowedContentTypes: [.commaSeparatedText, .text]
-                ) { result in
-                    if case .success(let url) = result {
-                        Task {
-                            do {
-                                try await app.importFromCSV(url: url)
-                            } catch {
-                                app.showToast(
-                                    type: .error,
-                                    title: "Import Failed",
-                                    message: error.localizedDescription
-                                )
-                            }
-                        }
-                    }
-                }
-                .alert("Save Tier List", isPresented: $showingSaveDialog) {
-                    TextField("File Name", text: $saveFileName)
-                    Button("Save") {
-                        guard !saveFileName.isEmpty else { return }
-                        do {
-                            try app.saveToFile(named: saveFileName)
-                            app.showToast(
-                                type: .success,
-                                title: "Save Complete",
-                                message: "Saved \(saveFileName).json"
-                            )
-                        } catch {
-                            app.showToast(
-                                type: .error,
-                                title: "Save Failed",
-                                message: error.localizedDescription
-                            )
-                        }
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("Enter a name for your tier list file.")
-                }
-                .alert("Load Tier List", isPresented: $showingLoadDialog) {
-                    ForEach(app.getAvailableSaveFiles(), id: \.self) { fileName in
-                        Button(fileName) {
-                            if app.loadFromFile(named: fileName) { }
-                        }
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("Select a tier list file to load.")
-                }
-        }
-    }
-}
-#else
-internal struct MacAndTVToolbarSheets: ToolbarContent {
-    @Bindable var app: AppState
-    @Binding var showingSaveDialog: Bool
-    @Binding var showingLoadDialog: Bool
-    @Binding var saveFileName: String
-    @Binding var showingSettings: Bool
-
-    internal var body: some ToolbarContent {
-        ToolbarItem(placement: .automatic) {
-            EmptyView()
-                .alert("Save Tier List", isPresented: $showingSaveDialog) {
-                    TextField("File Name", text: $saveFileName)
-                    Button("Save") {
-                        guard !saveFileName.isEmpty else { return }
-                        do {
-                            try app.saveToFile(named: saveFileName)
-                            app.showToast(
-                                type: .success,
-                                title: "Save Complete",
-                                message: "Saved \(saveFileName).json"
-                            )
-                        } catch {
-                            app.showToast(
-                                type: .error,
-                                title: "Save Failed",
-                                message: error.localizedDescription
-                            )
-                        }
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("Enter a name for your tier list file.")
-                }
-                .alert("Load Tier List", isPresented: $showingLoadDialog) {
-                    ForEach(app.getAvailableSaveFiles(), id: \.self) { fileName in
-                        Button(fileName) {
-                            if app.loadFromFile(named: fileName) { }
-                        }
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("Select a tier list file to load.")
-                }
-                .sheet(isPresented: $showingSettings) {
-                    SettingsView(app: app)
-                }
-        }
-    }
-}
-#endif
 
 #if os(iOS)
 @MainActor

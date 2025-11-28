@@ -167,6 +167,7 @@ internal struct TierDistributionChartView: View {
 
 internal struct TierBarView: View {
     internal let tierData: TierDistributionData
+    @Environment(AppState.self) private var app: AppState
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     internal var body: some View {
@@ -207,7 +208,7 @@ internal struct TierBarView: View {
     }
 
     private var barColor: Color {
-        Palette.tierColor(tierData.tierId)
+        Palette.tierColor(tierData.tierId, from: app.tierColors)
     }
 
     private var percentageText: String {

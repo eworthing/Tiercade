@@ -34,7 +34,7 @@ internal struct AIChatOverlay: View {
             messagesSection
             inputBar
         }
-        .frame(maxWidth: 700, maxHeight: 720)
+        .frame(maxWidth: ScaledDimensions.overlayMaxWidth, maxHeight: ScaledDimensions.overlayMaxHeight)
         .background(Color.black.opacity(0.85))
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay { RoundedRectangle(cornerRadius: 20).stroke(Color.purple.opacity(0.25), lineWidth: 1) }
@@ -291,7 +291,7 @@ internal struct AIChatOverlay: View {
     private var emptyState: some View {
         VStack(spacing: 12) {
             Image(systemName: "sparkles.rectangle.stack")
-                .font(.system(size: 56))
+                .font(TypeScale.emptyStateIcon)
                 .foregroundStyle(.purple.opacity(0.6))
             Text("Ask me anything")
                 .font(.headline)

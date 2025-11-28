@@ -97,7 +97,7 @@ internal struct TierListQuickMenu: View {
         #else
         HStack(spacing: 12) {
             Image(systemName: "list.bullet.rectangle")
-                .font(.system(size: 22, weight: .semibold))
+                .font(TypeScale.menuTitle)
             Text(app.activeTierDisplayName)
                 .font(.title3.weight(.semibold))
                 .lineLimit(1)

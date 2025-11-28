@@ -74,7 +74,7 @@ internal struct AnalyticsSidebarView: View {
                 ProgressView()
                     .scaleEffect(2.0)
                 Text("Calculating statistics...")
-                    .font(.system(size: 28, weight: .regular))
+                    .font(TypeScale.analyticsBody)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -93,9 +93,9 @@ internal struct AnalyticsSidebarView: View {
     private func headerSection(totalItems: Int) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Analytics")
-                .font(.system(size: 48, weight: .bold))
+                .font(TypeScale.analyticsTitle)
             Text("\(totalItems) items")
-                .font(.system(size: 28, weight: .regular))
+                .font(TypeScale.analyticsBody)
                 .foregroundStyle(.secondary)
         }
     }
@@ -104,19 +104,19 @@ internal struct AnalyticsSidebarView: View {
         let interpretation = balanceInterpretation(for: score)
         return VStack(alignment: .leading, spacing: 16) {
             Text("Balance Score")
-                .font(.system(size: 32, weight: .semibold))
+                .font(TypeScale.analyticsSection)
 
             HStack(alignment: .lastTextBaseline, spacing: 12) {
                 Text(balanceScoreText(score))
-                    .font(.system(size: 72, weight: .bold))
+                    .font(TypeScale.analyticsHero)
                     .foregroundColor(balanceColor(for: score))
                 Text("/100")
-                    .font(.system(size: 36, weight: .regular))
+                    .font(TypeScale.analyticsSubtitle)
                     .foregroundStyle(.secondary)
             }
 
             Text(interpretation)
-                .font(.system(size: 24, weight: .regular))
+                .font(TypeScale.analyticsCaption)
                 .foregroundStyle(.secondary)
         }
     }
@@ -124,7 +124,7 @@ internal struct AnalyticsSidebarView: View {
     private func tierDistributionSection(distribution: [TierDistributionData]) -> some View {
         VStack(alignment: .leading, spacing: 24) {
             Text("Tier Distribution")
-                .font(.system(size: 32, weight: .semibold))
+                .font(TypeScale.analyticsSection)
 
             Chart(distribution) { tier in
                 BarMark(
@@ -134,7 +134,7 @@ internal struct AnalyticsSidebarView: View {
                 .foregroundStyle(Palette.tierColor(tier.tierId))
                 .annotation(position: .trailing) {
                     Text(percentageText(for: tier.percentage))
-                        .font(.system(size: 22, weight: .semibold))
+                        .font(TypeScale.analyticsBadge)
                         .foregroundStyle(Palette.text)
                 }
             }
@@ -154,11 +154,11 @@ internal struct AnalyticsSidebarView: View {
     private func insightsSection(insights: [String]) -> some View {
         VStack(alignment: .leading, spacing: 24) {
             Text("Insights")
-                .font(.system(size: 32, weight: .semibold))
+                .font(TypeScale.analyticsSection)
 
             if insights.isEmpty {
                 Text("Your tier list looks balanced!")
-                    .font(.system(size: 24, weight: .regular))
+                    .font(TypeScale.analyticsCaption)
                     .foregroundStyle(.secondary)
             } else {
                 VStack(alignment: .leading, spacing: 16) {
@@ -173,12 +173,12 @@ internal struct AnalyticsSidebarView: View {
     private func insightCard(text: String, index: Int) -> some View {
         HStack(alignment: .top, spacing: 16) {
             Image(systemName: "lightbulb.fill")
-                .font(.system(size: 24, weight: .regular))
+                .font(TypeScale.analyticsCaption)
                 .foregroundColor(.yellow)
                 .padding(.top, 4)
 
             Text(text)
-                .font(.system(size: 24, weight: .regular))
+                .font(TypeScale.analyticsCaption)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.leading)
         }

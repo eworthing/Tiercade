@@ -57,7 +57,6 @@ internal struct TierListBrowserScene: View {
             .shadow(color: .black.opacity(0.38), radius: 32, y: 18)
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
-            .accessibilityIdentifier("TierListBrowser_Overlay")
             .defaultFocus($focus, defaultFocusTarget)
             #if os(tvOS)
             .focusSection()
@@ -183,6 +182,7 @@ private struct TierListCard: View {
     internal let focusBinding: FocusState<TierListBrowserScene.FocusTarget?>.Binding
     internal let openAction: () -> Void
     internal let editAction: () -> Void
+    @Environment(AppState.self) private var app: AppState
 
     internal var body: some View {
         tvGlassContainer(spacing: 18) {
@@ -214,7 +214,7 @@ private struct TierListCard: View {
     private var headerRow: some View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: iconName)
-                .font(.system(size: 32, weight: .medium))
+                .font(TypeScale.cardTitle)
                 .foregroundStyle(Palette.brand)
                 .frame(width: 52, height: 52)
                 .background(cardIconBackground)
@@ -238,7 +238,7 @@ private struct TierListCard: View {
                 Label("Active", systemImage: "checkmark.circle.fill")
                     .labelStyle(.iconOnly)
                     .font(.title2)
-                    .foregroundStyle(Color.green)
+                    .foregroundStyle(Palette.tierColor("B", from: app.tierColors))
                     .accessibilityLabel("Currently active tier list")
             }
         }

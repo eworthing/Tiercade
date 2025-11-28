@@ -66,7 +66,6 @@ private extension ThemeLibraryOverlay {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, platformOverlayPadding / 3)
-        .accessibilityIdentifier("ThemePicker_Overlay")
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
         #if os(tvOS)
@@ -558,15 +557,18 @@ private struct ThemeStatusBadge: View {
 }
 
 private struct SelectedBadge: View {
+    @Environment(AppState.self) private var app: AppState
+
     internal var body: some View {
+        let successColor = Palette.tierColor("B", from: app.tierColors)
         Image(systemName: "checkmark.circle.fill")
             .font(.title2.weight(.bold))
-            .foregroundStyle(.white)
+            .foregroundStyle(Palette.textOnAccent)
             .padding(10)
             .background(
                 Circle()
-                    .fill(Color.green.gradient)
-                    .shadow(color: .green.opacity(0.35), radius: 12, y: 6)
+                    .fill(successColor.gradient)
+                    .shadow(color: successColor.opacity(0.35), radius: 12, y: 6)
             )
             .accessibilityHidden(true)
     }

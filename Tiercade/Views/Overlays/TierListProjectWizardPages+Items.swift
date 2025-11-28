@@ -87,7 +87,7 @@ internal struct ItemsWizardPage: View, WizardPage {
             // tvOS: Show informative message
             VStack(spacing: Metrics.grid * 4) {
                 Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 60))
+                    .font(TypeScale.wizardIcon)
                     .foregroundStyle(.orange)
 
                 Text("AI Generation Requires macOS or iOS")
@@ -182,7 +182,7 @@ internal struct ItemsWizardPage: View, WizardPage {
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "square.grid.3x3")
-                .font(.system(size: 60))
+                .font(TypeScale.emptyStateIcon)
                 .foregroundStyle(Palette.textDim)
             Text("No items found")
                 .font(.title3)
@@ -220,7 +220,7 @@ internal struct ItemsWizardPage: View, WizardPage {
             Spacer()
             itemCardChevron
         }
-        .padding(24)
+        .padding(Metrics.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(itemCardBackground)
     }

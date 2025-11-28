@@ -137,7 +137,6 @@ internal struct TVSortPickerOverlay: View {
         .onAppear { focusedOption = .custom }
         .onDisappear { focusedOption = nil }
         .onExitCommand { isPresented = false }
-        .accessibilityIdentifier("SortPicker_Overlay")
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
     }
@@ -152,7 +151,7 @@ private struct SortOptionButton: View {
         Button(action: action) {
             HStack(spacing: 16) {
                 Text(title)
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(TypeScale.cardBody)
                     .foregroundStyle(.primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
 

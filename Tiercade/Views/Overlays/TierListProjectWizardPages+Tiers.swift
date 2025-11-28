@@ -98,7 +98,7 @@ internal struct TiersWizardPage: View, WizardPage {
                         .foregroundStyle(Palette.textDim)
                     Text(String(format: "%.0f%%", percentage))
                         .font(.title.weight(.bold))
-                        .foregroundStyle(percentage == 100 ? Palette.tierColor("B") : Palette.text)
+                        .foregroundStyle(percentage == 100 ? Palette.tierColor("B", from: appState.tierColors) : Palette.text)
                 }
 
                 Spacer()
@@ -136,7 +136,7 @@ internal struct TiersWizardPage: View, WizardPage {
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "list.bullet.rectangle")
-                .font(.system(size: 60))
+                .font(TypeScale.emptyStateIcon)
                 .foregroundStyle(Palette.textDim)
             Text("No tiers defined")
                 .font(.title3)

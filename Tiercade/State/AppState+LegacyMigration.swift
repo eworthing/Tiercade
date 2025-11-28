@@ -182,7 +182,7 @@ internal struct LegacyMigrationView: View {
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "arrow.triangle.2.circlepath")
-                .font(.system(size: 60))
+                .font(TypeScale.wizardIcon)
                 .foregroundColor(.orange)
 
             Text("Legacy Save File Detected")

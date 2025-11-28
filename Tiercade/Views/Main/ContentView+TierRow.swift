@@ -347,7 +347,7 @@ private struct TierControlButtons: View {
     internal var body: some View {
         Button(action: onShowMenu, label: {
             Image(systemName: "ellipsis.circle")
-                .font(.system(size: 24))
+                .font(TypeScale.cardBody)
                 .foregroundColor(textColor)
         })
         .buttonStyle(.plain)
@@ -405,7 +405,7 @@ private struct TierLabelEditor: View {
                                 .stroke(Color.white.opacity(0.3), lineWidth: 2)
                         }
                         .cornerRadius(8)
-                        .frame(width: 360)
+                        .frame(width: ScaledDimensions.formFieldWidth)
                         .focused($focusedField, equals: .label)
                         #if os(tvOS)
                         .focusEffectDisabled(false)
@@ -475,7 +475,7 @@ private struct TierLabelEditor: View {
                     .focused($focusedField, equals: .close)
             }
         }
-        .padding(24)
+        .padding(Metrics.cardPadding)
         .onAppear {
             label = app.displayLabel(for: tierId)
             if let hex = app.displayColorHex(for: tierId) {

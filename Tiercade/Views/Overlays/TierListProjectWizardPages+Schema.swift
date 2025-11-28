@@ -67,7 +67,7 @@ internal struct SchemaWizardPage: View, WizardPage {
                     if schemaFields.isEmpty {
                         VStack(spacing: 12) {
                             Image(systemName: "doc.text.magnifyingglass")
-                                .font(.system(size: 48))
+                                .font(TypeScale.wizardTitle)
                                 .foregroundStyle(Palette.textDim)
                             Text("No custom fields yet")
                                 .font(.headline)
@@ -163,7 +163,7 @@ internal struct SchemaWizardPage: View, WizardPage {
                     if required {
                         Text("• Required")
                             .font(.caption)
-                            .foregroundStyle(Palette.tierColor("S"))
+                            .foregroundStyle(Palette.tierColor("S", from: appState.tierColors))
                     }
                 }
             }
@@ -189,7 +189,7 @@ internal struct SchemaWizardPage: View, WizardPage {
         HStack(spacing: 16) {
             Image(systemName: field.fieldType.icon)
                 .font(.title3)
-                .foregroundStyle(Palette.tierColor("B"))
+                .foregroundStyle(Palette.tierColor("B", from: appState.tierColors))
                 .frame(width: 32)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -205,7 +205,7 @@ internal struct SchemaWizardPage: View, WizardPage {
                     if field.required {
                         Text("• Required")
                             .font(.caption)
-                            .foregroundStyle(Palette.tierColor("S"))
+                            .foregroundStyle(Palette.tierColor("S", from: appState.tierColors))
                     }
 
                     if field.allowMultiple {
