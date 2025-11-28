@@ -34,10 +34,10 @@ internal extension AppState {
                 // Capture MainActor state before moving to background
                 let currentTierOrder = tierOrder
 
-                // Heavy CSV parsing on background thread pool
-                let (newTiers, discoveredTiers) = try await parseCSVInBackground(
-                    csvString, currentTierOrder: currentTierOrder
-                )
+                // Heavy CSV parsing truly on background thread pool via Task.detached
+                let (newTiers, discoveredTiers) = try await Task.detached {
+                    try Self.parseCSVData(csvString, currentTierOrder: currentTierOrder)
+                }.value
                 updateProgress(0.8)
 
                 // State updates on MainActor
@@ -61,12 +61,12 @@ internal extension AppState {
         }
     }
 
-    // Swift 6 (Swift 6.2 toolchain) pattern: heavy CSV parsing runs on background thread pool via Task.detached
+    // Static CSV parser - called via Task.detached to run on background thread pool
     nonisolated
-    private func parseCSVInBackground(
+    private static func parseCSVData(
         _ csvString: String,
         currentTierOrder: [String]
-    ) async throws(ImportError) -> (Items, [String]) {
+    ) throws(ImportError) -> (Items, [String]) {
         let lines = csvString.components(separatedBy: .newlines)
         guard lines.count > 1 else {
             throw ImportError.invalidData("CSV file appears to be empty")
