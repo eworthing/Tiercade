@@ -116,7 +116,7 @@ internal struct MainAppView: View {
             AccessibilityBridgeView(identifier: "AIChat_Overlay")
 
             ZStack {
-                Color.black.opacity(0.5)
+                Palette.bg.opacity(0.5)
                     .ignoresSafeArea()
                     .allowsHitTesting(true)
                     .onTapGesture {
