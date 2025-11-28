@@ -1,0 +1,9 @@
+# External reference materials
+docs/books/
+
+# Node modules
+node_modules/
+
+# Build artifacts
+.build/
+DerivedData/

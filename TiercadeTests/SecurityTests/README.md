@@ -5,6 +5,7 @@ Comprehensive security tests validating mitigations for OWASP-class vulnerabilit
 ## Test Coverage
 
 ### URLValidationTests.swift (18 tests)
+
 **Security Domain**: SSRF Prevention (S-H1)
 
 - HTTPS-only validation for media URLs and external links
@@ -13,6 +14,7 @@ Comprehensive security tests validating mitigations for OWASP-class vulnerabilit
 - Convenience method testing
 
 ### PathTraversalTests.swift (6 tests)
+
 **Security Domain**: Path Traversal Prevention (S-H2)
 
 - Rejects .. sequences and ./ followed by ..
@@ -21,6 +23,7 @@ Comprehensive security tests validating mitigations for OWASP-class vulnerabilit
 - Tests URL-encoded traversal attempts (%2E%2E)
 
 ### CSVInjectionTests.swift (10 tests)
+
 **Security Domain**: CSV Injection Prevention (S-H5)
 
 - Sanitizes formula injection (=, +, -, @)
@@ -29,6 +32,7 @@ Comprehensive security tests validating mitigations for OWASP-class vulnerabilit
 - Validates duplicate ID prevention (placeholder tests)
 
 ### PromptInjectionTests.swift (18 tests)
+
 **Security Domain**: AI Prompt Injection Prevention (S-H6)
 
 - Control character removal (null bytes, Unicode controls)

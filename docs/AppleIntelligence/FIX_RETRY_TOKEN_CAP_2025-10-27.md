@@ -12,6 +12,7 @@
 Fixed a critical bug in the retry logic that prevented guided generation from working correctly for lists with N≥50 items. The issue was a hardcoded 512-token cap that blocked the adaptive retry mechanism from allocating sufficient tokens, causing systematic deserialization failures.
 
 **Impact:**
+
 - **Before fix:** 26.6% success rate on enhanced-pilot test suite (192 runs)
 - **Root cause:** Retry logic capped token boost at 512, preventing larger lists from getting adequate tokens
 - **After fix:** Guided generation now works correctly for N=15, N=50, and N=150
@@ -21,11 +22,13 @@ Fixed a critical bug in the retry logic that prevented guided generation from wo
 ## Discovery Timeline
 
 ### 1. Initial Testing (2025-10-27 16:22)
+
 - **Test:** quick-smoke (N=15, 4 runs)
 - **Result:** 100% success ✅
 - **Conclusion:** JSON parsing fix from earlier session validated
 
 ### 2. Scaled Testing (2025-10-27 16:25)
+
 - **Test:** enhanced-pilot (N=15/50/150, 192 runs)
 - **Result:** 26.6% success (51/192 passed, 141 failed) ❌
 - **Pattern observed:**
@@ -36,7 +39,8 @@ Fixed a critical bug in the retry logic that prevented guided generation from wo
 ### 3. Failure Analysis (2025-10-27 21:30)
 
 **Error pattern from debug logs:**
-```
+
+```text
 🔴 LanguageModel Error: decodingFailure(FoundationModels.LanguageModelSession.GenerationError.Context(
     debugDescription: "Failed to extract content",
     underlyingErrors: []
@@ -44,6 +48,7 @@ Fixed a critical bug in the retry logic that prevented guided generation from wo
 ```
 
 **Breakdown:**
+
 - 16 occurrences: "Failed to deserialize a Generable type"
 - 6 occurrences: "Test execution timed out"
 - All deserialization failures occurred in **guided generation mode** for **N≥50**
@@ -53,6 +58,7 @@ Fixed a critical bug in the retry logic that prevented guided generation from wo
 **File:** `AppleIntelligence+UniqueListGeneration+FMClient.swift`
 
 **Lines 219 & 474:**
+
 ```swift
 // ❌ BUG: Hardcoded 512 token cap
 let boosted = min(512, Int(Double(currentMax) * 1.8))
@@ -67,6 +73,7 @@ let boosted = min(512, Int(Double(currentMax) * 1.8))
 | N=150 | 3600 | 6480 | **512** | ~3600 | ❌ **Fails** |
 
 **Failure mechanism:**
+
 1. Model tries to generate N=50 with insufficient tokens (initial allocation)
 2. Generation gets **truncated mid-array** due to token limit
 3. FoundationModels tries to deserialize incomplete JSON → `decodingFailure`
@@ -88,11 +95,13 @@ maxTokens: min(maxTok * 18 / 10, 512)
 ```
 
 **Original reasoning:**
+
 - Conservative safety limit during **proof-of-concept development**
 - Never validated against actual token budgets for production use
 - Left over when system evolved to support N=150+
 
 **Per the spec** (`UNIQUE_LIST_GENERATION_SPEC.md` line 193):
+
 - **Total budget:** ~3500 tokens (conservative)
 - **Response tokens:** `ceil(7 × M)` where M is requested items
 
@@ -107,6 +116,7 @@ For N=50, we need ~350 response tokens **minimum**. The 512 cap was blocking leg
 **File:** `Tiercade/State/AppleIntelligence+UniqueListGeneration+FMClient.swift`
 
 #### 1. Guided Retry Logic (Line 219)
+
 ```swift
 // BEFORE:
 let boosted = min(512, Int(Double(currentMax) * 1.8))
@@ -116,6 +126,7 @@ let boosted = min(4096, Int(Double(currentMax) * 1.8))
 ```
 
 #### 2. Unguided Retry Logic (Line 474)
+
 ```swift
 // BEFORE:
 let boosted = min(512, Int(Double(currentMax) * 1.8))
@@ -127,6 +138,7 @@ let boosted = min(4096, Int(Double(currentMax) * 1.8))
 ### Rationale
 
 **Why 4096?**
+
 - Matches the existing token cap in `calculateMaxTokens()` (line 67 of `+RuntimeModels.swift`)
 - Aligns with spec's ~3500 token guidance
 - Provides adequate headroom for N=150 lists (which need ~3600 tokens)
@@ -148,7 +160,8 @@ let boosted = min(4096, Int(Double(currentMax) * 1.8))
 **Test Suite:** `n50-validation` (8 runs, 2 prompts × 1 query × 2 decoders × 1 seed × 2 modes)
 
 **Key Evidence:**
-```
+
+```text
 🔍 🚀 EXECUTING GENERATION...
 🔍   Mode: Guided (using StringList @Generable)
 🔍   ✅ Guided generation complete: 57 items  // ← SUCCESS!
@@ -159,6 +172,7 @@ let boosted = min(4096, Int(Double(currentMax) * 1.8))
 ```
 
 **Outcome:**
+
 - ✅ No deserialization errors
 - ✅ Guided generation working for N=50
 - ✅ Token cap fix validated
@@ -217,6 +231,7 @@ static func calculateMaxTokens(targetCount: Int, overgenFactor: Double) -> Int {
 | 150 | 1.4 | ceil(150 × 1.4 × 10 × 1.5) | 3150 | 3150 |
 
 **Retry boost (1.8x):**
+
 - N=15: 315 → 567 (well under 4096)
 - N=50: 1050 → 1890 (well under 4096)
 - N=150: 3150 → 5670 → **4096** (capped)
@@ -226,21 +241,25 @@ static func calculateMaxTokens(targetCount: Int, overgenFactor: Double) -> Int {
 ## Lessons Learned
 
 ### 1. Conservative Limits Should Be Documented
+
 The 512 cap was a POC-era safety limit that wasn't documented or revisited when the system scaled to N=150+.
 
 **Action:** Document token budget decisions and review them when requirements change.
 
 ### 2. Test Across the Full Range
+
 Initial testing focused on N=15 (which worked). Scaling to N=50+ revealed the cap issue.
 
 **Action:** Always test at min, mid, and max expected values.
 
 ### 3. Retry Logic Needs Adequate Headroom
+
 A retry mechanism that can't actually help (because it's capped too low) creates a false sense of robustness.
 
 **Action:** Ensure retry strategies have enough room to adapt.
 
 ### 4. Archive Documents Can Hide Active Bugs
+
 The 512 cap came from archived code that was copied into production without review.
 
 **Action:** Be cautious when porting code from archived implementations.
@@ -271,7 +290,7 @@ The 512 cap came from archived code that was copied into production without revi
 
 ## Commit Message
 
-```
+```text
 fix(AI): increase retry token cap from 512 to 4096
 
 The adaptive retry logic in FMClient had a hardcoded 512-token cap

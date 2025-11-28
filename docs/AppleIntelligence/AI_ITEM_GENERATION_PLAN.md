@@ -85,7 +85,7 @@ Add to the **Items page** of the existing `TierListProjectWizard` as an optional
 
 ### Component Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │              TierListProjectWizard (Items Page)          │
 │  ┌────────────────────────────────────────────────────┐ │
@@ -149,6 +149,7 @@ Add to the **Items page** of the existing `TierListProjectWizard` as an optional
 **Chosen Approach:** Items Page Integration
 
 **Rationale:**
+
 - ✅ Preserves existing wizard flow (Settings → Schema → Items → Tiers)
 - ✅ AI generation is optional, doesn't force users through extra steps
 - ✅ Natural location - users are already on Items page when they need items
@@ -156,6 +157,7 @@ Add to the **Items page** of the existing `TierListProjectWizard` as an optional
 - ✅ Maintains tvOS-first UX with proper focus management
 
 **Alternative Considered (Rejected):** Standalone wizard page
+
 - ❌ Adds unnecessary navigation complexity
 - ❌ Breaks existing wizard flow
 - ❌ Harder to integrate generated items
@@ -179,6 +181,7 @@ Button {
 **Placement:** Toolbar or prominent position above item list
 
 **Platform Behavior:**
+
 - **macOS/iOS:** Opens full `AIItemGeneratorOverlay` sheet
 - **tvOS:** Shows alert: "AI generation requires macOS or iOS"
 
@@ -186,7 +189,7 @@ Button {
 
 ### Stage 1: Input Form
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │  Generate Items with AI                  │
 ├─────────────────────────────────────────┤
@@ -207,17 +210,20 @@ Button {
 ```
 
 **Focus Behavior (tvOS):**
+
 - Default focus: Description TextField
 - Navigation: Down arrow → Count → Generate button
 - Exit: Menu button dismisses overlay
 
 **Validation:**
+
 - Description cannot be empty (disables Generate button)
 - Count must be 5-100 (enforced by Stepper range)
 
 **Platform-Specific Number Input:**
 
 **tvOS (Stepper unavailable on tvOS):**
+
 ```swift
 HStack(spacing: Metrics.padding) {
     Button("-") { itemCount = max(5, itemCount - 5) }
@@ -234,6 +240,7 @@ HStack(spacing: Metrics.padding) {
 ```
 
 **iOS/macOS:**
+
 ```swift
 HStack {
     TextField("Count", value: $itemCount, format: .number)
@@ -249,7 +256,7 @@ HStack {
 
 ### Stage 2: Generation Progress
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │  Generating Items...                     │
 ├─────────────────────────────────────────┤
@@ -263,11 +270,13 @@ HStack {
 ```
 
 **Progress Updates:**
+
 - Uses existing `AppState.currentProgress` API
 - Updates via `updateProgress(_:)` method
 - Shows message + percentage from coordinator progress
 
 **State Transitions:**
+
 - Auto-transitions to Review stage when generation completes
 - On error: Shows toast, returns to Input stage
 
@@ -275,7 +284,7 @@ HStack {
 
 ### Stage 3: Review & Selection
 
-```
+```text
 ┌─────────────────────────────────────────┐
 │  Review Generated Items (50)             │
 │  All items selected • [Edit] button      │
@@ -297,27 +306,32 @@ HStack {
 **Interaction Patterns:**
 
 **Selection Toggle (Outside Edit Mode):**
+
 - Tap item → Toggle checkmark
 - Checkmark: ☑️ (green) = selected
 - Circle: ⭕ (gray) = unselected
 
 **Edit Mode:**
+
 - Tap "Edit" button → Enter `EditMode.active`
 - Shows standard delete controls (red minus buttons)
 - Swipe-to-delete on iOS/macOS
 - "Done" button to exit edit mode
 
 **Search (iOS/macOS only):**
+
 - Use `.searchable(text:)` on container per SwiftUI docs
 - Filter candidates by name
 - Case-insensitive search
 - Live filtering as user types
 
 **Selection Counter:**
+
 - Live updates: "X of Y selected"
 - Updates on toggle/delete
 
 **Action Buttons:**
+
 - **Import:** Disabled if selection count = 0
 - **Regenerate:** Reopens input form with same parameters
 
@@ -607,16 +621,19 @@ private func generateUniqueListForWizard(query: String, count: Int) async throws
 #### Task 1.1: Wire Wizard to Existing UniqueListCoordinator
 
 **Files to Modify:**
+
 - `Tiercade/State/AppState+AppleIntelligence.swift` (optional, reuse `session`)
 - `Tiercade/State/AppState+AIGeneration.swift` (new)
 
 **Actions:**
+
 1. Add `generateUniqueListForWizard(query:count:)` wrapper that instantiates `FMClient` with the existing `session` and calls `UniqueListCoordinator.uniqueList(...)`.
 2. Gate with `#if canImport(FoundationModels)` and `@available(iOS 26, macOS 26, *)`.
 3. Use existing progress helpers (`withLoadingIndicator`, `updateProgress`).
 4. Leverage existing telemetry; avoid introducing new retry state.
 
 **Acceptance Criteria:**
+
 - [ ] Wrapper calls `UniqueListCoordinator.uniqueList(query:targetCount:)`
 - [ ] Platform-gated for macOS/iOS only
 - [ ] Uses existing `session` to avoid duplicate session wiring
@@ -627,13 +644,16 @@ private func generateUniqueListForWizard(query: String, count: Int) async throws
 #### Task 1.2: Create Data Models
 
 **Files to Create:**
+
 - `Tiercade/State/Persistence/AIGenerationModels.swift`
 
 **Models to Define:**
+
 - `AIGenerationRequest` (see Data Models section)
 - `AIGeneratedItemCandidate` (see Data Models section)
 
 **Acceptance Criteria:**
+
 - [ ] Models conform to `Sendable` for Swift 6 concurrency
 - [ ] `AIGenerationRequest` has validation logic
 - [ ] `AIGeneratedItemCandidate` defaults to selected
@@ -645,15 +665,18 @@ private func generateUniqueListForWizard(query: String, count: Int) async throws
 #### Task 1.3: Add AppState Extension
 
 **Files to Create:**
+
 - `Tiercade/State/AppState+AIGeneration.swift`
 
 **State Properties:**
+
 - `showAIItemGenerator: Bool`
 - `aiGenerationRequest: AIGenerationRequest?`
 - `aiGeneratedCandidates: [AIGeneratedItemCandidate]`
 - `aiGenerationInProgress: Bool`
 
 **Methods to Implement:**
+
 - `presentAIItemGenerator()`
 - `dismissAIItemGenerator()`
 - `generateItems(description:count:) async`
@@ -662,6 +685,7 @@ private func generateUniqueListForWizard(query: String, count: Int) async throws
 - `importSelectedCandidates(into:)`
 
 **Acceptance Criteria:**
+
 - [ ] All methods are `@MainActor`
 - [ ] Uses `withLoadingIndicator` for async generation
 - [ ] Shows toast on success/error
@@ -676,22 +700,26 @@ private func generateUniqueListForWizard(query: String, count: Int) async throws
 #### Task 2.1: Create AI Generator Overlay
 
 **Files to Create:**
+
 - `Tiercade/Views/Overlays/AIItemGeneratorOverlay.swift`
 
 **Components:**
 
 **Stage 1: Input Form**
+
 - Description TextField with focus management
 - Count Stepper/TextField (platform-specific)
 - Generate Button (disabled if description empty)
 - Cancel Button
 
 **Stage 2: Loading**
+
 - ProgressView spinner
 - Progress message from AppState
 - Percentage indicator
 
 **Stage 3: Review & Selection**
+
 - Search bar (iOS/macOS only)
 - Multi-selection List with checkmarks
 - Selection counter
@@ -757,6 +785,7 @@ TextField("Description", text: $description)
 ```
 
 **Acceptance Criteria:**
+
 - [ ] Three-stage UI flows correctly (input → generating → review)
 - [ ] Focus lands on description field on appear
 - [ ] Default focus on tvOS uses `prefersDefaultFocus`
@@ -773,6 +802,7 @@ TextField("Description", text: $description)
 #### Task 2.2: Add Multi-Selection List
 
 **List Requirements:**
+
 - Bind to `Set<UUID>` for selection tracking
 - Show checkmark indicators when not in edit mode
 - Support EditMode for delete operations (iOS). On macOS, prefer context menu or a trailing destructive button because the `editMode` environment isn’t available.
@@ -832,6 +862,7 @@ List(selection: editMode?.wrappedValue.isEditing == true
 ```
 
 **Acceptance Criteria:**
+
 - [ ] All items selected by default
 - [ ] Tap toggles selection (outside edit mode)
 - [ ] Edit mode shows standard delete controls
@@ -845,16 +876,19 @@ List(selection: editMode?.wrappedValue.isEditing == true
 #### Task 2.3: Integrate into Wizard Items Page
 
 **Files to Modify:**
+
 - `Tiercade/Views/Overlays/TierListProjectWizardPages+Items.swift`
 
 **Changes:**
 
 1. Add state:
+
 ```swift
 @State private var showAIGenerator = false
 ```
 
-2. Add button (toolbar or above list):
+1. Add button (toolbar or above list):
+
 ```swift
 Button {
     showAIGenerator = true
@@ -864,7 +898,8 @@ Button {
 .accessibilityIdentifier("ItemsPage_GenerateAI")
 ```
 
-3. Add sheet presentation:
+1. Add sheet presentation:
+
 ```swift
 .sheet(isPresented: $showAIGenerator) {
     #if os(macOS) || os(iOS)
@@ -892,6 +927,7 @@ Button {
 ```
 
 **Acceptance Criteria:**
+
 - [ ] Button appears prominently on Items page
 - [ ] Sheet presentation works on all platforms
 - [ ] tvOS shows informative message (no AI support)
@@ -906,6 +942,7 @@ Button {
 #### Task 3.1: Focus Management (tvOS)
 
 **Focus Requirements:**
+
 1. Description field receives default focus on appear
 2. Generate button is easily reachable via down navigation
 3. In review stage, list receives focus
@@ -949,6 +986,7 @@ Button("Generate") { ... }
 ```
 
 **Acceptance Criteria:**
+
 - [ ] Default focus lands correctly on tvOS
 - [ ] Focus transitions feel natural between sections
 - [ ] Exit command dismisses overlay (tvOS)
@@ -987,6 +1025,7 @@ catch {
 ```
 
 **Acceptance Criteria:**
+
 - [ ] All error paths show appropriate messages
 - [ ] Failed generation returns to input form (doesn't dismiss)
 - [ ] Toast messages are user-friendly
@@ -1032,6 +1071,7 @@ catch {
 12. **tvOS:** Verify message sheet appears, OK button dismisses
 
 **Acceptance Criteria:**
+
 - [ ] All platforms tested in simulator
 - [ ] Focus behavior validated on tvOS
 - [ ] Multi-selection works correctly on all platforms
@@ -1045,6 +1085,7 @@ catch {
 #### Task 3.4: Code Quality & Documentation
 
 **SwiftLint Compliance:**
+
 - [ ] No cyclomatic complexity warnings (threshold: 8, error: 12)
 - [ ] File length under 600 lines (split if needed)
 - [ ] Function body length under 40 lines
@@ -1052,6 +1093,7 @@ catch {
 - [ ] No unused code
 
 **Documentation:**
+
 - [ ] Add doc comments to public methods
 - [ ] Document platform limitations
 - [ ] Add example usage in comments
@@ -1086,6 +1128,7 @@ func generateItems(description: String, count: Int) async
 ```
 
 **Acceptance Criteria:**
+
 - [ ] SwiftLint passes with no warnings
 - [ ] All public APIs documented with doc comments
 - [ ] Code follows existing patterns (AppState extensions, view structure)
@@ -1115,6 +1158,7 @@ xcodebuild -project Tiercade.xcodeproj \
 ```
 
 **Acceptance Criteria:**
+
 - [ ] tvOS build succeeds with no errors
 - [ ] macOS build succeeds with no errors
 - [ ] No deprecation warnings
@@ -1214,7 +1258,7 @@ struct AIGenerationTests {
 
 ### New Files (4 total)
 
-```
+```text
 Tiercade/
 ├── State/
 │   ├── Wizard/
@@ -1234,7 +1278,7 @@ docs/
 
 ### Modified Files (2 total)
 
-```
+```text
 Tiercade/
 └── Views/
     └── Overlays/
@@ -1277,16 +1321,19 @@ All interactive elements must have accessibility IDs for UI testing and VoiceOve
 ### VoiceOver Labels
 
 **Input Form:**
+
 - Description field: "What kind of items do you want to generate? For example, Best sci-fi movies of all time"
 - Count stepper: "Number of items to generate, 5 to 100"
 - Generate button: "Generate items with AI"
 
 **Review List:**
+
 - Item row: "\(item.name), \(item.isSelected ? 'selected' : 'not selected')"
 - Selection counter: "\(selectedCount) of \(totalCount) items selected"
 - Import button: "Import \(selectedCount) selected items"
 
 **tvOS Message Sheet:**
+
 - Message: "AI generation requires macOS or iOS. Please use the companion app."
 
 ---
@@ -1296,6 +1343,7 @@ All interactive elements must have accessibility IDs for UI testing and VoiceOve
 ### Unit Tests (Swift Testing)
 
 **Coverage Targets:**
+
 - `AIGenerationRequest` validation logic
 - `AIGeneratedItemCandidate` default state
 - `AppState.toggleCandidateSelection(_:)`
@@ -1317,6 +1365,7 @@ All interactive elements must have accessibility IDs for UI testing and VoiceOve
 | macOS | Mac (My Mac) | macOS 26 | Full flow, keyboard input, Cmd-click |
 
 **Test Scenarios:**
+
 1. **Happy Path:** Generate 30 items → deselect 5 → import 25
 2. **Deduplication:** Import 20 items → import again → verify 0 imported
 3. **Regeneration:** Generate → regenerate → verify new list
@@ -1369,12 +1418,14 @@ func testAIGeneratorButton_opensOverlay() {
 **Probability:** Medium
 
 **Mitigation:**
+
 1. Start with minimal refactor - copy coordinator code instead of moving
 2. Test AI chat feature after extraction to ensure no regression
 3. Create fallback branch before refactoring
 4. Add unit tests for extracted generator
 
 **Fallback:**
+
 - Copy coordinator logic instead of refactoring
 - Accept some code duplication short-term
 - Refactor later as part of broader AI architecture cleanup
@@ -1389,12 +1440,14 @@ func testAIGeneratorButton_opensOverlay() {
 **Probability:** Medium
 
 **Mitigation:**
+
 1. Use existing patterns from other overlays (HeadToHead, TierMove)
 2. Test early and often in tvOS 26 simulator
 3. Use `.focusSection()` to isolate stages
 4. Validate with VoiceOver enabled
 
 **Fallback:**
+
 - Simplify to single-focus section
 - Remove search functionality on tvOS (already planned)
 - Show "Use iOS/macOS for full experience" hint
@@ -1411,6 +1464,7 @@ func testAIGeneratorButton_opensOverlay() {
 **Probability:** Low (tvOS doesn't use this feature)
 
 **Mitigation:**
+
 - N/A (feature disabled on tvOS)
 
 ---
@@ -1423,12 +1477,14 @@ func testAIGeneratorButton_opensOverlay() {
 **Probability:** Low (existing AI chat handles this)
 
 **Mitigation:**
+
 1. Show progress updates during generation
 2. Set reasonable timeout (60s)
 3. Allow cancellation (future enhancement)
 4. Recommend 25-50 items in UI hint
 
 **Fallback:**
+
 - Reduce max count from 100 to 50
 - Show "Generating large lists may take time" warning
 
@@ -1444,6 +1500,7 @@ func testAIGeneratorButton_opensOverlay() {
 **Probability:** Low (well-tested SwiftUI components)
 
 **Mitigation:**
+
 - Extensive use of `#if os()` checks
 - Test all platforms in simulator
 - Follow existing codebase patterns
@@ -1457,6 +1514,7 @@ func testAIGeneratorButton_opensOverlay() {
 **Question:** Stepper-only vs. TextField+Stepper hybrid?
 
 **Options:**
+
 - **A:** Stepper-only (simpler)
 - **B:** TextField+Stepper hybrid (more flexible)
 - **C:** Platform-specific (Stepper on tvOS, hybrid on iOS/macOS)
@@ -1464,6 +1522,7 @@ func testAIGeneratorButton_opensOverlay() {
 **Decision:** **Option C** - Platform-specific
 
 **Rationale:**
+
 - tvOS: Keyboard input is tedious (Apple HIG recommends avoiding)
 - iOS/macOS: Users expect ability to type numbers directly
 - Stepper provides good UX for small adjustments (5 → 10 → 15)
@@ -1471,6 +1530,7 @@ func testAIGeneratorButton_opensOverlay() {
 - Hybrid gives best of both worlds on platforms with keyboards
 
 **Implementation:**
+
 ```swift
 #if os(tvOS)
 HStack {
@@ -1496,6 +1556,7 @@ HStack {
 **Question:** Always dedupe, allow duplicates, or make it configurable?
 
 **Options:**
+
 - **A:** Always deduplicate (automatic)
 - **B:** Allow duplicates (no checking)
 - **C:** Make it configurable (toggle in UI)
@@ -1503,6 +1564,7 @@ HStack {
 **Decision:** **Option A** - Always deduplicate
 
 **Rationale:**
+
 - User pain: Importing "Best movies" twice would create duplicate items
 - Cleanup burden: Manually finding/deleting duplicates is tedious
 - Expected behavior: Most users expect system to prevent duplicates
@@ -1510,6 +1572,7 @@ HStack {
 - Good feedback: Toast shows "X imported (Y duplicates skipped)"
 
 **Implementation:**
+
 ```swift
 let existingTitles = Set(draft.items.map { $0.title.lowercased() })
 let uniqueCandidates = selected.filter {
@@ -1526,6 +1589,7 @@ let uniqueCandidates = selected.filter {
 **Question:** How should tvOS users access AI generation?
 
 **Options:**
+
 - **A:** Show informative message ("Requires macOS/iOS")
 - **B:** Hide/disable button entirely
 - **C:** Offer alternative (QR code to companion app)
@@ -1533,6 +1597,7 @@ let uniqueCandidates = selected.filter {
 **Decision:** **Option A** - Show informative message
 
 **Rationale:**
+
 - Discoverability: Button visible, users understand limitation
 - Consistent UX: Same button placement across platforms
 - Simple implementation: Sheet with message + OK button
@@ -1540,6 +1605,7 @@ let uniqueCandidates = selected.filter {
 - No companion app yet: Option C requires additional infrastructure
 
 **Implementation:**
+
 ```swift
 .sheet(isPresented: $showAIGenerator) {
     #if os(macOS) || os(iOS)
@@ -1561,6 +1627,7 @@ let uniqueCandidates = selected.filter {
 **Question:** Include search on all platforms or iOS/macOS only?
 
 **Options:**
+
 - **A:** All platforms (including tvOS)
 - **B:** iOS/macOS only
 - **C:** No search (keep it simple)
@@ -1568,6 +1635,7 @@ let uniqueCandidates = selected.filter {
 **Decision:** **Option B** - iOS/macOS only
 
 **Rationale:**
+
 - tvOS complexity: Search bar adds focus management overhead
 - tvOS input: Typing search query on remote is tedious
 - List size: 100 items max is scrollable without search on tvOS
@@ -1575,6 +1643,7 @@ let uniqueCandidates = selected.filter {
 - Simplifies implementation: No tvOS-specific search UX needed
 
 **Implementation:**
+
 ```swift
 #if !os(tvOS)
  .searchable(text: $searchText, placement: .automatic)
@@ -1600,6 +1669,7 @@ private var filteredCandidates: [AIGeneratedItemCandidate] {
 **Question:** Where to add AI generation entry point?
 
 **Options:**
+
 - **A:** Items page (within wizard)
 - **B:** New wizard page (AI Generation step)
 - **C:** Toolbar shortcut (global)
@@ -1607,6 +1677,7 @@ private var filteredCandidates: [AIGeneratedItemCandidate] {
 **Decision:** **Option A** - Items page
 
 **Rationale:**
+
 - Context: Users on Items page need items
 - Optional: Doesn't force AI usage on all users
 - Flow: Fits naturally in existing wizard progression
@@ -1620,22 +1691,26 @@ private var filteredCandidates: [AIGeneratedItemCandidate] {
 ## Timeline & Milestones
 
 ### Phase 1: Core Infrastructure (4-6 hours)
+
 - **Milestone 1.1:** Wrapper wired to UniqueListCoordinator and tested
 - **Milestone 1.2:** Data models defined and validated
 - **Milestone 1.3:** AppState extension complete with all methods
 
 ### Phase 2: UI Implementation (6-8 hours)
+
 - **Milestone 2.1:** AIItemGeneratorOverlay with 3 stages functional
 - **Milestone 2.2:** Multi-selection list working on iOS/macOS
 - **Milestone 2.3:** Items page integration complete
 
 ### Phase 3: Polish & Testing (3-4 hours)
+
 - **Milestone 3.1:** tvOS focus management validated
 - **Milestone 3.2:** Error handling complete
 - **Milestone 3.3:** Cross-platform manual testing passed
 - **Milestone 3.4:** SwiftLint clean, documentation complete
 
 ### Phase 4: Build & Validation (1-2 hours)
+
 - **Milestone 4.1:** Both platforms build successfully
 - **Milestone 4.2:** Acceptance tests passed
 
@@ -2008,7 +2083,6 @@ private struct SearchBar: View {
 
 ---
 
-
 ---
 
 ## Addendum (Codex Review)
@@ -2063,12 +2137,12 @@ if #available(iOS 26.0, macOS 26.0, *) {
 
 ### Apple Documentation
 
-- TextField(value:format:) — https://developer.apple.com/documentation/swiftui/textfield/
-- IntegerFormatStyle — https://developer.apple.com/documentation/foundation/integerformatstyle/
-- focusSection() — https://developer.apple.com/documentation/swiftui/view/focussection()/
-- focusable(interactions:) — https://developer.apple.com/documentation/swiftui/view/focusable(_:interactions:)/
-- onExitCommand(perform:) — https://developer.apple.com/documentation/swiftui/view/onexitcommand(perform:)/
-- glassEffect(_:in:) — https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)/
-- Stepper — https://developer.apple.com/documentation/swiftui/stepper/
+- TextField(value:format:) — <https://developer.apple.com/documentation/swiftui/textfield/>
+- IntegerFormatStyle — <https://developer.apple.com/documentation/foundation/integerformatstyle/>
+- focusSection() — <https://developer.apple.com/documentation/swiftui/view/focussection()/>
+- focusable(interactions:) — <https://developer.apple.com/documentation/swiftui/view/focusable(_:interactions:)/>
+- onExitCommand(perform:) — <https://developer.apple.com/documentation/swiftui/view/onexitcommand(perform:)/>
+- glassEffect(_:in:) — <https://developer.apple.com/documentation/swiftui/view/glasseffect(_:in:)/>
+- Stepper — <https://developer.apple.com/documentation/swiftui/stepper/>
 
 **End of Plan Document**

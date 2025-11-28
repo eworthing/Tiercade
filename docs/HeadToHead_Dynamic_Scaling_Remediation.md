@@ -58,6 +58,7 @@ The HeadToHead overlay provides an interactive ranking interface where users com
 ### Recent Changes
 
 **November 12, 2025:** Overlay restructured to follow Apple modal presentation patterns:
+
 - ✅ Uses `.fullScreenCover()` on tvOS
 - ✅ Uses `.sheet()` on macOS
 - ✅ Proper focus management with `@FocusState`
@@ -67,7 +68,7 @@ However, typography and sizing were not updated to follow dynamic scaling best p
 
 ### Files Affected
 
-```
+```text
 Tiercade/Design/DesignTokens.swift              # TypeScale definitions
 Tiercade/Views/Overlays/HeadToHeadOverlay.swift # Main overlay
 Tiercade/Views/Overlays/HeadToHeadOverlay+HelperViews.swift # Cards, tiles, badges
@@ -109,6 +110,7 @@ Tiercade/Views/Overlays/HeadToHeadOverlay+HelperViews.swift # Cards, tiles, badg
 | 258 | `.font(.caption)` | Metric footnote | ⚠️ Token bypass. |
 
 **Summary:**
+
 - Absolute point-size fonts that truly ignore Dynamic Type: **3** (lines 28, 157, 187).
 - Direct SwiftUI text styles that work with Dynamic Type but bypass `TypeScale`: **10** occurrences (lines 30, 92, 158, 160, 159, 190, 217, 251, 255, 258).
 - Already tokenized with `TypeScale`: **6** occurrences (lines 142, 144, 87, 106, 121, 192).
@@ -129,6 +131,7 @@ Tiercade/Views/Overlays/HeadToHeadOverlay+HelperViews.swift # Cards, tiles, badg
 | HelperViews.swift:195 | `.frame(maxWidth: 520)` | Completion text |
 
 **Impact:** These dimensions don't scale with Dynamic Type settings. Users with larger text preferences will experience:
+
 - Clipped text in fixed-size containers
 - Poor visual hierarchy
 - Accessibility non-compliance
@@ -137,7 +140,7 @@ Tiercade/Views/Overlays/HeadToHeadOverlay+HelperViews.swift # Cards, tiles, badg
 
 **Raw numeric literals found:**
 
-```
+```text
 HeadToHeadOverlay.swift:
 - Line 138: spacing: 16
 - Line 139: spacing: Metrics.grid * 1.5  ✅
@@ -171,6 +174,7 @@ HelperViews.swift:
 > “SwiftUI’s adaptive text display scales the font automatically using Dynamic Type.”
 
 **Current violations:**
+
 ```swift
 // ❌ WRONG: Fixed size, no Dynamic Type support
 .font(.system(size: 64, weight: .bold))
@@ -179,6 +183,7 @@ HelperViews.swift:
 ```
 
 **Why this is wrong:**
+
 1. Font size is absolute, doesn't scale with user preferences
 2. No relationship to semantic text hierarchy
 3. Breaks accessibility for users who need larger text
@@ -193,6 +198,7 @@ HelperViews.swift:
 > Typography: `TypeScale.h1`, `TypeScale.body`, etc.
 
 **Current violations (design-token gap):**
+
 ```swift
 // ⚠️ Token bypass: still Dynamic Type friendly, but skips TypeScale
 .font(.headline)
@@ -203,6 +209,7 @@ HelperViews.swift:
 ```
 
 **Why this is wrong:**
+
 1. AGENTS.md mandates that typography flow through `TypeScale` to keep tvOS/iOS/macOS aligned.
 2. Without tokens, we must touch every direct `.font()` call when adjusting typographic scale.
 3. Cross-overlay hierarchy drifts because some controls inherit TypeScale updates while others do not.
@@ -215,6 +222,7 @@ HelperViews.swift:
 > A dynamic property that scales a numeric value... Use this property wrapper to scale padding, spacing, and layout dimensions.
 
 **Current violations:**
+
 ```swift
 // ❌ WRONG: Fixed dimensions, no accessibility scaling
 .frame(width: 150, height: 150)
@@ -224,6 +232,7 @@ HelperViews.swift:
 ```
 
 **Why this is wrong:**
+
 1. When users increase text size, containers stay fixed → clipping
 2. Button hit targets don't grow proportionally
 3. Visual balance breaks at different accessibility sizes
@@ -244,6 +253,7 @@ internal static let metadata = Font.title3.weight(.semibold)
 ```
 
 **Missing tokens:**
+
 - No `h1` for hero/prominent headings
 - No `caption` (smallest readable text)
 - No `footnote` (secondary metadata)
@@ -305,6 +315,7 @@ Text("Hello")
 ```
 
 **relativeTo parameter:**
+
 - Ties the scaling behavior to a specific text style
 - When user increases `.body` text size, `padding` scales proportionally
 - Maintains visual relationships across size categories
@@ -607,6 +618,7 @@ Button("Commit") { }
 ```
 
 **Rationale:**
+
 - `progressDialSize` tied to `.title3` because progress label uses TypeScale.body (title3 on tvOS)
 - Button widths tied to `.body` for proportional scaling with typical button label text
 
@@ -615,11 +627,13 @@ Button("Commit") { }
 **Location:** Line 153
 
 **Before:**
+
 ```swift
 .frame(width: 150, height: 150)
 ```
 
 **After:**
+
 ```swift
 .frame(width: progressDialSize, height: progressDialSize)
 ```
@@ -629,6 +643,7 @@ Button("Commit") { }
 **Location:** Lines 158, 160
 
 **Before:**
+
 ```swift
 Text(statusSummary)
     .font(.title3.weight(.semibold))
@@ -637,6 +652,7 @@ Text(secondaryStatus)
 ```
 
 **After:**
+
 ```swift
 Text(statusSummary)
     .font(TypeScale.h3)
@@ -645,6 +661,7 @@ Text(secondaryStatus)
 ```
 
 **Rationale:**
+
 - `statusSummary` is a prominent heading → `h3`
 - `secondaryStatus` is descriptive text → `body`
 
@@ -653,6 +670,7 @@ Text(secondaryStatus)
 **Location:** Lines 242, 260
 
 **Before:**
+
 ```swift
 Button(role: .destructive) {
     app.cancelHeadToHead()
@@ -672,6 +690,7 @@ Button {
 ```
 
 **After:**
+
 ```swift
 Button(role: .destructive) {
     app.cancelHeadToHead()
@@ -714,6 +733,7 @@ Button {
 **Location:** Lines 4-50
 
 **Before:**
+
 ```swift
 internal struct HeadToHeadProgressDial: View {
     internal let progress: Double
@@ -765,6 +785,7 @@ internal struct HeadToHeadProgressDial: View {
 ```
 
 **After:**
+
 ```swift
 internal struct HeadToHeadProgressDial: View {
     internal let progress: Double
@@ -817,6 +838,7 @@ internal struct HeadToHeadProgressDial: View {
 ```
 
 **Changes:**
+
 - Line 26: `spacing: 6` → `spacing: Metrics.grid * 0.75`
 - Line 28: `.font(.system(size: 26...))` → `.imageScale(TypeScale.IconScale.small)`
 - Line 30: `.font(.headline)` → `.font(TypeScale.caption)`
@@ -827,6 +849,7 @@ internal struct HeadToHeadProgressDial: View {
 **Location:** Lines 52-148
 
 **Before (key sections):**
+
 ```swift
 internal struct HeadToHeadCandidateCard: View {
     // ... properties ...
@@ -899,6 +922,7 @@ internal struct HeadToHeadCandidateCard: View {
 ```
 
 **After:**
+
 ```swift
 internal struct HeadToHeadCandidateCard: View {
     enum AlignmentHint { case leading, trailing }
@@ -1004,6 +1028,7 @@ internal struct HeadToHeadCandidateCard: View {
 ```
 
 **Changes:**
+
 - Added `@ScaledMetric` properties for card dimensions (lines 8-10)
 - Line 15: `spacing: 18` → `spacing: Metrics.grid * 2.25`
 - Line 20-24: Fixed dimensions → ScaledMetric properties
@@ -1015,6 +1040,7 @@ internal struct HeadToHeadCandidateCard: View {
 - Line 69: `.font(TypeScale.metadata)` → `.font(TypeScale.footnote)`
 
 **Rationale for metadata → footnote:**
+
 - Metadata tokens (season, status) are secondary information
 - TypeScale.metadata is currently `title3.weight(.semibold)` on tvOS (large, bold)
 - TypeScale.footnote is `body.weight(.regular)` (smaller, subtle) - correct semantic choice
@@ -1024,6 +1050,7 @@ internal struct HeadToHeadCandidateCard: View {
 **Location:** Lines 150-181
 
 **Before:**
+
 ```swift
 internal struct HeadToHeadPassTile: View {
     internal let action: () -> Void
@@ -1060,6 +1087,7 @@ internal struct HeadToHeadPassTile: View {
 ```
 
 **After:**
+
 ```swift
 internal struct HeadToHeadPassTile: View {
     internal let action: () -> Void
@@ -1099,6 +1127,7 @@ internal struct HeadToHeadPassTile: View {
 ```
 
 **Changes:**
+
 - Added `@ScaledMetric` for tile size (line 4)
 - Line 8: `spacing: 16` → `spacing: Metrics.grid * 2`
 - Line 10: `.font(.system(size: 48...))` → `.imageScale(TypeScale.IconScale.medium)`
@@ -1110,6 +1139,7 @@ internal struct HeadToHeadPassTile: View {
 **Location:** Lines 183-209
 
 **Before:**
+
 ```swift
 internal struct HeadToHeadCompletionPanel: View {
     internal var body: some View {
@@ -1141,6 +1171,7 @@ internal struct HeadToHeadCompletionPanel: View {
 ```
 
 **After:**
+
 ```swift
 internal struct HeadToHeadCompletionPanel: View {
     @ScaledMetric(relativeTo: .body) private var textMaxWidth = ScaledDimensions.textContentMaxWidth
@@ -1175,6 +1206,7 @@ internal struct HeadToHeadCompletionPanel: View {
 ```
 
 **Changes:**
+
 - Added `@ScaledMetric` for text width (line 2)
 - Line 5: `spacing: 16` → `spacing: Metrics.grid * 2`
 - Line 7: `.font(.system(size: 64...))` → `.imageScale(TypeScale.IconScale.large)`
@@ -1186,6 +1218,7 @@ internal struct HeadToHeadCompletionPanel: View {
 **Location:** Lines 211-241
 
 **Before:**
+
 ```swift
 internal struct HeadToHeadPhaseBadge: View {
     internal let phase: HeadToHeadPhase
@@ -1221,6 +1254,7 @@ internal struct HeadToHeadPhaseBadge: View {
 ```
 
 **After:**
+
 ```swift
 internal struct HeadToHeadPhaseBadge: View {
     internal let phase: HeadToHeadPhase
@@ -1256,6 +1290,7 @@ internal struct HeadToHeadPhaseBadge: View {
 ```
 
 **Changes:**
+
 - Line 7: `.font(.footnote.weight(.semibold))` → `.font(TypeScale.footnote)`
 - Line 11: `.padding(.vertical, 6)` → `.padding(.vertical, Metrics.grid * 0.75)`
 - Line 12: `.padding(.horizontal, 12)` → `.padding(.horizontal, Metrics.grid * 1.5)`
@@ -1267,6 +1302,7 @@ internal struct HeadToHeadPhaseBadge: View {
 **Location:** Lines 243-267
 
 **Before:**
+
 ```swift
 internal struct HeadToHeadMetricTile: View {
     internal let title: String
@@ -1295,6 +1331,7 @@ internal struct HeadToHeadMetricTile: View {
 ```
 
 **After:**
+
 ```swift
 internal struct HeadToHeadMetricTile: View {
     internal let title: String
@@ -1323,6 +1360,7 @@ internal struct HeadToHeadMetricTile: View {
 ```
 
 **Changes:**
+
 - Line 7: `spacing: 4` → `spacing: Metrics.grid * 0.5`
 - Line 9: `.font(.caption)` → `.font(TypeScale.footnote)`
 - Line 13: `.font(.title2.weight(.semibold))` → `.font(TypeScale.h3)`
@@ -1330,6 +1368,7 @@ internal struct HeadToHeadMetricTile: View {
 - Line 20: `.padding(.vertical, 8)` → `.padding(.vertical, Metrics.grid)`
 
 **Rationale:**
+
 - Metric value should be prominent → `h3` (was title2, semantically similar)
 - Title and footnote are small labels → `footnote` (was caption, now consistent)
 
@@ -1371,6 +1410,7 @@ grep -n "spacing: [0-9]" Tiercade/Views/Overlays/HeadToHead*.swift
 ```
 
 **Expected Phase 4 results:** Most should be fixed. Any remaining instances likely in:
+
 - `HeadToHeadOverlay.swift` lines 138-163 (overview section internal spacing)
 
 **Audit & fix:**
@@ -1462,6 +1502,7 @@ grep -n "\.font(\\.system(size: TypeScale\." Tiercade/Views/Overlays/HeadToHead*
 ### Visual Inspection - tvOS
 
 1. **Launch tvOS simulator:**
+
    ```bash
    ./build_install_launch.sh tvos
    ```
@@ -1513,6 +1554,7 @@ grep -n "\.font(\\.system(size: TypeScale\." Tiercade/Views/Overlays/HeadToHead*
 ### Accessibility Testing - iOS
 
 1. **Launch iOS simulator:**
+
    ```bash
    ./build_install_launch.sh ios
    ```
@@ -1541,6 +1583,7 @@ grep -n "\.font(\\.system(size: TypeScale\." Tiercade/Views/Overlays/HeadToHead*
 | Button min width | 220-260pt | 180-200pt |
 
 **Visual comparison:**
+
 1. Launch tvOS and iOS simulators side-by-side
 2. Open HeadToHead on both
 3. Confirm proportions are maintained (tvOS ~1.5-2x larger)
@@ -1554,6 +1597,7 @@ grep -n "\.font(\\.system(size: TypeScale\." Tiercade/Views/Overlays/HeadToHead*
 3. **AnalyticsSidebarView** - May have similar issues (separate task)
 
 **Visual sweep:**
+
 ```bash
 # Launch tvOS
 ./build_install_launch.sh tvos
@@ -1584,6 +1628,7 @@ grep -n "\.font(\\.system(size: TypeScale\." Tiercade/Views/Overlays/HeadToHead*
    - No lag when advancing to next pair
 
 **Instruments check (optional):**
+
 ```bash
 # Profile in Xcode
 # Product → Profile (Cmd+I)
@@ -1599,12 +1644,14 @@ grep -n "\.font(\\.system(size: TypeScale\." Tiercade/Views/Overlays/HeadToHead*
 ### Visual Improvements
 
 **Before remediation:**
+
 - Fixed font sizes don't scale with Dynamic Type
 - Inconsistent typography (mix of TypeScale and raw fonts)
 - Fixed container dimensions clip text at large sizes
 - Poor hierarchy on tvOS (text too small at 10-foot distance)
 
 **After remediation:**
+
 - All text scales gracefully with Dynamic Type settings
 - Consistent typography hierarchy across all components
 - Containers expand/contract with content
@@ -1626,12 +1673,14 @@ grep -n "\.font(\\.system(size: TypeScale\." Tiercade/Views/Overlays/HeadToHead*
 ### Metrics
 
 **Pre-remediation snapshot:**
+
 - Absolute point-size fonts (true Dynamic Type breaks): **3**
 - Direct SwiftUI styles that bypass `TypeScale`: **10**
 - Fixed dimensions: **6** locations
 - Raw spacing literals: roughly **50 %** of spacing declarations
 
 **Target state after remediation:**
+
 - Absolute point-size fonts: **0** (all converted to tokens or `ScaledMetric`)
 - Direct SwiftUI styles: **0** (all mapped to new `TypeScale` cases)
 - Fixed dimensions: **0** (replaced with `@ScaledMetric` or flexible stacks)
@@ -1685,6 +1734,7 @@ Refs: Apple HIG - Dynamic Type guidelines"
 **After merging, update:**
 
 1. **Tiercade/Design/README.md:**
+
    ```markdown
    ## Typography (NEW SECTION)
 
@@ -1722,9 +1772,9 @@ Refs: Apple HIG - Dynamic Type guidelines"
    CardView()
        .frame(minWidth: cardWidth)
    ```
-   ```
 
 2. **AGENTS.md (optional note):**
+
    ```markdown
    ### Dynamic Type Compliance
 
@@ -1768,6 +1818,7 @@ Refs: Apple HIG - Dynamic Type guidelines"
 4. **Performance optimization** - Cache ScaledMetric calculations
 
 **References:**
+
 - [Picking container views for your content](https://developer.apple.com/documentation/swiftui/picking-container-views-for-your-content/)
 - [Size Classes](https://developer.apple.com/documentation/swiftui/environmentvalues/horizontalsizeclassclass/)
 
@@ -1801,7 +1852,7 @@ custom_rules:
 
 **Decision tree:**
 
-```
+```text
 Is this text...
 ├─ A major page/overlay title?          → h2
 ├─ A card title or section header?      → h3
@@ -1851,11 +1902,13 @@ grep -rn "\.frame(.*width:.*[0-9]" Tiercade/Views/Overlays/HeadToHead*.swift
 ### Contact & Questions
 
 **Implementation questions:**
+
 - Refer to AGENTS.md Design Tokens section
 - Check `Tiercade/Design/README.md` for design system patterns
 - Review existing overlays (TierListBrowserScene) for reference implementations
 
 **Testing issues:**
+
 - Accessibility Inspector: Xcode → Open Developer Tool → Accessibility Inspector
 - tvOS Simulator controls: I/O → Keyboard → Send Keyboard Input (arrow keys)
 - Dynamic Type settings: Settings → Accessibility → Display & Text Size

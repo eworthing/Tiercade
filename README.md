@@ -206,6 +206,7 @@ python3 analyze_test_results.py results/run-<TIMESTAMP>/
 ```
 
 **Configuration files:**
+
 - Test suites: `Tiercade/TestConfigs/TestSuites.json`
 - Framework docs: `Tiercade/TestConfigs/TESTING_FRAMEWORK.md`
 - Feature flags: `docs/AppleIntelligence/FEATURE_FLAG_USAGE.md`

@@ -18,6 +18,7 @@ The HeadToHead algorithm performs well within its design constraints (2-3 compar
 | **Clustered** | 30 | 0.591 | 20% | N/A | 46.7% |
 
 **Interpretation:**
+
 - ✅ Small pools perform well (tau > 0.6)
 - ✅ Uniform distribution correctly identified (tau ≈ 0, items are similar)
 - ⚠️ Medium pools slightly below target (tau=0.591 vs 0.6 target)
@@ -36,6 +37,7 @@ The HeadToHead algorithm performs well within its design constraints (2-3 compar
 | 10 | 0.537 | 30% | 0.054 | -0.084 |
 
 **Key Insights:**
+
 - **Optimal budget: 3-5 comparisons/item** for best tau/cost ratio
 - **Diminishing returns** after 5 comparisons
 - **Sweet spot at 5 comparisons/item:** tau=0.663, 40% accuracy, efficiency=0.133
@@ -52,6 +54,7 @@ The HeadToHead algorithm performs well within its design constraints (2-3 compar
 | 50 | - | - | - | ~150 |
 
 **Key Insights:**
+
 - **Small pools (<10):** Excellent performance but risk clustering (80% in one tier)
 - **Medium pools (10-30):** Acceptable but declining accuracy
 - **Large pools (30+):** Performance degrades with fixed comparison budget
@@ -60,6 +63,7 @@ The HeadToHead algorithm performs well within its design constraints (2-3 compar
 ### 4. Noise Sensitivity (Conceptual - from research)
 
 Research shows Wilson scores are robust to noise when:
+
 - z-scores are appropriate for confidence needs
 - Comparison counts are sufficient (n ≥ 3-5)
 - Noise level < 30%
@@ -70,6 +74,7 @@ Research shows Wilson scores are robust to noise when:
 
 **Current:** Fixed 3 comparisons/item for all pool sizes
 **Proposed:**
+
 ```swift
 func targetComparisons(poolSize: Int) -> Int {
     switch poolSize {
@@ -82,6 +87,7 @@ func targetComparisons(poolSize: Int) -> Int {
 ```
 
 **Expected Impact:**
+
 - Improve tau from 0.421 → ~0.65 for 20-item pools
 - Improve tau from 0.591 → ~0.70 for 30-item pools
 - Increase comparison budget by 33-100% (acceptable per research)
@@ -92,11 +98,13 @@ func targetComparisons(poolSize: Int) -> Int {
 **Research Recommendation:** zQuick=1.5, zStd=1.96
 
 **Rationale:**
+
 - Wilson intervals stable from n≥10 even at z=1.96
 - Higher confidence reduces false distinctions
 - Research shows 95% confidence (z=1.96) optimal for ranking
 
 **Expected Impact:**
+
 - Reduce churn by 10-15% (narrower intervals = more stable boundaries)
 - Improve tier accuracy by 5-10% (better distinction between tiers)
 - Slightly wider intervals may increase tier clustering (monitor)
@@ -113,6 +121,7 @@ func targetComparisons(poolSize: Int) -> Int {
 ```
 
 **Expected Impact:**
+
 - Reduce forced splitting of similar items
 - Better match actual skill distributions (Zipf, clustered)
 - Maintain good distribution (avoid 80% clustering seen in 5-item pools)
@@ -121,11 +130,13 @@ func targetComparisons(poolSize: Int) -> Int {
 
 **Current:** Absolute 1% epsilon for all confidence levels
 **Proposed:**
+
 ```swift
 let epsilon = 0.25 * (upperInterval.width + lowerInterval.width)
 ```
 
 **Expected Impact:**
+
 - More consistent boundary detection across different confidence levels
 - Better handling of items with few vs many comparisons
 - Minor improvement in tier accuracy (2-5%)
@@ -135,21 +146,25 @@ let epsilon = 0.25 * (upperInterval.width + lowerInterval.width)
 Based on simulations, here are achievable targets with proposed optimizations:
 
 **Small Pools (5-15 items):**
+
 - Kendall's Tau ≥ 0.75
 - Tier Accuracy ≥ 55%
 - Max Tier Fraction ≤ 35% (avoid clustering)
 
 **Medium Pools (15-35 items):**
+
 - Kendall's Tau ≥ 0.70
 - Tier Accuracy ≥ 50%
 - Max Tier Fraction ≤ 30%
 
 **Large Pools (35-50 items):**
+
 - Kendall's Tau ≥ 0.65
 - Tier Accuracy ≥ 45%
 - Max Tier Fraction ≤ 30%
 
 **Stability (All sizes):**
+
 - Churn ≤ 30% (down from current 45-50%)
 
 ## What NOT to Change
@@ -157,23 +172,27 @@ Based on simulations, here are achievable targets with proposed optimizations:
 Based on Codex's analysis and our findings:
 
 ### ✅ Keep Current Architecture
+
 - Wilson score core (proven optimal for limited data)
 - Two-phase design (quick + refinement)
 - Warm-start pair selection (58-71% efficiency gain validated)
 - Hysteresis/churn management (user preference validated)
 
 ### ✅ Keep Current z-Scores as Default
+
 - z=1.0-1.28 appropriate for 2-3 comparison budget
 - Higher z-scores only beneficial with 5+ comparisons
 - **Recommendation:** Make z adaptive to comparison count
 
 ### ❌ DON'T Implement Bradley-Terry by Default
+
 - 180x slower than current system
 - Only beneficial with 10+ comparisons/item
 - Current use case doesn't justify computational cost
 - **Recommendation:** Add as optional "thorough mode" later
 
 ### ❌ DON'T Enforce Transitivity
+
 - Adds complexity without clear benefit
 - Accept 10-15% intransitive cycles as cost of speed
 - **Monitoring only:** Log cycle count for diagnostics
@@ -191,11 +210,13 @@ Based on Codex's analysis and our findings:
 **Configuration:** 20 items, 3 comp/item, 10% noise, 100 iterations
 
 **Results:**
+
 - Mean Tau: 0.385 ± 0.125
 - Mean Accuracy: 33.6% ± 9.7%
 - Range: tau [0.10, 0.64], accuracy [10%, 55%]
 
 **Interpretation:**
+
 - High variance expected with limited budget (3 comp/item)
 - Standard deviation within acceptable bounds (std < 0.15 target)
 - Confirms need for adaptive budgets at larger pool sizes
@@ -219,6 +240,7 @@ Based on Codex's analysis and our findings:
 | 6 comp/item | *running* | - | - | - | - |
 
 **Key Findings:**
+
 - ✅ **Dramatic improvement from 2→3 comparisons:** Tau jumps +58% (0.249→0.393)
 - ✅ **Diminishing returns visible:** 3→4 gains +11%, 4→5 gains +4%
 - ✅ **Variance stabilizes:** Std drops from 0.128 @ 3 comp to 0.115 @ 4 comp
@@ -239,6 +261,7 @@ Based on Codex's analysis and our findings:
 | 15% | 0.391 | 0.149 | 37.7% | 30.1% | High noise |
 
 **Key Findings:**
+
 - ✅ **Surprisingly robust:** Only 13% tau drop from 0% → 10% noise
 - ⚠️ **Even perfect comparisons underperform:** Tau 0.447 vs 0.6 target
 - ⚠️ **High variance persists even at 0% noise:** Std 0.127 unchanged
@@ -259,6 +282,7 @@ Based on Codex's analysis and our findings:
 | 50 items | *running* | - | - | - | ~150 |
 
 **Key Findings:**
+
 - ✅ **Small pools excel:** 10 items achieves tau=0.628, 60.8% accuracy
 - ❌ **Severe degradation at scale:** Tau drops 44% from 10→20 items
 - ❌ **Further decline continues:** Tau drops another 13% from 20→30 items
@@ -266,6 +290,7 @@ Based on Codex's analysis and our findings:
 - ✅ **10-item pools exceed targets:** Tau > 0.6, accuracy > 50%
 
 **Critical Finding:** This definitively proves the need for adaptive budgets. At 3 comp/item:
+
 - 10 items: **Exceeds all targets** ✅
 - 20 items: **Falls below tau=0.6 target** by 33% ❌
 - 30 items: **Falls below tau=0.6 target** by 42% ❌
@@ -278,11 +303,13 @@ Based on Codex's analysis and our findings:
 **Hypothesis:** Best-case scenario should achieve tau ≥ 0.6, accuracy ≥ 45%
 
 **Results:**
+
 - Mean Tau: 0.465 ± 0.129
 - Mean Accuracy: 40.1% ± 10.0%
 - Churn: 27.3%
 
 **Verdict:** ❌ **FAILED to meet targets**
+
 - Tau target (0.6): Achieved 0.465 (22% below target)
 - Variance target (std < 0.12): Achieved 0.129 (8% above target)
 - Accuracy target (45%): Achieved 40.1% (11% below target)
@@ -294,17 +321,20 @@ Based on Codex's analysis and our findings:
 Based on empirical Monte Carlo results (100 iterations per scenario):
 
 **Small Pools (10 items, 3 comp/item):**
+
 - ✅ Kendall's Tau ≥ 0.60 (empirical: 0.628)
 - ✅ Tier Accuracy ≥ 55% (empirical: 60.8%)
 - ✅ Variance: std(tau) ≤ 0.15 (empirical: 0.135)
 
 **Medium Pools (20 items, 4-5 comp/item):**
+
 - ✅ Kendall's Tau ≥ 0.45 (empirical: 0.436-0.453)
 - ✅ Tier Accuracy ≥ 35% (empirical: 36.8-37.9%)
 - ✅ Variance: std(tau) ≤ 0.13 (empirical: 0.115-0.127)
 - ✅ Churn ≤ 30% (empirical: 26.2-29.9%)
 
 **Large Pools (30 items, 5 comp/item):**
+
 - ⚠️ Kendall's Tau ≥ 0.40 (empirical: 0.348 @ 3 comp/item, testing @ 5 comp/item)
 - ⚠️ Tier Accuracy ≥ 30% (empirical: 28.7%)
 - ✅ Variance: std(tau) ≤ 0.12 (empirical: 0.108)
@@ -314,12 +344,14 @@ Based on empirical Monte Carlo results (100 iterations per scenario):
 ## Appendix C: Implementation Status
 
 **Completed:**
+
 - ✅ Adaptive comparison budgets (Priority 1) - Implemented in AppState+HeadToHead.swift
 - ✅ Comprehensive simulation framework (HeadToHeadSimulations.swift)
 - ✅ Parameter sweep testing (HeadToHeadParameterSweep.swift)
 - ✅ Variance analysis testing (HeadToHeadVarianceAnalysis.swift)
 
 **Pending Validation:**
+
 - ⏳ 6 comp/item Monte Carlo (test crashed, needs retry)
 - ⏳ 50-item pool scaling (test crashed, needs retry)
 - ⏳ Adaptive vs Fixed budget comparison (test crashed, needs retry)

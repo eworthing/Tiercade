@@ -118,6 +118,7 @@ swift test
 ```
 
 **Test coverage areas:**
+
 - `HeadToHeadLogicTests.swift` - Pairwise comparison ranking algorithm
 - `HeadToHeadInternalsTests.swift` - Wilson score and boundary logic
 - `HeadToHeadSimulations.swift` - Monte Carlo validation (600+ simulations)

@@ -22,6 +22,7 @@ This document provides a complete specification for HeadToHead session telemetry
 ### What We Know (From Simulation)
 
 ✅ **Algorithm works mathematically:**
+
 - Tau: 0.40-0.45 for 20 items @ 4-5 comp/item
 - Variance: std(tau) = 0.108-0.135 (acceptable)
 - Small pools (10 items): tau = 0.628 (exceeds targets)
@@ -30,12 +31,14 @@ This document provides a complete specification for HeadToHead session telemetry
 ### What We Don't Know (Need Production Data)
 
 ❓ **User behavior:**
+
 - Do users finish sessions? (completion rate)
 - How long do sessions take? (actual duration vs estimates)
 - What skip patterns emerge? (when/why users skip)
 - Do results feel trustworthy? (re-run stability)
 
 ❓ **Domain-specific patterns:**
+
 - Are movies easier than music? (noise level validation)
 - Do large pools (30+) have issues? (scaling validation)
 - Are skip rates acceptable? (pair selection validation)
@@ -43,11 +46,13 @@ This document provides a complete specification for HeadToHead session telemetry
 ### Decision Framework
 
 **Telemetry tells us:**
+
 - ✅ If current system is good enough → ship as-is
 - ⚠️ If specific issues exist → optimize those issues
 - ❌ If major problems → investigate root cause
 
 **Without telemetry we risk:**
+
 - Over-engineering solutions for non-existent problems
 - Missing real issues that affect users
 - Optimizing the wrong metrics (tau vs user satisfaction)
@@ -146,6 +151,7 @@ struct HeadToHeadSessionMetrics: Codable, Sendable {
 ```
 
 **Design Rationale:**
+
 - **Codable:** Easy JSON export for analysis
 - **Sendable:** Swift 6 concurrency safe
 - **Computed properties:** Derived metrics calculated on demand
@@ -372,6 +378,7 @@ private func logMetricsSummary(_ metrics: HeadToHeadSessionMetrics) {
 ```
 
 **Export Locations:**
+
 - **DEBUG builds:** `/tmp/headtohead_<sessionId>_<timestamp>.json`
 - **Production builds:** Log summary only (no file I/O)
 
@@ -432,27 +439,27 @@ internal struct HeadToHeadState: Sendable {
 
 #### Secondary Metrics (Nice to Have)
 
-5. **Comparisons Per Minute**
+1. **Comparisons Per Minute**
    - Expected: 2-4 comp/min
    - Useful for time estimation
 
-6. **Empty Tier Count**
+2. **Empty Tier Count**
    - Expected: 0-2 empty tiers
    - Useful for distribution quality
 
-7. **Think Time Distribution**
+3. **Think Time Distribution**
    - Detect fatigue (increasing think time)
    - Detect confusion (very long pauses)
 
 #### Diagnostic Metrics (Advanced)
 
-8. **Phase Transition Time**
+1. **Phase Transition Time**
    - How long in quick vs refinement?
 
-9. **Skip Timing**
+2. **Skip Timing**
    - When do skips happen? (early, late, boundaries?)
 
-10. **Comparison Event Patterns**
+3. **Comparison Event Patterns**
     - Are certain item pairs always skipped?
 
 ---
@@ -468,6 +475,7 @@ internal struct HeadToHeadState: Sendable {
 | 40+ items | 6 | 240+ | 10+ min | >60% | <35% |
 
 **Interpretation:**
+
 - **Above targets:** Current system works well
 - **At targets:** Acceptable performance
 - **Below targets:** Investigate specific issues
@@ -486,6 +494,7 @@ Based on domain validation research (see DOMAIN_VALIDATION.md):
 | **Music** | 20% | 25-35% | 65-75% | Very subjective, expect struggle |
 
 **Validation:**
+
 - If movies show >20% skip rate → algorithm problem
 - If music shows <30% skip rate → better than expected
 - If any domain <60% completion → serious issue
@@ -499,12 +508,14 @@ Based on domain validation research (see DOMAIN_VALIDATION.md):
 **Who:** Internal users, beta testers
 **What:** Use HeadToHead with real tier lists
 **How:**
+
 1. Enable DEBUG builds (auto-export to /tmp)
 2. Test across pool sizes (5, 10, 15, 20, 25, 30, 40 items)
 3. Test across domains (movies, games, restaurants, music)
 4. Encourage multiple sessions per user (measure re-run stability)
 
 **Data to Collect:**
+
 - Minimum 20 sessions per pool size bucket
 - Minimum 10 sessions per domain
 - Mix of completed and cancelled sessions
@@ -514,6 +525,7 @@ Based on domain validation research (see DOMAIN_VALIDATION.md):
 ### Step 2: Analyze Metrics
 
 **Export all JSON files:**
+
 ```bash
 cp /tmp/headtohead_*.json ~/HeadToHeadSessionMetrics/
 cd ~/HeadToHeadSessionMetrics
@@ -581,7 +593,8 @@ analyze_by_pool_size(metrics)
 ### Step 3: Decision Tree
 
 **If metrics look good:**
-```
+
+```text
 Completion Rate >80%, Skip Rate <25%, Duration reasonable
 ↓
 ✅ Ship current system as-is
@@ -590,7 +603,8 @@ Completion Rate >80%, Skip Rate <25%, Duration reasonable
 ```
 
 **If high skip rate (>30%):**
-```
+
+```text
 Skip Rate >30%, but Completion Rate OK
 ↓
 ⚠️ Pair selection may be suboptimal
@@ -600,7 +614,8 @@ Skip Rate >30%, but Completion Rate OK
 ```
 
 **If low completion rate (<60%):**
-```
+
+```text
 Completion Rate <60%, high abandonment
 ↓
 ❌ Investigate root cause:
@@ -611,7 +626,8 @@ Completion Rate <60%, high abandonment
 ```
 
 **If tier clustering (max fraction >50%):**
-```
+
+```text
 Max Tier Fraction >50%, poor distribution
 ↓
 ❌ Algorithm issue (rare, not seen in simulation)
@@ -666,6 +682,7 @@ Select explicit anchor items (strong/mid/weak) and compare new items vs anchors 
 **Risk:** None (no algorithm changes)
 
 **Change:**
+
 - Add "Compare within genre first" toggle
 - Add "Skip similar items" hint
 - Add domain-specific progress messages
@@ -677,6 +694,7 @@ Select explicit anchor items (strong/mid/weak) and compare new items vs anchors 
 Before considering telemetry complete, verify:
 
 ### Instrumentation
+
 - [ ] `HeadToHeadSessionMetrics` struct created and compiles
 - [ ] Post-session properties (`finalTierDistribution`, `maxTierFraction`, `emptyTierCount`, `domain`) are mutable (`var`)
 - [ ] Session start logs sessionId and poolSize
@@ -688,6 +706,7 @@ Before considering telemetry complete, verify:
 - [ ] Production builds log summary without file I/O
 
 ### Adaptive Budget Validation
+
 - [ ] 5 items → targetComparisonsPerItem = 3
 - [ ] 10 items → targetComparisonsPerItem = 3
 - [ ] 15 items → targetComparisonsPerItem = 4
@@ -697,6 +716,7 @@ Before considering telemetry complete, verify:
 - [ ] 40 items → targetComparisonsPerItem = 6
 
 ### Metrics Accuracy
+
 - [ ] completionRate matches actual progress
 - [ ] skipRate accurate
 - [ ] sessionDuration reasonable (not 0.1s or 1000s)
@@ -705,6 +725,7 @@ Before considering telemetry complete, verify:
 - [ ] Metrics survive app backgrounding/foregrounding
 
 ### Edge Cases
+
 - [ ] Session cancelled mid-comparison logs correctly
 - [ ] App crash → next launch doesn't show stale metrics
 - [ ] Multiple concurrent sessions (shouldn't happen, but handle gracefully)
@@ -715,6 +736,7 @@ Before considering telemetry complete, verify:
 ## Implementation Timeline
 
 ### Phase 1: Core Telemetry (1-2 days)
+
 1. Create `HeadToHeadSessionMetrics.swift` struct
 2. Add `currentMetrics` property to `HeadToHeadState`
 3. Add logging to 5 integration points
@@ -722,12 +744,14 @@ Before considering telemetry complete, verify:
 5. Test with DEBUG builds
 
 ### Phase 2: Production Testing (2-4 weeks)
+
 1. Deploy DEBUG builds to internal users
 2. Collect metrics across pool sizes and domains
 3. Export and analyze JSON files
 4. Identify any issues or patterns
 
 ### Phase 3: Decision & Optimization (1 week+)
+
 1. Review metrics against success criteria
 2. If good → ship production
 3. If issues → targeted optimization
