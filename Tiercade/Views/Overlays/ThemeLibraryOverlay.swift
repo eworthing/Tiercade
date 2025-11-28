@@ -55,7 +55,7 @@ internal struct ThemeLibraryOverlay: View {
 
 private extension ThemeLibraryOverlay {
     var scrim: some View {
-        Color.black.opacity(0.6)
+        Palette.bg.opacity(0.6)
             .ignoresSafeArea()
             .onTapGesture { appState.dismissThemePicker() }
     }
@@ -102,7 +102,7 @@ private extension ThemeLibraryOverlay {
 
             // Grid uses solid background for focus legibility
             grid
-                .background(Color.black.opacity(0.70))
+                .background(Palette.bg.opacity(0.70))
 
             Divider().opacity(0.18)
 
@@ -118,13 +118,13 @@ private extension ThemeLibraryOverlay {
         .padding(.vertical, platformOverlayPadding / 2)
         .background(
             RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
-                .fill(Color.black.opacity(0.85))
+                .fill(Palette.bg.opacity(0.85))
         )
         .overlay(
             RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
-                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                .stroke(Palette.stroke, lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.35), radius: 32, y: 18)
+        .shadow(color: Palette.bg.opacity(0.35), radius: 32, y: 18)
     }
 
     var header: some View {

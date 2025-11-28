@@ -114,7 +114,7 @@ internal struct TierRowWrapper: View {
                 .fill(accent)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                        .stroke(Palette.stroke, lineWidth: 1)
                 )
         )
         #if os(tvOS)

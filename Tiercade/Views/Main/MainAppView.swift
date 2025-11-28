@@ -147,6 +147,11 @@ internal struct MainAppView: View {
         if app.overlays.quickMoveTarget != nil {
             AccessibilityBridgeView(identifier: "TierMove_Sheet")
         }
+
+        // Accessibility bridge for Theme Picker overlay.
+        if app.overlays.showThemePicker {
+            AccessibilityBridgeView(identifier: "ThemePicker_Overlay")
+        }
     }
 
     @ViewBuilder
