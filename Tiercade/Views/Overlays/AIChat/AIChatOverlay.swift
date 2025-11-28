@@ -35,9 +35,9 @@ internal struct AIChatOverlay: View {
             inputBar
         }
         .frame(maxWidth: ScaledDimensions.overlayMaxWidth, maxHeight: ScaledDimensions.overlayMaxHeight)
-        .background(Color.black.opacity(0.85))
+        .background(Palette.bg.opacity(0.85))
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay { RoundedRectangle(cornerRadius: 20).stroke(Color.purple.opacity(0.25), lineWidth: 1) }
+        .overlay { RoundedRectangle(cornerRadius: 20).stroke(Palette.brand.opacity(0.25), lineWidth: 1) }
         .shadow(radius: 20)
         .onAppear { isInputFocused = true }
         #if os(tvOS)
@@ -320,7 +320,7 @@ internal struct AIChatOverlay: View {
             TextField("Ask Apple Intelligence…", text: $inputText)
                 .textFieldStyle(.plain)
                 .padding(12)
-                .background(Color.white.opacity(0.1))
+                .background(Palette.surfHi)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .focused($isInputFocused)
                 .onSubmit(send)
@@ -347,7 +347,7 @@ internal struct AIChatOverlay: View {
             .accessibilityLabel("Send message")
         }
         .padding()
-        .background(Color.black.opacity(0.6))
+        .background(Palette.bg.opacity(0.6))
         .overlay(alignment: .top) { Divider().opacity(0.15) }
     }
 

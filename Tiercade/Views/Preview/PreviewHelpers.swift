@@ -9,17 +9,19 @@ internal enum PreviewFixtures {
         AppState(inMemory: true)
     }
 
-    /// AppState seeded with a simple “sample items” scenario across common tiers.
+    /// AppState seeded with a simple "sample items" scenario across common tiers.
     ///
     /// - Creates a small number of items and distributes them across S/A/B and unranked.
     /// - Leaves undo/history empty so previews remain lightweight.
+    /// - Uses canonical tier order ["S", "A", "B", "C", "D", "F"] per AGENTS.md contract.
     static func makeSampleTierAppState() -> AppState {
         let app = AppState(inMemory: true)
 
         // Clear any seeded tiers and start from the default TierListState structure.
+        // Canonical tier contract: ["S","A","B","C","D","F","unranked"]
         app.tiers = ["S": [], "A": [], "B": [], "C": [], "D": [], "F": [], TierIdentifier.unranked.rawValue: []]
-        app.tierOrder = ["S", "A", "B"]
-        app.tierLabels = ["S": "Top Picks", "A": "Great", "B": "Good"]
+        app.tierOrder = ["S", "A", "B", "C", "D", "F"]
+        app.tierLabels = ["S": "Top Picks", "A": "Great", "B": "Good", "C": "Decent", "D": "Meh", "F": "Worst"]
 
         let items: [Item] = [
             Item(id: "preview-1", name: "Sample Hero", status: nil, description: "A standout item in S tier.", imageUrl: nil),

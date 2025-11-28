@@ -49,7 +49,7 @@ internal struct ContentView: View {
 // Keeping this small pointer here so the file remains easy to scan.
 
 private extension Gradient {
-    static var tierListBackground: Gradient { .init(colors: [Color.black.opacity(0.6), Color.blue.opacity(0.2)]) }
+    static var tierListBackground: Gradient { .init(colors: [Palette.bg.opacity(0.6), Palette.brand.opacity(0.2)]) }
 }
 
 // MARK: - Previews

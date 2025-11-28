@@ -316,7 +316,7 @@ internal struct CardView: View {
         .accessibilityIdentifier("Card_\(item.id)")
         .scaleEffect(app.draggingId == item.id ? 0.98 : 1.0)
         .shadow(
-            color: Color.black.opacity(app.draggingId == item.id ? 0.45 : 0.1),
+            color: Palette.bg.opacity(app.draggingId == item.id ? 0.45 : 0.1),
             radius: app.draggingId == item.id ? 20 : 6,
             x: 0,
             y: app.draggingId == item.id ? 12 : 4
@@ -427,7 +427,7 @@ internal struct CardView: View {
         .cornerRadius(layout.cornerRadius)
         .overlay(
             RoundedRectangle(cornerRadius: layout.cornerRadius)
-                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                .stroke(Palette.stroke, lineWidth: 1)
         )
         .overlay(alignment: .topTrailing) {
             if isMultiSelectActive && app.isSelected(item.id) {
@@ -503,10 +503,10 @@ internal struct CardView: View {
     private var selectionBadge: some View {
         Image(systemName: "checkmark.circle.fill")
             .symbolRenderingMode(.palette)
-            .foregroundStyle(.white, Color.accentColor)
+            .foregroundStyle(Palette.textOnAccent, Color.accentColor)
             .padding(.all, 6)
             .background(
-                Circle().fill(Color.black.opacity(0.4))
+                Circle().fill(Palette.bg.opacity(0.4))
             )
             #if os(tvOS)
             .offset(x: layout.contentPadding * 0.2, y: -layout.contentPadding * 0.2)
@@ -625,7 +625,7 @@ private struct ThumbnailView: View {
                                 weight: .semibold
                             )
                         )
-                        .foregroundStyle(Color.white.opacity(0.78))
+                        .foregroundStyle(Palette.textOnAccent.opacity(0.78))
                 )
         } else {
             RoundedRectangle(cornerRadius: max(layout.cornerRadius - 4, 8), style: .continuous)
@@ -633,7 +633,7 @@ private struct ThumbnailView: View {
                 .overlay(
                     Text(String((item.name ?? item.id).prefix(18)))
                         .font(layout.titleFont)
-                        .foregroundColor(.white)
+                        .foregroundColor(Palette.textOnAccent)
                         .multilineTextAlignment(.center)
                         .minimumScaleFactor(0.7)
                         .padding(.horizontal, 12)
@@ -651,7 +651,7 @@ private struct ThumbnailView: View {
             .overlay(
                 Text(String((item.name ?? item.id).prefix(18)))
                     .font(layout.titleFont)
-                    .foregroundColor(.white)
+                    .foregroundColor(Palette.textOnAccent)
                     .multilineTextAlignment(.center)
                     .minimumScaleFactor(0.75)
                     .padding(.horizontal, 12)
@@ -662,7 +662,7 @@ private struct ThumbnailView: View {
 
 private extension Gradient {
     static var tierListBackground: Gradient {
-        .init(colors: [Color.black.opacity(0.6), Color.blue.opacity(0.2)])
+        .init(colors: [Palette.bg.opacity(0.6), Palette.brand.opacity(0.2)])
     }
 }
 
