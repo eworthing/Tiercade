@@ -360,12 +360,14 @@ private struct TierMoveRow: View {
                             .font(iconFont)
                             .foregroundStyle(tierColor, secondaryIconColor)
                             .symbolRenderingMode(.palette)
+                            .accessibilityHidden(true)
                     } else {
                         Image(systemName: "arrow.right.circle")
                             .font(iconFont)
                             .foregroundStyle(tierColor, secondaryIconColor)
                             .symbolRenderingMode(.palette)
                             .opacity(isFocused ? 1 : 0)
+                            .accessibilityHidden(true)
                     }
                 }
                 .padding(.horizontal, rowHorizontalPadding)

@@ -187,12 +187,14 @@ private struct HybridRow: View {
                             .font(.title3)
                             .foregroundStyle(tierColor, Color.white.opacity(0.85))
                             .symbolRenderingMode(.palette)
+                            .accessibilityHidden(true)
                     } else {
                         Image(systemName: "arrow.right.circle")
                             .font(.title3)
                             .foregroundStyle(tierColor, Color.white.opacity(0.85))
                             .symbolRenderingMode(.palette)
                             .opacity(isFocused ? 1 : 0)
+                            .accessibilityHidden(true)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -263,12 +265,14 @@ private struct BarTextBorderRow: View {
                             .font(.title3)
                             .foregroundStyle(tierColor, Color.white.opacity(0.85))
                             .symbolRenderingMode(.palette)
+                            .accessibilityHidden(true)
                     } else {
                         Image(systemName: "arrow.right.circle")
                             .font(.title3)
                             .foregroundStyle(tierColor, Color.white.opacity(0.85))
                             .symbolRenderingMode(.palette)
                             .opacity(isFocused ? 1 : 0)
+                            .accessibilityHidden(true)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -334,11 +338,13 @@ private struct LeftSectionRow: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.title3)
                             .foregroundStyle(tierColor)
+                            .accessibilityHidden(true)
                     } else {
                         Image(systemName: "arrow.right.circle")
                             .font(.title3)
                             .foregroundStyle(.tertiary)
                             .opacity(isFocused ? 1 : 0)
+                            .accessibilityHidden(true)
                     }
                 }
                 .padding(.horizontal, 20)
@@ -401,12 +407,14 @@ private struct GradientBarRow: View {
                             .font(.title3)
                             .foregroundStyle(tierColor, Color.white.opacity(0.85))
                             .symbolRenderingMode(.palette)
+                            .accessibilityHidden(true)
                     } else {
                         Image(systemName: "arrow.right.circle")
                             .font(.title3)
                             .foregroundStyle(tierColor, Color.white.opacity(0.85))
                             .symbolRenderingMode(.palette)
                             .opacity(isFocused ? 1 : 0)
+                            .accessibilityHidden(true)
                     }
                 }
                 .padding(.horizontal, 20)

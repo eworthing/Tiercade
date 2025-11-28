@@ -192,6 +192,7 @@ internal struct SettingsWizardPage: View, WizardPage {
             Image(systemName: icon)
                 .font(.title3)
                 .foregroundStyle(tint)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: Metrics.grid) {
                 Text(title)
                     .font(.headline)

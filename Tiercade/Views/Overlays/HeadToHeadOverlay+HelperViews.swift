@@ -116,6 +116,7 @@ internal struct HeadToHeadCandidateCard: View {
                             Image(systemName: "photo")
                                 .imageScale(.large)
                                 .foregroundStyle(.white.opacity(0.4))
+                                .accessibilityHidden(true)
                         }
                 @unknown default:
                     thumbnailPlaceholder
@@ -260,6 +261,7 @@ internal struct HeadToHeadCompletionPanel: View {
                 .imageScale(TypeScale.IconScale.large)
                 .fontWeight(.bold)
                 .symbolRenderingMode(.hierarchical)
+                .accessibilityHidden(true)
             Text("All comparisons complete")
                 .font(titleFont)
             Text("Choose Commit Rankings to apply your results or leave the session to discard them.")

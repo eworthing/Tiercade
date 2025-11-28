@@ -119,6 +119,8 @@ internal struct MainAppView: View {
                 Palette.bg.opacity(0.5)
                     .ignoresSafeArea()
                     .allowsHitTesting(true)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityLabel("Close chat")
                     .onTapGesture {
                         app.closeAIChat()
                     }

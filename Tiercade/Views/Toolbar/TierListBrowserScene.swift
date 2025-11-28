@@ -219,6 +219,7 @@ private struct TierListCard: View {
                 .frame(width: 52, height: 52)
                 .background(cardIconBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(handle.displayName)

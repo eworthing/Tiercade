@@ -129,6 +129,7 @@ struct AIItemGeneratorOverlay: View {
                         itemCount = max(5, itemCount - 5)
                     } label: {
                         Image(systemName: "minus")
+                            .accessibilityLabel("Decrease count")
                     }
                     .buttonStyle(.glass)
                     .focusable(interactions: .activate)
@@ -142,6 +143,7 @@ struct AIItemGeneratorOverlay: View {
                         itemCount = min(100, itemCount + 5)
                     } label: {
                         Image(systemName: "plus")
+                            .accessibilityLabel("Increase count")
                     }
                     .buttonStyle(.glass)
                     .focusable(interactions: .activate)
@@ -237,6 +239,7 @@ struct AIItemGeneratorOverlay: View {
                                   ? "checkmark.circle.fill"
                                   : "circle")
                                 .foregroundStyle(candidate.isSelected ? .green : .secondary)
+                                .accessibilityHidden(true)
                         }
                         #else
                         // macOS/tvOS: Always show checkboxes (no EditMode)
@@ -244,6 +247,7 @@ struct AIItemGeneratorOverlay: View {
                               ? "checkmark.circle.fill"
                               : "circle")
                             .foregroundStyle(candidate.isSelected ? .green : .secondary)
+                            .accessibilityHidden(true)
                         #endif
 
                         Text(candidate.name)
@@ -251,6 +255,7 @@ struct AIItemGeneratorOverlay: View {
                         Spacer()
                     }
                     .contentShape(Rectangle())
+                    .accessibilityAddTraits(.isButton)
                     .onTapGesture {
                         #if os(iOS)
                         // iOS: Toggle only when not editing (EditMode available)

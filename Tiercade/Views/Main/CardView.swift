@@ -273,6 +273,7 @@ internal struct CardView: View {
         Image(systemName: "checkmark.circle.fill")
             .symbolRenderingMode(.palette)
             .foregroundStyle(Palette.textOnAccent, Color.accentColor)
+            .accessibilityLabel("Selected")
             .padding(.all, 6)
             .background(
                 Circle().fill(Palette.bg.opacity(0.4))

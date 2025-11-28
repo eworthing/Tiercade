@@ -452,6 +452,7 @@ private struct TierLabelEditor: View {
                 Button(action: { showAdvancedPicker = true }, label: {
                     HStack {
                         Image(systemName: "slider.horizontal.3")
+                            .accessibilityHidden(true)
                         Text("Advanced")
                     }
                     .font(.caption)

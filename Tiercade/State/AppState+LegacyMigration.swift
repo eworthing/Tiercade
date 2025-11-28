@@ -184,6 +184,7 @@ internal struct LegacyMigrationView: View {
             Image(systemName: "arrow.triangle.2.circlepath")
                 .font(TypeScale.wizardIcon)
                 .foregroundColor(.orange)
+                .accessibilityHidden(true)
 
             Text("Legacy Save File Detected")
                 .font(.title2.bold())

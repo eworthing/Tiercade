@@ -179,6 +179,7 @@ internal struct AnalyticsSidebarView: View {
                 .font(TypeScale.analyticsCaption)
                 .foregroundColor(.yellow)
                 .padding(.top, 4)
+                .accessibilityHidden(true)
 
             Text(text)
                 .font(TypeScale.analyticsCaption)

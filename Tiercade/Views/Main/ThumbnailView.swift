@@ -87,6 +87,7 @@ internal struct ThumbnailView: View {
                                 weight: .semibold
                             )
                         )
+                        .accessibilityHidden(true)
                         .foregroundStyle(Palette.textOnAccent.opacity(0.78))
                 )
         } else {

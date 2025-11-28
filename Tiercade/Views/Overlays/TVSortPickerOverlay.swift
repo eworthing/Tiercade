@@ -159,6 +159,7 @@ private struct SortOptionButton: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.title2)
                         .foregroundStyle(Palette.brand)
+                        .accessibilityHidden(true)
                 }
             }
             .padding(.horizontal, 24)

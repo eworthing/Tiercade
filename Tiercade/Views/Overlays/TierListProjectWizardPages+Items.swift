@@ -89,6 +89,7 @@ internal struct ItemsWizardPage: View, WizardPage {
                 Image(systemName: "exclamationmark.triangle")
                     .font(TypeScale.wizardIcon)
                     .foregroundStyle(.orange)
+                    .accessibilityHidden(true)
 
                 Text("AI Generation Requires macOS or iOS")
                     .font(.title2)
@@ -184,6 +185,7 @@ internal struct ItemsWizardPage: View, WizardPage {
             Image(systemName: "square.grid.3x3")
                 .font(TypeScale.emptyStateIcon)
                 .foregroundStyle(Palette.textDim)
+                .accessibilityHidden(true)
             Text("No items found")
                 .font(.title3)
             Text(searchQuery.isEmpty ? "Add items to populate your tier list" : "No items match your search")
@@ -269,6 +271,7 @@ internal struct ItemsWizardPage: View, WizardPage {
         Image(systemName: "chevron.right")
             .foregroundStyle(Palette.textDim)
             .font(.title3)
+            .accessibilityHidden(true)
     }
 
     private var itemCardBackground: some View {

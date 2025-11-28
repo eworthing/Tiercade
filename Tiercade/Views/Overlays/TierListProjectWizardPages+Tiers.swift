@@ -140,6 +140,7 @@ internal struct TiersWizardPage: View, WizardPage {
             Image(systemName: "list.bullet.rectangle")
                 .font(TypeScale.emptyStateIcon)
                 .foregroundStyle(Palette.textDim)
+                .accessibilityHidden(true)
             Text("No tiers defined")
                 .font(.title3)
             Text("Use the Add Tier button below to create ranking tiers")
@@ -183,13 +184,19 @@ internal struct TiersWizardPage: View, WizardPage {
             Spacer()
 
             HStack(spacing: 8) {
-                tierActionButton("arrow.up") { appState.moveTier(tier, direction: -1, in: draft) }
-                tierActionButton("arrow.down") { appState.moveTier(tier, direction: 1, in: draft) }
-                tierActionButton("pencil") {
+                tierActionButton("arrow.up", label: "Move tier up") {
+                    appState.moveTier(tier, direction: -1, in: draft)
+                }
+                tierActionButton("arrow.down", label: "Move tier down") {
+                    appState.moveTier(tier, direction: 1, in: draft)
+                }
+                tierActionButton("pencil", label: "Edit tier") {
                     selectedTierID = tier.identifier
                     showingTierDetailsSheet = true
                 }
-                tierActionButton("trash", role: .destructive) { appState.delete(tier, from: draft) }
+                tierActionButton("trash", label: "Delete tier", role: .destructive) {
+                    appState.delete(tier, from: draft)
+                }
             }
         }
         .padding()
@@ -205,11 +212,13 @@ internal struct TiersWizardPage: View, WizardPage {
 
     private func tierActionButton(
         _ icon: String,
+        label: String,
         role: ButtonRole? = nil,
         action: @escaping () -> Void
     ) -> some View {
         Button(role: role, action: action) {
             Image(systemName: icon)
+                .accessibilityLabel(label)
         }
         #if os(tvOS)
         .buttonStyle(.glass)

@@ -337,6 +337,7 @@ internal struct ProjectSettingsSheet: View {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(.green)
+                                .accessibilityHidden(true)
                             Text("No issues found")
                                 .foregroundStyle(.secondary)
                         }
@@ -345,6 +346,7 @@ internal struct ProjectSettingsSheet: View {
                             HStack(alignment: .top, spacing: 8) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundStyle(.yellow)
+                                    .accessibilityHidden(true)
                                 Text(issue.message)
                                     .font(.caption)
                             }

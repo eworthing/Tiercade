@@ -81,6 +81,7 @@ internal struct TierListQuickMenu: View {
             Image(systemName: "square.grid.2x2")
                 .font(.system(size: Metrics.toolbarIconSize))
                 .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
+                .accessibilityHidden(true)
 
             Text(app.activeTierDisplayName)
                 .font(tierTitleFont)
@@ -98,6 +99,7 @@ internal struct TierListQuickMenu: View {
         HStack(spacing: 12) {
             Image(systemName: "list.bullet.rectangle")
                 .font(TypeScale.menuTitle)
+                .accessibilityHidden(true)
             Text(app.activeTierDisplayName)
                 .font(.title3.weight(.semibold))
                 .lineLimit(1)
@@ -105,6 +107,7 @@ internal struct TierListQuickMenu: View {
                 .accessibilityIdentifier("Toolbar_TierListMenu_Title")
             Image(systemName: "chevron.down")
                 .font(.footnote.weight(.bold))
+                .accessibilityHidden(true)
         }
         .padding(.horizontal, 24)
         .padding(.vertical, 12)

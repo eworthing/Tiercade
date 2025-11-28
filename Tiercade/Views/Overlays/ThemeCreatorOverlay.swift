@@ -35,6 +35,8 @@ internal struct ThemeCreatorOverlay: View {
         ZStack {
             Color.black.opacity(0.75)
                 .ignoresSafeArea()
+                .accessibilityAddTraits(.isButton)
+                .accessibilityLabel("Close theme creator")
                 .onTapGesture { dismiss(returnToPicker: true) }
 
             VStack(spacing: 0) {

@@ -70,6 +70,7 @@ internal struct AIChatOverlay: View {
             Image(systemName: "sparkles")
                 .font(.title2)
                 .foregroundStyle(.purple)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Apple Intelligence")
                     .font(.title2)
@@ -304,6 +305,7 @@ internal struct AIChatOverlay: View {
             Image(systemName: "sparkles.rectangle.stack")
                 .font(TypeScale.emptyStateIcon)
                 .foregroundStyle(.purple.opacity(0.6))
+                .accessibilityHidden(true)
             Text("Ask me anything")
                 .font(.headline)
                 .foregroundStyle(.primary)
