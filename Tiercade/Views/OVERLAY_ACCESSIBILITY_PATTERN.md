@@ -139,12 +139,12 @@ The bridge pattern is the **architecturally correct** solution recognized in the
 
 - [Apple: Accessibility for SwiftUI](https://developer.apple.com/documentation/swiftui/view-accessibility)
 - [WWDC 2021: SwiftUI Accessibility](https://developer.apple.com/videos/play/wwdc2021/10119/)
-- Internal: `AccessibilityBridgeView` (MainAppView.swift:391-406)
-- Internal: `overlayStack` composition (MainAppView.swift:144-228)
+- Internal: `AccessibilityBridgeView` in MainAppView.swift
+- Internal: `overlayStack` composition in MainAppView.swift
 
 ## Maintenance Notes
 
 - When adding new overlays, check if they need UI test coverage
-- If overlay appears instantly on tvOS but times out on Catalyst tests, add a bridge
+- If overlay appears instantly on tvOS but times out on macOS/iOS tests, add a bridge
 - Keep bridge identifier in sync with overlay's `accessibilityIdentifier`
 - Add overlay dismissal to `handleBackCommand()` for Escape key support

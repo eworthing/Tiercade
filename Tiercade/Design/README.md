@@ -136,6 +136,22 @@ Tier accents live in `Palette.tierColors`; never recreate tier color maps—impo
 
 Reference `Metrics` instead of scattering literals so updates (like density tweaks) stay centralized.
 
+### ScaledDimensions
+
+`ScaledDimensions` provides platform-specific sizing for overlays, cards, and interactive elements:
+
+| Token | tvOS | iOS/macOS | Purpose |
+| --- | --- | --- | --- |
+| `overlayMaxWidth` | `1200` | `700` | Maximum width for modal overlays |
+| `overlayMaxHeight` | `900` | `720` | Maximum height for modal overlays |
+| `sheetMaxWidth` | `800` | `600` | Maximum width for sheets |
+| `formFieldWidth` | `360` | `280` | Standard form field width |
+| `candidateCardMinWidth` | `360` | `280` | HeadToHead candidate card minimum |
+| `candidateCardMaxWidth` | `520` | `400` | HeadToHead candidate card maximum |
+| `actionButtonWidth` | `280` | `200` | Standard action button width |
+
+These dimensions ensure overlays and interactive elements scale appropriately for the viewing distance and input method of each platform.
+
 ### TypeScale
 
 `TypeScale` exposes semantic fonts backed by system styles, so they automatically scale with Dynamic Type ([`dynamicTypeSize(_:)`](https://developer.apple.com/documentation/swiftui/view/dynamictypesize(_:))).
@@ -303,5 +319,6 @@ struct CardCell: View {
 ## Cross-links
 
 - tvOS focus, overlays, and build steps: see [`AGENTS.md` § tvOS UX & Focus Management](../../AGENTS.md#tvos-ux--focus-management).
-- HeadToHead and overlay exit contract: [`AGENTS.md` overlay guidance](../../AGENTS.md#HeadToHead-matchup-arena-overlay-specifics).
+- Overlay patterns and new overlay checklist: [`AGENTS.md` § Modal vs Transient Overlays](../../AGENTS.md#modal-vs-transient-overlays).
+- HeadToHead algorithm documentation: [`docs/HeadToHead/README.md`](../../docs/HeadToHead/README.md).
 - Core models and deterministic helpers: [`TiercadeCore/README.md`](../../TiercadeCore/README.md).

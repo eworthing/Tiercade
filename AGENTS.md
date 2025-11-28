@@ -335,7 +335,7 @@ LazyVGrid(columns: columns, spacing: 40) {
 
 ### Modal vs Transient Overlays
 
-**Modal overlays** (ThemePicker, TierListBrowser, HeadToHead, Analytics, QuickMove) use `.fullScreenCover()` which provides **automatic focus containment** via separate presentation context. This is Apple's recommended pattern for modal presentations that must trap focus.
+**Modal overlays** (ThemePicker, TierListBrowser, HeadToHead, Analytics, TierMove) use `.fullScreenCover()` which provides **automatic focus containment** via separate presentation context. This is Apple's recommended pattern for modal presentations that must trap focus.
 
 **Transient overlays** (QuickRank) remain as ZStack overlays using `.focusSection()` and `.focusable()`. For these, keep background content interactive by toggling `.allowsHitTesting(!overlayActive)`—never `.disabled()`.
 
@@ -762,6 +762,9 @@ Add scope for clarity: `feat(tvOS): implement quick move overlay`
 | `Tiercade/Util` | Focus helpers, reusable utilities | Unit tests or inline assertions where behaviour is complex |
 | `TiercadeCore/Sources` | Pure Swift models, logic, formatters | `swift test` (Swift Testing) required for changes |
 | `TiercadeCore/Tests` | Swift Testing suites | Additive; keep deterministic RNG seeds |
+| `docs/HeadToHead` | HeadToHead algorithm docs, telemetry specs | Reference for algorithm validation |
+| `docs/AppleIntelligence` | AI feature specs, test framework | Prototype testing documentation |
+| `TiercadeTests/SecurityTests` | OWASP-class security validation | Security test coverage |
 
 ---
 

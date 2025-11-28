@@ -37,6 +37,8 @@ advanced analytics, multiple export formats, and intelligent insights.
   - CSV (spreadsheet compatible)
   - Markdown (documentation ready)
   - Plain Text (human readable)
+  - PNG (image snapshot)
+  - PDF (printable document, not available on tvOS)
 - **Import Capabilities** - JSON and CSV import with validation and error handling
 - **Progress Tracking** - Visual progress indicators for all file operations
 
@@ -232,7 +234,8 @@ We keep tvOS UI automation lean and accessibility-driven; add high-value Swift T
   - Item generation spec: [`AI_ITEM_GENERATION_PLAN.md`](docs/AppleIntelligence/AI_ITEM_GENERATION_PLAN.md)
   - Research plan: [`DEEP_RESEARCH_2025-10.md`](docs/AppleIntelligence/DEEP_RESEARCH_2025-10.md)
   - Feature flags: [`FEATURE_FLAG_USAGE.md`](docs/AppleIntelligence/FEATURE_FLAG_USAGE.md)
-- **Native macOS migration**: [`CATALYST_TO_NATIVE_MACOS_MIGRATION.md`](CATALYST_TO_NATIVE_MACOS_MIGRATION.md)
+- **HeadToHead algorithm**: [`docs/HeadToHead/README.md`](docs/HeadToHead/README.md) - Pairwise comparison ranking system
+- **Security tests**: [`TiercadeTests/SecurityTests/README.md`](TiercadeTests/SecurityTests/README.md) - OWASP-class vulnerability mitigations
 - **SwiftLint** - Enforce cyclomatic complexity thresholds (warning 8, error 12) as part of pre-commit checks
 
 ### **Project Setup**
@@ -264,9 +267,8 @@ Tiercade/
 │   ├── Views/
 │   │   ├── Main/              # Core screen composition (ContentView, MainAppView)
 │   │   ├── Toolbar/           # Toolbar views and export sheets
-│   │   ├── Overlays/          # QuickMove, Item menu, QR overlays
+│   │   ├── Overlays/          # TierMove, HeadToHead, ThemeCreator, AIChat overlays
 │   │   └── Components/        # Reusable detail, settings, and shared parts
-│   ├── Bridges/               # UIKit/AVKit bridges for focus & galleries
 │   ├── Design/                # Tokens, themes, and tvOS metrics
 │   ├── Export/                # Export renderer helpers
 │   ├── Util/                  # Cross-cutting utilities (focus, device checks)
@@ -439,6 +441,8 @@ This project is currently unlicensed. This is a personal project developed with 
 - **Core Package**: [TiercadeCore/README.md](TiercadeCore/README.md) - Platform-agnostic logic and models
 - **Design System**: [Tiercade/Design/README.md](Tiercade/Design/README.md) - Design tokens and styles
 - **Apple Intelligence**: [docs/AppleIntelligence/README.md](docs/AppleIntelligence/README.md) - AI features, testing, and research
+- **HeadToHead Algorithm**: [docs/HeadToHead/README.md](docs/HeadToHead/README.md) - Pairwise comparison ranking system
+- **Security Tests**: [TiercadeTests/SecurityTests/README.md](TiercadeTests/SecurityTests/README.md) - Security validation suite
 - **Copilot Instructions**: [.github/copilot-instructions.md](.github/copilot-instructions.md) - Development guidance for AI assistance
 
 ## 📞 Support

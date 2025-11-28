@@ -1389,7 +1389,7 @@ func testAIGeneratorButton_opensOverlay() {
 **Probability:** Medium
 
 **Mitigation:**
-1. Use existing patterns from other overlays (HeadToHead, QuickMove)
+1. Use existing patterns from other overlays (HeadToHead, TierMove)
 2. Test early and often in tvOS 26 simulator
 3. Use `.focusSection()` to isolate stages
 4. Validate with VoiceOver enabled

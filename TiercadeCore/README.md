@@ -110,14 +110,32 @@ assert(unchanged == tiers)
 
 ## Tests
 
-Swift Testing suites are planned but not yet checked in. The package manifest
-is ready for them, and the recommended layout is:
+Swift Testing suites are checked in under `Tests/TiercadeCoreTests/`. Run tests with:
 
-- Use the Swift Testing framework (`@Test`, `@Suite`, `#expect`).
-- Place future suites under `Tests/TiercadeCoreTests`.
-- Run `swift test` from the `TiercadeCore` directory once coverage lands;
-  ensure new code respects the strict concurrency flags already enabled in
-  `Package.swift`.
+```bash
+cd TiercadeCore
+swift test
+```
+
+**Test coverage areas:**
+- `HeadToHeadLogicTests.swift` - Pairwise comparison ranking algorithm
+- `HeadToHeadInternalsTests.swift` - Wilson score and boundary logic
+- `HeadToHeadSimulations.swift` - Monte Carlo validation (600+ simulations)
+- `HeadToHeadParameterSweep.swift` - Budget and noise parameter analysis
+- `HeadToHeadVarianceAnalysis.swift` - Consistency and stability tests
+- `TierLogicTests.swift` - Tier move and reorder operations
+- `QuickRankLogicTests.swift` - Quick ranking helpers
+- `ModelResolverTests.swift` - JSON/data decoding validation
+- `RandomUtilsTests.swift` - Seedable RNG determinism
+- `FormattersTests.swift` - Export format output
+- `ModelsTests.swift` - Core data model behavior
+- `SortingTests.swift` - Sort algorithm correctness
+- `DataLoaderTests.swift` - Resource loading
+- `BundledProjectsTests.swift` - Bundled project validation
+- `TierIdentifierTests.swift` - Tier ID normalization
+
+All tests use the Swift Testing framework (`@Test`, `@Suite`, `#expect`) and respect
+the strict concurrency flags enabled in `Package.swift`.
 
 ## Semantic versioning & migration
 
