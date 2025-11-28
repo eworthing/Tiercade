@@ -60,10 +60,10 @@ internal struct ToastView: View {
         .padding(.vertical, Metrics.grid * 1.5)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.black.opacity(0.88))
+                .fill(Palette.bg.opacity(0.88))
         )
         .tint(toast.type.color.opacity(0.24))
-        .shadow(color: Color.black.opacity(0.24), radius: 20, y: 10)
+        .shadow(color: Palette.bg.opacity(0.24), radius: 20, y: 10)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(toast.type.color.opacity(0.3), lineWidth: 1)
@@ -182,7 +182,7 @@ internal struct ProgressIndicatorView: View {
                 .padding(.horizontal, Metrics.grid * 2)
                 .padding(.vertical, Metrics.grid * 2)
                 .tvGlassRounded(20)
-                .shadow(color: Color.black.opacity(0.2), radius: 18, y: 8)
+                .shadow(color: Palette.bg.opacity(0.2), radius: 18, y: 8)
             }
             .transition(.opacity.combined(with: .scale(scale: 0.9)))
         }
@@ -227,7 +227,7 @@ internal struct QuickRankOverlay: View {
         if let item = app.quickRankTarget {
             let isUITest = ProcessInfo.processInfo.arguments.contains("-uiTest")
             ZStack {
-                Color.black.opacity(0.65)
+                Palette.bg.opacity(0.65)
                     .ignoresSafeArea()
                     .onTapGesture { app.cancelQuickRank() }
                     .accessibilityHidden(true)
@@ -248,17 +248,17 @@ internal struct QuickRankOverlay: View {
                             .focused($focused, equals: .cancel)
                     }
                 }
-                .accessibilityIdentifier("QuickRank_Overlay")
+                // Overlay root presence is exposed via AccessibilityBridgeView in MainAppView
                 .padding(Metrics.grid * 1.5)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Color.black.opacity(0.85))
+                        .fill(Palette.bg.opacity(0.85))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1.25)
+                        .stroke(Palette.stroke, lineWidth: 1.25)
                 )
-                .shadow(color: Color.black.opacity(0.22), radius: 22, y: 8)
+                .shadow(color: Palette.bg.opacity(0.22), radius: 22, y: 8)
                 .padding(Metrics.grid)
                 .accessibilityElement(children: .contain)
                 .accessibilityAddTraits(.isModal)
@@ -271,26 +271,19 @@ internal struct QuickRankOverlay: View {
                 .focusable()
                 .focused($overlayHasFocus)
                 .onKeyPress(.escape) {
-                app.cancelQuickRank()
-                return .handled
+                    app.cancelQuickRank()
+                    return .handled
                 }
                 .onAppear {
-                focused = defaultFocusField
-                overlayHasFocus = true
+                    focused = defaultFocusField
+                    overlayHasFocus = true
                 }
                 .onDisappear {
-                focused = nil
-                overlayHasFocus = false
+                    focused = nil
+                    overlayHasFocus = false
                 }
-                .onChange(of: overlayHasFocus) { _, newValue in
-                if !newValue {
-                Task { @MainActor in
-                try? await Task.sleep(for: FocusWorkarounds.reassertDelay)
-                guard app.quickRankTarget != nil else { return }
-                overlayHasFocus = true
-                }
-                }
-                }
+                // Note: Removed focus reassertion anti-pattern per AGENTS.md
+                // QuickRank is a transient overlay - focus can naturally escape
                 #endif
             }
             .transition(isUITest ? .identity : .move(edge: .bottom).combined(with: .opacity))

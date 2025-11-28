@@ -18,10 +18,10 @@ internal struct InspectorView: View {
 
             Text("Colors").font(TypeScale.label).foregroundColor(Palette.textDim).textCase(.uppercase)
             HStack(spacing: Metrics.grid) {
-                ColorSwatch(color: Palette.tierColor("S"), action: {})
-                ColorSwatch(color: Palette.tierColor("A"), action: {})
-                ColorSwatch(color: Palette.tierColor("B"), action: {})
-                ColorSwatch(color: Palette.tierColor("C"), action: {})
+                ColorSwatch(color: Palette.tierColor("S", from: app.tierColors), action: {})
+                ColorSwatch(color: Palette.tierColor("A", from: app.tierColors), action: {})
+                ColorSwatch(color: Palette.tierColor("B", from: app.tierColors), action: {})
+                ColorSwatch(color: Palette.tierColor("C", from: app.tierColors), action: {})
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel("Tier colors")

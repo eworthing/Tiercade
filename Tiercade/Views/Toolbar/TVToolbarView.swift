@@ -11,7 +11,8 @@ internal struct TVToolbarView: View {
     @State private var showingSortPicker = false
 
     private enum Control: Hashable {
-        case undo, redo, randomize, reset, library, newTierList, multiSelect, headToHead, analytics, sort, applySort, density, theme, aiChat
+        case undo, redo, randomize, reset, library, newTierList, multiSelect
+        case headToHead, analytics, sort, applySort, density, theme, aiChat
     }
 
     internal var body: some View {

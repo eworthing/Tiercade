@@ -1,5 +1,8 @@
 import SwiftUI
 
+// swiftlint:disable file_length type_body_length
+// Prototype AI chat overlay - comprehensive UI for testing justifies complexity
+
 #if canImport(ImagePlayground)
 import ImagePlayground
 #endif
@@ -16,16 +19,18 @@ import UIKit
 internal struct AIChatOverlay: View {
     @Environment(AppState.self) var app: AppState
     @Bindable var ai: AIGenerationState
-    @State var inputText = ""
-    @FocusState var isInputFocused: Bool
+    @State private var inputText = ""
+    @FocusState private var isInputFocused: Bool
+    // swiftlint:disable:next private_swiftui_state - Accessed from AIChatOverlay+ImageGeneration.swift
     @State var showImagePreview = false
+    // swiftlint:disable:next private_swiftui_state - Accessed from AIChatOverlay+ImageGeneration.swift
     @State var generatedImage: Image?
-    @State var isGeneratingImage = false
-    @State var showTestSuitePicker = false
+    @State private var isGeneratingImage = false
+    @State private var showTestSuitePicker = false
     #if DEBUG
-    @State var useLeadingToolchain = false
-    @State var showSteps = false
-    @State var useMinimalPrompt = false
+    @State private var useLeadingToolchain = false
+    @State private var showSteps = false
+    @State private var useMinimalPrompt = false
     #endif
 
     internal var body: some View {
@@ -34,10 +39,10 @@ internal struct AIChatOverlay: View {
             messagesSection
             inputBar
         }
-        .frame(maxWidth: 700, maxHeight: 720)
-        .background(Color.black.opacity(0.85))
+        .frame(maxWidth: ScaledDimensions.overlayMaxWidth, maxHeight: ScaledDimensions.overlayMaxHeight)
+        .background(Palette.bg.opacity(0.85))
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay { RoundedRectangle(cornerRadius: 20).stroke(Color.purple.opacity(0.25), lineWidth: 1) }
+        .overlay { RoundedRectangle(cornerRadius: 20).stroke(Palette.brand.opacity(0.25), lineWidth: 1) }
         .shadow(radius: 20)
         .onAppear { isInputFocused = true }
         #if os(tvOS)
@@ -65,6 +70,7 @@ internal struct AIChatOverlay: View {
             Image(systemName: "sparkles")
                 .font(.title2)
                 .foregroundStyle(.purple)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Apple Intelligence")
                     .font(.title2)
@@ -74,7 +80,9 @@ internal struct AIChatOverlay: View {
             Spacer()
 
             #if DEBUG
-            Button(action: { showTestSuitePicker = true }) {
+            Button {
+                showTestSuitePicker = true
+            } label: {
                 Image(systemName: "list.bullet.rectangle")
                     .foregroundStyle(.blue)
             }
@@ -100,7 +108,8 @@ internal struct AIChatOverlay: View {
             #endif
             .onChange(of: useMinimalPrompt) { _, newValue in
                 ai.promptStyle = newValue ? .minimal : .strict
-                ai.messages.append(AIChatMessage(content: newValue ? "🧪 Prompt style: Minimal JSON" : "🧪 Prompt style: Strict JSON", isUser: false))
+                let style = newValue ? "🧪 Prompt style: Minimal JSON" : "🧪 Prompt style: Strict JSON"
+                ai.messages.append(AIChatMessage(content: style, isUser: false))
             }
             .accessibilityIdentifier("AIChat_PromptABToggle")
             .accessibilityLabel("Toggle A/B prompt style")
@@ -117,9 +126,11 @@ internal struct AIChatOverlay: View {
                 if newValue {
                     ai.hybridSwitchEnabled = false
                     ai.guidedBudgetBumpFirst = true
-                    ai.messages.append(AIChatMessage(content: "⚙️ Leading toolchain enabled (guided + budget bump; hybrid off ≤50)", isUser: false))
+                    let msg = "⚙️ Leading toolchain enabled (guided + budget bump; hybrid off ≤50)"
+                    ai.messages.append(AIChatMessage(content: msg, isUser: false))
                 } else {
-                    ai.messages.append(AIChatMessage(content: "⚙️ Leading toolchain disabled (standard chat)", isUser: false))
+                    let msg = "⚙️ Leading toolchain disabled (standard chat)"
+                    ai.messages.append(AIChatMessage(content: msg, isUser: false))
                 }
             }
             .accessibilityIdentifier("AIChat_ToolchainToggle")
@@ -134,7 +145,8 @@ internal struct AIChatOverlay: View {
             #endif
             .onChange(of: showSteps) { _, newValue in
                 ai.showStepByStep = newValue
-                ai.messages.append(AIChatMessage(content: newValue ? "🔎 Step‑by‑step logging enabled" : "🔎 Step‑by‑step logging disabled", isUser: false))
+                let stepMsg = newValue ? "🔎 Step‑by‑step logging enabled" : "🔎 Step‑by‑step logging disabled"
+                ai.messages.append(AIChatMessage(content: stepMsg, isUser: false))
             }
             .accessibilityIdentifier("AIChat_StepToggle")
             .accessibilityLabel("Toggle step-by-step logging")
@@ -291,8 +303,9 @@ internal struct AIChatOverlay: View {
     private var emptyState: some View {
         VStack(spacing: 12) {
             Image(systemName: "sparkles.rectangle.stack")
-                .font(.system(size: 56))
+                .font(TypeScale.emptyStateIcon)
                 .foregroundStyle(.purple.opacity(0.6))
+                .accessibilityHidden(true)
             Text("Ask me anything")
                 .font(.headline)
                 .foregroundStyle(.primary)
@@ -320,7 +333,7 @@ internal struct AIChatOverlay: View {
             TextField("Ask Apple Intelligence…", text: $inputText)
                 .textFieldStyle(.plain)
                 .padding(12)
-                .background(Color.white.opacity(0.1))
+                .background(Palette.surfHi)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .focused($isInputFocused)
                 .onSubmit(send)
@@ -347,7 +360,7 @@ internal struct AIChatOverlay: View {
             .accessibilityLabel("Send message")
         }
         .padding()
-        .background(Color.black.opacity(0.6))
+        .background(Palette.bg.opacity(0.6))
         .overlay(alignment: .top) { Divider().opacity(0.15) }
     }
 
@@ -446,8 +459,10 @@ internal struct AIChatOverlay: View {
                 }
                 let report = await runner.runDefaultSuite()
                 await MainActor.run {
+                    let summary = "📊 Coordinator experiments complete: " +
+                        "\(report.successfulRuns)/\(report.totalRuns) passed. Report saved to temp directory."
                     ai.messages.append(AIChatMessage(
-                        content: "📊 Coordinator experiments complete: \(report.successfulRuns)/\(report.totalRuns) passed. Report saved to temp directory.",
+                        content: summary,
                         isUser: false
                     ))
                 }
@@ -556,6 +571,7 @@ internal struct AIChatOverlay: View {
         #endif
     }
 }
+// swiftlint:enable type_body_length
 
 // MARK: - Test Suite Picker Sheet
 

@@ -323,6 +323,7 @@ internal struct AddSchemaFieldSheet: View {
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(.red)
+                                .accessibilityLabel("Remove option")
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("Schema_Option_Remove_\(option)")
@@ -400,6 +401,7 @@ private struct FieldTypeCard: View {
                         .font(.title3.weight(.semibold))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(isSelected ? Color.accentColor : .primary)
+                        .accessibilityHidden(true)
 
                     Text(type.displayName)
                         .font(.headline)
@@ -453,6 +455,7 @@ private struct FieldTypeDetailView: View {
             HStack(spacing: 12) {
                 Image(systemName: type.icon)
                     .font(.title2.weight(.semibold))
+                    .accessibilityHidden(true)
                 Text(type.displayName)
                     .font(.title2.weight(.semibold))
             }

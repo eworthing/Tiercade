@@ -72,7 +72,7 @@ internal struct DetailView: View {
                 if let u = pendingURL { QRSheet(url: u) }
             })
         }
-        .padding(24)
+        .padding(Metrics.cardPadding)
         #if os(tvOS)
         .fullScreenCover(
             isPresented: $showVideoPlayer,
@@ -114,7 +114,7 @@ private struct TVVideoPlayerContainer: View {
                     Button(action: dismiss) {
                         Label("Close", systemImage: "xmark.circle.fill")
                             .labelStyle(.iconOnly)
-                            .font(.system(size: 54, weight: .semibold))
+                            .font(TypeScale.detailHero)
                             .symbolRenderingMode(.hierarchical)
                     }
                     .buttonStyle(.plain)

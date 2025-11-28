@@ -87,8 +87,9 @@ internal struct ItemsWizardPage: View, WizardPage {
             // tvOS: Show informative message
             VStack(spacing: Metrics.grid * 4) {
                 Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 60))
+                    .font(TypeScale.wizardIcon)
                     .foregroundStyle(.orange)
+                    .accessibilityHidden(true)
 
                 Text("AI Generation Requires macOS or iOS")
                     .font(.title2)
@@ -182,8 +183,9 @@ internal struct ItemsWizardPage: View, WizardPage {
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "square.grid.3x3")
-                .font(.system(size: 60))
+                .font(TypeScale.emptyStateIcon)
                 .foregroundStyle(Palette.textDim)
+                .accessibilityHidden(true)
             Text("No items found")
                 .font(.title3)
             Text(searchQuery.isEmpty ? "Add items to populate your tier list" : "No items match your search")
@@ -220,7 +222,7 @@ internal struct ItemsWizardPage: View, WizardPage {
             Spacer()
             itemCardChevron
         }
-        .padding(24)
+        .padding(Metrics.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(itemCardBackground)
     }
@@ -269,6 +271,7 @@ internal struct ItemsWizardPage: View, WizardPage {
         Image(systemName: "chevron.right")
             .foregroundStyle(Palette.textDim)
             .font(.title3)
+            .accessibilityHidden(true)
     }
 
     private var itemCardBackground: some View {

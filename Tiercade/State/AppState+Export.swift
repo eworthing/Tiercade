@@ -154,12 +154,9 @@ internal extension AppState {
     }
 
     /// Sanitizes CSV cell values to prevent formula injection attacks
-    /// Prefixes formula-leading characters (=, +, -, @) with a single quote
     static func sanitizeCSVCell(_ value: String) -> String {
-        if value.hasPrefix("=") || value.hasPrefix("+") || value.hasPrefix("-") || value.hasPrefix("@") {
-            return "'" + value
-        }
-        return value
+        let formulaChars: [Character] = ["=", "+", "-", "@"]
+        return value.first.map { formulaChars.contains($0) ? "'\(value)" : value } ?? value
     }
 
     private func exportToCSV(group: String, themeName: String) -> String {
@@ -262,9 +259,12 @@ internal extension AppState {
     private func exportCanonicalProjectJSON(group: String, themeName: String) throws -> (Data, String) {
         let artifacts = try buildProjectExportArtifacts(group: group, themeName: themeName)
         let data = try encodeProjectForExport(artifacts.project)
-        let preferredName = artifacts.project.title?.isEmpty == false
-            ? artifacts.project.title!
-            : artifacts.project.projectId
+        let preferredName: String
+        if let title = artifacts.project.title, !title.isEmpty {
+            preferredName = title
+        } else {
+            preferredName = artifacts.project.projectId
+        }
         let fileName = makeExportFileName(from: preferredName, fileExtension: "json")
         return (data, fileName)
     }
@@ -571,11 +571,7 @@ internal extension AppState {
     }
 
     private func exportTierOrderIncludingUnranked() -> [String] {
-        var ordered = tierOrder
-        if !ordered.contains("unranked") {
-            ordered.append("unranked")
-        }
-        return ordered
+        tierOrder.contains("unranked") ? tierOrder : tierOrder + ["unranked"]
     }
 
     private func makeExportFileName(from preferredName: String, fileExtension ext: String) -> String {

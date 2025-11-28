@@ -1,5 +1,6 @@
 import Foundation
 
+// swiftlint:disable force_unwrapping - Prototype analysis code, URL/file force unwraps are intentional
 #if canImport(FoundationModels) && DEBUG
 import FoundationModels
 
@@ -293,3 +294,4 @@ nonisolated static func withTimeout<T: Sendable>(
 }
 }
 #endif
+// swiftlint:enable force_unwrapping

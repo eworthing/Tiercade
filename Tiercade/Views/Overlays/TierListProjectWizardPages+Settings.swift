@@ -141,7 +141,7 @@ internal struct SettingsWizardPage: View, WizardPage {
             if appState.tierListCreatorIssues.isEmpty {
                 statusChip(
                     icon: "checkmark.circle.fill",
-                    tint: Palette.tierColor("B"),
+                    tint: Palette.tierColor("B", from: appState.tierColors),
                     title: "No issues found",
                     message: "Your project configuration is valid"
                 )
@@ -150,7 +150,7 @@ internal struct SettingsWizardPage: View, WizardPage {
                     ForEach(appState.tierListCreatorIssues) { issue in
                         statusChip(
                             icon: "exclamationmark.triangle.fill",
-                            tint: Palette.tierColor("S"),
+                            tint: Palette.tierColor("S", from: appState.tierColors),
                             title: issue.category.rawValue.capitalized,
                             message: issue.message
                         )
@@ -192,6 +192,7 @@ internal struct SettingsWizardPage: View, WizardPage {
             Image(systemName: icon)
                 .font(.title3)
                 .foregroundStyle(tint)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: Metrics.grid) {
                 Text(title)
                     .font(.headline)

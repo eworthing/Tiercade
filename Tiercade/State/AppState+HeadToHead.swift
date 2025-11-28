@@ -50,7 +50,10 @@ internal extension AppState {
         headToHead.suggestedPairs = []
 
         Logger.headToHead.info(
-            "Started HeadToHead: pool=\(self.headToHead.pool.count) target=\(targetComparisons) pairs=\(self.headToHead.totalComparisons)"
+            """
+            Started HeadToHead: pool=\(self.headToHead.pool.count) \
+            target=\(targetComparisons) pairs=\(self.headToHead.totalComparisons)
+            """
         )
 
         nextHeadToHeadPair()
@@ -102,12 +105,13 @@ internal extension AppState {
 
         autoAdvanceIfNeeded()
 
+        let pairDesc = "\(a.id)-\(b.id)"
         if headToHead.phase == .refinement {
-            // swiftlint:disable:next line_length
-            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(a.id)-\(b.id) target=\(self.headToHead.refinementCompletedComparisons)/\(self.headToHead.refinementTotalComparisons)")
+            let progress = "\(headToHead.refinementCompletedComparisons)/\(headToHead.refinementTotalComparisons)"
+            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(pairDesc) refine=\(progress)")
         } else {
-            // swiftlint:disable:next line_length
-            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(a.id)-\(b.id) progress=\(self.headToHead.completedComparisons)/\(self.headToHead.totalComparisons)")
+            let progress = "\(headToHead.completedComparisons)/\(headToHead.totalComparisons)"
+            Logger.headToHead.info("Vote: win=\(winner.id) pair=\(pairDesc) progress=\(progress)")
         }
     }
 
@@ -116,7 +120,9 @@ internal extension AppState {
         headToHead.deferredPairs.append(pair)
         headToHead.skippedPairKeys.insert(headToHeadPairKey(pair))
         headToHead.currentPair = nil
-        Logger.headToHead.info("Skipped pair: \(pair.0.id)-\(pair.1.id), deferred=\(self.headToHead.deferredPairs.count)")
+        Logger.headToHead.info(
+            "Skipped pair: \(pair.0.id)-\(pair.1.id), deferred=\(self.headToHead.deferredPairs.count)"
+        )
         nextHeadToHeadPair()
     }
 
@@ -127,7 +133,9 @@ internal extension AppState {
 
     private func autoAdvanceIfNeeded() {
         guard headToHead.isActive else { return }
-        guard headToHead.pairsQueue.isEmpty, headToHead.deferredPairs.isEmpty, headToHead.currentPair == nil else { return }
+        let queueEmpty = headToHead.pairsQueue.isEmpty
+        let deferredEmpty = headToHead.deferredPairs.isEmpty
+        guard queueEmpty, deferredEmpty, headToHead.currentPair == nil else { return }
         handleCombinedCompletion()
     }
 
@@ -218,7 +226,9 @@ internal extension AppState {
     func cancelHeadToHead(fromExitCommand: Bool = false) {
         guard headToHead.isActive else { return }
         #if os(tvOS)
-        if fromExitCommand, let activatedAt = headToHead.activatedAt, Date().timeIntervalSince(activatedAt) < TVInteraction.exitCommandDebounce {
+        let debounceWindow = TVInteraction.exitCommandDebounce
+        if fromExitCommand, let activated = headToHead.activatedAt,
+           Date().timeIntervalSince(activated) < debounceWindow {
             Logger.headToHead.debug("Cancel ignored: exitCommand within debounce window")
             return
         }

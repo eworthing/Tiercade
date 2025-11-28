@@ -6,7 +6,7 @@ internal extension AppState {
     // MARK: - Item Management
     func reset(showToast: Bool = false) {
         let hasAnyData = (tierOrder + ["unranked"]).contains { tierName in
-            (tiers[tierName] ?? []).count > 0
+            !(tiers[tierName] ?? []).isEmpty
         }
 
         if hasAnyData && !showToast {
@@ -55,7 +55,7 @@ internal extension AppState {
 
         // Check if there's data in ranked tiers (excluding unranked)
         let hasRankedData = tierOrder.contains { tierName in
-            (tiers[tierName] ?? []).count > 0
+            !(tiers[tierName] ?? []).isEmpty
         }
 
         if hasRankedData {

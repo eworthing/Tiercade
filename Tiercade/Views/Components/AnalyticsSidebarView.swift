@@ -19,7 +19,7 @@ internal struct AnalyticsSidebarView: View {
             let width = proxy.size.width * 0.65
             ZStack(alignment: .trailing) {
                 // Background dimming (non-focusable; tap to dismiss)
-                Color.black.opacity(0.55)
+                Palette.bg.opacity(0.55)
                     .ignoresSafeArea()
                     .onTapGesture { app.closeAnalyticsSidebar() }
                     .accessibilityHidden(true)
@@ -50,7 +50,10 @@ internal struct AnalyticsSidebarView: View {
                 .move(edge: .trailing)
                     .combined(with: .opacity)
             )
-            .animation(reduceMotion ? nil : Animation.easeInOut(duration: 0.35), value: app.overlays.showAnalyticsSidebar)
+            .animation(
+                reduceMotion ? nil : Animation.easeInOut(duration: 0.35),
+                value: app.overlays.showAnalyticsSidebar
+            )
         }
     }
 
@@ -74,7 +77,7 @@ internal struct AnalyticsSidebarView: View {
                 ProgressView()
                     .scaleEffect(2.0)
                 Text("Calculating statistics...")
-                    .font(.system(size: 28, weight: .regular))
+                    .font(TypeScale.analyticsBody)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -93,9 +96,9 @@ internal struct AnalyticsSidebarView: View {
     private func headerSection(totalItems: Int) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Analytics")
-                .font(.system(size: 48, weight: .bold))
+                .font(TypeScale.analyticsTitle)
             Text("\(totalItems) items")
-                .font(.system(size: 28, weight: .regular))
+                .font(TypeScale.analyticsBody)
                 .foregroundStyle(.secondary)
         }
     }
@@ -104,19 +107,19 @@ internal struct AnalyticsSidebarView: View {
         let interpretation = balanceInterpretation(for: score)
         return VStack(alignment: .leading, spacing: 16) {
             Text("Balance Score")
-                .font(.system(size: 32, weight: .semibold))
+                .font(TypeScale.analyticsSection)
 
             HStack(alignment: .lastTextBaseline, spacing: 12) {
                 Text(balanceScoreText(score))
-                    .font(.system(size: 72, weight: .bold))
+                    .font(TypeScale.analyticsHero)
                     .foregroundColor(balanceColor(for: score))
                 Text("/100")
-                    .font(.system(size: 36, weight: .regular))
+                    .font(TypeScale.analyticsSubtitle)
                     .foregroundStyle(.secondary)
             }
 
             Text(interpretation)
-                .font(.system(size: 24, weight: .regular))
+                .font(TypeScale.analyticsCaption)
                 .foregroundStyle(.secondary)
         }
     }
@@ -124,17 +127,17 @@ internal struct AnalyticsSidebarView: View {
     private func tierDistributionSection(distribution: [TierDistributionData]) -> some View {
         VStack(alignment: .leading, spacing: 24) {
             Text("Tier Distribution")
-                .font(.system(size: 32, weight: .semibold))
+                .font(TypeScale.analyticsSection)
 
             Chart(distribution) { tier in
                 BarMark(
                     x: .value("Items", tier.count),
                     y: .value("Tier", tier.tier)
                 )
-                .foregroundStyle(Palette.tierColor(tier.tierId))
+                .foregroundStyle(Palette.tierColor(tier.tierId, from: app.tierColors))
                 .annotation(position: .trailing) {
                     Text(percentageText(for: tier.percentage))
-                        .font(.system(size: 22, weight: .semibold))
+                        .font(TypeScale.analyticsBadge)
                         .foregroundStyle(Palette.text)
                 }
             }
@@ -154,11 +157,11 @@ internal struct AnalyticsSidebarView: View {
     private func insightsSection(insights: [String]) -> some View {
         VStack(alignment: .leading, spacing: 24) {
             Text("Insights")
-                .font(.system(size: 32, weight: .semibold))
+                .font(TypeScale.analyticsSection)
 
             if insights.isEmpty {
                 Text("Your tier list looks balanced!")
-                    .font(.system(size: 24, weight: .regular))
+                    .font(TypeScale.analyticsCaption)
                     .foregroundStyle(.secondary)
             } else {
                 VStack(alignment: .leading, spacing: 16) {
@@ -173,12 +176,13 @@ internal struct AnalyticsSidebarView: View {
     private func insightCard(text: String, index: Int) -> some View {
         HStack(alignment: .top, spacing: 16) {
             Image(systemName: "lightbulb.fill")
-                .font(.system(size: 24, weight: .regular))
+                .font(TypeScale.analyticsCaption)
                 .foregroundColor(.yellow)
                 .padding(.top, 4)
+                .accessibilityHidden(true)
 
             Text(text)
-                .font(.system(size: 24, weight: .regular))
+                .font(TypeScale.analyticsCaption)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.leading)
         }

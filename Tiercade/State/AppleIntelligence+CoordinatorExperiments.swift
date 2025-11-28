@@ -128,6 +128,7 @@ internal struct CoordinatorExperimentRunner {
         return await run(scenarios: scenarios)
     }
 
+    // swiftlint:disable:next function_body_length
     func runMediumNMicroGrid() async -> Report {
         // Medium-N grid to select best arm by pass@N then time/unique
         let scenarios: [Scenario] = [
@@ -210,6 +211,7 @@ internal struct CoordinatorExperimentRunner {
         return report
     }
 
+    // swiftlint:disable:next function_body_length
     func run(scenarios: [Scenario]) async -> Report {
         onProgress("🔧 Coordinator experiments: starting (\(scenarios.count) scenarios)")
 
@@ -255,7 +257,8 @@ internal struct CoordinatorExperimentRunner {
                     let dupPct = result.diagnostics.dupRate.map { String(format: "%.1f%%", $0 * 100) } ?? "n/a"
                     let durStr = String(format: "%.2fs", result.duration)
                     let uniqueCount = result.items.count
-                    onProgress("  • seed=\(seed) pass=\(pass) unique=\(uniqueCount) dup=\(dupPct) dur=\(durStr) escalate=\(escalate)")
+                    let status = "  • seed=\(seed) pass=\(pass) unique=\(uniqueCount)"
+                    onProgress("\(status) dup=\(dupPct) dur=\(durStr) escalate=\(escalate)")
 
                 } catch {
                     onProgress("  ❌ seed=\(seed) error: \(error.localizedDescription)")

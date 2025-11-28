@@ -203,6 +203,7 @@ internal struct TierListProjectWizard: View {
             VStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.body)
+                    .accessibilityHidden(true)
                 Text(title)
                     .font(.caption)
             }

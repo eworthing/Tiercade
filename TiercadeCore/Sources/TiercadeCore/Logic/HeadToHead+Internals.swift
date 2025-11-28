@@ -345,7 +345,7 @@ extension HeadToHeadLogic {
             guard let upper = metrics[ordered[index].id],
                   let lower = metrics[ordered[index + 1].id] else { continue }
 
-            // TODO: Consider using relative epsilon in future once validated
+            // Note: relative epsilon approach available but not yet validated
             // let epsilon = relativeOverlapEpsilon(upper: upper, lower: lower)
             let raw = (upper.wilsonLB - lower.wilsonUB) + overlapEps
             let delta = max(0, raw)
@@ -593,45 +593,5 @@ extension HeadToHeadLogic {
             }
         }
         return output
-    }
-
-    internal static func wilsonLowerBound(wins: Int, total: Int, z: Double) -> Double {
-        guard total > 0 else { return 0 }
-        let p = Double(wins) / Double(total)
-        let z2 = z * z
-        let denominator = 1.0 + z2 / Double(total)
-        let center = p + z2 / (2.0 * Double(total))
-        let margin = z * sqrt((p * (1.0 - p) + z2 / (4.0 * Double(total))) / Double(total))
-        return max(0, (center - margin) / denominator)
-    }
-
-    internal static func wilsonUpperBound(wins: Int, total: Int, z: Double) -> Double {
-        guard total > 0 else { return 0 }
-        let p = Double(wins) / Double(total)
-        let z2 = z * z
-        let denominator = 1.0 + z2 / Double(total)
-        let center = p + z2 / (2.0 * Double(total))
-        let margin = z * sqrt((p * (1.0 - p) + z2 / (4.0 * Double(total))) / Double(total))
-        return min(1, (center + margin) / denominator)
-    }
-
-    internal static func wilsonLowerBoundD(wins: Double, total: Double, z: Double) -> Double {
-        guard total > 0 else { return 0 }
-        let p = wins / total
-        let z2 = z * z
-        let denominator = 1.0 + z2 / total
-        let center = p + z2 / (2.0 * total)
-        let margin = z * sqrt((p * (1.0 - p) + z2 / (4.0 * total)) / total)
-        return max(0, (center - margin) / denominator)
-    }
-
-    internal static func wilsonUpperBoundD(wins: Double, total: Double, z: Double) -> Double {
-        guard total > 0 else { return 0 }
-        let p = wins / total
-        let z2 = z * z
-        let denominator = 1.0 + z2 / total
-        let center = p + z2 / (2.0 * total)
-        let margin = z * sqrt((p * (1.0 - p) + z2 / (4.0 * total)) / total)
-        return min(1, (center + margin) / denominator)
     }
 }

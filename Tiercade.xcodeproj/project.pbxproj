@@ -466,7 +466,7 @@
 					"@loader_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature StrictConcurrency -strict-concurrency=complete";
+				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature StrictConcurrency -strict-concurrency=complete -default-isolation MainActor";
 				PRODUCT_BUNDLE_IDENTIFIER = eworthing.TiercadeUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -496,7 +496,7 @@
 					"@loader_path/Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature StrictConcurrency -strict-concurrency=complete";
+				OTHER_SWIFT_FLAGS = "$(inherited) -enable-upcoming-feature StrictConcurrency -strict-concurrency=complete -default-isolation MainActor";
 				PRODUCT_BUNDLE_IDENTIFIER = eworthing.TiercadeUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

@@ -43,7 +43,7 @@ internal struct DetailSidebarView: View {
             app.overlays.detailItem = nil
         } label: {
             Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 44, weight: .bold))
+                .font(TypeScale.detailTitle)
                 .symbolRenderingMode(.hierarchical)
         }
         .buttonStyle(.plain)

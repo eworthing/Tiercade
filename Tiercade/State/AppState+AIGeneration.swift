@@ -28,6 +28,7 @@ internal extension AppState {
     /// - Note: Uses existing `withLoadingIndicator` for progress UI
     /// - Note: Only available on macOS/iOS 26+
     @available(iOS 26.0, macOS 26.0, *)
+    // swiftlint:disable:next function_body_length
     func generateItems(description: String, count: Int) async {
         let request = AIGenerationRequest(
             description: description,

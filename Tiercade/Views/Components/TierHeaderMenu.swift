@@ -65,7 +65,7 @@ private struct TierLabelEditor: View {
             HStack(spacing: 12) {
                 TextField("Rename", text: $label)
                     .textFieldStyle(.plain)
-                    .frame(width: 360)
+                    .frame(width: ScaledDimensions.formFieldWidth)
                 Button("Apply") {
                     app.setDisplayLabel(label, for: tierId)
                     app.showInfoToast("Renamed", message: "Tier \(tierId) → \(label)")
@@ -74,7 +74,7 @@ private struct TierLabelEditor: View {
             HStack(spacing: 12) {
                 TextField("Hex Color (e.g., #E11D48)", text: $colorHex)
                     .textFieldStyle(.plain)
-                    .frame(width: 360)
+                    .frame(width: ScaledDimensions.formFieldWidth)
                 Button("Set Color") {
                     app.setDisplayColorHex(colorHex, for: tierId)
                     app.showInfoToast("Recolored", message: colorHex)
@@ -92,7 +92,7 @@ private struct TierLabelEditor: View {
                 Button("Close", role: .cancel) { showMenu = false }
             }
         }
-        .padding(24)
+        .padding(Metrics.cardPadding)
     }
 }
 #endif

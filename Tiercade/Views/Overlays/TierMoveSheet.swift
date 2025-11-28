@@ -294,11 +294,7 @@ internal struct TierMoveSheet: View {
     }
 
     private var backgroundColor: Color {
-        #if os(tvOS)
-        return Color.black
-        #else
-        return Palette.bg
-        #endif
+        Palette.bg
     }
 
     #if os(tvOS)
@@ -325,11 +321,11 @@ private struct TierMoveRow: View {
     #endif
 
     var body: some View {
-        Button(action: {
+        Button {
             if !isCurrentTier {
                 action()
             }
-        }) {
+        } label: {
             HStack(spacing: 0) {
                 // Left accent bar (Hybrid design element)
                 Rectangle()
@@ -364,12 +360,14 @@ private struct TierMoveRow: View {
                             .font(iconFont)
                             .foregroundStyle(tierColor, secondaryIconColor)
                             .symbolRenderingMode(.palette)
+                            .accessibilityHidden(true)
                     } else {
                         Image(systemName: "arrow.right.circle")
                             .font(iconFont)
                             .foregroundStyle(tierColor, secondaryIconColor)
                             .symbolRenderingMode(.palette)
                             .opacity(isFocused ? 1 : 0)
+                            .accessibilityHidden(true)
                     }
                 }
                 .padding(.horizontal, rowHorizontalPadding)
@@ -393,7 +391,7 @@ private struct TierMoveRow: View {
     // MARK: - Layout Helpers
 
     private var secondaryIconColor: Color {
-        Color.white.opacity(0.85)
+        Palette.textOnAccent
     }
 
     private var leftBarWidth: CGFloat {
@@ -466,7 +464,7 @@ private struct TierMoveRow: View {
             .fill(tierColor.opacity(isFocused ? focusedBackgroundOpacity : unfocusedBackgroundOpacity))
             .background(
                 RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
-                    .fill(Color.black.opacity(0.6))
+                    .fill(Palette.bg.opacity(0.6))
             )
         #else
         RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -492,7 +490,7 @@ private struct TierMoveRow: View {
     private var borderColor: Color {
         #if os(tvOS)
         if isFocused {
-            return Color.white
+            return Palette.text
         }
         return tierColor.opacity(isCurrentTier ? currentTierBorderOpacity : defaultBorderOpacity)
         #else

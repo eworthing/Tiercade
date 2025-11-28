@@ -147,4 +147,5 @@ internal struct TestProgress: Sendable {
 }
 
 }
+// swiftlint:enable nesting
 #endif

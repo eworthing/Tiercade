@@ -264,4 +264,5 @@ internal struct TestSuitesLibrary: Codable, Sendable {
 }
 
 }
+// swiftlint:enable nesting
 #endif

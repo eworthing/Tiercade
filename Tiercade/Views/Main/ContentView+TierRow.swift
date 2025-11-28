@@ -114,7 +114,7 @@ internal struct TierRowWrapper: View {
                 .fill(accent)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                        .stroke(Palette.stroke, lineWidth: 1)
                 )
         )
         #if os(tvOS)
@@ -287,8 +287,9 @@ extension Color {
 
         // Convert to sRGB color space to ensure consistent component extraction
         guard
+            let srgbColorSpace = CGColorSpace(name: CGColorSpace.sRGB),
             let srgb = cgColor.converted(
-                to: CGColorSpace(name: CGColorSpace.sRGB)!,
+                to: srgbColorSpace,
                 intent: .defaultIntent,
                 options: nil
             ),
@@ -347,7 +348,7 @@ private struct TierControlButtons: View {
     internal var body: some View {
         Button(action: onShowMenu, label: {
             Image(systemName: "ellipsis.circle")
-                .font(.system(size: 24))
+                .font(TypeScale.cardBody)
                 .foregroundColor(textColor)
         })
         .buttonStyle(.plain)
@@ -405,7 +406,7 @@ private struct TierLabelEditor: View {
                                 .stroke(Color.white.opacity(0.3), lineWidth: 2)
                         }
                         .cornerRadius(8)
-                        .frame(width: 360)
+                        .frame(width: ScaledDimensions.formFieldWidth)
                         .focused($focusedField, equals: .label)
                         #if os(tvOS)
                         .focusEffectDisabled(false)
@@ -451,6 +452,7 @@ private struct TierLabelEditor: View {
                 Button(action: { showAdvancedPicker = true }, label: {
                     HStack {
                         Image(systemName: "slider.horizontal.3")
+                            .accessibilityHidden(true)
                         Text("Advanced")
                     }
                     .font(.caption)
@@ -475,7 +477,7 @@ private struct TierLabelEditor: View {
                     .focused($focusedField, equals: .close)
             }
         }
-        .padding(24)
+        .padding(Metrics.cardPadding)
         .onAppear {
             label = app.displayLabel(for: tierId)
             if let hex = app.displayColorHex(for: tierId) {

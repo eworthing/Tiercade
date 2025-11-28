@@ -110,7 +110,10 @@ internal final class AIGenerationState {
     // MARK: - Chat Overlay Actions
 
     /// Toggle AI chat overlay visibility
-    internal func toggleAIChat(showToast: @escaping (ToastType, String, String) -> Void, logEvent: @escaping (String) -> Void) {
+    internal func toggleAIChat(
+        showToast: @escaping (ToastType, String, String) -> Void,
+        logEvent: @escaping (String) -> Void
+    ) {
         guard Self.isSupportedOnCurrentPlatform else {
             if showAIChat { showAIChat = false }
             showToast(.info, "Unavailable", "Apple Intelligence chat isn't supported on this platform.")
@@ -196,10 +199,9 @@ internal final class AIGenerationState {
         // integration will be implemented in a follow-up.
         // Provide a placeholder response for now.
         try? await Task.sleep(for: .seconds(0.5))
-        messages.append(AIChatMessage(
-            content: "AI generation infrastructure is set up. Full FoundationModels integration will be added in a follow-up.",
-            isUser: false
-        ))
+        let stubMsg = "AI generation infrastructure is set up. " +
+            "Full FoundationModels integration will be added in a follow-up."
+        messages.append(AIChatMessage(content: stubMsg, isUser: false))
         updateTokenEstimate()
         Logger.aiGeneration.debug("sendMessage END")
         #else

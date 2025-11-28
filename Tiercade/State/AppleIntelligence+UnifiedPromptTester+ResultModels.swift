@@ -195,4 +195,5 @@ internal struct TestReport: Codable, Identifiable, Sendable {
 }
 
 }
+// swiftlint:enable nesting
 #endif

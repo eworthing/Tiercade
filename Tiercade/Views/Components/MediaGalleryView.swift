@@ -76,6 +76,7 @@ private struct GalleryPage: View {
             Image(systemName: "photo")
                 .imageScale(.large)
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
         }
     }
 }

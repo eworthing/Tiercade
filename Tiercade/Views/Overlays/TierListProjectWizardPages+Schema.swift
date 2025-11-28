@@ -67,8 +67,9 @@ internal struct SchemaWizardPage: View, WizardPage {
                     if schemaFields.isEmpty {
                         VStack(spacing: 12) {
                             Image(systemName: "doc.text.magnifyingglass")
-                                .font(.system(size: 48))
+                                .font(TypeScale.wizardTitle)
                                 .foregroundStyle(Palette.textDim)
+                                .accessibilityHidden(true)
                             Text("No custom fields yet")
                                 .font(.headline)
                                 .foregroundStyle(Palette.textDim)
@@ -149,6 +150,7 @@ internal struct SchemaWizardPage: View, WizardPage {
                 .font(.title3)
                 .foregroundStyle(Palette.brand)
                 .frame(width: 32)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(name)
@@ -163,7 +165,7 @@ internal struct SchemaWizardPage: View, WizardPage {
                     if required {
                         Text("• Required")
                             .font(.caption)
-                            .foregroundStyle(Palette.tierColor("S"))
+                            .foregroundStyle(Palette.tierColor("S", from: appState.tierColors))
                     }
                 }
             }
@@ -173,6 +175,7 @@ internal struct SchemaWizardPage: View, WizardPage {
             Image(systemName: "lock.fill")
                 .font(.caption)
                 .foregroundStyle(Palette.textDim)
+                .accessibilityHidden(true)
         }
         .padding(Metrics.grid * 2)
         .background(
@@ -185,12 +188,14 @@ internal struct SchemaWizardPage: View, WizardPage {
         )
     }
 
+    // swiftlint:disable:next function_body_length
     private func customFieldRow(_ field: SchemaFieldDefinition) -> some View {
         HStack(spacing: 16) {
             Image(systemName: field.fieldType.icon)
                 .font(.title3)
-                .foregroundStyle(Palette.tierColor("B"))
+                .foregroundStyle(Palette.tierColor("B", from: appState.tierColors))
                 .frame(width: 32)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(field.name)
@@ -205,7 +210,7 @@ internal struct SchemaWizardPage: View, WizardPage {
                     if field.required {
                         Text("• Required")
                             .font(.caption)
-                            .foregroundStyle(Palette.tierColor("S"))
+                            .foregroundStyle(Palette.tierColor("S", from: appState.tierColors))
                     }
 
                     if field.allowMultiple {
@@ -225,6 +230,7 @@ internal struct SchemaWizardPage: View, WizardPage {
                 }
             } label: {
                 Image(systemName: "trash")
+                    .accessibilityLabel("Delete field")
             }
             #if os(tvOS)
             .buttonStyle(.glass)

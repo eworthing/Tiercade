@@ -136,20 +136,20 @@ internal struct PersistenceStatusView: View {
             HStack(spacing: 4) {
                 if app.persistence.hasUnsavedChanges {
                     Circle()
-                        .fill(Color.orange)
+                        .fill(Palette.tierColor("A", from: app.tierColors))
                         .frame(width: 8, height: 8)
                         .accessibilityHidden(true)
                     Text("Unsaved")
                         .font(.caption)
-                        .foregroundColor(.orange)
+                        .foregroundColor(Palette.tierColor("A", from: app.tierColors))
                 } else {
                     Circle()
-                        .fill(Color.green)
+                        .fill(Palette.tierColor("B", from: app.tierColors))
                         .frame(width: 8, height: 8)
                         .accessibilityHidden(true)
                     Text("Saved")
                         .font(.caption)
-                        .foregroundColor(.green)
+                        .foregroundColor(Palette.tierColor("B", from: app.tierColors))
                 }
             }
 

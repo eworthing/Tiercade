@@ -4,7 +4,7 @@ import Foundation
 import FoundationModels
 
 // swiftlint:disable file_length function_body_length
-// Prototype backfill logic - comprehensive retry/recovery justifies file size
+// Prototype backfill logic - comprehensive retry/recovery justifies function lengths
 
 // MARK: - UniqueListCoordinator Backfill Methods
 
@@ -47,7 +47,9 @@ extension UniqueListCoordinator {
         state.passCount = 1
         let keptP1 = state.ordered.count - beforeUniqueP1
         let droppedDupP1 = max(0, items1.count - keptP1)
-        logger("📊 Summary (Pass 1): kept=\(keptP1), droppedDuplicates=\(droppedDupP1), placeholders=\(placeholdersRemoved1)")
+        let summaryP1 = "📊 Summary (Pass 1): kept=\(keptP1), " +
+            "droppedDuplicates=\(droppedDupP1), placeholders=\(placeholdersRemoved1)"
+        logger(summaryP1)
         logger("  Result: \(state.ordered.count)/\(targetCount) unique, \(state.duplicatesFound) duplicates filtered")
     }
 
@@ -167,7 +169,10 @@ extension UniqueListCoordinator {
                         )
                         // After bump, do not immediately switch; allow loop to reassess
                     } else {
-                        logger("🔀 [Hybrid] Switching to unguided backfill (dupRate=\(String(format: "%.2f", roundDupRate)), noProgress=\(consecutiveNoProgress))")
+                        let dupStr = String(format: "%.2f", roundDupRate)
+                        logger(
+                            "🔀 [Hybrid] Switching to unguided (dupRate=\(dupStr), noProgress=\(consecutiveNoProgress))"
+                        )
                         switchedToUnguided = true
                     }
                 }
@@ -314,15 +319,19 @@ extension UniqueListCoordinator {
                 telemetry: &state.localTelemetry
             )
             // Pre-normalization, pre-dedup
-            logger("📥 Raw (Guided backfill pass \(state.passCount)) model items (pre-placeholder):\n• " + rawItemsFill.joined(separator: "\n• "))
+            let rawJoined = rawItemsFill.joined(separator: "\n• ")
+            logger("📥 Raw (Guided backfill pass \(state.passCount)) model items (pre-placeholder):\n• \(rawJoined)")
             let placeholdersRemoved = rawItemsFill.count - filterPlaceholders(rawItemsFill).count
             let itemsFill = filterPlaceholders(rawItemsFill)
-            logger("📝 Guided backfill (pass \(state.passCount)) returned \(itemsFill.count) items:\n• " + itemsFill.joined(separator: "\n• "))
+            let fillJoined = itemsFill.joined(separator: "\n• ")
+            logger("📝 Guided backfill (pass \(state.passCount)) returned \(itemsFill.count) items:\n• \(fillJoined)")
             let kept = state.ordered.count
             state.absorb(itemsFill, logger: logger)
             let keptDelta = state.ordered.count - kept
             let droppedDup = max(0, itemsFill.count - keptDelta)
-            logger("📊 Summary (Guided pass \(state.passCount)): kept=\(keptDelta), droppedDuplicates=\(droppedDup), placeholders=\(placeholdersRemoved)")
+            let summary = "📊 Summary (Guided pass \(state.passCount)): " +
+                "kept=\(keptDelta), droppedDuplicates=\(droppedDup), placeholders=\(placeholdersRemoved)"
+            logger(summary)
         } catch {
             logger("⚠️ Guided backfill error: \(error)")
             captureFailureReason("Guided backfill error: \(error.localizedDescription)")
@@ -515,15 +524,19 @@ extension UniqueListCoordinator {
                 ),
                 telemetry: &state.localTelemetry
             )
-            logger("📥 Raw (Guided retry pass \(state.passCount)) model items (pre-placeholder):\n• " + rawItemsRetry.joined(separator: "\n• "))
+            let rawRetryJoined = rawItemsRetry.joined(separator: "\n• ")
+            logger("📥 Raw (Guided retry pass \(state.passCount)) model items (pre-placeholder):\n• \(rawRetryJoined)")
             let placeholdersRemovedRetry = rawItemsRetry.count - filterPlaceholders(rawItemsRetry).count
             let itemsRetry = filterPlaceholders(rawItemsRetry)
-            logger("📝 Guided retry (pass \(state.passCount)) returned \(itemsRetry.count) items:\n• " + itemsRetry.joined(separator: "\n• "))
+            let retryJoined = itemsRetry.joined(separator: "\n• ")
+            logger("📝 Guided retry (pass \(state.passCount)) returned \(itemsRetry.count) items:\n• \(retryJoined)")
             let kept = state.ordered.count
             state.absorb(itemsRetry, logger: logger)
             let keptDelta = state.ordered.count - kept
             let droppedDup = max(0, itemsRetry.count - keptDelta)
-            logger("📊 Summary (Guided retry pass \(state.passCount)): kept=\(keptDelta), droppedDuplicates=\(droppedDup), placeholders=\(placeholdersRemovedRetry)")
+            let summary = "📊 Summary (Guided retry pass \(state.passCount)): " +
+                "kept=\(keptDelta), droppedDuplicates=\(droppedDup), placeholders=\(placeholdersRemovedRetry)"
+            logger(summary)
         } catch {
             logger("⚠️ Adaptive retry failed: \(error)")
             captureFailureReason("Adaptive retry failed: \(error.localizedDescription)")
@@ -602,15 +615,23 @@ extension UniqueListCoordinator {
                 ),
                 telemetry: &state.localTelemetry
             )
-            logger("📥 Raw (Unguided backfill pass \(state.passCount)) model items (pre-placeholder):\n• " + rawItemsFill.joined(separator: "\n• "))
+            let rawFillJoined = rawItemsFill.joined(separator: "\n• ")
+            logger(
+                "📥 Raw (Unguided backfill pass \(state.passCount)) model items (pre-placeholder):\n• \(rawFillJoined)"
+            )
             let placeholdersRemoved = rawItemsFill.count - filterPlaceholders(rawItemsFill).count
             let itemsFill = filterPlaceholders(rawItemsFill)
-            logger("📝 Unguided backfill (pass \(state.passCount)) returned \(itemsFill.count) items:\n• " + itemsFill.joined(separator: "\n• "))
+            let fillJoined = itemsFill.joined(separator: "\n• ")
+            logger(
+                "📝 Unguided backfill (pass \(state.passCount)) returned \(itemsFill.count) items:\n• \(fillJoined)"
+            )
             let kept = state.ordered.count
             state.absorb(itemsFill, logger: logger)
             let keptDelta = state.ordered.count - kept
             let droppedDup = max(0, itemsFill.count - keptDelta)
-            logger("📊 Summary (Unguided pass \(state.passCount)): kept=\(keptDelta), droppedDuplicates=\(droppedDup), placeholders=\(placeholdersRemoved)")
+            let summaryU = "📊 Summary (Unguided pass \(state.passCount)): " +
+                "kept=\(keptDelta), droppedDuplicates=\(droppedDup), placeholders=\(placeholdersRemoved)"
+            logger(summaryU)
         } catch {
             logger("⚠️ Unguided backfill error: \(error)")
             captureFailureReason("Unguided backfill error: \(error.localizedDescription)")
@@ -703,15 +724,21 @@ extension UniqueListCoordinator {
                 ),
                 telemetry: &state.localTelemetry
             )
-            logger("📥 Raw (Unguided retry pass \(state.passCount)) model items (pre-placeholder):\n• " + rawItemsRetry.joined(separator: "\n• "))
+            let rawRetryJoinedU = rawItemsRetry.joined(separator: "\n• ")
+            logger(
+                "📥 Raw (Unguided retry pass \(state.passCount)) model items (pre-placeholder):\n• \(rawRetryJoinedU)"
+            )
             let placeholdersRemovedRetry = rawItemsRetry.count - filterPlaceholders(rawItemsRetry).count
             let itemsRetry = filterPlaceholders(rawItemsRetry)
-            logger("📝 Unguided retry returned \(itemsRetry.count) items:\n• " + itemsRetry.joined(separator: "\n• "))
+            let retryJoinedU = itemsRetry.joined(separator: "\n• ")
+            logger("📝 Unguided retry returned \(itemsRetry.count) items:\n• \(retryJoinedU)")
             let kept = state.ordered.count
             state.absorb(itemsRetry, logger: logger)
             let keptDelta = state.ordered.count - kept
             let droppedDup = max(0, itemsRetry.count - keptDelta)
-            logger("📊 Summary (Unguided retry pass \(state.passCount)): kept=\(keptDelta), droppedDuplicates=\(droppedDup), placeholders=\(placeholdersRemovedRetry)")
+            let summaryRetryU = "📊 Summary (Unguided retry pass \(state.passCount)): " +
+                "kept=\(keptDelta), droppedDuplicates=\(droppedDup), placeholders=\(placeholdersRemovedRetry)"
+            logger(summaryRetryU)
         } catch {
             logger("⚠️ Adaptive retry also failed: \(error)")
             captureFailureReason("Adaptive retry also failed: \(error.localizedDescription)")
@@ -856,4 +883,5 @@ extension UniqueListCoordinator {
         }
     }
 }
+// swiftlint:enable function_body_length
 #endif

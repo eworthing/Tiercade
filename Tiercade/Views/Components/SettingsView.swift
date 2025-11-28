@@ -62,7 +62,7 @@ private struct SettingsOptionLabel: View {
             Spacer()
             if isSelected {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Palette.textOnAccent)
                     .accessibilityHidden(true)
             }
         }
@@ -127,7 +127,7 @@ private struct CardDensityOptionRow: View {
 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(Palette.textOnAccent)
                         .accessibilityHidden(true)
                 }
             }

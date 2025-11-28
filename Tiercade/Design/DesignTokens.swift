@@ -90,6 +90,18 @@ internal enum Metrics {
     internal static let paneRight: CGFloat = 320
     internal static let toolbarH: CGFloat = 56
 
+    // Semantic spacing tokens (grid multipliers)
+    internal static let spacingXS: CGFloat = grid       // 8pt
+    internal static let spacingSm: CGFloat = grid * 2   // 16pt
+    internal static let spacingMd: CGFloat = grid * 3   // 24pt
+    internal static let spacingLg: CGFloat = grid * 4   // 32pt
+    internal static let spacingXL: CGFloat = grid * 5   // 40pt
+
+    // Component-specific spacing
+    internal static let cardPadding: CGFloat = grid * 3         // 24pt
+    internal static let sectionSpacing: CGFloat = grid * 4      // 32pt
+    internal static let overlayPadding: CGFloat = grid * 5      // 40pt (iOS/macOS)
+
     // Toolbar button & icon sizing
     #if os(tvOS)
     internal static let toolbarButtonSize: CGFloat = 48
@@ -104,6 +116,7 @@ internal enum Metrics {
 
 internal enum ScaledDimensions {
     #if os(tvOS)
+    // HeadToHead candidate cards
     internal static let progressDialSize: CGFloat = 150
     internal static let candidateCardWidth: CGFloat = 260
     internal static let candidateThumbnailHeight: CGFloat = 340
@@ -114,7 +127,16 @@ internal enum ScaledDimensions {
     internal static let buttonMinWidthSmall: CGFloat = 220
     internal static let buttonMinWidthLarge: CGFloat = 260
     internal static let textContentMaxWidth: CGFloat = 520
+
+    // Overlay dimensions
+    internal static let overlayMaxWidth: CGFloat = 1200
+    internal static let overlayMaxHeight: CGFloat = 900
+    internal static let sheetMaxWidth: CGFloat = 800
+    internal static let formFieldWidth: CGFloat = 360
+    internal static let colorPreviewWidth: CGFloat = 480
+    internal static let actionButtonWidth: CGFloat = 280
     #else
+    // HeadToHead candidate cards
     internal static let progressDialSize: CGFloat = 100
     internal static let candidateCardWidth: CGFloat = 200
     internal static let candidateThumbnailHeight: CGFloat = 260
@@ -125,6 +147,14 @@ internal enum ScaledDimensions {
     internal static let buttonMinWidthSmall: CGFloat = 180
     internal static let buttonMinWidthLarge: CGFloat = 210
     internal static let textContentMaxWidth: CGFloat = 420
+
+    // Overlay dimensions
+    internal static let overlayMaxWidth: CGFloat = 700
+    internal static let overlayMaxHeight: CGFloat = 720
+    internal static let sheetMaxWidth: CGFloat = 600
+    internal static let formFieldWidth: CGFloat = 280
+    internal static let colorPreviewWidth: CGFloat = 320
+    internal static let actionButtonWidth: CGFloat = 200
     #endif
 }
 
@@ -169,4 +199,50 @@ internal enum Motion {
     internal static let focus = Animation.easeOut(duration: 0.15)
     internal static let emphasis = Animation.easeOut(duration: 0.20)
     internal static let spring = Animation.spring(response: 0.30, dampingFraction: 0.8)
+}
+
+// MARK: - Extended Typography Tokens
+
+extension TypeScale {
+    // Platform-aware size helper
+    private static func platformSize(tv: CGFloat, other: CGFloat) -> CGFloat {
+        #if os(tvOS)
+        return tv
+        #else
+        return other
+        #endif
+    }
+
+    // Analytics typography
+    internal static let analyticsHero = Font.system(size: platformSize(tv: 72, other: 48), weight: .bold)
+    internal static let analyticsTitle = Font.system(size: platformSize(tv: 48, other: 32), weight: .bold)
+    internal static let analyticsSubtitle = Font.system(size: platformSize(tv: 36, other: 24), weight: .regular)
+    internal static let analyticsSection = Font.system(size: platformSize(tv: 32, other: 22), weight: .semibold)
+    internal static let analyticsBody = Font.system(size: platformSize(tv: 28, other: 18), weight: .regular)
+    internal static let analyticsCaption = Font.system(size: platformSize(tv: 24, other: 16), weight: .regular)
+    internal static let analyticsBadge = Font.system(size: platformSize(tv: 22, other: 14), weight: .semibold)
+
+    // Wizard/overlay typography
+    internal static let wizardIcon = Font.system(size: platformSize(tv: 60, other: 40))
+    internal static let wizardTitle = Font.system(size: platformSize(tv: 48, other: 32))
+
+    // Detail view typography
+    internal static let detailHero = Font.system(size: platformSize(tv: 54, other: 36), weight: .semibold)
+    internal static let detailTitle = Font.system(size: platformSize(tv: 44, other: 28), weight: .bold)
+
+    // Card/list typography
+    internal static let cardTitle = Font.system(size: platformSize(tv: 32, other: 22), weight: .medium)
+    internal static let cardBody = Font.system(size: platformSize(tv: 24, other: 16), weight: .semibold)
+
+    // Monospaced typography (color pickers, hex values)
+    internal static let monoLarge = Font.system(
+        size: platformSize(tv: 32, other: 18), weight: .semibold, design: .monospaced
+    )
+    internal static let monoBody = Font.system(size: platformSize(tv: 32, other: 16), design: .monospaced)
+
+    // Empty state typography
+    internal static let emptyStateIcon = Font.system(size: platformSize(tv: 56, other: 40))
+
+    // Menu typography
+    internal static let menuTitle = Font.system(size: platformSize(tv: 22, other: 16), weight: .semibold)
 }
