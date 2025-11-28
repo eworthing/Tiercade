@@ -15,9 +15,13 @@ LOG_FILE="/tmp/tiercade_test_run_$(date +%Y%m%d_%H%M%S).log"
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
+YELLOW='\033[1;33m'  # Available for warning messages
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Flags (set via command line args)
+NO_BUILD=0
+KEEP_DATA=0
 
 # Function to log with timestamp
 log() {
@@ -26,6 +30,10 @@ log() {
 
 error() {
     echo -e "${RED}[ERROR]${NC} $1" | tee -a "$LOG_FILE"
+}
+
+warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1" | tee -a "$LOG_FILE"
 }
 
 info() {
@@ -42,7 +50,7 @@ cleanup() {
     # Backup old telemetry if exists
     if [ -f "$TELEMETRY_FILE" ]; then
         cp "$TELEMETRY_FILE" "$TELEMETRY_FILE.backup_$(date +%Y%m%d_%H%M%S)"
-        > "$TELEMETRY_FILE"
+        : > "$TELEMETRY_FILE"  # Truncate file (: is no-op command)
     fi
 
     # Clean debug directory
@@ -62,9 +70,7 @@ build_app() {
     cd "$PROJECT_DIR"
 
     # Build with feature flag (force rebuild to pick up fixes)
-    ./build_install_launch.sh catalyst --enable-advanced-generation --no-launch
-
-    if [ $? -eq 0 ]; then
+    if ./build_install_launch.sh catalyst --enable-advanced-generation --no-launch; then
         log "✅ Build successful"
         return 0
     else
@@ -101,17 +107,19 @@ monitor_tests() {
     local elapsed=0
     local last_count=0
 
-    while [ $elapsed -lt $timeout ]; do
+    while [ "$elapsed" -lt "$timeout" ]; do
         if [ -f "$TELEMETRY_FILE" ]; then
             current_count=$(wc -l < "$TELEMETRY_FILE" 2>/dev/null || echo 0)
 
-            if [ $current_count -gt $last_count ]; then
+            if [ "$current_count" -gt "$last_count" ]; then
                 new_entries=$((current_count - last_count))
                 info "New telemetry entries: $new_entries (total: $current_count)"
 
                 # Check for T3_Backfill progress
                 t3_count=$(grep -c "T3_Backfill" "$TELEMETRY_FILE" 2>/dev/null || echo 0)
-                if [ $t3_count -gt 0 ]; then
+                if [ "$t3_count" -gt 0 ]; then
+                    # Count successful attempts (T3_Backfill entries without itemsReturned":0)
+                    # shellcheck disable=SC2126  # grep -c doesn't work with pipeline filtering
                     t3_success=$(grep "T3_Backfill" "$TELEMETRY_FILE" | grep -v '"itemsReturned":0' | wc -l)
                     info "T3_Backfill progress: $t3_success/$t3_count successful attempts"
                 fi
@@ -218,13 +226,13 @@ if os.path.exists(telemetry_file):
             print(f"\nAverage items when successful: {avg_items:.1f} (target: 50)")
 EOF
 
-    # Check debug logs
-    debug_count=$(ls -1 "$DEBUG_DIR" 2>/dev/null | wc -l || echo 0)
-    if [ $debug_count -gt 0 ]; then
+    # Check debug logs (use find for better filename handling)
+    debug_count=$(find "$DEBUG_DIR" -maxdepth 1 -type f 2>/dev/null | wc -l || echo 0)
+    if [ "$debug_count" -gt 0 ]; then
         log "📝 Found $debug_count debug log files in $DEBUG_DIR"
 
         # Show a sample debug file
-        sample=$(ls -1 "$DEBUG_DIR"/*.json 2>/dev/null | head -1)
+        sample=$(find "$DEBUG_DIR" -maxdepth 1 -name "*.json" -type f 2>/dev/null | head -1)
         if [ -n "$sample" ]; then
             info "Sample debug file: $sample"
         fi
@@ -241,13 +249,21 @@ main() {
     log "Log file: $LOG_FILE"
     echo ""
 
-    # Step 1: Cleanup
-    cleanup
+    # Step 1: Cleanup (skip if --keep-data flag is set)
+    if [ "$KEEP_DATA" -eq 0 ]; then
+        cleanup
+    else
+        log "⏭️  Skipping cleanup (--keep-data flag set)"
+    fi
 
-    # Step 2: Build
-    if ! build_app; then
-        error "Build failed - exiting"
-        exit 1
+    # Step 2: Build (skip if --no-build flag is set)
+    if [ "$NO_BUILD" -eq 0 ]; then
+        if ! build_app; then
+            error "Build failed - exiting"
+            exit 1
+        fi
+    else
+        log "⏭️  Skipping build (--no-build flag set)"
     fi
 
     # Step 3: Launch tests
@@ -277,23 +293,27 @@ main() {
 }
 
 # Handle command-line arguments
-case "$1" in
-    --help)
-        echo "Usage: $0 [options]"
-        echo "Options:"
-        echo "  --help          Show this help"
-        echo "  --no-build      Skip the build step"
-        echo "  --keep-data     Don't clean up old test data"
-        echo "  --timeout N     Set timeout in seconds (default: 300)"
-        exit 0
-        ;;
-    --no-build)
-        NO_BUILD=1
-        ;;
-    --keep-data)
-        KEEP_DATA=1
-        ;;
-esac
+# Parse command line arguments
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --help)
+            echo "Usage: $0 [options]"
+            echo "Options:"
+            echo "  --help          Show this help"
+            echo "  --no-build      Skip the build step"
+            echo "  --keep-data     Don't clean up old test data"
+            echo "  --timeout N     Set timeout in seconds (default: 300)"
+            exit 0
+            ;;
+        --no-build)
+            NO_BUILD=1
+            ;;
+        --keep-data)
+            KEEP_DATA=1
+            ;;
+    esac
+    shift
+done
 
 # Run the tests
 main

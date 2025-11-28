@@ -23,7 +23,9 @@ TEST_SUITES=(
     # "full-acceptance"
 )
 
+# shellcheck disable=SC2034  # Reserved for future direct app invocation
 MACOS_APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/Tiercade-*/Build/Products/Debug/Tiercade.app/Contents/MacOS/Tiercade"
+# shellcheck disable=SC2034  # Reserved for future temp file operations
 TEMP_DIR=$(mktemp -d)
 RESULTS_DIR="./test-results/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$RESULTS_DIR"
@@ -309,7 +311,12 @@ EOF
 cd "$RESULTS_DIR"
 for file in *; do
     if [ "$file" != "00_SUMMARY.md" ]; then
-        SIZE=$(ls -lh "$file" | awk '{print $5}')
+        # Use stat for macOS-compatible file size (avoids SC2012)
+        SIZE=$(stat -f%z "$file" 2>/dev/null | awk '{
+            if ($1 >= 1048576) printf "%.1fM", $1/1048576
+            else if ($1 >= 1024) printf "%.1fK", $1/1024
+            else printf "%dB", $1
+        }')
         echo "- \`$file\` ($SIZE)" >> "$SUMMARY_FILE"
     fi
 done
