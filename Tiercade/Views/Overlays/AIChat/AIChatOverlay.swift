@@ -1,5 +1,8 @@
 import SwiftUI
 
+// swiftlint:disable file_length type_body_length
+// Prototype AI chat overlay - comprehensive UI for testing justifies complexity
+
 #if canImport(ImagePlayground)
 import ImagePlayground
 #endif
@@ -74,7 +77,9 @@ internal struct AIChatOverlay: View {
             Spacer()
 
             #if DEBUG
-            Button(action: { showTestSuitePicker = true }) {
+            Button {
+                showTestSuitePicker = true
+            } label: {
                 Image(systemName: "list.bullet.rectangle")
                     .foregroundStyle(.blue)
             }
@@ -100,7 +105,8 @@ internal struct AIChatOverlay: View {
             #endif
             .onChange(of: useMinimalPrompt) { _, newValue in
                 ai.promptStyle = newValue ? .minimal : .strict
-                ai.messages.append(AIChatMessage(content: newValue ? "🧪 Prompt style: Minimal JSON" : "🧪 Prompt style: Strict JSON", isUser: false))
+                let style = newValue ? "🧪 Prompt style: Minimal JSON" : "🧪 Prompt style: Strict JSON"
+                ai.messages.append(AIChatMessage(content: style, isUser: false))
             }
             .accessibilityIdentifier("AIChat_PromptABToggle")
             .accessibilityLabel("Toggle A/B prompt style")
@@ -117,9 +123,11 @@ internal struct AIChatOverlay: View {
                 if newValue {
                     ai.hybridSwitchEnabled = false
                     ai.guidedBudgetBumpFirst = true
-                    ai.messages.append(AIChatMessage(content: "⚙️ Leading toolchain enabled (guided + budget bump; hybrid off ≤50)", isUser: false))
+                    let msg = "⚙️ Leading toolchain enabled (guided + budget bump; hybrid off ≤50)"
+                    ai.messages.append(AIChatMessage(content: msg, isUser: false))
                 } else {
-                    ai.messages.append(AIChatMessage(content: "⚙️ Leading toolchain disabled (standard chat)", isUser: false))
+                    let msg = "⚙️ Leading toolchain disabled (standard chat)"
+                    ai.messages.append(AIChatMessage(content: msg, isUser: false))
                 }
             }
             .accessibilityIdentifier("AIChat_ToolchainToggle")
@@ -134,7 +142,8 @@ internal struct AIChatOverlay: View {
             #endif
             .onChange(of: showSteps) { _, newValue in
                 ai.showStepByStep = newValue
-                ai.messages.append(AIChatMessage(content: newValue ? "🔎 Step‑by‑step logging enabled" : "🔎 Step‑by‑step logging disabled", isUser: false))
+                let stepMsg = newValue ? "🔎 Step‑by‑step logging enabled" : "🔎 Step‑by‑step logging disabled"
+                ai.messages.append(AIChatMessage(content: stepMsg, isUser: false))
             }
             .accessibilityIdentifier("AIChat_StepToggle")
             .accessibilityLabel("Toggle step-by-step logging")
@@ -446,8 +455,10 @@ internal struct AIChatOverlay: View {
                 }
                 let report = await runner.runDefaultSuite()
                 await MainActor.run {
+                    let summary = "📊 Coordinator experiments complete: " +
+                        "\(report.successfulRuns)/\(report.totalRuns) passed. Report saved to temp directory."
                     ai.messages.append(AIChatMessage(
-                        content: "📊 Coordinator experiments complete: \(report.successfulRuns)/\(report.totalRuns) passed. Report saved to temp directory.",
+                        content: summary,
                         isUser: false
                     ))
                 }
@@ -556,6 +567,7 @@ internal struct AIChatOverlay: View {
         #endif
     }
 }
+// swiftlint:enable type_body_length
 
 // MARK: - Test Suite Picker Sheet
 

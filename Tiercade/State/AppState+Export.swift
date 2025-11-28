@@ -154,12 +154,9 @@ internal extension AppState {
     }
 
     /// Sanitizes CSV cell values to prevent formula injection attacks
-    /// Prefixes formula-leading characters (=, +, -, @) with a single quote
     static func sanitizeCSVCell(_ value: String) -> String {
-        if value.hasPrefix("=") || value.hasPrefix("+") || value.hasPrefix("-") || value.hasPrefix("@") {
-            return "'" + value
-        }
-        return value
+        let formulaChars: [Character] = ["=", "+", "-", "@"]
+        return value.first.map { formulaChars.contains($0) ? "'\(value)" : value } ?? value
     }
 
     private func exportToCSV(group: String, themeName: String) -> String {
@@ -571,11 +568,7 @@ internal extension AppState {
     }
 
     private func exportTierOrderIncludingUnranked() -> [String] {
-        var ordered = tierOrder
-        if !ordered.contains("unranked") {
-            ordered.append("unranked")
-        }
-        return ordered
+        tierOrder.contains("unranked") ? tierOrder : tierOrder + ["unranked"]
     }
 
     private func makeExportFileName(from preferredName: String, fileExtension ext: String) -> String {

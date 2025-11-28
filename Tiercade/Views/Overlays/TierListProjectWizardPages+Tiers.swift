@@ -98,7 +98,9 @@ internal struct TiersWizardPage: View, WizardPage {
                         .foregroundStyle(Palette.textDim)
                     Text(String(format: "%.0f%%", percentage))
                         .font(.title.weight(.bold))
-                        .foregroundStyle(percentage == 100 ? Palette.tierColor("B", from: appState.tierColors) : Palette.text)
+                        .foregroundStyle(
+                            percentage == 100 ? Palette.tierColor("B", from: appState.tierColors) : Palette.text
+                        )
                 }
 
                 Spacer()

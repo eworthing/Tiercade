@@ -55,7 +55,10 @@ internal struct ThemeCreatorOverlay: View {
                     .tvGlassRounded(0)  // Glass on footer chrome only
             }
             .frame(maxWidth: 1160, maxHeight: 880)
-            .background(Color.black.opacity(0.7), in: RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous))
+            .background(
+                Color.black.opacity(0.7),
+                in: RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
                     .stroke(Color.white.opacity(0.16), lineWidth: 1.4)

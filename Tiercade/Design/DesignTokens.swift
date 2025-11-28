@@ -235,7 +235,9 @@ extension TypeScale {
     internal static let cardBody = Font.system(size: platformSize(tv: 24, other: 16), weight: .semibold)
 
     // Monospaced typography (color pickers, hex values)
-    internal static let monoLarge = Font.system(size: platformSize(tv: 32, other: 18), weight: .semibold, design: .monospaced)
+    internal static let monoLarge = Font.system(
+        size: platformSize(tv: 32, other: 18), weight: .semibold, design: .monospaced
+    )
     internal static let monoBody = Font.system(size: platformSize(tv: 32, other: 16), design: .monospaced)
 
     // Empty state typography

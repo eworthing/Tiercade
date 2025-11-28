@@ -108,7 +108,13 @@ internal final class TierListState {
     internal func finalizeChange(action: String, undoSnapshot: TierStateSnapshot, markChanged: @escaping () -> Void) {
         if !isPerformingUndoRedo {
             let redoSnapshot = captureTierSnapshot()
-            registerUndo(action: action, undoSnapshot: undoSnapshot, redoSnapshot: redoSnapshot, isRedo: false, markChanged: markChanged)
+            registerUndo(
+                action: action,
+                undoSnapshot: undoSnapshot,
+                redoSnapshot: redoSnapshot,
+                isRedo: false,
+                markChanged: markChanged
+            )
         }
         markChanged()
     }

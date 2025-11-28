@@ -81,32 +81,33 @@ final class ColorPickerState {
 // MARK: - Public ColorPicker View (tvOS 26, SwiftUI-only)
 
 public struct TVColorPickerView: View {
+    public struct RGB: Hashable, Equatable {
+        public let red: UInt8
+        public let green: UInt8
+        public let blue: UInt8
+
+        public init(_ red: UInt8, _ green: UInt8, _ blue: UInt8) {
+            self.red = red
+            self.green = green
+            self.blue = blue
+        }
+    }
+
     public struct Swatch: Hashable, Equatable {
         public let name: String
-        public let rgb: (UInt8, UInt8, UInt8)
+        public let rgb: RGB
 
         public init(_ name: String, _ red: UInt8, _ green: UInt8, _ blue: UInt8) {
             self.name = name
-            self.rgb = (red, green, blue)
+            self.rgb = RGB(red, green, blue)
         }
 
         var color: Color {
             Color(
-                red: Double(rgb.0) / 255,
-                green: Double(rgb.1) / 255,
-                blue: Double(rgb.2) / 255
+                red: Double(rgb.red) / 255,
+                green: Double(rgb.green) / 255,
+                blue: Double(rgb.blue) / 255
             )
-        }
-
-        public func hash(into hasher: inout Hasher) {
-            hasher.combine(name)
-            hasher.combine(rgb.0)
-            hasher.combine(rgb.1)
-            hasher.combine(rgb.2)
-        }
-
-        public static func == (lhs: Swatch, rhs: Swatch) -> Bool {
-            lhs.name == rhs.name && lhs.rgb == rhs.rgb
         }
     }
 
@@ -246,9 +247,9 @@ public struct TVColorPickerView: View {
             ) {
                 ForEach(Array(swatches.enumerated()), id: \.offset) { index, swatch in
                     Button {
-                        state.red = Double(swatch.rgb.0)
-                        state.green = Double(swatch.rgb.1)
-                        state.blue = Double(swatch.rgb.2)
+                        state.red = Double(swatch.rgb.red)
+                        state.green = Double(swatch.rgb.green)
+                        state.blue = Double(swatch.rgb.blue)
                     } label: {
                         VStack(spacing: Metrics.grid) {
                             RoundedRectangle(cornerRadius: Metrics.rMd + 2)

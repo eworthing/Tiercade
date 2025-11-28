@@ -4,7 +4,7 @@ import Foundation
 import FoundationModels
 
 // swiftlint:disable file_length function_body_length type_body_length cyclomatic_complexity
-// Prototype test framework - comprehensive test orchestration justifies file size
+// Prototype test framework - comprehensive test orchestration justifies complexity
 
 // MARK: - Generable Types
 
@@ -31,7 +31,9 @@ final class UnifiedPromptTester {
 
     /// Load system prompts from SystemPrompts.json
     static func loadSystemPrompts() throws -> SystemPromptsLibrary {
-        guard let url = Bundle.main.url(forResource: "SystemPrompts", withExtension: "json", subdirectory: "TestConfigs") else {
+        guard let url = Bundle.main.url(
+            forResource: "SystemPrompts", withExtension: "json", subdirectory: "TestConfigs"
+        ) else {
             throw TestingError.configurationNotFound("SystemPrompts.json in TestConfigs/")
         }
         return try loadJSON(from: url)
@@ -39,7 +41,9 @@ final class UnifiedPromptTester {
 
     /// Load test queries from TestQueries.json
     static func loadTestQueries() throws -> TestQueriesLibrary {
-        guard let url = Bundle.main.url(forResource: "TestQueries", withExtension: "json", subdirectory: "TestConfigs") else {
+        guard let url = Bundle.main.url(
+            forResource: "TestQueries", withExtension: "json", subdirectory: "TestConfigs"
+        ) else {
             throw TestingError.configurationNotFound("TestQueries.json in TestConfigs/")
         }
         return try loadJSON(from: url)
@@ -47,7 +51,9 @@ final class UnifiedPromptTester {
 
     /// Load decoding configs from DecodingConfigs.json
     static func loadDecodingConfigs() throws -> DecodingConfigsLibrary {
-        guard let url = Bundle.main.url(forResource: "DecodingConfigs", withExtension: "json", subdirectory: "TestConfigs") else {
+        guard let url = Bundle.main.url(
+            forResource: "DecodingConfigs", withExtension: "json", subdirectory: "TestConfigs"
+        ) else {
             throw TestingError.configurationNotFound("DecodingConfigs.json in TestConfigs/")
         }
         return try loadJSON(from: url)
@@ -55,7 +61,9 @@ final class UnifiedPromptTester {
 
     /// Load test suites from TestSuites.json
     static func loadTestSuites() throws -> TestSuitesLibrary {
-        guard let url = Bundle.main.url(forResource: "TestSuites", withExtension: "json", subdirectory: "TestConfigs") else {
+        guard let url = Bundle.main.url(
+            forResource: "TestSuites", withExtension: "json", subdirectory: "TestConfigs"
+        ) else {
             throw TestingError.configurationNotFound("TestSuites.json in TestConfigs/")
         }
         return try loadJSON(from: url)
@@ -228,7 +236,9 @@ final class UnifiedPromptTester {
             // Yield to allow UI updates before each test run
             await Task.yield()
 
-            await MainActor.run { onProgress("[\(index + 1)/\(runs.count)] Testing '\(run.prompt.name)' on '\(run.query.id)'...") }
+            await MainActor.run {
+                onProgress("[\(index + 1)/\(runs.count)] Testing '\(run.prompt.name)' on '\(run.query.id)'...")
+            }
 
             let context = TestRunContext(run: run, maxTokensOverride: maxTokensOverride)
 
@@ -240,7 +250,10 @@ final class UnifiedPromptTester {
                 results.append(result)
 
                 let status = result.isSuccess ? "✅" : "❌"
-                await MainActor.run { onProgress("\(status) \(result.uniqueItems)/\(run.effectiveTarget) unique (\(String(format: "%.1f", result.dupRate * 100))% dup)") }
+                let dupPct = String(format: "%.1f", result.dupRate * 100)
+                await MainActor.run {
+                    onProgress("\(status) \(result.uniqueItems)/\(run.effectiveTarget) unique (\(dupPct)% dup)")
+                }
             } catch {
                 await MainActor.run { onProgress("❌ Error: \(error.localizedDescription)") }
 
@@ -255,7 +268,11 @@ final class UnifiedPromptTester {
                 let successCount = results.filter { $0.isSuccess }.count
                 let successRate = successCount * 100 / max(1, results.count)
                 let elapsed = Date().timeIntervalSince(startTime)
-                await MainActor.run { onProgress("📊 Progress: \(index + 1)/\(runs.count) (\(percentage)%) - Success: \(successRate)% - Elapsed: \(String(format: "%.1f", elapsed))s") }
+                let elapsedStr = String(format: "%.1f", elapsed)
+                await MainActor.run {
+                    let progress = "📊 Progress: \(index + 1)/\(runs.count) (\(percentage)%)"
+                    onProgress("\(progress) - Success: \(successRate)% - Elapsed: \(elapsedStr)s")
+                }
             }
 
             // Save checkpoint every 50 runs for crash recovery
@@ -496,8 +513,12 @@ final class UnifiedPromptTester {
 
         // Remove markdown code fence with optional language specifier
         let markdownPattern = #"^```(?:json)?\s*\n?(.*?)\n?```$"#
-        if let regex = try? NSRegularExpression(pattern: markdownPattern, options: [.dotMatchesLineSeparators]),
-           let match = regex.firstMatch(in: response, options: [], range: NSRange(response.startIndex..., in: response)),
+        let regexOpts: NSRegularExpression.Options = [.dotMatchesLineSeparators]
+        if let regex = try? NSRegularExpression(pattern: markdownPattern, options: regexOpts),
+           let match = regex.firstMatch(
+               in: response, options: [],
+               range: NSRange(response.startIndex..., in: response)
+           ),
            let contentRange = Range(match.range(at: 1), in: response) {
             cleanedResponse = String(response[contentRange])
         }
@@ -711,10 +732,20 @@ final class UnifiedPromptTester {
     // MARK: - Rankings
 
     private static func computeRankings(aggregates: [AggregateTestResult]) -> TestReport.Rankings {
-        let byPassRate = rankBy(aggregates: aggregates, metric: "passAtN", getter: { $0.overallStats.passAtNRate })
-        let byQuality = rankBy(aggregates: aggregates, metric: "quality", getter: { $0.overallStats.meanQualityScore })
-        let bySpeed = rankBy(aggregates: aggregates, metric: "speed", getter: { 1.0 / max(0.001, $0.overallStats.meanTimePerUnique) })
-        let byConsistency = rankBy(aggregates: aggregates, metric: "consistency", getter: { 1.0 / max(0.001, $0.overallStats.seedVariance) })
+        let byPassRate = rankBy(
+            aggregates: aggregates, metric: "passAtN", getter: { $0.overallStats.passAtNRate }
+        )
+        let byQuality = rankBy(
+            aggregates: aggregates, metric: "quality", getter: { $0.overallStats.meanQualityScore }
+        )
+        let bySpeed = rankBy(
+            aggregates: aggregates, metric: "speed",
+            getter: { 1.0 / max(0.001, $0.overallStats.meanTimePerUnique) }
+        )
+        let byConsistency = rankBy(
+            aggregates: aggregates, metric: "consistency",
+            getter: { 1.0 / max(0.001, $0.overallStats.seedVariance) }
+        )
 
         return TestReport.Rankings(
             byPassRate: byPassRate,
@@ -940,4 +971,5 @@ final class UnifiedPromptTester {
         }
     }
 }
+// swiftlint:enable function_body_length type_body_length cyclomatic_complexity
 #endif

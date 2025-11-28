@@ -24,10 +24,22 @@ internal enum PreviewFixtures {
         app.tierLabels = ["S": "Top Picks", "A": "Great", "B": "Good", "C": "Decent", "D": "Meh", "F": "Worst"]
 
         let items: [Item] = [
-            Item(id: "preview-1", name: "Sample Hero", status: nil, description: "A standout item in S tier.", imageUrl: nil),
-            Item(id: "preview-2", name: "Solid Choice", status: nil, description: "Reliable A‑tier item.", imageUrl: nil),
-            Item(id: "preview-3", name: "Pretty Good", status: nil, description: "Comfortable B‑tier item.", imageUrl: nil),
-            Item(id: "preview-4", name: "Unranked Candidate", status: nil, description: "Waiting to be ranked.", imageUrl: nil)
+            Item(
+                id: "preview-1", name: "Sample Hero",
+                status: nil, description: "A standout item in S tier.", imageUrl: nil
+            ),
+            Item(
+                id: "preview-2", name: "Solid Choice",
+                status: nil, description: "Reliable A‑tier item.", imageUrl: nil
+            ),
+            Item(
+                id: "preview-3", name: "Pretty Good",
+                status: nil, description: "Comfortable B‑tier item.", imageUrl: nil
+            ),
+            Item(
+                id: "preview-4", name: "Unranked Candidate",
+                status: nil, description: "Waiting to be ranked.", imageUrl: nil
+            )
         ]
 
         app.tiers["S"] = [items[0]]

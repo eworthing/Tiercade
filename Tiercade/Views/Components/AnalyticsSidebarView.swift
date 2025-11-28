@@ -50,7 +50,10 @@ internal struct AnalyticsSidebarView: View {
                 .move(edge: .trailing)
                     .combined(with: .opacity)
             )
-            .animation(reduceMotion ? nil : Animation.easeInOut(duration: 0.35), value: app.overlays.showAnalyticsSidebar)
+            .animation(
+                reduceMotion ? nil : Animation.easeInOut(duration: 0.35),
+                value: app.overlays.showAnalyticsSidebar
+            )
         }
     }
 

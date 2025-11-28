@@ -35,17 +35,17 @@ internal extension AppState {
                 let currentTierOrder = tierOrder
 
                 // Heavy CSV parsing on background thread pool
-                let (newTiers, discoveredTiers) = try await parseCSVInBackground(csvString, currentTierOrder: currentTierOrder)
+                let (newTiers, discoveredTiers) = try await parseCSVInBackground(
+                    csvString, currentTierOrder: currentTierOrder
+                )
                 updateProgress(0.8)
 
                 // State updates on MainActor
                 let snapshot = captureTierSnapshot()
 
                 // Add newly discovered tiers to tierOrder
-                for discoveredTier in discoveredTiers {
-                    if !tierOrder.contains(discoveredTier) {
-                        tierOrder.append(discoveredTier)
-                    }
+                for discoveredTier in discoveredTiers where !tierOrder.contains(discoveredTier) {
+                    tierOrder.append(discoveredTier)
                 }
 
                 tiers = newTiers
@@ -63,7 +63,10 @@ internal extension AppState {
 
     // Swift 6 (Swift 6.2 toolchain) pattern: heavy CSV parsing runs on background thread pool via Task.detached
     nonisolated
-    private func parseCSVInBackground(_ csvString: String, currentTierOrder: [String]) async throws(ImportError) -> (Items, [String]) {
+    private func parseCSVInBackground(
+        _ csvString: String,
+        currentTierOrder: [String]
+    ) async throws(ImportError) -> (Items, [String]) {
         let lines = csvString.components(separatedBy: .newlines)
         guard lines.count > 1 else {
             throw ImportError.invalidData("CSV file appears to be empty")

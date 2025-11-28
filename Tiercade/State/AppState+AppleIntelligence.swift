@@ -84,6 +84,7 @@ internal extension AppState {
 // The remaining code in this file provides advanced generation features that will be
 // integrated into AIGenerationState in future PRs
 
+// swiftlint:disable file_length type_body_length function_body_length
 #if false
 // MARK: - Legacy Apple Intelligence Service (DEPRECATED - use AIGenerationState)
 // This code is preserved for reference but should not be instantiated
@@ -548,9 +549,11 @@ final class AppleIntelligenceServiceDeprecated {
             } else {
                 try (data + Data("\n".utf8)).write(to: url)
             }
-            messages.append(AIChatMessage(content: upvote ? "👍 Rated this run as GOOD" : "👎 Rated this run as NEEDS WORK", isUser: false))
+            let rating = upvote ? "👍 Rated this run as GOOD" : "👎 Rated this run as NEEDS WORK"
+            messages.append(AIChatMessage(content: rating, isUser: false))
         } catch {
-            messages.append(AIChatMessage(content: "⚠️ Failed to save rating: \(error.localizedDescription)", isUser: false))
+            let errorMsg = "⚠️ Failed to save rating: \(error.localizedDescription)"
+            messages.append(AIChatMessage(content: errorMsg, isUser: false))
         }
     }
 
@@ -627,3 +630,4 @@ final class AppleIntelligenceServiceDeprecated {
     #endif
 }
 #endif
+// swiftlint:enable file_length type_body_length function_body_length

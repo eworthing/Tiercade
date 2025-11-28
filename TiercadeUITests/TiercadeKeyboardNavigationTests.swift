@@ -56,7 +56,11 @@ extension XCTestCase {
         return app
     }
 
-    internal func primaryWindow(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
+    internal func primaryWindow(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
         let window = app.windows.firstMatch
         XCTAssertTrue(window.waitForExistence(timeout: 5), "Expected Tiercade window to exist", file: file, line: line)
         return window

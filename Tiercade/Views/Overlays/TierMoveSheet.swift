@@ -321,11 +321,11 @@ private struct TierMoveRow: View {
     #endif
 
     var body: some View {
-        Button(action: {
+        Button {
             if !isCurrentTier {
                 action()
             }
-        }) {
+        } label: {
             HStack(spacing: 0) {
                 // Left accent bar (Hybrid design element)
                 Rectangle()

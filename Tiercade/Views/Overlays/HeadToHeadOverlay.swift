@@ -366,69 +366,54 @@ internal struct HeadToHeadOverlay: View {
         GeometryReader { sectionProxy in
             let width = sectionProxy.size.width
             let mode = comparisonLayoutMode(for: width)
-            switch mode {
-            case .wideRow:
-                AnyLayout(HStackLayout(spacing: pairSpacing)) {
-                    HeadToHeadCandidateCard(
-                        item: pair.0,
-                        accentColor: Palette.brand,
-                        alignment: .leading,
-                        action: { app.voteHeadToHead(winner: pair.0) },
-                        compact: false
-                    )
-                    .focused($focusAnchor, equals: .primary)
-                    .accessibilityIdentifier("HeadToHeadOverlay_Primary")
+            let compact = mode == .stacked
 
-                    HeadToHeadCandidateCard(
-                        item: pair.1,
-                        accentColor: Palette.tierColor("S", from: app.tierColors),
-                        alignment: .trailing,
-                        action: { app.voteHeadToHead(winner: pair.1) },
-                        compact: false
-                    )
-                    .focused($focusAnchor, equals: .secondary)
-                    .accessibilityIdentifier("HeadToHeadOverlay_Secondary")
+            Group {
+                if mode == .wideRow {
+                    HStack(spacing: pairSpacing) {
+                        candidateCards(for: pair, compact: compact)
+                    }
+                } else {
+                    VStack(spacing: pairSpacing) {
+                        candidateCards(for: pair, compact: compact)
+                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .accessibilityIdentifier("HeadToHeadOverlay_Comparison")
-                #if DEBUG
-                .onAppear {
-                    Logger.headToHead.debug("comparison width=\(width) mode=wideRow min=\(minimumComparisonWidth())")
-                }
-                #endif
-
-            case .stacked:
-                VStack(spacing: pairSpacing) {
-                    HeadToHeadCandidateCard(
-                        item: pair.0,
-                        accentColor: Palette.brand,
-                        alignment: .leading,
-                        action: { app.voteHeadToHead(winner: pair.0) },
-                        compact: true
-                    )
-                    .focused($focusAnchor, equals: .primary)
-                    .accessibilityIdentifier("HeadToHeadOverlay_Primary")
-
-                    HeadToHeadCandidateCard(
-                        item: pair.1,
-                        accentColor: Palette.tierColor("S", from: app.tierColors),
-                        alignment: .trailing,
-                        action: { app.voteHeadToHead(winner: pair.1) },
-                        compact: true
-                    )
-                    .focused($focusAnchor, equals: .secondary)
-                    .accessibilityIdentifier("HeadToHeadOverlay_Secondary")
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .accessibilityIdentifier("HeadToHeadOverlay_Comparison")
-                #if DEBUG
-                .onAppear {
-                    Logger.headToHead.debug("comparison width=\(width) mode=stacked min=\(minimumComparisonWidth())")
-                }
-                #endif
             }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .accessibilityIdentifier("HeadToHeadOverlay_Comparison")
+            #if DEBUG
+            .onAppear {
+                let modeStr = mode == .wideRow ? "wideRow" : "stacked"
+                Logger.headToHead.debug(
+                    "comparison width=\(width) mode=\(modeStr) min=\(minimumComparisonWidth())"
+                )
+            }
+            #endif
         }
         .frame(minHeight: 0)
+    }
+
+    @ViewBuilder
+    private func candidateCards(for pair: (Item, Item), compact: Bool) -> some View {
+        HeadToHeadCandidateCard(
+            item: pair.0,
+            accentColor: Palette.brand,
+            alignment: .leading,
+            action: { app.voteHeadToHead(winner: pair.0) },
+            compact: compact
+        )
+        .focused($focusAnchor, equals: .primary)
+        .accessibilityIdentifier("HeadToHeadOverlay_Primary")
+
+        HeadToHeadCandidateCard(
+            item: pair.1,
+            accentColor: Palette.tierColor("S", from: app.tierColors),
+            alignment: .trailing,
+            action: { app.voteHeadToHead(winner: pair.1) },
+            compact: compact
+        )
+        .focused($focusAnchor, equals: .secondary)
+        .accessibilityIdentifier("HeadToHeadOverlay_Secondary")
     }
 
     private func minimumComparisonWidth() -> CGFloat {
@@ -438,121 +423,13 @@ internal struct HeadToHeadOverlay: View {
     }
 
     private var controlBar: some View {
-        #if os(tvOS)
-        HStack(spacing: Metrics.grid * 3) {
-            Button(role: .destructive) {
-                app.cancelHeadToHead()
-            } label: {
-                Label("Cancel", systemImage: "xmark.circle")
-                    .labelStyle(.titleAndIcon)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.glass)
-            .focused($focusAnchor, equals: .cancel)
-            .accessibilityIdentifier("HeadToHeadOverlay_Cancel")
-
-            Button {
-                app.skipCurrentHeadToHeadPair()
-            } label: {
-                Label("Skip Pair", systemImage: "arrow.uturn.left.circle")
-                    .labelStyle(.titleAndIcon)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.glass)
-            .focused($focusAnchor, equals: .pass)
-            .accessibilityIdentifier("HeadToHeadOverlay_Pass")
-            .disabled(app.headToHead.currentPair == nil)
-
-            Button {
-                app.finishHeadToHead()
-            } label: {
-                Label("Finish Ranking", systemImage: "checkmark.seal")
-                    .labelStyle(.titleAndIcon)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.glassProminent)
-            .focused($focusAnchor, equals: .commit)
-            .accessibilityIdentifier("HeadToHeadOverlay_Apply")
-        }
-        #else
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: Metrics.grid * 3) {
-                Button(role: .destructive) {
-                    app.cancelHeadToHead()
-                } label: {
-                    Label("Cancel", systemImage: "xmark.circle")
-                        .labelStyle(.titleAndIcon)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.cancelAction)
-                .focused($focusAnchor, equals: .cancel)
-                .accessibilityIdentifier("HeadToHeadOverlay_Cancel")
-
-                Button {
-                    app.skipCurrentHeadToHeadPair()
-                } label: {
-                    Label("Skip Pair", systemImage: "arrow.uturn.left.circle")
-                        .labelStyle(.titleAndIcon)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .focused($focusAnchor, equals: .pass)
-                .accessibilityIdentifier("HeadToHeadOverlay_Pass")
-                .disabled(app.headToHead.currentPair == nil)
-
-                Button {
-                    app.finishHeadToHead()
-                } label: {
-                    Label("Finish Ranking", systemImage: "checkmark.seal")
-                        .labelStyle(.titleAndIcon)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-                .focused($focusAnchor, equals: .commit)
-                .accessibilityIdentifier("HeadToHeadOverlay_Apply")
-            }
-
-            VStack(spacing: Metrics.grid * 2) {
-                Button(role: .destructive) {
-                    app.cancelHeadToHead()
-                } label: {
-                    Label("Cancel", systemImage: "xmark.circle")
-                        .labelStyle(.titleAndIcon)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.cancelAction)
-                .focused($focusAnchor, equals: .cancel)
-                .accessibilityIdentifier("HeadToHeadOverlay_Cancel")
-
-                Button {
-                    app.skipCurrentHeadToHeadPair()
-                } label: {
-                    Label("Skip Pair", systemImage: "arrow.uturn.left.circle")
-                        .labelStyle(.titleAndIcon)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .focused($focusAnchor, equals: .pass)
-                .accessibilityIdentifier("HeadToHeadOverlay_Pass")
-                .disabled(app.headToHead.currentPair == nil)
-
-                Button {
-                    app.finishHeadToHead()
-                } label: {
-                    Label("Finish Ranking", systemImage: "checkmark.seal")
-                        .labelStyle(.titleAndIcon)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .keyboardShortcut(.defaultAction)
-                .focused($focusAnchor, equals: .commit)
-                .accessibilityIdentifier("HeadToHeadOverlay_Apply")
-            }
-        }
-        #endif
+        HeadToHeadControlBar(
+            focusAnchor: $focusAnchor,
+            canSkip: app.headToHead.currentPair != nil,
+            onCancel: { app.cancelHeadToHead() },
+            onSkip: { app.skipCurrentHeadToHeadPair() },
+            onFinish: { app.finishHeadToHead() }
+        )
     }
 
     private var pairSpacing: CGFloat {
@@ -698,14 +575,6 @@ internal struct HeadToHeadOverlay: View {
     }
 }
 
-private struct HeadToHeadMetric: Identifiable {
-    internal let title: String
-    internal let value: String
-    internal let caption: String?
-
-    internal var id: String { title }
-}
-
 // MARK: - Previews
 
 @MainActor
@@ -724,3 +593,4 @@ private struct HeadToHeadOverlayPreview: View {
 #Preview("Head-to-Head Overlay") {
     HeadToHeadOverlayPreview()
 }
+// swiftlint:enable type_body_length

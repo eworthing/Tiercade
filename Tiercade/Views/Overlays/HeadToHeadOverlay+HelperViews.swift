@@ -347,3 +347,105 @@ internal struct HeadToHeadMetricTile: View {
         .accessibilityLabel("\(title): \(value)")
     }
 }
+
+// MARK: - Control Bar
+
+internal struct HeadToHeadControlBar: View {
+    internal let focusAnchor: FocusState<HeadToHeadFocusAnchor?>.Binding
+    internal let canSkip: Bool
+    internal let onCancel: () -> Void
+    internal let onSkip: () -> Void
+    internal let onFinish: () -> Void
+
+    internal var body: some View {
+        #if os(tvOS)
+        tvOSLayout
+        #else
+        pointerLayout
+        #endif
+    }
+
+    #if os(tvOS)
+    private var tvOSLayout: some View {
+        HStack(spacing: Metrics.grid * 3) {
+            cancelButton
+            skipButton
+            finishButton
+        }
+    }
+    #else
+    private var pointerLayout: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: Metrics.grid * 3) {
+                cancelButton
+                skipButton
+                finishButton
+            }
+
+            VStack(spacing: Metrics.grid * 2) {
+                cancelButton
+                skipButton
+                finishButton
+            }
+        }
+    }
+    #endif
+
+    private var cancelButton: some View {
+        Button(role: .destructive, action: onCancel) {
+            Label("Cancel", systemImage: "xmark.circle")
+                .labelStyle(.titleAndIcon)
+                .frame(maxWidth: .infinity)
+        }
+        #if os(tvOS)
+        .buttonStyle(.glass)
+        #else
+        .buttonStyle(.borderedProminent)
+        .keyboardShortcut(.cancelAction)
+        #endif
+        .focused(focusAnchor, equals: .cancel)
+        .accessibilityIdentifier("HeadToHeadOverlay_Cancel")
+    }
+
+    private var skipButton: some View {
+        Button(action: onSkip) {
+            Label("Skip Pair", systemImage: "arrow.uturn.left.circle")
+                .labelStyle(.titleAndIcon)
+                .frame(maxWidth: .infinity)
+        }
+        #if os(tvOS)
+        .buttonStyle(.glass)
+        #else
+        .buttonStyle(.borderedProminent)
+        #endif
+        .focused(focusAnchor, equals: .pass)
+        .accessibilityIdentifier("HeadToHeadOverlay_Pass")
+        .disabled(!canSkip)
+    }
+
+    private var finishButton: some View {
+        Button(action: onFinish) {
+            Label("Finish Ranking", systemImage: "checkmark.seal")
+                .labelStyle(.titleAndIcon)
+                .frame(maxWidth: .infinity)
+        }
+        #if os(tvOS)
+        .buttonStyle(.glassProminent)
+        #else
+        .buttonStyle(.borderedProminent)
+        .keyboardShortcut(.defaultAction)
+        #endif
+        .focused(focusAnchor, equals: .commit)
+        .accessibilityIdentifier("HeadToHeadOverlay_Apply")
+    }
+}
+
+// MARK: - Metric Model
+
+internal struct HeadToHeadMetric: Identifiable {
+    internal let title: String
+    internal let value: String
+    internal let caption: String?
+
+    internal var id: String { title }
+}
