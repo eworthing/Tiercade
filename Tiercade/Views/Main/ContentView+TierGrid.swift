@@ -13,6 +13,7 @@ internal struct TierGridView: View {
     #if !os(tvOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @FocusState var hardwareFocus: CardFocus?
+    // swiftlint:disable:next private_swiftui_state - Accessed from ContentView+TierGrid+HardwareFocus.swift
     @State var lastHardwareFocus: CardFocus?
     @FocusState var gridHasFocus: Bool
     #endif

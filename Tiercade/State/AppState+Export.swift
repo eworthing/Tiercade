@@ -259,9 +259,12 @@ internal extension AppState {
     private func exportCanonicalProjectJSON(group: String, themeName: String) throws -> (Data, String) {
         let artifacts = try buildProjectExportArtifacts(group: group, themeName: themeName)
         let data = try encodeProjectForExport(artifacts.project)
-        let preferredName = artifacts.project.title?.isEmpty == false
-            ? artifacts.project.title!
-            : artifacts.project.projectId
+        let preferredName: String
+        if let title = artifacts.project.title, !title.isEmpty {
+            preferredName = title
+        } else {
+            preferredName = artifacts.project.projectId
+        }
         let fileName = makeExportFileName(from: preferredName, fileExtension: "json")
         return (data, fileName)
     }

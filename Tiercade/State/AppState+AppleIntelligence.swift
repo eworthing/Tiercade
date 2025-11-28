@@ -84,7 +84,7 @@ internal extension AppState {
 // The remaining code in this file provides advanced generation features that will be
 // integrated into AIGenerationState in future PRs
 
-// swiftlint:disable file_length type_body_length function_body_length
+// swiftlint:disable type_body_length function_body_length force_unwrapping
 #if false
 // MARK: - Legacy Apple Intelligence Service (DEPRECATED - use AIGenerationState)
 // This code is preserved for reference but should not be instantiated
@@ -630,4 +630,4 @@ final class AppleIntelligenceServiceDeprecated {
     #endif
 }
 #endif
-// swiftlint:enable file_length type_body_length function_body_length
+// swiftlint:enable type_body_length function_body_length force_unwrapping

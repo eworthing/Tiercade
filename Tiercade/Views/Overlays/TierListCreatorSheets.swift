@@ -137,7 +137,7 @@ internal struct ItemDetailsSheet: View {
                     }
 
                     // Tier assignment
-                    if let currentTier = currentTier {
+                    if let currentTier {
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Assignment")
                                 .font(.title3.weight(.semibold))

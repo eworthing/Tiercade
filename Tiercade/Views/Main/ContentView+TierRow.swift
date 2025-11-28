@@ -287,8 +287,9 @@ extension Color {
 
         // Convert to sRGB color space to ensure consistent component extraction
         guard
+            let srgbColorSpace = CGColorSpace(name: CGColorSpace.sRGB),
             let srgb = cgColor.converted(
-                to: CGColorSpace(name: CGColorSpace.sRGB)!,
+                to: srgbColorSpace,
                 intent: .defaultIntent,
                 options: nil
             ),

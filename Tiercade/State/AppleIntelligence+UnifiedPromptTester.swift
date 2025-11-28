@@ -585,7 +585,7 @@ final class UnifiedPromptTester {
         let uniqueSet = Set(normalized)
         let uniqueItems = uniqueSet.count
         let duplicateCount = items.count - uniqueItems
-        let dupRate = items.count > 0 ? Double(duplicateCount) / Double(items.count) : 0.0
+        let dupRate = !items.isEmpty ? Double(duplicateCount) / Double(items.count) : 0.0
 
         let passAtN = uniqueItems >= targetCount
         let surplusAtN = max(0, uniqueItems - targetCount)

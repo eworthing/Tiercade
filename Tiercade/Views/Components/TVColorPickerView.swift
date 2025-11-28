@@ -64,8 +64,9 @@ final class ColorPickerState {
     // Convert any input CGColor to sRGB before extracting components.
     func load(from cgColor: CGColor) {
         guard
+            let srgbColorSpace = CGColorSpace(name: CGColorSpace.sRGB),
             let srgb = cgColor.converted(
-                to: CGColorSpace(name: CGColorSpace.sRGB)!,
+                to: srgbColorSpace,
                 intent: .defaultIntent,
                 options: nil
             ),

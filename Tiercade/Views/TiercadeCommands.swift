@@ -146,7 +146,11 @@ internal struct TiercadeCommands: Commands {
             let (data, filename) = try await appState.exportToFormat(format)
 
             // Save to Downloads folder
-            let downloadsURL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
+            let downloadsDirs = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)
+            guard let downloadsURL = downloadsDirs.first else {
+                appState.showToast(type: .error, title: "Export Failed", message: "Downloads folder not found")
+                return
+            }
             let fileURL = downloadsURL.appendingPathComponent(filename)
 
             try data.write(to: fileURL)

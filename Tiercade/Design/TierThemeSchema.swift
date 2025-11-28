@@ -92,6 +92,7 @@ private extension TierThemeEntity {
 internal enum TierThemeSeeds {
     internal static let defaults: [TierThemeEntity] = seedDefinitions
 
+    // swiftlint:disable force_unwrapping - Static UUID/hex literals are compile-time safe
     private static let seedDefinitions: [TierThemeEntity] = [
         TierThemeEntity(
             themeID: UUID(uuidString: "E96B8A5D-7E1F-4B6C-9D4A-8BC3F46F2E9C")!,
@@ -451,4 +452,5 @@ internal enum TierThemeSeeds {
             ]
         )
     ]
+    // swiftlint:enable force_unwrapping
 }

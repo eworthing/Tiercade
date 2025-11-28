@@ -19,16 +19,18 @@ import UIKit
 internal struct AIChatOverlay: View {
     @Environment(AppState.self) var app: AppState
     @Bindable var ai: AIGenerationState
-    @State var inputText = ""
-    @FocusState var isInputFocused: Bool
+    @State private var inputText = ""
+    @FocusState private var isInputFocused: Bool
+    // swiftlint:disable:next private_swiftui_state - Accessed from AIChatOverlay+ImageGeneration.swift
     @State var showImagePreview = false
+    // swiftlint:disable:next private_swiftui_state - Accessed from AIChatOverlay+ImageGeneration.swift
     @State var generatedImage: Image?
-    @State var isGeneratingImage = false
-    @State var showTestSuitePicker = false
+    @State private var isGeneratingImage = false
+    @State private var showTestSuitePicker = false
     #if DEBUG
-    @State var useLeadingToolchain = false
-    @State var showSteps = false
-    @State var useMinimalPrompt = false
+    @State private var useLeadingToolchain = false
+    @State private var showSteps = false
+    @State private var useMinimalPrompt = false
     #endif
 
     internal var body: some View {

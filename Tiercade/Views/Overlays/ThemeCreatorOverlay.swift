@@ -17,8 +17,8 @@ internal struct ThemeCreatorOverlay: View {
     @FocusState internal var focusedElement: FocusField?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var focusNamespace
-    @State internal var paletteFocusIndex: Int = 0
-    @State internal var showAdvancedPicker = false
+    @State private var paletteFocusIndex: Int = 0
+    @State private var showAdvancedPicker = false
     #if !os(tvOS)
     @FocusState internal var overlayHasFocus: Bool
     #endif

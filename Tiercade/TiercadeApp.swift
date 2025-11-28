@@ -43,7 +43,8 @@ private func bootLog(_ s: String) {
 struct TiercadeApp: App {
     @AppStorage("ui.theme") private var themeRaw: String = ThemePreference.system.rawValue
     private let modelContainer: ModelContainer
-    @State var appState: AppState  // internal for TiercadeApp+Debug extension
+    // swiftlint:disable:next private_swiftui_state - internal for TiercadeApp+Debug extension
+    @State var appState: AppState
     @State private var kicked = false
 
     init() {

@@ -4,20 +4,39 @@ excluded:
   - TiercadeCore/.swiftpm
   - TiercadeCore/Package.swift
   - TiercadeCore/Tests
+  - TiercadeCore/Sources                  # Core logic has intentional force unwraps in sorting comparisons
+  - TiercadeTests                         # Test files legitimately use force unwraps
+  - TiercadeUITests
   - referencedocs
+  - node_modules
+
+# MARK: - Complexity Thresholds
 
 cyclomatic_complexity:
   warning: 8
   error: 12
 
-# Allow longer files and type bodies for comprehensive test suites
+# Length limits aligned with AGENTS.md targets (overlays <~400, views <~600)
 file_length:
   warning: 600
   error: 800
+  ignore_comment_only_lines: true
 
 type_body_length:
   warning: 400
   error: 500
+
+function_body_length:
+  warning: 50
+  error: 80
+
+line_length:
+  warning: 120
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+# MARK: - Identifier Configuration
 
 identifier_name:
   min_length:
@@ -36,24 +55,50 @@ identifier_name:
 # - Prefer: Extract parameter objects (see RetryState pattern in ca46798)
 # - REQUIRED: Document reasoning inline for future reviewers when suppressing
 
-# Disabled rules (high noise-to-signal ratio):
+# MARK: - Disabled Rules
+
+# High noise-to-signal ratio for this codebase:
 disabled_rules:
   - explicit_acl                          # Generated 1,469 warnings; Swift's implicit internal is sufficient for app code
   - explicit_top_level_acl                # Generated 41 warnings; adds churn without catching real bugs in practice
 
-# High-impact opt-in rules (enabled to prevent recurring bugs):
-opt_in_rules: []
+# MARK: - Opt-In Rules
 
-# Analyzer rules (run with 'swiftlint analyze' - requires compilation):
+# Safety, concurrency, and modern Swift patterns:
+opt_in_rules:
+  # Swift 6 Concurrency (catches async bugs)
+  - unhandled_throwing_task               # Flag throwing tasks without error handling
+
+  # SwiftUI Best Practices
+  - private_swiftui_state                 # Apple recommends @State always be private
+
+  # Safety (crash/retain prevention)
+  - force_unwrapping                      # Discourage dangerous ! unwraps
+  - implicitly_unwrapped_optional         # Discourage Type! declarations
+  - weak_delegate                         # Prevent delegate retain cycles
+  - unowned_variable_capture              # Catch crash-prone unowned captures in closures
+
+  # Accessibility (tvOS VoiceOver support per AGENTS.md)
+  - accessibility_label_for_image         # Images need labels or .accessibilityHidden(true)
+  - accessibility_trait_for_button        # Buttons need proper accessibility traits
+
+  # Modern Swift Patterns (performance/clarity)
+  - empty_count                           # isEmpty over count == 0
+  - first_where                           # first(where:) over filter().first
+  - shorthand_optional_binding            # Swift 5.7+ if let foo syntax
+
+# MARK: - Analyzer Rules
+
+# NOTE: These only run with 'swiftlint analyze' (requires compilation).
+# Without CI, run manually: swiftlint analyze --compiler-log-path build.log
 analyzer_rules:
-  - unused_declaration                    # Flag dead code after refactors (catches cleanup needed after file splits)
-  - unused_import                         # Remove unused imports to keep dependencies clean
+  - unused_declaration                    # Flag dead code after refactors
+  - unused_import                         # Remove unused imports
 
-# Staged for future (generates large initial diff):
-#   - explicit_self  # Enforce explicit self usage for clearer capture semantics in async/concurrency-heavy code
+# MARK: - Staged for Future
 
-# Low signal for current issues (keep disabled):
-#   - redundant_type_annotation  # Eliminate duplicate typing that obscures real logic changes
-#   - redundant_optional_initialization  # Detect unnecessary optional defaults that add noise to state structs
-#   - prefer_self_type_over_type_of_self  # Uphold Swift 6 idioms for actor and type references
-#   - unneeded_parentheses_in_closure_argument  # Strip syntactic clutter that complicates diff-based reasoning
+# Large initial diff risk - enable after targeted cleanup:
+#   - explicit_self                       # Clearer capture semantics in async code
+#   - sorted_imports                      # Diff hygiene (low value for solo dev)
+#   - redundant_type_annotation           # Eliminate duplicate typing
+#   - prefer_self_type_over_type_of_self  # Swift 6 idioms
