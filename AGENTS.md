@@ -840,7 +840,7 @@ swiftformat . --lint && swiftlint lint --quiet
 ### Automated Enforcement
 
 **VS Code format-on-save** (configured in `.vscode/settings.json`):
-- Requires extension: [Apple Swift Format](https://marketplace.visualstudio.com/items?itemName=vknabel.vscode-apple-swift-format)
+- Requires extension: [SwiftFormat](https://marketplace.visualstudio.com/items?itemName=vknabel.vscode-swiftformat)
 - Automatically formats Swift files when you save
 - Uses `.swiftformat` config from repo root
 
