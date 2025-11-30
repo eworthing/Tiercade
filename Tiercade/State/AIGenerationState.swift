@@ -148,8 +148,8 @@ final class AIGenerationState {
         #endif
 
         Logger.aiGeneration.debug("sendMessage START")
-        Logger.aiGeneration.debug("Message count: \(messages.count)")
-        Logger.aiGeneration.debug("Estimated tokens: \(estimatedTokenCount)")
+        Logger.aiGeneration.debug("Message count: \(self.messages.count)")
+        Logger.aiGeneration.debug("Estimated tokens: \(self.estimatedTokenCount)")
 
         // Append user message immediately (display original for transparency)
         messages.append(AIChatMessage(content: sanitizedText, isUser: true))
@@ -228,7 +228,7 @@ final class AIGenerationState {
         }
 
         estimatedTokenCount = total
-        Logger.aiGeneration.debug("Estimated tokens: \(estimatedTokenCount)/\(Self.maxContextTokens)")
+        Logger.aiGeneration.debug("Estimated tokens: \(self.estimatedTokenCount)/\(Self.maxContextTokens)")
     }
 
     // MARK: - Session Management

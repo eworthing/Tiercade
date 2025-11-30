@@ -51,8 +51,8 @@ extension AppState {
 
         Logger.headToHead.info(
             """
-            Started HeadToHead: pool=\(headToHead.pool.count) \
-            target=\(targetComparisons) pairs=\(headToHead.totalComparisons)
+            Started HeadToHead: pool=\(self.headToHead.pool.count) \
+            target=\(targetComparisons) pairs=\(self.headToHead.totalComparisons)
             """,
         )
 
@@ -67,7 +67,7 @@ extension AppState {
         if headToHead.pairsQueue.isEmpty, !headToHead.deferredPairs.isEmpty {
             headToHead.pairsQueue = headToHead.deferredPairs
             headToHead.deferredPairs = []
-            Logger.headToHead.info("Recycling skipped pairs: count=\(headToHead.pairsQueue.count)")
+            Logger.headToHead.info("Recycling skipped pairs: count=\(self.headToHead.pairsQueue.count)")
         }
 
         guard !headToHead.pairsQueue.isEmpty else {
@@ -78,7 +78,7 @@ extension AppState {
 
         let pair = headToHead.pairsQueue.removeFirst()
         headToHead.currentPair = (pair.0, pair.1)
-        Logger.headToHead.debug("Next pair: \(pair.0.id)-\(pair.1.id), queue=\(headToHead.pairsQueue.count)")
+        Logger.headToHead.debug("Next pair: \(pair.0.id)-\(pair.1.id), queue=\(self.headToHead.pairsQueue.count)")
     }
 
     func voteHeadToHead(winner: Item) {
@@ -127,7 +127,7 @@ extension AppState {
         headToHead.skippedPairKeys.insert(headToHeadPairKey(pair))
         headToHead.currentPair = nil
         Logger.headToHead.info(
-            "Skipped pair: \(pair.0.id)-\(pair.1.id), deferred=\(headToHead.deferredPairs.count)",
+            "Skipped pair: \(pair.0.id)-\(pair.1.id), deferred=\(self.headToHead.deferredPairs.count)",
         )
         nextHeadToHeadPair()
     }

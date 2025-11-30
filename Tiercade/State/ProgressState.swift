@@ -56,6 +56,6 @@ final class ProgressState {
     // MARK: - Logging
 
     private func logLoadingState(isLoading: Bool, message: String) {
-        Logger.appState.debug("Loading: \(isLoading) message=\(message) progress=\(operationProgress)")
+        Logger.appState.debug("Loading: \(isLoading) message=\(message) progress=\(self.operationProgress)")
     }
 }
