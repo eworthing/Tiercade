@@ -850,6 +850,11 @@ swiftformat . --lint && swiftlint lint --quiet
 - Blocks commit if SwiftLint finds errors (warnings allowed)
 - Runs automatically on every `git commit` - no manual steps
 
+**Build script integration** (`./build_install_launch.sh`):
+- Runs SwiftFormat on entire codebase before building
+- Checks SwiftLint for errors (blocks build if found)
+- Catches issues from LLM agents that bypass VS Code/git hooks
+
 **To reinstall hooks after cloning:**
 ```bash
 ./scripts/install-hooks.sh

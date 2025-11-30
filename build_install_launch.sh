@@ -29,6 +29,10 @@ Options:
   --disable-advanced-generation  Force advanced generation feature flag off
   --no-launch                    Skip installing and launching after build
 
+Pre-build:
+  SwiftFormat runs automatically before building (auto-fixes formatting)
+  SwiftLint checks for errors (blocks build if errors found)
+
 Examples:
   ./build_install_launch.sh                    # Build all platforms
   ./build_install_launch.sh all                # Build all platforms
@@ -115,6 +119,36 @@ if [ -n "$ENABLE_ADVANCED_GENERATION" ]; then
 else
   echo "🔬 Advanced generation: using DEBUG setting"
 fi
+echo ""
+
+# Run SwiftFormat and SwiftLint before building
+echo "🧹 Running pre-build lint checks..."
+
+SWIFTFORMAT=$(which swiftformat 2>/dev/null || echo "")
+SWIFTLINT=$(which swiftlint 2>/dev/null || echo "")
+
+if [ -n "$SWIFTFORMAT" ]; then
+  echo "   SwiftFormat: formatting..."
+  "$SWIFTFORMAT" . --quiet 2>/dev/null || true
+else
+  echo "   ⚠️  SwiftFormat not found, skipping"
+fi
+
+if [ -n "$SWIFTLINT" ]; then
+  echo "   SwiftLint: checking for errors..."
+  LINT_ERRORS=$("$SWIFTLINT" lint --quiet 2>&1 | grep -c "error:" || true)
+  if [ "$LINT_ERRORS" -gt 0 ]; then
+    echo ""
+    echo "❌ SwiftLint found $LINT_ERRORS error(s). Fix before building:"
+    "$SWIFTLINT" lint --quiet 2>&1 | grep "error:"
+    echo ""
+    exit 1
+  fi
+  echo "   ✅ Lint checks passed"
+else
+  echo "   ⚠️  SwiftLint not found, skipping"
+fi
+
 echo ""
 
 # Track results using parallel arrays (bash 3.2 compatible)
