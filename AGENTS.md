@@ -837,6 +837,29 @@ swiftlint analyze
 swiftformat . --lint && swiftlint lint --quiet
 ```
 
+### Automated Enforcement
+
+**VS Code format-on-save** (configured in `.vscode/settings.json`):
+- Requires extension: [Apple Swift Format](https://marketplace.visualstudio.com/items?itemName=vknabel.vscode-apple-swift-format)
+- Automatically formats Swift files when you save
+- Uses `.swiftformat` config from repo root
+
+**Git pre-commit hook** (installed in `.git/hooks/pre-commit`):
+- Auto-formats staged Swift files with SwiftFormat
+- Re-stages formatted files automatically
+- Blocks commit if SwiftLint finds errors (warnings allowed)
+- Runs automatically on every `git commit` - no manual steps
+
+**To reinstall hooks after cloning:**
+```bash
+./scripts/install-hooks.sh
+```
+
+**To bypass hook temporarily** (use sparingly):
+```bash
+git commit --no-verify -m "message"
+```
+
 ### SwiftLint Rule Categories
 
 **Safety rules** (opt-in, prevent crashes):

@@ -1,0 +1,62 @@
+#!/bin/bash
+# Pre-commit hook: auto-format with SwiftFormat, check SwiftLint errors
+# This runs automatically before each commit - no manual steps needed
+#
+# To install: cp scripts/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
+# Find tools
+SWIFTFORMAT=$(which swiftformat 2>/dev/null || echo "/opt/homebrew/bin/swiftformat")
+SWIFTLINT=$(which swiftlint 2>/dev/null || echo "/opt/homebrew/bin/swiftlint")
+
+# Get staged Swift files
+STAGED_SWIFT_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.swift$' || true)
+
+if [ -z "$STAGED_SWIFT_FILES" ]; then
+    # No Swift files staged, nothing to do
+    exit 0
+fi
+
+echo -e "${YELLOW}🔧 Pre-commit: Checking staged Swift files...${NC}"
+
+# Step 1: Auto-format staged files with SwiftFormat
+if [ -x "$SWIFTFORMAT" ]; then
+    echo -e "${YELLOW}   Running SwiftFormat...${NC}"
+    for file in $STAGED_SWIFT_FILES; do
+        if [ -f "$file" ]; then
+            "$SWIFTFORMAT" "$file" --quiet
+            git add "$file"  # Re-stage after formatting
+        fi
+    done
+    echo -e "${GREEN}   ✓ SwiftFormat complete${NC}"
+else
+    echo -e "${YELLOW}   ⚠ SwiftFormat not found, skipping auto-format${NC}"
+fi
+
+# Step 2: Run SwiftLint on staged files (errors only block commit)
+if [ -x "$SWIFTLINT" ]; then
+    echo -e "${YELLOW}   Running SwiftLint...${NC}"
+
+    # Check for errors (not warnings)
+    LINT_ERRORS=$("$SWIFTLINT" lint --quiet 2>&1 | grep -c "error:" || true)
+
+    if [ "$LINT_ERRORS" -gt 0 ]; then
+        echo -e "${RED}   ✗ SwiftLint found $LINT_ERRORS error(s)${NC}"
+        echo -e "${RED}   Run 'swiftlint lint' to see details${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}   ✓ SwiftLint passed (0 errors)${NC}"
+else
+    echo -e "${YELLOW}   ⚠ SwiftLint not found, skipping lint check${NC}"
+fi
+
+echo -e "${GREEN}✓ Pre-commit checks passed${NC}"
+exit 0
