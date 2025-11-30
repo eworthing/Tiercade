@@ -837,23 +837,24 @@ swiftlint analyze
 swiftformat . --lint && swiftlint lint --quiet
 ```
 
-### Automated Enforcement
+### Automated Enforcement (LLM-First)
 
-**VS Code format-on-save** (configured in `.vscode/settings.json`):
-- Requires extension: [SwiftFormat](https://marketplace.visualstudio.com/items?itemName=vknabel.vscode-swiftformat)
-- Automatically formats Swift files when you save
-- Uses `.swiftformat` config from repo root
+This project is edited exclusively by LLM agents. Formatting runs automatically at multiple points:
 
-**Git pre-commit hook** (installed in `.git/hooks/pre-commit`):
-- Auto-formats staged Swift files with SwiftFormat
-- Re-stages formatted files automatically
-- Blocks commit if SwiftLint finds errors (warnings allowed)
-- Runs automatically on every `git commit` - no manual steps
+**Claude Code PostToolUse hook** (`.claude/settings.json`):
+- Runs SwiftFormat + SwiftLint `--fix` immediately after every `Edit` or `Write` on Swift files
+- No delay - file is formatted and auto-fixed the moment it's modified
+- Configured in `.claude/hooks/format-swift.sh`
 
 **Build script integration** (`./build_install_launch.sh`):
 - Runs SwiftFormat on entire codebase before building
 - Checks SwiftLint for errors (blocks build if found)
-- Catches issues from LLM agents that bypass VS Code/git hooks
+- Final checkpoint before compilation
+
+**Git pre-commit hook** (`.git/hooks/pre-commit`):
+- Auto-formats staged Swift files with SwiftFormat
+- Blocks commit if SwiftLint finds errors
+- Safety net before code enters version control
 
 **To reinstall hooks after cloning:**
 ```bash

@@ -6,15 +6,5 @@
     "**/._*": true,
     "build/": true
   },
-  "editor.aiStats.enabled": true,
-
-  // Format Swift files on save using swiftformat
-  "[swift]": {
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "vknabel.vscode-swiftformat"
-  },
-
-  // SwiftFormat extension settings
-  "swiftformat.path": "/opt/homebrew/bin/swiftformat",
-  "swiftformat.configSearchPaths": [".swiftformat"]
+  "editor.aiStats.enabled": true
 }
