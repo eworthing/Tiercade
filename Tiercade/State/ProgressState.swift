@@ -56,6 +56,7 @@ final class ProgressState {
     // MARK: - Logging
 
     private func logLoadingState(isLoading: Bool, message: String) {
+        // swiftformat:disable:next redundantSelf - Swift 6 requires explicit self in @autoclosure
         Logger.appState.debug("Loading: \(isLoading) message=\(message) progress=\(self.operationProgress)")
     }
 }

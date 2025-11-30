@@ -49,12 +49,14 @@ extension AppState {
         headToHead.artifacts = nil
         headToHead.suggestedPairs = []
 
+        // swiftformat:disable redundantSelf - Swift 6 requires explicit self in @autoclosure
         Logger.headToHead.info(
             """
             Started HeadToHead: pool=\(self.headToHead.pool.count) \
             target=\(targetComparisons) pairs=\(self.headToHead.totalComparisons)
             """,
         )
+        // swiftformat:enable redundantSelf
 
         nextHeadToHeadPair()
     }
@@ -67,6 +69,7 @@ extension AppState {
         if headToHead.pairsQueue.isEmpty, !headToHead.deferredPairs.isEmpty {
             headToHead.pairsQueue = headToHead.deferredPairs
             headToHead.deferredPairs = []
+            // swiftformat:disable:next redundantSelf - Swift 6 requires explicit self in @autoclosure
             Logger.headToHead.info("Recycling skipped pairs: count=\(self.headToHead.pairsQueue.count)")
         }
 
@@ -78,6 +81,7 @@ extension AppState {
 
         let pair = headToHead.pairsQueue.removeFirst()
         headToHead.currentPair = (pair.0, pair.1)
+        // swiftformat:disable:next redundantSelf - Swift 6 requires explicit self in @autoclosure
         Logger.headToHead.debug("Next pair: \(pair.0.id)-\(pair.1.id), queue=\(self.headToHead.pairsQueue.count)")
     }
 
@@ -126,9 +130,11 @@ extension AppState {
         headToHead.deferredPairs.append(pair)
         headToHead.skippedPairKeys.insert(headToHeadPairKey(pair))
         headToHead.currentPair = nil
+        // swiftformat:disable redundantSelf - Swift 6 requires explicit self in @autoclosure
         Logger.headToHead.info(
             "Skipped pair: \(pair.0.id)-\(pair.1.id), deferred=\(self.headToHead.deferredPairs.count)",
         )
+        // swiftformat:enable redundantSelf
         nextHeadToHeadPair()
     }
 

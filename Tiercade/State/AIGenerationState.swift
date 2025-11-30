@@ -148,7 +148,9 @@ final class AIGenerationState {
         #endif
 
         Logger.aiGeneration.debug("sendMessage START")
+        // swiftformat:disable:next redundantSelf - Swift 6 requires explicit self in @autoclosure
         Logger.aiGeneration.debug("Message count: \(self.messages.count)")
+        // swiftformat:disable:next redundantSelf - Swift 6 requires explicit self in @autoclosure
         Logger.aiGeneration.debug("Estimated tokens: \(self.estimatedTokenCount)")
 
         // Append user message immediately (display original for transparency)
@@ -228,6 +230,7 @@ final class AIGenerationState {
         }
 
         estimatedTokenCount = total
+        // swiftformat:disable:next redundantSelf - Swift 6 requires explicit self in @autoclosure
         Logger.aiGeneration.debug("Estimated tokens: \(self.estimatedTokenCount)/\(Self.maxContextTokens)")
     }
 

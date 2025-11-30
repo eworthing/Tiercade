@@ -241,9 +241,13 @@ struct HeadToHeadInternalsTests {
 
     // MARK: Private
 
-    private func sampleDataset()
     // swiftlint:disable:next large_tuple - Test helper returning multiple related values
-    -> (pool: [Item], records: [String: HeadToHeadRecord], tierOrder: [String], baseTiers: Items) {
+    private func sampleDataset() -> (
+        pool: [Item],
+        records: [String: HeadToHeadRecord],
+        tierOrder: [String],
+        baseTiers: Items,
+    ) {
         let alpha = Item(id: "alpha", name: "Alpha")
         let beta = Item(id: "beta", name: "Beta")
         let gamma = Item(id: "gamma", name: "Gamma")
