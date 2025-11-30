@@ -59,8 +59,13 @@ yarn-error.log*
 .env.*
 
 # Editor directories
-.vscode/
 .idea/
+
+# VS Code - ignore most but track shared config
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
 
 # CocoaPods / Carthage / fastlane
 Pods/
