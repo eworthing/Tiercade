@@ -4,7 +4,7 @@ import Foundation
 ///
 /// SwiftUI's accessibility tree registration and focus system have platform-specific
 /// timing behaviors that require explicit delays to ensure correct focus assignment.
-internal enum FocusWorkarounds {
+enum FocusWorkarounds {
     /// Delay before reasserting focus on non-tvOS platforms.
     ///
     /// Required because SwiftUI's accessibility tree registration is asynchronous.

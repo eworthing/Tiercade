@@ -1,13 +1,13 @@
 import SwiftUI
 
-// MARK: - Liquid Glass helpers with graceful fallbacks
+// MARK: - TVGlassRoundedModifier
 
 private struct TVGlassRoundedModifier: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    internal let radius: CGFloat
+    let radius: CGFloat
 
     @ViewBuilder
-    internal func body(content: Content) -> some View {
+    func body(content: Content) -> some View {
         if reduceTransparency {
             content.background(.thickMaterial, in: shape)
         } else {
@@ -24,11 +24,13 @@ private struct TVGlassRoundedModifier: ViewModifier {
     }
 }
 
+// MARK: - TVGlassCapsuleModifier
+
 private struct TVGlassCapsuleModifier: ViewModifier {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     @ViewBuilder
-    internal func body(content: Content) -> some View {
+    func body(content: Content) -> some View {
         if reduceTransparency {
             content.background(.thickMaterial, in: Capsule())
         } else {
@@ -42,20 +44,21 @@ private struct TVGlassCapsuleModifier: ViewModifier {
 }
 
 extension View {
-    internal func tvGlassRounded(_ radius: CGFloat = 24) -> some View {
+    func tvGlassRounded(_ radius: CGFloat = 24) -> some View {
         modifier(TVGlassRoundedModifier(radius: radius))
     }
 
-    internal func tvGlassCapsule() -> some View {
+    func tvGlassCapsule() -> some View {
         modifier(TVGlassCapsuleModifier())
     }
 }
 
 @MainActor @ViewBuilder
-internal func tvGlassContainer<Content: View>(
+func tvGlassContainer(
     spacing: CGFloat? = nil,
-    @ViewBuilder content: () -> Content
-) -> some View {
+    @ViewBuilder content: () -> some View,
+)
+-> some View {
     if let spacing {
         GlassEffectContainer(spacing: spacing, content: content)
     } else {

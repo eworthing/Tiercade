@@ -2,12 +2,12 @@
 import SwiftUI
 import TiercadeCore
 
-internal struct DetailSidebarView: View {
+struct DetailSidebarView: View {
     @Environment(AppState.self) private var app: AppState
-    internal let item: Item
-    internal let focus: FocusState<MainAppView.DetailFocus?>.Binding
+    let item: Item
+    let focus: FocusState<MainAppView.DetailFocus?>.Binding
 
-    internal var body: some View {
+    var body: some View {
         GeometryReader { proxy in
             let width = min(proxy.size.width * 0.52, 760)
             ZStack(alignment: .topTrailing) {

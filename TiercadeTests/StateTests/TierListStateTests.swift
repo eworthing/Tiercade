@@ -120,7 +120,7 @@ struct TierListStateTests {
         let state = TierListState()
         populateState(state)
 
-        #expect(state.totalItemCount == 3)  // 1 in S, 2 in A
+        #expect(state.totalItemCount == 3) // 1 in S, 2 in A
     }
 
     @Test("totalItemCount handles empty tiers")
@@ -177,7 +177,7 @@ struct TierListStateTests {
         state.tierLabels["S"] = "Best"
 
         #expect(state.displayLabel(for: "S") == "Best")
-        #expect(state.displayLabel(for: "A") == "A")  // Fallback
+        #expect(state.displayLabel(for: "A") == "A") // Fallback
     }
 
     @Test("displayColorHex returns custom color or nil")

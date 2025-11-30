@@ -1,21 +1,21 @@
-import SwiftUI
 import Foundation
+import SwiftUI
 import TiercadeCore
 
 // MARK: - Card View
 
-internal struct CardView: View {
-    internal let item: Item
+struct CardView: View {
+    let item: Item
     @Environment(AppState.self) var app
     @Environment(\.isFocused) var isFocused: Bool
     #if os(iOS) || os(tvOS)
     @Environment(\.editMode) private var editMode
     #endif
     #if os(tvOS)
-    internal let layout: TVCardLayout
+    let layout: TVCardLayout
     #else
-    internal let layout: PlatformCardLayout
-    internal var onTapFocus: (() -> Void)?  // Called when card is tapped to update focus
+    let layout: PlatformCardLayout
+    var onTapFocus: (() -> Void)? // Called when card is tapped to update focus
     #endif
 
     private var isMultiSelectActive: Bool {
@@ -52,41 +52,41 @@ internal struct CardView: View {
         #endif
     }
 
-    internal var body: some View {
+    var body: some View {
         Button(action: handleTap) {
             cardBody
         }
         .buttonStyle(.plain)
         #if !os(tvOS)
-        .focusable()  // Enable keyboard event handling (Space/Return) on iOS/macOS
-        .onKeyPress(.space) {
-            onTapFocus?()  // Update focus state
-            if !isMultiSelectActive {
-                app.beginQuickRank(item)
+            .focusable() // Enable keyboard event handling (Space/Return) on iOS/macOS
+            .onKeyPress(.space) {
+                onTapFocus?() // Update focus state
+                if !isMultiSelectActive {
+                    app.beginQuickRank(item)
+                }
+                return .handled
             }
-            return .handled
-        }
-        .onKeyPress(.return) {
-            onTapFocus?()  // Update focus state
-            if !isMultiSelectActive {
-                app.beginQuickRank(item)
+            .onKeyPress(.return) {
+                onTapFocus?() // Update focus state
+                if !isMultiSelectActive {
+                    app.beginQuickRank(item)
+                }
+                return .handled
             }
-            return .handled
-        }
         #endif
-        .accessibilityIdentifier("Card_\(item.id)")
-        .scaleEffect(app.draggingId == item.id ? 0.98 : 1.0)
-        .shadow(
-            color: Palette.bg.opacity(app.draggingId == item.id ? 0.45 : 0.1),
-            radius: app.draggingId == item.id ? 20 : 6,
-            x: 0,
-            y: app.draggingId == item.id ? 12 : 4
-        )
-        .contentShape(Rectangle())
-        .accessibilityLabel(displayLabel)
-        .punchyFocus(color: colorForItem(item), cornerRadius: layoutCornerRadius)
+            .accessibilityIdentifier("Card_\(item.id)")
+                .scaleEffect(app.draggingId == item.id ? 0.98 : 1.0)
+                .shadow(
+                    color: Palette.bg.opacity(app.draggingId == item.id ? 0.45 : 0.1),
+                    radius: app.draggingId == item.id ? 20 : 6,
+                    x: 0,
+                    y: app.draggingId == item.id ? 12 : 4,
+                )
+                .contentShape(Rectangle())
+                .accessibilityLabel(displayLabel)
+                .punchyFocus(color: colorForItem(item), cornerRadius: layoutCornerRadius)
         #if os(iOS) || os(macOS)
-        .accessibilityAddTraits(.isButton)
+            .accessibilityAddTraits(.isButton)
         #endif
         #if !os(tvOS)
         .onDrag {
@@ -104,13 +104,17 @@ internal struct CardView: View {
         }
         .onMoveCommand { direction in
             // Don't reorder if not in custom sort mode - let focus navigate
-            guard app.globalSortMode.isCustom else { return }
+            guard app.globalSortMode.isCustom else {
+                return
+            }
 
             // Get current tier for this item
-            guard let tierName = app.currentTier(of: item.id) else { return }
+            guard let tierName = app.currentTier(of: item.id) else {
+                return
+            }
 
             // Check if we're in multi-select mode with selected items
-            if isMultiSelectActive && app.isSelected(item.id) && app.selection.count > 1 {
+            if isMultiSelectActive, app.isSelected(item.id), app.selection.count > 1 {
                 // Block move: move all selected items in this tier together
                 handleBlockMove(tierName: tierName, direction: direction)
             } else {
@@ -154,7 +158,7 @@ internal struct CardView: View {
         if isMultiSelectActive {
             app.toggleSelection(item.id)
         } else {
-            onTapFocus?()  // Update hardware focus to this card
+            onTapFocus?() // Update hardware focus to this card
             app.beginQuickRank(item)
         }
         #endif
@@ -192,10 +196,10 @@ internal struct CardView: View {
         .cornerRadius(layout.cornerRadius)
         .overlay(
             RoundedRectangle(cornerRadius: layout.cornerRadius)
-                .stroke(Palette.stroke, lineWidth: 1)
+                .stroke(Palette.stroke, lineWidth: 1),
         )
         .overlay(alignment: .topTrailing) {
-            if isMultiSelectActive && app.isSelected(item.id) {
+            if isMultiSelectActive, app.isSelected(item.id) {
                 selectionBadge
             }
         }
@@ -215,10 +219,10 @@ internal struct CardView: View {
             .cornerRadius(layout.cornerRadius)
             .overlay(
                 RoundedRectangle(cornerRadius: layout.cornerRadius)
-                    .stroke(Palette.stroke.opacity(0.9), lineWidth: 1)
+                    .stroke(Palette.stroke.opacity(0.9), lineWidth: 1),
             )
             .overlay(alignment: .topTrailing) {
-                if isMultiSelectActive && app.isSelected(item.id) {
+                if isMultiSelectActive, app.isSelected(item.id) {
                     selectionBadge
                         .padding(6)
                 }
@@ -253,9 +257,13 @@ internal struct CardView: View {
 
     private var metadataText: String? {
         #if os(tvOS)
-        guard layout.density.showsOnCardText else { return nil }
+        guard layout.density.showsOnCardText else {
+            return nil
+        }
         #else
-        guard layout.showsText else { return nil }
+        guard layout.showsText else {
+            return nil
+        }
         #endif
 
         if let status = item.status?.trimmingCharacters(in: .whitespacesAndNewlines), !status.isEmpty {
@@ -276,9 +284,9 @@ internal struct CardView: View {
             .accessibilityLabel("Selected")
             .padding(.all, 6)
             .background(
-                Circle().fill(Palette.bg.opacity(0.4))
+                Circle().fill(Palette.bg.opacity(0.4)),
             )
-            #if os(tvOS)
+        #if os(tvOS)
             .offset(x: layout.contentPadding * 0.2, y: -layout.contentPadding * 0.2)
         #endif
     }
@@ -288,16 +296,20 @@ internal struct CardView: View {
     #if os(tvOS)
     /// Handle block move for multi-select: move all selected items in a tier together
     private func handleBlockMove(tierName: String, direction: MoveCommandDirection) {
-        guard let items = app.tiers[tierName] else { return }
+        guard let items = app.tiers[tierName] else {
+            return
+        }
 
         // Get indices of all selected items in this tier
         let selectedIndices = IndexSet(
             items.enumerated()
                 .filter { app.selection.contains($0.element.id) }
-                .map { $0.offset }
+                .map(\.offset),
         )
 
-        guard !selectedIndices.isEmpty else { return }
+        guard !selectedIndices.isEmpty else {
+            return
+        }
 
         // Calculate destination index based on direction
         let minIndex = selectedIndices.min() ?? 0

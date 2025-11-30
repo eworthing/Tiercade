@@ -4,7 +4,7 @@ import Foundation
 ///
 /// These values balance data safety with performance, ensuring tier list changes
 /// are persisted without causing excessive writes to SwiftData storage.
-internal enum PersistenceIntervals {
+enum PersistenceIntervals {
     /// Auto-save interval for tier list changes (30 seconds).
     ///
     /// **Rationale:**

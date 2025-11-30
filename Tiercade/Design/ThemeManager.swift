@@ -1,17 +1,17 @@
 import SwiftUI
 
-internal enum ThemePreference: String, CaseIterable, Identifiable {
+enum ThemePreference: String, CaseIterable, Identifiable {
     case system
     case light
     case dark
 
-    internal var id: String { rawValue }
+    var id: String { rawValue }
 
-    internal var colorScheme: ColorScheme? {
+    var colorScheme: ColorScheme? {
         switch self {
-        case .system: return nil
-        case .light: return .light
-        case .dark: return .dark
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
         }
     }
 }

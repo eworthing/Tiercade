@@ -5,6 +5,7 @@ import FoundationModels
 #endif
 
 // MARK: - Acceptance Test Suite
+
 //
 // ⚠️ DEPRECATED: This testing infrastructure has been replaced by UnifiedPromptTester.
 //
@@ -31,10 +32,7 @@ import FoundationModels
 #if canImport(FoundationModels) && DEBUG
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
-internal enum AcceptanceTestSuite {
-
-    // Seed ring for reproducible retries across tests
-    internal static let seedRing: [UInt64] = [42, 1337, 9999, 123456, 987654]
+enum AcceptanceTestSuite {
 
     struct SeedRun {
         let seed: UInt64
@@ -67,36 +65,41 @@ internal enum AcceptanceTestSuite {
         let timestamp: Date
 
         var passRate: Double {
-            guard totalTests > 0 else { return 0 }
+            guard totalTests > 0 else {
+                return 0
+            }
             return Double(passed) / Double(totalTests)
         }
     }
 
+    // Seed ring for reproducible retries across tests
+    static let seedRing: [UInt64] = [42, 1337, 9999, 123_456, 987_654]
+
     /// Compute median of array
     /// Run all acceptance tests
-    internal static func runAll(logger: @escaping (String) -> Void = { print($0) }) async throws -> TestReport {
+    static func runAll(logger: @escaping (String) -> Void = { print($0) }) async throws -> TestReport {
         logger("🧪 Starting Acceptance Test Suite")
         logger("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
         var results: [TestResult] = []
 
         // Test 1: Structure (JSON decoding)
-        results.append(await testStructure(logger: logger))
+        await results.append(testStructure(logger: logger))
 
         // Test 2: Uniqueness
-        results.append(await testUniqueness(logger: logger))
+        await results.append(testUniqueness(logger: logger))
 
         // Test 3: Backfill with duplicates (unguided)
-        results.append(await testBackfill(logger: logger))
+        await results.append(testBackfill(logger: logger))
 
         // Test 4: Guided backfill comparison
-        results.append(await testGuidedBackfill(logger: logger))
+        await results.append(testGuidedBackfill(logger: logger))
 
         // Test 5: Context overflow handling
-        results.append(await testOverflowHandling(logger: logger))
+        await results.append(testOverflowHandling(logger: logger))
 
         // Test 6: Reproducibility
-        results.append(await testReproducibility(logger: logger))
+        await results.append(testReproducibility(logger: logger))
 
         // Test 7: Normalization edge cases
         results.append(testNormalization(logger: logger))
@@ -104,7 +107,7 @@ internal enum AcceptanceTestSuite {
         // Test 8: Token budgeting
         results.append(testTokenBudgeting(logger: logger))
 
-        let passed = results.filter { $0.passed }.count
+        let passed = results.count(where: { $0.passed })
         let failed = results.count - passed
 
         let report = TestReport(
@@ -113,7 +116,7 @@ internal enum AcceptanceTestSuite {
             failed: failed,
             results: results,
             environment: RunEnv(),
-            timestamp: Date()
+            timestamp: Date(),
         )
 
         logger("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")

@@ -1,6 +1,10 @@
 import Foundation
 
+// MARK: - DataVersion
+
 public enum DataVersion: Int, Sendable { case v1 = 1 }
+
+// MARK: - DataLoader
 
 public struct DataLoader: Sendable {
     public init() {}
@@ -17,7 +21,9 @@ public struct DataLoader: Sendable {
 
     public func validate(groups: [String: [String]], items: [String: Item]) -> Bool {
         for (_, ids) in groups {
-            for id in ids where items[id] == nil { return false }
+            for id in ids where items[id] == nil {
+                return false
+            }
         }
         return !items.isEmpty
     }

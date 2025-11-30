@@ -1,11 +1,3 @@
-//
-//  Logging.swift
-//  Tiercade
-//
-//  Unified logging system using Swift's os.Logger
-//  Provides subsystem-scoped loggers for different app domains
-//
-
 import Foundation
 import os
 
@@ -28,35 +20,35 @@ extension Logger {
     private static let subsystem = Bundle.main.bundleIdentifier ?? "com.tiercade.app"
 
     /// General application state changes and lifecycle events
-    internal static let appState = Logger(subsystem: subsystem, category: "AppState")
+    static let appState = Logger(subsystem: subsystem, category: "AppState")
 
     /// HeadToHead matchup system logs
-    internal static let headToHead = Logger(subsystem: subsystem, category: "HeadToHead")
+    static let headToHead = Logger(subsystem: subsystem, category: "HeadToHead")
 
     /// Persistence, save, and load operations
-    internal static let persistence = Logger(subsystem: subsystem, category: "Persistence")
+    static let persistence = Logger(subsystem: subsystem, category: "Persistence")
 
     /// Export operations (JSON, CSV, PNG, PDF)
-    internal static let export = Logger(subsystem: subsystem, category: "Export")
+    static let export = Logger(subsystem: subsystem, category: "Export")
 
     /// Import operations and data parsing
-    internal static let dataImport = Logger(subsystem: subsystem, category: "Import")
+    static let dataImport = Logger(subsystem: subsystem, category: "Import")
 
     /// Item management (add, delete, move)
-    internal static let items = Logger(subsystem: subsystem, category: "Items")
+    static let items = Logger(subsystem: subsystem, category: "Items")
 
     /// Theme and UI customization
-    internal static let theme = Logger(subsystem: subsystem, category: "Theme")
+    static let theme = Logger(subsystem: subsystem, category: "Theme")
 
     /// Selection and multi-select operations
-    internal static let selection = Logger(subsystem: subsystem, category: "Selection")
+    static let selection = Logger(subsystem: subsystem, category: "Selection")
 
     /// Analysis and statistics
-    internal static let analysis = Logger(subsystem: subsystem, category: "Analysis")
+    static let analysis = Logger(subsystem: subsystem, category: "Analysis")
 
     /// Search operations
-    internal static let search = Logger(subsystem: subsystem, category: "Search")
+    static let search = Logger(subsystem: subsystem, category: "Search")
 
     /// Apple Intelligence and AI generation (DEBUG only)
-    internal static let aiGeneration = Logger(subsystem: subsystem, category: "AI-Generation")
+    static let aiGeneration = Logger(subsystem: subsystem, category: "AI-Generation")
 }

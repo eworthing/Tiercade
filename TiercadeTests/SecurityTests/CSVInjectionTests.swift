@@ -1,5 +1,5 @@
-import Testing
 import Foundation
+import Testing
 @testable import Tiercade
 
 /// Security tests for CSV injection and parsing vulnerabilities
@@ -52,7 +52,7 @@ struct CSVInjectionTests {
         let dangerous = "=SYSTEM(\"rm -rf /\")"
         let sanitized = AppState.sanitizeCSVCell(dangerous)
         #expect(sanitized.hasPrefix("'"))
-        #expect(!sanitized.contains("SYSTEM"))  // Still contains but prefixed
+        #expect(!sanitized.contains("SYSTEM")) // Still contains but prefixed
     }
 
     // MARK: - CSV Parsing (Quote Escaping)

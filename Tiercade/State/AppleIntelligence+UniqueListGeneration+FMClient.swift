@@ -7,39 +7,39 @@ import FoundationModels
 
 @available(iOS 26.0, macOS 26.0, *)
 extension FMClient {
-    internal func initializeRetryState(params: GenerateParameters) -> RetryState {
-        return RetryState(
+    func initializeRetryState(params: GenerateParameters) -> RetryState {
+        RetryState(
             options: params.profile.options(
                 seed: params.initialSeed,
                 temp: params.temperature,
-                maxTok: params.maxTokens
+                maxTok: params.maxTokens,
             ),
             seed: params.initialSeed,
-            lastError: nil
+            lastError: nil,
         )
     }
 
-    internal func handleUnexpectedError(_ error: Error) throws -> Never {
+    func handleUnexpectedError(_ error: Error) throws -> Never {
         logger("❌ [DEBUG] Unexpected error type: \(type(of: error))")
         logger("❌ [DEBUG] Error: \(error)")
         throw error
     }
 
-    internal func buildRetryExhaustedError(lastError: Error?) -> Error {
-        return lastError ?? NSError(domain: "FMClient", code: -1, userInfo: [
-            NSLocalizedDescriptionKey: "All retries failed"
+    func buildRetryExhaustedError(lastError: Error?) -> Error {
+        lastError ?? NSError(domain: "FMClient", code: -1, userInfo: [
+            NSLocalizedDescriptionKey: "All retries failed",
         ])
     }
 
-    internal func handleSuccessResponse(
+    func handleSuccessResponse(
         context: FMClient.ResponseContext,
-        telemetry: inout [AttemptMetrics]
+        telemetry: inout [AttemptMetrics],
     ) {
         logSuccessfulGeneration(
             response: context.response,
             attempt: context.attempt,
             totalElapsed: Date().timeIntervalSince(context.totalStart),
-            params: context.params
+            params: context.params,
         )
 
         recordSuccessfulAttempt(
@@ -50,25 +50,26 @@ extension FMClient {
                 options: context.params.profile.options(
                     seed: context.currentSeed,
                     temp: context.params.temperature,
-                    maxTok: context.params.maxTokens
+                    maxTok: context.params.maxTokens,
                 ),
                 sessionRecreated: context.sessionRecreated,
-                elapsed: Date().timeIntervalSince(context.attemptStart)
+                elapsed: Date().timeIntervalSince(context.attemptStart),
             ),
             itemsReturned: context.response.content.items.count,
-            telemetry: &telemetry
+            telemetry: &telemetry,
         )
     }
 
     // swiftlint:disable:next function_parameter_count - Grouped: error + context + retry + telemetry
-    internal func handleAttemptFailure(
+    func handleAttemptFailure(
         error: LanguageModelSession.GenerationError,
         attempt: Int,
         attemptStart: Date,
         params: GenerateParameters,
         retryState: inout RetryState,
-        telemetry: inout [AttemptMetrics]
-    ) async throws -> Bool {
+        telemetry: inout [AttemptMetrics],
+    ) async throws
+    -> Bool {
         let attemptElapsed = Date().timeIntervalSince(attemptStart)
 
         recordFailedAttempt(
@@ -78,26 +79,26 @@ extension FMClient {
                 profile: params.profile,
                 options: retryState.options,
                 sessionRecreated: retryState.sessionRecreated,
-                elapsed: attemptElapsed
+                elapsed: attemptElapsed,
             ),
-            telemetry: &telemetry
+            telemetry: &telemetry,
         )
 
         return try await handleGenerationError(
             error: error,
             attempt: attempt,
             params: params,
-            retryState: &retryState
+            retryState: &retryState,
         )
     }
 
-    internal func logGenerationStart(params: GenerateParameters) {
+    func logGenerationStart(params: GenerateParameters) {
         logger("🔍 [DEBUG] Starting generation (maxRetries=\(params.maxRetries))...")
         logger("🔍 [DEBUG] Prompt length: \(params.prompt.count) chars")
         logger("🔍 [DEBUG] Full prompt: \"\(params.prompt)\"")
     }
 
-    internal func logAttemptDetails(attempt: Int, maxRetries: Int, options: GenerationOptions) {
+    func logAttemptDetails(attempt: Int, maxRetries: Int, options: GenerationOptions) {
         logger("🔍 [DEBUG] Attempt \(attempt + 1)/\(maxRetries)")
         logger("🔍 [DEBUG] Options.maximumResponseTokens: \(String(describing: options.maximumResponseTokens))")
         logger("🔍 [DEBUG] Options.temperature: \(String(describing: options.temperature))")
@@ -105,23 +106,24 @@ extension FMClient {
         logger("🔍 [DEBUG] Schema: UniqueListResponse (includeSchemaInPrompt=true)")
     }
 
-    internal func executeGuidedGeneration(
+    func executeGuidedGeneration(
         prompt: String,
-        options: GenerationOptions
-    ) async throws -> LanguageModelSession.Response<UniqueListResponse> {
-        return try await session.respond(
+        options: GenerationOptions,
+    ) async throws
+    -> LanguageModelSession.Response<UniqueListResponse> {
+        try await session.respond(
             to: Prompt(prompt),
             generating: UniqueListResponse.self,
             includeSchemaInPrompt: true,
-            options: options
+            options: options,
         )
     }
 
-    internal func logSuccessfulGeneration(
+    func logSuccessfulGeneration(
         response: LanguageModelSession.Response<UniqueListResponse>,
         attempt: Int,
         totalElapsed: Double,
-        params: GenerateParameters
+        params: GenerateParameters,
     ) {
         let ips = Double(response.content.items.count) / max(0.001, totalElapsed)
 
@@ -134,8 +136,8 @@ extension FMClient {
         let attemptSuffix = attempt > 0 ? " [succeeded on attempt \(attempt + 1)]" : ""
         logger(
             "✓ Generated \(response.content.items.count) items in " +
-            "\(String(format: "%.2f", totalElapsed))s " +
-            "(\(String(format: "%.1f", ips)) items/sec)\(attemptSuffix)"
+                "\(String(format: "%.2f", totalElapsed))s " +
+                "(\(String(format: "%.1f", ips)) items/sec)\(attemptSuffix)",
         )
 
         logger("🔍 [DEBUG] First item: \(response.content.items.first ?? "none")")
@@ -143,10 +145,10 @@ extension FMClient {
         logger("🔍 [DEBUG] Item count breakdown: total=\(response.content.items.count)")
     }
 
-    internal func recordSuccessfulAttempt(
+    func recordSuccessfulAttempt(
         context: FMClient.AttemptContext,
         itemsReturned: Int,
-        telemetry: inout [AttemptMetrics]
+        telemetry: inout [AttemptMetrics],
     ) {
         telemetry.append(AttemptMetrics(
             attemptIndex: context.attempt,
@@ -155,13 +157,13 @@ extension FMClient {
             temperature: context.options.temperature,
             sessionRecreated: context.sessionRecreated,
             itemsReturned: itemsReturned,
-            elapsedSec: context.elapsed
+            elapsedSec: context.elapsed,
         ))
     }
 
-    internal func recordFailedAttempt(
+    func recordFailedAttempt(
         context: FMClient.AttemptContext,
-        telemetry: inout [AttemptMetrics]
+        telemetry: inout [AttemptMetrics],
     ) {
         telemetry.append(AttemptMetrics(
             attemptIndex: context.attempt,
@@ -170,25 +172,28 @@ extension FMClient {
             temperature: context.options.temperature,
             sessionRecreated: context.sessionRecreated,
             itemsReturned: nil,
-            elapsedSec: context.elapsed
+            elapsedSec: context.elapsed,
         ))
     }
 
-    internal func handleGenerationError(
+    func handleGenerationError(
         error: LanguageModelSession.GenerationError,
         attempt: Int,
         params: GenerateParameters,
-        retryState: inout RetryState
-    ) async throws -> Bool {
-        if case .decodingFailure(let context) = error {
+        retryState: inout RetryState,
+    ) async throws
+    -> Bool {
+        if case let .decodingFailure(context) = error {
             if attempt < params.maxRetries - 1 {
                 logger("⚠️ [Attempt \(attempt + 1)] decodingFailure: \(context.debugDescription)")
 
-                if try await handleAdaptiveRetry(
-                    attempt: attempt,
-                    params: params,
-                    retryState: &retryState
-                ) {
+                if
+                    try await handleAdaptiveRetry(
+                        attempt: attempt,
+                        params: params,
+                        retryState: &retryState,
+                    )
+                {
                     return true
                 }
 
@@ -197,7 +202,7 @@ extension FMClient {
                 logger("❌ [Attempt \(attempt + 1)] decodingFailure: \(context.debugDescription)")
                 logger("❌ Max retries exhausted, failing")
             }
-        } else if case .exceededContextWindowSize(let details) = error {
+        } else if case let .exceededContextWindowSize(details) = error {
             logger("❌ Context window overflow: \(details)")
             throw error
         } else {
@@ -208,11 +213,12 @@ extension FMClient {
         return false
     }
 
-    internal func handleAdaptiveRetry(
+    func handleAdaptiveRetry(
         attempt: Int,
         params: GenerateParameters,
-        retryState: inout RetryState
-    ) async throws -> Bool {
+        retryState: inout RetryState,
+    ) async throws
+    -> Bool {
         // ADAPTIVE RETRY: Boost tokens before seed rotation on first failure
         if attempt == 0 {
             let currentMax = retryState.options.maximumResponseTokens ?? 0
@@ -222,7 +228,7 @@ extension FMClient {
                 retryState.options = params.profile.options(
                     seed: retryState.seed,
                     temp: retryState.options.temperature,
-                    maxTok: boosted
+                    maxTok: boosted,
                 )
                 let seedStr = retryState.seed.map { String($0) } ?? "nil"
                 logger("🔁 Retrying with seed=\(seedStr), profile=\(params.profile.description)")
@@ -256,7 +262,7 @@ extension FMClient {
     // MARK: - Unguided Generation Helpers
 
     // swiftlint:disable:next function_parameter_count - Grouped: response + context + params + telemetry
-    internal func handleUnguidedResponse(
+    func handleUnguidedResponse(
         response: LanguageModelSession.Response<String>,
         attempt: Int,
         attemptStart: Date,
@@ -264,8 +270,9 @@ extension FMClient {
         params: GenerateTextArrayParameters,
         options: GenerationOptions,
         sessionRecreated: Bool,
-        telemetry: inout [AttemptMetrics]
-    ) throws -> [String]? {
+        telemetry: inout [AttemptMetrics],
+    ) throws
+    -> [String]? {
         let attemptElapsed = Date().timeIntervalSince(attemptStart)
         let debugDir = prepareDebugDirectory()
 
@@ -275,7 +282,7 @@ extension FMClient {
             params: params,
             options: options,
             elapsed: attemptElapsed,
-            debugDir: debugDir
+            debugDir: debugDir,
         )
 
         if let arr = parseJSONArray(response.content) {
@@ -288,10 +295,10 @@ extension FMClient {
                     params: params,
                     options: options,
                     sessionRecreated: sessionRecreated,
-                    elapsed: attemptElapsed
+                    elapsed: attemptElapsed,
                 ),
                 itemCount: arr.count,
-                telemetry: &telemetry
+                telemetry: &telemetry,
             )
 
             return arr
@@ -302,7 +309,7 @@ extension FMClient {
     }
 
     // swiftlint:disable:next function_parameter_count - Grouped: error + context + params + retry + telemetry
-    internal func handleUnguidedError(
+    func handleUnguidedError(
         error: Error,
         attempt: Int,
         attemptStart: Date,
@@ -310,8 +317,9 @@ extension FMClient {
         options: GenerationOptions,
         currentOptions: inout GenerationOptions,
         sessionRecreated: inout Bool,
-        telemetry: inout [AttemptMetrics]
-    ) async -> Bool {
+        telemetry: inout [AttemptMetrics],
+    ) async
+    -> Bool {
         let attemptElapsed = Date().timeIntervalSince(attemptStart)
 
         logUnguidedFailure(error: error, elapsed: attemptElapsed)
@@ -322,24 +330,24 @@ extension FMClient {
                 params: params,
                 options: options,
                 sessionRecreated: sessionRecreated,
-                elapsed: attemptElapsed
+                elapsed: attemptElapsed,
             ),
-            telemetry: &telemetry
+            telemetry: &telemetry,
         )
 
         return await handleUnguidedRetry(
             attempt: attempt,
             params: params,
             currentOptions: &currentOptions,
-            sessionRecreated: &sessionRecreated
+            sessionRecreated: &sessionRecreated,
         )
     }
 
-    internal func prepareDebugDirectory() -> URL {
+    func prepareDebugDirectory() -> URL {
         let fileManager = FileManager.default
         let debugDir = fileManager.temporaryDirectory.appendingPathComponent(
             "unguided_debug",
-            isDirectory: true
+            isDirectory: true,
         )
         do {
             try fileManager.createDirectory(at: debugDir, withIntermediateDirectories: true)
@@ -350,13 +358,13 @@ extension FMClient {
     }
 
     // swiftlint:disable:next function_parameter_count - Grouped: response + context + params + debug
-    internal func saveUnguidedDebugData(
+    func saveUnguidedDebugData(
         response: LanguageModelSession.Response<String>,
         attempt: Int,
         params: GenerateTextArrayParameters,
         options: GenerationOptions,
         elapsed: Double,
-        debugDir: URL
+        debugDir: URL,
     ) {
         let preview = String(response.content.prefix(200))
         logger("🔍 [DEBUG] Unguided response preview: \(preview)")
@@ -370,7 +378,7 @@ extension FMClient {
             "responseLength": response.content.count,
             "elapsedSec": elapsed,
             "promptSnippet": String(params.prompt.prefix(200)),
-            "fullResponse": response.content
+            "fullResponse": response.content,
         ]
         if let temperature = options.temperature {
             debugData["temperature"] = temperature
@@ -388,15 +396,15 @@ extension FMClient {
         }
     }
 
-    internal func logSuccessfulParse(arr: [String], elapsed: Double) {
+    func logSuccessfulParse(arr: [String], elapsed: Double) {
         logger("✓ Parsed \(arr.count) items from text in \(String(format: "%.2f", elapsed))s")
     }
 
-    internal func saveParseSuccessDebug(arr: [String], debugDir: URL) {
+    func saveParseSuccessDebug(arr: [String], debugDir: URL) {
         let parseDebug: [String: Any] = [
             "parseSuccess": true,
             "itemsExtracted": arr.count,
-            "items": arr
+            "items": arr,
         ]
         do {
             let parseData = try JSONSerialization.data(withJSONObject: parseDebug, options: .prettyPrinted)
@@ -407,13 +415,13 @@ extension FMClient {
         }
     }
 
-    internal func handleParseFailure(response: LanguageModelSession.Response<String>, debugDir: URL) throws {
+    func handleParseFailure(response: LanguageModelSession.Response<String>, debugDir: URL) throws {
         logger("⚠️ Parse failed. Full response (\(response.content.count) chars): \(response.content)")
 
         let parseFailDebug: [String: Any] = [
             "parseSuccess": false,
             "response": response.content,
-            "reason": "Could not extract JSON array"
+            "reason": "Could not extract JSON array",
         ]
         do {
             let failData = try JSONSerialization.data(withJSONObject: parseFailDebug, options: .prettyPrinted)
@@ -424,14 +432,14 @@ extension FMClient {
         }
 
         throw NSError(domain: "UnguidedParse", code: -1, userInfo: [
-            NSLocalizedDescriptionKey: "Failed to parse JSON array from response"
+            NSLocalizedDescriptionKey: "Failed to parse JSON array from response",
         ])
     }
 
-    internal func recordUnguidedSuccess(
+    func recordUnguidedSuccess(
         context: FMClient.UnguidedAttemptContext,
         itemCount: Int,
-        telemetry: inout [AttemptMetrics]
+        telemetry: inout [AttemptMetrics],
     ) {
         telemetry.append(AttemptMetrics(
             attemptIndex: context.attempt,
@@ -440,20 +448,20 @@ extension FMClient {
             temperature: context.options.temperature,
             sessionRecreated: context.sessionRecreated,
             itemsReturned: itemCount,
-            elapsedSec: context.elapsed
+            elapsedSec: context.elapsed,
         ))
     }
 
-    internal func logUnguidedFailure(error: Error, elapsed: Double) {
+    func logUnguidedFailure(error: Error, elapsed: Double) {
         logger(
             "❌ [DEBUG] Unguided generation failed after " +
-            "\(String(format: "%.2f", elapsed))s: \(error)"
+                "\(String(format: "%.2f", elapsed))s: \(error)",
         )
     }
 
-    internal func recordUnguidedFailure(
+    func recordUnguidedFailure(
         context: FMClient.UnguidedAttemptContext,
-        telemetry: inout [AttemptMetrics]
+        telemetry: inout [AttemptMetrics],
     ) {
         telemetry.append(AttemptMetrics(
             attemptIndex: context.attempt,
@@ -462,16 +470,17 @@ extension FMClient {
             temperature: context.options.temperature,
             sessionRecreated: context.sessionRecreated,
             itemsReturned: 0,
-            elapsedSec: context.elapsed
+            elapsedSec: context.elapsed,
         ))
     }
 
-    internal func handleUnguidedRetry(
+    func handleUnguidedRetry(
         attempt: Int,
         params: GenerateTextArrayParameters,
         currentOptions: inout GenerationOptions,
-        sessionRecreated: inout Bool
-    ) async -> Bool {
+        sessionRecreated _: inout Bool,
+    ) async
+    -> Bool {
         // Adaptive boost on first failure
         if attempt == 0 {
             let currentMax = currentOptions.maximumResponseTokens ?? 256
@@ -481,7 +490,7 @@ extension FMClient {
                 currentOptions = params.profile.options(
                     seed: params.initialSeed,
                     temp: max(0.0, (params.temperature ?? 0.7) * 0.9),
-                    maxTok: boosted
+                    maxTok: boosted,
                 )
                 return true
             }
@@ -504,7 +513,7 @@ extension FMClient {
     /// Handles both ["item1", "item2"] and [{"name": "item1"}, {"name": "item2"}] formats.
     /// Strips markdown code fences (```json ... ```) before parsing.
     /// Falls back to regex extraction of quoted strings even when array is truncated.
-    internal func parseJSONArray(_ text: String) -> [String]? {
+    func parseJSONArray(_ text: String) -> [String]? {
         // Strip markdown code fences if present (handles newlines)
         var cleanedText = text
         // Remove ```json\n or ```json variants
@@ -518,17 +527,18 @@ extension FMClient {
         }
 
         // Try to find closing bracket, but continue if missing (truncated array)
-        let slice: String
-        if let end = cleanedText.lastIndex(of: "]"), start < end {
-            slice = String(cleanedText[start...end])
+        let slice = if let end = cleanedText.lastIndex(of: "]"), start < end {
+            String(cleanedText[start ... end])
         } else {
             // Truncated array - use everything from [ onwards
-            slice = String(cleanedText[start...])
+            String(cleanedText[start...])
         }
 
         // Try standard JSON parsing first (only works if array is complete)
-        if let data = slice.data(using: .utf8),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [Any] {
+        if
+            let data = slice.data(using: .utf8),
+            let json = try? JSONSerialization.jsonObject(with: data) as? [Any]
+        {
             // Handle both string arrays and object arrays with "name" field
             return json.compactMap { element -> String? in
                 // Try direct string first
@@ -536,8 +546,10 @@ extension FMClient {
                     return string
                 }
                 // Try extracting from object with "name" field
-                if let dict = element as? [String: Any],
-                   let name = dict["name"] as? String {
+                if
+                    let dict = element as? [String: Any],
+                    let name = dict["name"] as? String
+                {
                     return name
                 }
                 return nil

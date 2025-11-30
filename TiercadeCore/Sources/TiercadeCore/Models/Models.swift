@@ -1,27 +1,21 @@
 import Foundation
 
+// MARK: - Item
+
 public struct Item: Codable, Identifiable, Sendable, Hashable {
-    public let id: String
-    public var name: String?
-    public var seasonString: String?
-    public var seasonNumber: Int?
-    public var status: String?
-    public var description: String?
-    public var imageUrl: String?
-    public var videoUrl: String?
 
-    public enum CodingKeys: String, CodingKey {
-        case id, name, season, status, description, imageUrl, videoUrl
-    }
+    // MARK: Lifecycle
 
-    public init(id: String,
-                name: String? = nil,
-                seasonString: String? = nil,
-                seasonNumber: Int? = nil,
-                status: String? = nil,
-                description: String? = nil,
-                imageUrl: String? = nil,
-                videoUrl: String? = nil) {
+    public init(
+        id: String,
+        name: String? = nil,
+        seasonString: String? = nil,
+        seasonNumber: Int? = nil,
+        status: String? = nil,
+        description: String? = nil,
+        imageUrl: String? = nil,
+        videoUrl: String? = nil,
+    ) {
         self.id = id
         self.name = name
         self.seasonString = seasonString
@@ -71,24 +65,45 @@ public struct Item: Codable, Identifiable, Sendable, Hashable {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decode(String.self, forKey: .id)
-        name = try c.decodeIfPresent(String.self, forKey: .name)
-        status = try c.decodeIfPresent(String.self, forKey: .status)
-        description = try c.decodeIfPresent(String.self, forKey: .description)
-        imageUrl = try c.decodeIfPresent(String.self, forKey: .imageUrl)
-        videoUrl = try c.decodeIfPresent(String.self, forKey: .videoUrl)
+        self.id = try c.decode(String.self, forKey: .id)
+        self.name = try c.decodeIfPresent(String.self, forKey: .name)
+        self.status = try c.decodeIfPresent(String.self, forKey: .status)
+        self.description = try c.decodeIfPresent(String.self, forKey: .description)
+        self.imageUrl = try c.decodeIfPresent(String.self, forKey: .imageUrl)
+        self.videoUrl = try c.decodeIfPresent(String.self, forKey: .videoUrl)
         // season can be String or Number; decode leniently
         if let s = try? c.decode(String.self, forKey: .season) {
-            seasonString = s
-            seasonNumber = Int(s)
+            self.seasonString = s
+            self.seasonNumber = Int(s)
         } else if let n = try? c.decode(Int.self, forKey: .season) {
-            seasonNumber = n
-            seasonString = String(n)
+            self.seasonNumber = n
+            self.seasonString = String(n)
         } else {
-            seasonString = nil
-            seasonNumber = nil
+            self.seasonString = nil
+            self.seasonNumber = nil
         }
     }
+
+    // MARK: Public
+
+    public enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case season
+        case status
+        case description
+        case imageUrl
+        case videoUrl
+    }
+
+    public let id: String
+    public var name: String?
+    public var seasonString: String?
+    public var seasonNumber: Int?
+    public var status: String?
+    public var description: String?
+    public var imageUrl: String?
+    public var videoUrl: String?
 
     public func encode(to encoder: any Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
@@ -106,6 +121,8 @@ public struct Item: Codable, Identifiable, Sendable, Hashable {
         }
     }
 }
+
+// MARK: - TierConfigEntry
 
 public struct TierConfigEntry: Codable, Sendable, Equatable {
     public var name: String
@@ -152,7 +169,7 @@ public typealias Items = [String: [Item]]
 
 public typealias TierConfig = [String: TierConfigEntry]
 
-// MARK: - Sorting
+// MARK: - AttributeType
 
 /// Defines the type of a sortable attribute discovered at runtime
 public enum AttributeType: String, Codable, Sendable, Hashable {
@@ -162,9 +179,11 @@ public enum AttributeType: String, Codable, Sendable, Hashable {
     case date
 }
 
+// MARK: - GlobalSortMode
+
 /// Global sort mode applied across all tiers
 public enum GlobalSortMode: Codable, Sendable, Hashable, Equatable {
-    case custom  // Manual user-defined order (array index)
+    case custom // Manual user-defined order (array index)
     case alphabetical(ascending: Bool)
     case byAttribute(key: String, ascending: Bool, type: AttributeType)
 
@@ -172,9 +191,9 @@ public enum GlobalSortMode: Codable, Sendable, Hashable, Equatable {
         switch self {
         case .custom:
             return "Manual Order"
-        case .alphabetical(let ascending):
+        case let .alphabetical(ascending):
             return ascending ? "A → Z" : "Z → A"
-        case .byAttribute(let key, let ascending, _):
+        case let .byAttribute(key, ascending, _):
             let arrow = ascending ? "↑" : "↓"
             return "\(key.capitalized) \(arrow)"
         }

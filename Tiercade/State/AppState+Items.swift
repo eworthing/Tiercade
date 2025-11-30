@@ -2,14 +2,15 @@ import Foundation
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     // MARK: - Item Management
+
     func reset(showToast: Bool = false) {
         let hasAnyData = (tierOrder + ["unranked"]).contains { tierName in
             !(tiers[tierName] ?? []).isEmpty
         }
 
-        if hasAnyData && !showToast {
+        if hasAnyData, !showToast {
             showResetConfirmation = true
             return
         }
@@ -69,11 +70,15 @@ internal extension AppState {
     func performRandomize() {
         let snapshot = captureTierSnapshot()
         var (lockedTierItems, unlockedItems) = partitionItemsByLockState()
-        guard !unlockedItems.isEmpty else { return }
+        guard !unlockedItems.isEmpty else {
+            return
+        }
 
         var newTiers = baseTierDictionary(using: lockedTierItems)
         let unlockedRankedTiers = tierOrder.filter { !lockedTiers.contains($0) }
-        guard !unlockedRankedTiers.isEmpty else { return }
+        guard !unlockedRankedTiers.isEmpty else {
+            return
+        }
 
         unlockedItems.shuffle()
         distribute(unlockedItems: unlockedItems, into: unlockedRankedTiers, tiers: &newTiers)
@@ -118,19 +123,25 @@ internal extension AppState {
     }
 
     private func distribute(unlockedItems: [Item], into unlockedRankedTiers: [String], tiers: inout Items) {
-        guard !unlockedRankedTiers.isEmpty else { return }
+        guard !unlockedRankedTiers.isEmpty else {
+            return
+        }
 
         var remainingItems = unlockedItems
 
         if unlockedItems.count >= unlockedRankedTiers.count {
             for tierName in unlockedRankedTiers {
-                guard let item = remainingItems.popLast() else { break }
+                guard let item = remainingItems.popLast() else {
+                    break
+                }
                 tiers[tierName, default: []].append(item)
             }
         }
 
         for item in remainingItems {
-            guard let randomTierName = unlockedRankedTiers.randomElement() else { continue }
+            guard let randomTierName = unlockedRankedTiers.randomElement() else {
+                continue
+            }
             tiers[randomTierName, default: []].append(item)
         }
     }

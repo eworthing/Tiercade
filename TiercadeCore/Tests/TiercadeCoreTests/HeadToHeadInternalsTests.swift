@@ -4,9 +4,14 @@ import Testing
 
 @Suite("HeadToHead Internals")
 struct HeadToHeadInternalsTests {
+
+    // MARK: Lifecycle
+
     init() {
         HeadToHeadLogic.loggingEnabled = false
     }
+
+    // MARK: Internal
 
     @Test("Quick tier pass produces artifacts and suggested pairs")
     func quickTierPassProducesArtifacts() throws {
@@ -15,7 +20,7 @@ struct HeadToHeadInternalsTests {
             from: dataset.pool,
             records: dataset.records,
             tierOrder: dataset.tierOrder,
-            baseTiers: dataset.baseTiers
+            baseTiers: dataset.baseTiers,
         )
 
         let tiers = quick.tiers
@@ -39,14 +44,14 @@ struct HeadToHeadInternalsTests {
             from: dataset.pool,
             records: dataset.records,
             tierOrder: dataset.tierOrder,
-            baseTiers: dataset.baseTiers
+            baseTiers: dataset.baseTiers,
         )
         let artifacts = try #require(quick.artifacts)
 
         let pairs = HeadToHeadLogic.refinementPairs(
             artifacts: artifacts,
             records: dataset.records,
-            limit: 4
+            limit: 4,
         )
 
         #expect(!pairs.isEmpty)
@@ -61,7 +66,7 @@ struct HeadToHeadInternalsTests {
             from: dataset.pool,
             records: dataset.records,
             tierOrder: dataset.tierOrder,
-            baseTiers: dataset.baseTiers
+            baseTiers: dataset.baseTiers,
         )
         let artifacts = try #require(quick.artifacts)
 
@@ -69,7 +74,7 @@ struct HeadToHeadInternalsTests {
             artifacts: artifacts,
             records: dataset.records,
             tierOrder: dataset.tierOrder,
-            baseTiers: dataset.baseTiers
+            baseTiers: dataset.baseTiers,
         )
 
         #expect(result.updatedArtifacts.mode == .done)
@@ -85,7 +90,7 @@ struct HeadToHeadInternalsTests {
             from: dataset.pool,
             records: dataset.records,
             tierOrder: dataset.tierOrder,
-            baseTiers: dataset.baseTiers
+            baseTiers: dataset.baseTiers,
         )
 
         let queue = HeadToHeadLogic.initialComparisonQueueWarmStart(
@@ -93,7 +98,7 @@ struct HeadToHeadInternalsTests {
             records: dataset.records,
             tierOrder: dataset.tierOrder,
             currentTiers: quick.tiers,
-            targetComparisonsPerItem: 3
+            targetComparisonsPerItem: 3,
         )
 
         #expect(!queue.isEmpty)
@@ -115,7 +120,7 @@ struct HeadToHeadInternalsTests {
             undersampled: undersampled,
             baseTiers: dataset.baseTiers,
             tierOrder: dataset.tierOrder,
-            records: dataset.records
+            records: dataset.records,
         )
 
         #expect(result.tiers["unranked"]?.first?.id == "delta")
@@ -126,16 +131,40 @@ struct HeadToHeadInternalsTests {
     func dropCutsDetectsBoundaries() {
         let items = [Item(id: "alpha"), Item(id: "beta"), Item(id: "gamma")]
         let metrics: [String: HeadToHeadLogic.HeadToHeadMetrics] = [
-            "alpha": .init(wins: 10, comparisons: 12, winRate: 0.8, wilsonLB: 0.7, wilsonUB: 0.9, nameKey: "alpha", id: "alpha"),
-            "beta": .init(wins: 4, comparisons: 10, winRate: 0.4, wilsonLB: 0.35, wilsonUB: 0.55, nameKey: "beta", id: "beta"),
-            "gamma": .init(wins: 1, comparisons: 5, winRate: 0.2, wilsonLB: 0.1, wilsonUB: 0.4, nameKey: "gamma", id: "gamma")
+            "alpha": .init(
+                wins: 10,
+                comparisons: 12,
+                winRate: 0.8,
+                wilsonLB: 0.7,
+                wilsonUB: 0.9,
+                nameKey: "alpha",
+                id: "alpha",
+            ),
+            "beta": .init(
+                wins: 4,
+                comparisons: 10,
+                winRate: 0.4,
+                wilsonLB: 0.35,
+                wilsonUB: 0.55,
+                nameKey: "beta",
+                id: "beta",
+            ),
+            "gamma": .init(
+                wins: 1,
+                comparisons: 5,
+                winRate: 0.2,
+                wilsonLB: 0.1,
+                wilsonUB: 0.4,
+                nameKey: "gamma",
+                id: "gamma",
+            ),
         ]
 
         let cuts = HeadToHeadLogic.dropCuts(
             for: items,
             metrics: metrics,
             tierCount: 3,
-            overlapEps: 0.01
+            overlapEps: 0.01,
         )
 
         #expect(!cuts.isEmpty)
@@ -151,7 +180,7 @@ struct HeadToHeadInternalsTests {
             totalComparisons: 20,
             requiredComparisons: 10,
             churn: 0.05,
-            itemCount: 6
+            itemCount: 6,
         )
         let refined = HeadToHeadLogic.selectRefinedCuts(context)
         #expect(refined == [1, 2])
@@ -163,7 +192,7 @@ struct HeadToHeadInternalsTests {
             totalComparisons: 5,
             requiredComparisons: 10,
             churn: 0.5,
-            itemCount: 6
+            itemCount: 6,
         )
         let fallback = HeadToHeadLogic.selectRefinedCuts(highChurn)
         #expect(fallback == [1, 2])
@@ -176,13 +205,13 @@ struct HeadToHeadInternalsTests {
             from: dataset.pool,
             records: dataset.records,
             tierOrder: dataset.tierOrder,
-            baseTiers: dataset.baseTiers
+            baseTiers: dataset.baseTiers,
         )
         var artifacts = try #require(quick.artifacts)
         let metrics = HeadToHeadLogic.metricsDictionary(
             for: artifacts.rankable,
             records: dataset.records,
-            z: 1.0
+            z: 1.0,
         )
 
         // Trim frontier to a single boundary to force predictable pairs.
@@ -194,14 +223,14 @@ struct HeadToHeadInternalsTests {
             frontier: [artifacts.frontier.first!],
             warmUpComparisons: artifacts.warmUpComparisons,
             mode: artifacts.mode,
-            metrics: metrics
+            metrics: metrics,
         )
 
         var seen: Set<HeadToHeadLogic.PairKey> = []
         let candidates = HeadToHeadLogic.frontierCandidatePairs(
             artifacts: artifacts,
             metrics: metrics,
-            seen: &seen
+            seen: &seen,
         )
 
         #expect(!candidates.isEmpty)
@@ -210,7 +239,10 @@ struct HeadToHeadInternalsTests {
         #expect(Set(candidates.map { HeadToHeadLogic.PairKey($0.pair.0, $0.pair.1) }).count == candidates.count)
     }
 
-    private func sampleDataset() -> (pool: [Item], records: [String: HeadToHeadRecord], tierOrder: [String], baseTiers: Items) {
+    // MARK: Private
+
+    private func sampleDataset()
+    -> (pool: [Item], records: [String: HeadToHeadRecord], tierOrder: [String], baseTiers: Items) {
         let alpha = Item(id: "alpha", name: "Alpha")
         let beta = Item(id: "beta", name: "Beta")
         let gamma = Item(id: "gamma", name: "Gamma")
@@ -227,14 +259,14 @@ struct HeadToHeadInternalsTests {
             "A": [beta],
             "B": [gamma],
             "C": [],
-            "unranked": [delta]
+            "unranked": [delta],
         ]
 
         return (
             pool: [alpha, beta, gamma, delta],
             records: records,
             tierOrder: ["S", "A", "B", "C"],
-            baseTiers: baseTiers
+            baseTiers: baseTiers,
         )
     }
 

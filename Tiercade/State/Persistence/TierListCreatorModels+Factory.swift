@@ -3,7 +3,7 @@ import SwiftData
 import TiercadeCore
 
 extension TierProjectDraft {
-    internal static func makeDefault(now: Date = Date()) -> TierProjectDraft {
+    static func makeDefault(now: Date = Date()) -> TierProjectDraft {
         let audit = TierDraftAudit(createdAt: now, updatedAt: now)
         let draft = TierProjectDraft(
             projectId: UUID(),
@@ -16,7 +16,7 @@ extension TierProjectDraft {
             overrides: [],
             mediaLibrary: [],
             collaborators: [],
-            audit: audit
+            audit: audit,
         )
         audit.project = draft
 
@@ -26,7 +26,7 @@ extension TierProjectDraft {
             ("tier.b", "B", "#FFCC00"),
             ("tier.c", "C", "#34C759"),
             ("tier.d", "D", "#007AFF"),
-            ("tier.f", "F", "#5856D6")
+            ("tier.f", "F", "#5856D6"),
         ]
 
         for (index, entry) in palette.enumerated() {
@@ -34,7 +34,7 @@ extension TierProjectDraft {
                 tierId: entry.0,
                 label: entry.1,
                 colorHex: entry.2,
-                order: index
+                order: index,
             )
             tier.project = draft
             draft.tiers.append(tier)
@@ -43,7 +43,7 @@ extension TierProjectDraft {
         return draft
     }
 
-    internal static func make(from project: Project) -> TierProjectDraft {
+    static func make(from project: Project) -> TierProjectDraft {
         let projectUUID = UUID(uuidString: project.projectId) ?? UUID()
         let auditSource = project.audit
         let settings = project.settings
@@ -63,7 +63,7 @@ extension TierProjectDraft {
             createdAt: auditSource.createdAt,
             updatedAt: auditSource.updatedAt,
             createdBy: auditSource.createdBy,
-            updatedBy: auditSource.updatedBy
+            updatedBy: auditSource.updatedBy,
         )
 
         setupDraftMetadata(draft: draft, project: project, settings: settings)
@@ -83,13 +83,13 @@ extension TierProjectDraft {
     private static func setupDraftMetadata(
         draft: TierProjectDraft,
         project: Project,
-        settings: Project.Settings?
+        settings: Project.Settings?,
     ) {
         let audit = TierDraftAudit(
             createdAt: project.audit.createdAt,
             updatedAt: project.audit.updatedAt,
             createdBy: project.audit.createdBy,
-            updatedBy: project.audit.updatedBy
+            updatedBy: project.audit.updatedBy,
         )
         audit.project = draft
         draft.audit = audit
@@ -102,8 +102,8 @@ extension TierProjectDraft {
             showUnranked: draft.showUnranked,
             accessibility: [
                 "voiceOver": draft.accessibilityVoiceOver,
-                "highContrast": draft.accessibilityHighContrast
-            ]
+                "highContrast": draft.accessibilityHighContrast,
+            ],
         )
         draft.collaboration = project.collab
         draft.additional = project.additional
@@ -111,8 +111,9 @@ extension TierProjectDraft {
 
     private static func createMediaDraft(
         from media: Project.Media,
-        project: TierProjectDraft
-    ) -> TierDraftMedia {
+        project: TierProjectDraft,
+    )
+    -> TierDraftMedia {
         let mediaDraft = TierDraftMedia(
             mediaId: media.id,
             kindRaw: media.kind.rawValue,
@@ -123,7 +124,7 @@ extension TierProjectDraft {
             durationMs: media.durationMs,
             posterUri: media.posterUri,
             thumbUri: media.thumbUri,
-            altText: media.alt
+            altText: media.alt,
         )
         mediaDraft.project = project
         mediaDraft.attribution = media.attribution ?? [:]
@@ -134,8 +135,9 @@ extension TierProjectDraft {
     private static func populateItems(
         from project: Project,
         draft: TierProjectDraft,
-        makeMediaDraft: (Project.Media) -> TierDraftMedia
-    ) -> [String: TierDraftItem] {
+        makeMediaDraft: (Project.Media) -> TierDraftMedia,
+    )
+    -> [String: TierDraftItem] {
         var itemDrafts: [String: TierDraftItem] = [:]
         for (identifier, item) in project.items {
             let itemDraft = TierDraftItem(
@@ -145,7 +147,7 @@ extension TierProjectDraft {
                 summary: item.summary ?? "",
                 slug: item.slug ?? "",
                 rating: item.rating,
-                hidden: false
+                hidden: false,
             )
             itemDraft.project = draft
             itemDraft.tags = item.tags ?? []
@@ -173,9 +175,11 @@ extension TierProjectDraft {
         from project: Project,
         draft: TierProjectDraft,
         itemDrafts: [String: TierDraftItem],
-        makeMediaDraft: (Project.Media) -> TierDraftMedia
+        makeMediaDraft: (Project.Media) -> TierDraftMedia,
     ) {
-        guard let overrides = project.overrides else { return }
+        guard let overrides = project.overrides else {
+            return
+        }
 
         for (identifier, override) in overrides {
             let overrideDraft = TierDraftOverride(
@@ -184,7 +188,7 @@ extension TierProjectDraft {
                 notes: override.notes ?? "",
                 tags: override.tags ?? [],
                 rating: override.rating,
-                hidden: override.hidden ?? false
+                hidden: override.hidden ?? false,
             )
             overrideDraft.project = draft
             overrideDraft.additional = override.additional ?? [:]
@@ -209,7 +213,7 @@ extension TierProjectDraft {
     private static func populateTiers(
         from project: Project,
         draft: TierProjectDraft,
-        itemDrafts: [String: TierDraftItem]
+        itemDrafts: [String: TierDraftItem],
     ) {
         let orderedTiers = project.tiers.sorted { $0.order < $1.order }
         for tier in orderedTiers {
@@ -219,7 +223,7 @@ extension TierProjectDraft {
                 colorHex: tier.color ?? Self.defaultColor(for: tier.order),
                 order: tier.order,
                 locked: tier.locked ?? false,
-                collapsed: tier.collapsed ?? false
+                collapsed: tier.collapsed ?? false,
             )
             tierDraft.project = draft
             tierDraft.rules = tier.rules ?? [:]
@@ -227,7 +231,9 @@ extension TierProjectDraft {
 
             var ordinal = 0
             for itemId in tier.itemIds {
-                guard let itemDraft = itemDrafts[itemId] else { continue }
+                guard let itemDraft = itemDrafts[itemId] else {
+                    continue
+                }
                 itemDraft.tier = tierDraft
                 itemDraft.ordinal = ordinal
                 ordinal += 1
@@ -239,12 +245,14 @@ extension TierProjectDraft {
     }
 
     private static func defaultColor(for index: Int) -> String {
-        guard index >= 0 else { return fallbackTierColors.first ?? "#FF3B30" }
+        guard index >= 0 else {
+            return fallbackTierColors.first ?? "#FF3B30"
+        }
         return fallbackTierColors[index % fallbackTierColors.count]
     }
 
     private static let fallbackTierColors: [String] = [
         "#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#007AFF", "#AF52DE",
-        "#FF2D55", "#5AC8FA", "#FF9F0A", "#FFD60A"
+        "#FF2D55", "#5AC8FA", "#FF9F0A", "#FFD60A",
     ]
 }

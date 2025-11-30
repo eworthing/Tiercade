@@ -1,9 +1,9 @@
 import SwiftUI
 
-internal struct QRSheet: View {
-    internal let url: URL
+struct QRSheet: View {
+    let url: URL
 
-    internal var body: some View {
+    var body: some View {
         VStack(spacing: 16) {
             Text("Open on your phone")
                 .font(.title2)

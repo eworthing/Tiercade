@@ -2,8 +2,9 @@ import Foundation
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     // MARK: - Analysis
+
     func generateAnalysis() async {
         analysisData = await withLoadingIndicator(message: "Generating analysis...") {
             updateProgress(0.1)
@@ -65,8 +66,10 @@ internal extension AppState {
     }
 
     private func buildAnalysis() async -> TierAnalysisData {
-        let allItems = tiers.values.flatMap { $0 }
-        guard allItems.isEmpty == false else { return .empty }
+        let allItems = tiers.values.flatMap(\.self)
+        guard allItems.isEmpty == false else {
+            return .empty
+        }
 
         updateProgress(0.3)
         let distribution = tierDistribution(totalCount: allItems.count)
@@ -86,7 +89,7 @@ internal extension AppState {
             leastPopulatedTier: leastPopulated,
             balanceScore: balanceScore(for: distribution),
             insights: insights,
-            unrankedCount: unrankedCount
+            unrankedCount: unrankedCount,
         )
     }
 
@@ -109,7 +112,9 @@ internal extension AppState {
     }
 
     private func balanceScore(for distribution: [TierDistributionData]) -> Double {
-        guard distribution.isEmpty == false else { return 0 }
+        guard distribution.isEmpty == false else {
+            return 0
+        }
         let ideal = 100.0 / Double(distribution.count)
         let totalDiff = distribution.reduce(0) { partial, tier in
             partial + abs(tier.percentage - ideal)

@@ -1,8 +1,10 @@
 import SwiftUI
 import TiercadeCore
 
+// MARK: - PreviewFixtures
+
 @MainActor
-internal enum PreviewFixtures {
+enum PreviewFixtures {
     /// Base preview AppState with an in-memory store and default seed applied.
     /// You can customize the state further in previews if needed.
     static func makeBaseAppState() -> AppState {
@@ -26,20 +28,20 @@ internal enum PreviewFixtures {
         let items: [Item] = [
             Item(
                 id: "preview-1", name: "Sample Hero",
-                status: nil, description: "A standout item in S tier.", imageUrl: nil
+                status: nil, description: "A standout item in S tier.", imageUrl: nil,
             ),
             Item(
                 id: "preview-2", name: "Solid Choice",
-                status: nil, description: "Reliable A‑tier item.", imageUrl: nil
+                status: nil, description: "Reliable A‑tier item.", imageUrl: nil,
             ),
             Item(
                 id: "preview-3", name: "Pretty Good",
-                status: nil, description: "Comfortable B‑tier item.", imageUrl: nil
+                status: nil, description: "Comfortable B‑tier item.", imageUrl: nil,
             ),
             Item(
                 id: "preview-4", name: "Unranked Candidate",
-                status: nil, description: "Waiting to be ranked.", imageUrl: nil
-            )
+                status: nil, description: "Waiting to be ranked.", imageUrl: nil,
+            ),
         ]
 
         app.tiers["S"] = [items[0]]
@@ -54,8 +56,10 @@ internal enum PreviewFixtures {
     }
 }
 
+// MARK: - PreviewHelpers
+
 @MainActor
-internal enum PreviewHelpers {
+enum PreviewHelpers {
     /// Create an in-memory AppState suitable for SwiftUI previews.
     /// Uses `PreviewFixtures.makeSampleTierAppState()` by default, then applies
     /// any additional overlay-specific configuration.

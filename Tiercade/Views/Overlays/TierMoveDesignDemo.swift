@@ -1,11 +1,13 @@
 import SwiftUI
 import TiercadeCore
 
+// MARK: - TierMoveDesignDemo
+
 /// Demo view for comparing tier move row design options
 /// Shows 4 different design approaches with various tier name lengths
-internal struct TierMoveDesignDemo: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var selectedOption: DesignOption = .hybrid
+struct TierMoveDesignDemo: View {
+
+    // MARK: Internal
 
     enum DesignOption: String, CaseIterable, Identifiable {
         case hybrid = "Hybrid (Recommended)"
@@ -16,23 +18,7 @@ internal struct TierMoveDesignDemo: View {
         var id: String { rawValue }
     }
 
-    private struct TierSample {
-        let name: String
-        let color: Color
-        let count: Int
-    }
-
-    // Sample tiers with different name lengths
-    private let sampleTiers: [TierSample] = [
-        TierSample(name: "S", color: Color(designHex: "#E11D48"), count: 5),
-        TierSample(name: "Really Intense Score", color: Color(designHex: "#F59E0B"), count: 12),
-        TierSample(name: "Good", color: Color(designHex: "#22C55E"), count: 8),
-        TierSample(name: "Somewhat Intense Score", color: Color(designHex: "#06B6D4"), count: 3),
-        TierSample(name: "B", color: Color(designHex: "#3B82F6"), count: 15),
-        TierSample(name: "Top of the List", color: Color(designHex: "#8B5CF6"), count: 7)
-    ]
-
-    internal var body: some View {
+    var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Option picker
@@ -64,15 +50,36 @@ internal struct TierMoveDesignDemo: View {
             }
             .navigationTitle("Tier Row Design Options")
             #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.inline)
             #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") { dismiss() }
+                    }
                 }
-            }
         }
     }
+
+    // MARK: Private
+
+    private struct TierSample {
+        let name: String
+        let color: Color
+        let count: Int
+    }
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedOption: DesignOption = .hybrid
+
+    // Sample tiers with different name lengths
+    private let sampleTiers: [TierSample] = [
+        TierSample(name: "S", color: Color(designHex: "#E11D48"), count: 5),
+        TierSample(name: "Really Intense Score", color: Color(designHex: "#F59E0B"), count: 12),
+        TierSample(name: "Good", color: Color(designHex: "#22C55E"), count: 8),
+        TierSample(name: "Somewhat Intense Score", color: Color(designHex: "#06B6D4"), count: 3),
+        TierSample(name: "B", color: Color(designHex: "#3B82F6"), count: 15),
+        TierSample(name: "Top of the List", color: Color(designHex: "#8B5CF6"), count: 7),
+    ]
 
     @ViewBuilder
     private var descriptionSection: some View {
@@ -93,22 +100,22 @@ internal struct TierMoveDesignDemo: View {
         case .hybrid:
             HybridRow(
                 tierName: tier.name, tierColor: tier.color,
-                itemCount: tier.count, isCurrentTier: isCurrentTier
+                itemCount: tier.count, isCurrentTier: isCurrentTier,
             )
         case .barTextBorder:
             BarTextBorderRow(
                 tierName: tier.name, tierColor: tier.color,
-                itemCount: tier.count, isCurrentTier: isCurrentTier
+                itemCount: tier.count, isCurrentTier: isCurrentTier,
             )
         case .leftSection:
             LeftSectionRow(
                 tierName: tier.name, tierColor: tier.color,
-                itemCount: tier.count, isCurrentTier: isCurrentTier
+                itemCount: tier.count, isCurrentTier: isCurrentTier,
             )
         case .gradientBar:
             GradientBarRow(
                 tierName: tier.name, tierColor: tier.color,
-                itemCount: tier.count, isCurrentTier: isCurrentTier
+                itemCount: tier.count, isCurrentTier: isCurrentTier,
             )
         }
     }
@@ -116,37 +123,39 @@ internal struct TierMoveDesignDemo: View {
     private func description(for option: DesignOption) -> String {
         switch option {
         case .hybrid:
-            return """
-                Bar + tinted background + colored text + border. \
-                Maximum color prominence while maintaining solid backgrounds. Best for any text length.
-                """
+            """
+            Bar + tinted background + colored text + border. \
+            Maximum color prominence while maintaining solid backgrounds. Best for any text length.
+            """
         case .barTextBorder:
-            return """
-                Clean design with thick left bar, tier-colored text, and subtle border. \
-                No background tint. Professional look.
-                """
+            """
+            Clean design with thick left bar, tier-colored text, and subtle border. \
+            No background tint. Professional look.
+            """
         case .leftSection:
-            return """
-                TierMaker-style colored section on left (30-35% width) with white text. \
-                Very prominent but uses significant horizontal space.
-                """
+            """
+            TierMaker-style colored section on left (30-35% width) with white text. \
+            Very prominent but uses significant horizontal space.
+            """
         case .gradientBar:
-            return """
-                Modern gradient bar at bottom with tier-colored text. \
-                Visually interesting but less immediate recognition.
-                """
+            """
+            Modern gradient bar at bottom with tier-colored text. \
+            Visually interesting but less immediate recognition.
+            """
         }
     }
 }
 
-// MARK: - Option 1: Hybrid (Recommended)
+// MARK: - HybridRow
 
 private struct HybridRow: View {
+
+    // MARK: Internal
+
     let tierName: String
     let tierColor: Color
     let itemCount: Int
     let isCurrentTier: Bool
-    @State private var isFocused = false
 
     var body: some View {
         Button {
@@ -205,26 +214,33 @@ private struct HybridRow: View {
                     .fill(tierColor.opacity(isFocused ? 0.18 : 0.12))
                     .background(
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Palette.cardBackground)
-                    )
+                            .fill(Palette.cardBackground),
+                    ),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(isFocused ? Color.white : tierColor.opacity(0.35), lineWidth: isFocused ? 3 : 2)
+                    .strokeBorder(isFocused ? Color.white : tierColor.opacity(0.35), lineWidth: isFocused ? 3 : 2),
             )
         }
         .buttonStyle(.plain)
     }
+
+    // MARK: Private
+
+    @State private var isFocused = false
+
 }
 
-// MARK: - Option 2: Bar + Text + Border
+// MARK: - BarTextBorderRow
 
 private struct BarTextBorderRow: View {
+
+    // MARK: Internal
+
     let tierName: String
     let tierColor: Color
     let itemCount: Int
     let isCurrentTier: Bool
-    @State private var isFocused = false
 
     var body: some View {
         Button {
@@ -280,25 +296,32 @@ private struct BarTextBorderRow: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Palette.cardBackground)
+                    .fill(Palette.cardBackground),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(isFocused ? Color.white : tierColor.opacity(0.35), lineWidth: isFocused ? 3 : 2)
+                    .strokeBorder(isFocused ? Color.white : tierColor.opacity(0.35), lineWidth: isFocused ? 3 : 2),
             )
         }
         .buttonStyle(.plain)
     }
+
+    // MARK: Private
+
+    @State private var isFocused = false
+
 }
 
-// MARK: - Option 3: Left Colored Section
+// MARK: - LeftSectionRow
 
 private struct LeftSectionRow: View {
+
+    // MARK: Internal
+
     let tierName: String
     let tierColor: Color
     let itemCount: Int
     let isCurrentTier: Bool
-    @State private var isFocused = false
 
     var body: some View {
         Button {
@@ -353,25 +376,32 @@ private struct LeftSectionRow: View {
             }
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Palette.cardBackground)
+                    .fill(Palette.cardBackground),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(isFocused ? Color.white : Color.clear, lineWidth: 3)
+                    .strokeBorder(isFocused ? Color.white : Color.clear, lineWidth: 3),
             )
         }
         .buttonStyle(.plain)
     }
+
+    // MARK: Private
+
+    @State private var isFocused = false
+
 }
 
-// MARK: - Option 4: Gradient Bar
+// MARK: - GradientBarRow
 
 private struct GradientBarRow: View {
+
+    // MARK: Internal
+
     let tierName: String
     let tierColor: Color
     let itemCount: Int
     let isCurrentTier: Bool
-    @State private var isFocused = false
 
     var body: some View {
         Button {
@@ -424,19 +454,24 @@ private struct GradientBarRow: View {
                 LinearGradient(
                     colors: [tierColor, tierColor.opacity(0.3), Color.clear],
                     startPoint: .leading,
-                    endPoint: .trailing
+                    endPoint: .trailing,
                 )
                 .frame(height: 4)
             }
             .background(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Palette.cardBackground)
+                    .fill(Palette.cardBackground),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(isFocused ? Color.white : tierColor.opacity(0.25), lineWidth: isFocused ? 3 : 2)
+                    .strokeBorder(isFocused ? Color.white : tierColor.opacity(0.25), lineWidth: isFocused ? 3 : 2),
             )
         }
         .buttonStyle(.plain)
     }
+
+    // MARK: Private
+
+    @State private var isFocused = false
+
 }

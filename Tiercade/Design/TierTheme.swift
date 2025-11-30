@@ -1,33 +1,13 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
-internal struct TierTheme: Identifiable, Hashable, Sendable {
-    internal struct Tier: Identifiable, Hashable, Sendable {
-        internal let id: UUID
-        internal let index: Int
-        internal let name: String
-        internal let colorHex: String
-        internal let isUnranked: Bool
+// MARK: - TierTheme
 
-        internal func matches(identifier: String) -> Bool {
-            let normalized = identifier.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            let nameNormalized = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            if normalized == nameNormalized { return true }
-            if normalized == "unranked" { return isUnranked }
-            if let numeric = Int(normalized) { return numeric == index }
-            return false
-        }
-    }
+struct TierTheme: Identifiable, Hashable, Sendable {
 
-    internal static let fallbackColor = "#000000"
+    // MARK: Lifecycle
 
-    internal let id: UUID
-    internal let slug: String
-    internal let displayName: String
-    internal let shortDescription: String
-    internal let tiers: [Tier]
-
-    internal init(id: UUID, slug: String, displayName: String, shortDescription: String, tiers: [Tier]) {
+    init(id: UUID, slug: String, displayName: String, shortDescription: String, tiers: [Tier]) {
         self.id = id
         self.slug = slug
         self.displayName = displayName
@@ -35,14 +15,14 @@ internal struct TierTheme: Identifiable, Hashable, Sendable {
         self.tiers = TierTheme.normalizeTiers(tiers)
     }
 
-    internal init(entity: TierThemeEntity) {
+    init(entity: TierThemeEntity) {
         let mappedTiers = entity.tiers.map { tier in
             Tier(
                 id: tier.tierID,
                 index: tier.index,
                 name: tier.name,
                 colorHex: tier.colorHex,
-                isUnranked: tier.isUnranked
+                isUnranked: tier.isUnranked,
             )
         }
         self.init(
@@ -50,37 +30,70 @@ internal struct TierTheme: Identifiable, Hashable, Sendable {
             slug: entity.slug,
             displayName: entity.displayName,
             shortDescription: entity.shortDescription,
-            tiers: mappedTiers
+            tiers: mappedTiers,
         )
     }
 
-    internal var description: String { shortDescription }
+    // MARK: Internal
 
-    internal var rankedTiers: [Tier] {
+    struct Tier: Identifiable, Hashable, Sendable {
+        let id: UUID
+        let index: Int
+        let name: String
+        let colorHex: String
+        let isUnranked: Bool
+
+        func matches(identifier: String) -> Bool {
+            let normalized = identifier.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let nameNormalized = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            if normalized == nameNormalized {
+                return true
+            }
+            if normalized == "unranked" {
+                return isUnranked
+            }
+            if let numeric = Int(normalized) {
+                return numeric == index
+            }
+            return false
+        }
+    }
+
+    static let fallbackColor = "#000000"
+
+    let id: UUID
+    let slug: String
+    let displayName: String
+    let shortDescription: String
+    let tiers: [Tier]
+
+    var description: String { shortDescription }
+
+    var rankedTiers: [Tier] {
         tiers.filter { !$0.isUnranked }
     }
 
-    internal var unrankedTier: Tier? {
+    var unrankedTier: Tier? {
         tiers.first(where: \Tier.isUnranked)
     }
 
-    internal var unrankedColorHex: String {
+    var unrankedColorHex: String {
         unrankedTier?.colorHex ?? Self.fallbackColor
     }
 
-    internal var previewTiers: [Tier] {
+    var previewTiers: [Tier] {
         rankedTiers
     }
 
-    internal func colorHex(forRankIndex index: Int) -> String? {
+    func colorHex(forRankIndex index: Int) -> String? {
         rankedTiers.first { $0.index == index }?.colorHex
     }
 
-    internal func colorHex(forIdentifier identifier: String) -> String? {
+    func colorHex(forIdentifier identifier: String) -> String? {
         tiers.first { $0.matches(identifier: identifier) }?.colorHex
     }
 
-    internal func colorHex(forRank identifier: String, fallbackIndex: Int? = nil) -> String {
+    func colorHex(forRank identifier: String, fallbackIndex: Int? = nil) -> String {
         if identifier.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "unranked" {
             return unrankedColorHex
         }
@@ -96,26 +109,25 @@ internal struct TierTheme: Identifiable, Hashable, Sendable {
         return Self.fallbackColor
     }
 
-    internal func swiftUIColor(forRank identifier: String, fallbackIndex: Int? = nil) -> Color {
+    func swiftUIColor(forRank identifier: String, fallbackIndex: Int? = nil) -> Color {
         ColorUtilities.color(hex: colorHex(forRank: identifier, fallbackIndex: fallbackIndex))
     }
 
-    internal func swiftUIColor(forRankIndex index: Int) -> Color {
+    func swiftUIColor(forRankIndex index: Int) -> Color {
         ColorUtilities.color(hex: colorHex(forRankIndex: index) ?? Self.fallbackColor)
     }
 }
 
-private extension TierTheme {
-    static func normalizeTiers(_ tiers: [Tier]) -> [Tier] {
+extension TierTheme {
+    fileprivate static func normalizeTiers(_ tiers: [Tier]) -> [Tier] {
         var seen = Set<TierKey>()
         var filtered: [Tier] = []
 
         for tier in tiers {
-            let key: TierKey
-            if tier.isUnranked {
-                key = .unranked
+            let key: TierKey = if tier.isUnranked {
+                .unranked
             } else {
-                key = .ranked(index: tier.index, name: normalizeName(tier.name))
+                .ranked(index: tier.index, name: normalizeName(tier.name))
             }
 
             if seen.insert(key).inserted {
@@ -128,18 +140,47 @@ private extension TierTheme {
         return ranked + unranked
     }
 
-    enum TierKey: Hashable {
+    fileprivate enum TierKey: Hashable {
         case ranked(index: Int, name: String)
         case unranked
     }
 
-    static func normalizeName(_ raw: String) -> String {
+    fileprivate static func normalizeName(_ raw: String) -> String {
         raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
 
+// MARK: - TierThemeCatalog
+
 @MainActor
-internal enum TierThemeCatalog {
+enum TierThemeCatalog {
+
+    // MARK: Internal
+
+    static var allThemes: [TierTheme] {
+        cachedThemes
+    }
+
+    static var defaultTheme: TierTheme {
+        themesBySlug["smashclassic"] ?? cachedThemes.first ?? TierTheme(
+            id: UUID(),
+            slug: "default",
+            displayName: "Default",
+            shortDescription: "Default color palette",
+            tiers: [],
+        )
+    }
+
+    static func theme(id: UUID) -> TierTheme? {
+        themesByID[id]
+    }
+
+    static func theme(slug: String) -> TierTheme? {
+        themesBySlug[slug.lowercased()]
+    }
+
+    // MARK: Private
+
     private static let cachedThemes: [TierTheme] = {
         var themes: [TierTheme] = []
         for entity in TierThemeSeeds.defaults {
@@ -147,32 +188,12 @@ internal enum TierThemeCatalog {
         }
         return themes
     }()
+
     private static let themesByID: [UUID: TierTheme] = Dictionary(
-        uniqueKeysWithValues: cachedThemes.map { ($0.id, $0) }
+        uniqueKeysWithValues: cachedThemes.map { ($0.id, $0) },
     )
     private static let themesBySlug: [String: TierTheme] = Dictionary(
-        uniqueKeysWithValues: cachedThemes.map { ($0.slug.lowercased(), $0) }
+        uniqueKeysWithValues: cachedThemes.map { ($0.slug.lowercased(), $0) },
     )
 
-    internal static var allThemes: [TierTheme] {
-        cachedThemes
-    }
-
-    internal static var defaultTheme: TierTheme {
-        themesBySlug["smashclassic"] ?? cachedThemes.first ?? TierTheme(
-            id: UUID(),
-            slug: "default",
-            displayName: "Default",
-            shortDescription: "Default color palette",
-            tiers: []
-        )
-    }
-
-    internal static func theme(id: UUID) -> TierTheme? {
-        themesByID[id]
-    }
-
-    internal static func theme(slug: String) -> TierTheme? {
-        themesBySlug[slug.lowercased()]
-    }
 }

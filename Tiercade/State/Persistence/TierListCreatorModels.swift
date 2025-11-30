@@ -2,9 +2,9 @@ import Foundation
 import SwiftData
 import TiercadeCore
 
-// MARK: - Encoding Helpers
+// MARK: - TierListCreatorCodec
 
-internal enum TierListCreatorCodec {
+enum TierListCreatorCodec {
     nonisolated static func makeEncoder() -> JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -17,21 +17,78 @@ internal enum TierListCreatorCodec {
         return decoder
     }
 
-    nonisolated static func encode<T: Encodable>(_ value: T?) -> Data? {
-        guard let value else { return nil }
+    nonisolated static func encode(_ value: (some Encodable)?) -> Data? {
+        guard let value else {
+            return nil
+        }
         return try? makeEncoder().encode(value)
     }
 
     nonisolated static func decode<T: Decodable>(_ type: T.Type, from data: Data?) -> T? {
-        guard let data else { return nil }
+        guard let data else {
+            return nil
+        }
         return try? makeDecoder().decode(type, from: data)
     }
 }
 
-// MARK: - Project Draft Models
+// MARK: - TierProjectDraft
 
 @Model
 final class TierProjectDraft {
+
+    // MARK: Lifecycle
+
+    init(
+        identifier: UUID = UUID(),
+        projectId: UUID = UUID(),
+        schemaVersion: Int = 1,
+        title: String = "Untitled Project",
+        summary: String = "",
+        themeToken: String = "system-default",
+        tierSortOrder: String = "descending",
+        gridSnap: Bool = true,
+        showUnranked: Bool = true,
+        accessibilityVoiceOver: Bool = true,
+        accessibilityHighContrast: Bool = false,
+        visibility: String = "private",
+        createdAt: Date = Date(),
+        updatedAt: Date = Date(),
+        createdBy: String? = nil,
+        updatedBy: String? = nil,
+        tiers: [TierDraftTier] = [],
+        items: [TierDraftItem] = [],
+        overrides: [TierDraftOverride] = [],
+        mediaLibrary: [TierDraftMedia] = [],
+        collaborators: [TierDraftCollabMember] = [],
+        audit: TierDraftAudit? = nil,
+    ) {
+        self.identifier = identifier
+        self.projectId = projectId
+        self.schemaVersion = schemaVersion
+        self.title = title
+        self.summary = summary
+        self.themeToken = themeToken
+        self.tierSortOrder = tierSortOrder
+        self.gridSnap = gridSnap
+        self.showUnranked = showUnranked
+        self.accessibilityVoiceOver = accessibilityVoiceOver
+        self.accessibilityHighContrast = accessibilityHighContrast
+        self.visibility = visibility
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.createdBy = createdBy
+        self.updatedBy = updatedBy
+        self.tiers = tiers
+        self.items = items
+        self.overrides = overrides
+        self.mediaLibrary = mediaLibrary
+        self.collaborators = collaborators
+        self.audit = audit
+    }
+
+    // MARK: Internal
+
     @Attribute(.unique) var identifier: UUID
     var projectId: UUID
     var schemaVersion: Int
@@ -59,57 +116,10 @@ final class TierProjectDraft {
     @Relationship(deleteRule: .cascade, inverse: \TierDraftMedia.project) var mediaLibrary: [TierDraftMedia]
     @Relationship(
         deleteRule: .cascade,
-        inverse: \TierDraftCollabMember.project
+        inverse: \TierDraftCollabMember.project,
     ) var collaborators: [TierDraftCollabMember]
     @Relationship(deleteRule: .cascade, inverse: \TierDraftAudit.project) var audit: TierDraftAudit?
 
-    internal init(
-        identifier: UUID = UUID(),
-        projectId: UUID = UUID(),
-        schemaVersion: Int = 1,
-        title: String = "Untitled Project",
-        summary: String = "",
-        themeToken: String = "system-default",
-        tierSortOrder: String = "descending",
-        gridSnap: Bool = true,
-        showUnranked: Bool = true,
-        accessibilityVoiceOver: Bool = true,
-        accessibilityHighContrast: Bool = false,
-        visibility: String = "private",
-        createdAt: Date = Date(),
-        updatedAt: Date = Date(),
-        createdBy: String? = nil,
-        updatedBy: String? = nil,
-        tiers: [TierDraftTier] = [],
-        items: [TierDraftItem] = [],
-        overrides: [TierDraftOverride] = [],
-        mediaLibrary: [TierDraftMedia] = [],
-        collaborators: [TierDraftCollabMember] = [],
-        audit: TierDraftAudit? = nil
-    ) {
-        self.identifier = identifier
-        self.projectId = projectId
-        self.schemaVersion = schemaVersion
-        self.title = title
-        self.summary = summary
-        self.themeToken = themeToken
-        self.tierSortOrder = tierSortOrder
-        self.gridSnap = gridSnap
-        self.showUnranked = showUnranked
-        self.accessibilityVoiceOver = accessibilityVoiceOver
-        self.accessibilityHighContrast = accessibilityHighContrast
-        self.visibility = visibility
-        self.createdAt = createdAt
-        self.updatedAt = updatedAt
-        self.createdBy = createdBy
-        self.updatedBy = updatedBy
-        self.tiers = tiers
-        self.items = items
-        self.overrides = overrides
-        self.mediaLibrary = mediaLibrary
-        self.collaborators = collaborators
-        self.audit = audit
-    }
 }
 
 extension TierProjectDraft {
@@ -133,8 +143,8 @@ extension TierProjectDraft {
                     showUnranked: showUnranked,
                     accessibility: [
                         "voiceOver": accessibilityVoiceOver,
-                        "highContrast": accessibilityHighContrast
-                    ]
+                        "highContrast": accessibilityHighContrast,
+                    ],
                 )
         }
         set { settingsData = TierListCreatorCodec.encode(newValue) }
@@ -151,7 +161,7 @@ extension TierProjectDraft {
     }
 }
 
-// MARK: - Tier Draft Model
+// MARK: - TierDraftTier
 
 @Model
 final class TierDraftTier {
@@ -167,7 +177,7 @@ final class TierDraftTier {
     @Relationship(deleteRule: .nullify, inverse: \TierDraftItem.tier) var items: [TierDraftItem]
     @Relationship var project: TierProjectDraft?
 
-    internal init(
+    init(
         identifier: UUID = UUID(),
         tierId: String,
         label: String,
@@ -175,7 +185,7 @@ final class TierDraftTier {
         order: Int,
         locked: Bool = false,
         collapsed: Bool = false,
-        items: [TierDraftItem] = []
+        items: [TierDraftItem] = [],
     ) {
         self.identifier = identifier
         self.tierId = tierId
@@ -200,7 +210,7 @@ extension TierDraftTier {
     }
 }
 
-// MARK: - Item Draft Model
+// MARK: - TierDraftItem
 
 @Model
 final class TierDraftItem {
@@ -224,7 +234,7 @@ final class TierDraftItem {
     @Relationship var tier: TierDraftTier?
     @Relationship var project: TierProjectDraft?
 
-    internal init(
+    init(
         identifier: UUID = UUID(),
         itemId: String,
         title: String,
@@ -236,7 +246,7 @@ final class TierDraftItem {
         ordinal: Int = 0,
         tags: [String] = [],
         media: [TierDraftMedia] = [],
-        overrides: [TierDraftOverride] = []
+        overrides: [TierDraftOverride] = [],
     ) {
         self.identifier = identifier
         self.itemId = itemId
@@ -280,7 +290,7 @@ extension TierDraftItem {
     }
 }
 
-// MARK: - Overrides
+// MARK: - TierDraftOverride
 
 @Model
 final class TierDraftOverride {
@@ -296,7 +306,7 @@ final class TierDraftOverride {
     @Relationship var item: TierDraftItem?
     @Relationship var project: TierProjectDraft?
 
-    internal init(
+    init(
         identifier: UUID = UUID(),
         itemId: String,
         displayTitle: String = "",
@@ -304,7 +314,7 @@ final class TierDraftOverride {
         tags: [String] = [],
         rating: Double? = nil,
         hidden: Bool = false,
-        media: [TierDraftMedia] = []
+        media: [TierDraftMedia] = [],
     ) {
         self.identifier = identifier
         self.itemId = itemId
@@ -324,7 +334,7 @@ extension TierDraftOverride {
     }
 }
 
-// MARK: - Media Library
+// MARK: - TierDraftMedia
 
 @Model
 final class TierDraftMedia {
@@ -345,7 +355,7 @@ final class TierDraftMedia {
     @Relationship var override: TierDraftOverride?
     @Relationship var project: TierProjectDraft?
 
-    internal init(
+    init(
         identifier: UUID = UUID(),
         mediaId: String,
         kindRaw: String,
@@ -356,7 +366,7 @@ final class TierDraftMedia {
         durationMs: Double? = nil,
         posterUri: String? = nil,
         thumbUri: String? = nil,
-        altText: String? = nil
+        altText: String? = nil,
     ) {
         self.identifier = identifier
         self.mediaId = mediaId
@@ -387,7 +397,7 @@ extension TierDraftMedia {
         ProjectMediaKind(rawValue: kindRaw) ?? .image
     }
 
-    internal func toProjectMedia() -> Project.Media {
+    func toProjectMedia() -> Project.Media {
         Project.Media(
             id: mediaId,
             kind: kind,
@@ -400,12 +410,12 @@ extension TierDraftMedia {
             thumbUri: thumbUri,
             alt: altText,
             attribution: attribution.isEmpty ? nil : attribution,
-            additional: additional.isEmpty ? nil : additional
+            additional: additional.isEmpty ? nil : additional,
         )
     }
 }
 
-// MARK: - Audit & Collaboration
+// MARK: - TierDraftAudit
 
 @Model
 final class TierDraftAudit {
@@ -415,11 +425,11 @@ final class TierDraftAudit {
     var updatedBy: String?
     @Relationship var project: TierProjectDraft?
 
-    internal init(
+    init(
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
         createdBy: String? = nil,
-        updatedBy: String? = nil
+        updatedBy: String? = nil,
     ) {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -434,10 +444,12 @@ extension TierDraftAudit {
             createdAt: createdAt,
             updatedAt: updatedAt,
             createdBy: createdBy,
-            updatedBy: updatedBy
+            updatedBy: updatedBy,
         )
     }
 }
+
+// MARK: - TierDraftCollabMember
 
 @Model
 final class TierDraftCollabMember {
@@ -447,11 +459,11 @@ final class TierDraftCollabMember {
     var additionalData: Data?
     @Relationship var project: TierProjectDraft?
 
-    internal init(
+    init(
         identifier: UUID = UUID(),
         userId: String,
         role: String,
-        additionalData: Data? = nil
+        additionalData: Data? = nil,
     ) {
         self.identifier = identifier
         self.userId = userId

@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - ModelResolverError
+
 // Minimal resolver utilities to load a tierlist project JSON (matching referencedocs schema)
 // and produce resolved tiers for consumers (apply overrides to items).
 
@@ -8,16 +10,18 @@ public enum ModelResolverError: Error {
 
     public var localizedDescription: String {
         switch self {
-        case .fileTooLarge(let size, let limit):
+        case let .fileTooLarge(size, limit):
             let sizeMB = Double(size) / 1_000_000.0
             let limitMB = Double(limit) / 1_000_000.0
             return """
-                Project file is too large (\(String(format: "%.1f", sizeMB))MB). \
-                Maximum allowed size is \(String(format: "%.1f", limitMB))MB.
-                """
+            Project file is too large (\(String(format: "%.1f", sizeMB))MB). \
+            Maximum allowed size is \(String(format: "%.1f", limitMB))MB.
+            """
         }
     }
 }
+
+// MARK: - ResolvedItem
 
 public struct ResolvedItem: Identifiable {
     public let id: String
@@ -34,7 +38,7 @@ public struct ResolvedItem: Identifiable {
         subtitle: String? = nil,
         description: String? = nil,
         thumbUri: String? = nil,
-        attributes: [String: String]? = nil
+        attributes: [String: String]? = nil,
     ) {
         self.id = id
         self.title = title
@@ -44,6 +48,8 @@ public struct ResolvedItem: Identifiable {
         self.attributes = attributes
     }
 }
+
+// MARK: - ResolvedTier
 
 public struct ResolvedTier {
     public let id: String
@@ -56,6 +62,8 @@ public struct ResolvedTier {
         self.items = items
     }
 }
+
+// MARK: - ModelResolver
 
 public enum ModelResolver {
     /// Maximum allowed JSON file size (50MB) to prevent DoS attacks from malicious/corrupted files
@@ -104,7 +112,9 @@ public enum ModelResolver {
 
         return project.tiers.map { tier in
             let items = tier.itemIds.compactMap { itemId -> ResolvedItem? in
-                guard let item = project.items[itemId] else { return nil }
+                guard let item = project.items[itemId] else {
+                    return nil
+                }
                 let override = overrides[itemId]
                 return makeResolvedItem(id: itemId, item: item, override: override)
             }
@@ -113,14 +123,19 @@ public enum ModelResolver {
     }
 }
 
-private extension ModelResolver {
-    static func jsonDecoder() -> JSONDecoder {
+extension ModelResolver {
+    fileprivate static func jsonDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return decoder
     }
 
-    static func makeResolvedItem(id: String, item: Project.Item, override: Project.ItemOverride?) -> ResolvedItem {
+    fileprivate static func makeResolvedItem(
+        id: String,
+        item: Project.Item,
+        override: Project.ItemOverride?,
+    )
+    -> ResolvedItem {
         let title = resolvedTitle(id: id, item: item, override: override)
         let subtitle = item.subtitle
         let description = resolvedDescription(item: item, override: override)
@@ -133,11 +148,11 @@ private extension ModelResolver {
             subtitle: subtitle,
             description: description,
             thumbUri: thumbUri,
-            attributes: attributes
+            attributes: attributes,
         )
     }
 
-    static func resolvedTitle(id: String, item: Project.Item, override: Project.ItemOverride?) -> String {
+    fileprivate static func resolvedTitle(id: String, item: Project.Item, override: Project.ItemOverride?) -> String {
         if let overrideTitle = override?.displayTitle, !overrideTitle.isEmpty {
             return overrideTitle
         }
@@ -147,7 +162,7 @@ private extension ModelResolver {
         return id
     }
 
-    static func resolvedDescription(item: Project.Item, override: Project.ItemOverride?) -> String? {
+    fileprivate static func resolvedDescription(item: Project.Item, override: Project.ItemOverride?) -> String? {
         if let notes = override?.notes, !notes.isEmpty {
             return notes
         }
@@ -157,7 +172,7 @@ private extension ModelResolver {
         return nil
     }
 
-    static func resolvedThumbUri(item: Project.Item, override: Project.ItemOverride?) -> String? {
+    fileprivate static func resolvedThumbUri(item: Project.Item, override: Project.ItemOverride?) -> String? {
         if let thumb = mediaPrimaryThumbnail(from: override?.media) {
             return thumb
         }
@@ -167,8 +182,10 @@ private extension ModelResolver {
         return nil
     }
 
-    static func mediaPrimaryThumbnail(from media: [Project.Media]?) -> String? {
-        guard let media, let first = media.first else { return nil }
+    fileprivate static func mediaPrimaryThumbnail(from media: [Project.Media]?) -> String? {
+        guard let media, let first = media.first else {
+            return nil
+        }
         if let thumb = first.thumbUri, !thumb.isEmpty {
             return thumb
         }
@@ -178,11 +195,12 @@ private extension ModelResolver {
         return nil
     }
 
-    static func buildAttributes(
+    fileprivate static func buildAttributes(
         item: Project.Item,
         override: Project.ItemOverride?,
-        thumbUri: String?
-    ) -> [String: String]? {
+        thumbUri: String?,
+    )
+    -> [String: String]? {
         var attributes: [String: String] = [:]
 
         if let overrideTitle = override?.displayTitle, !overrideTitle.isEmpty {
@@ -207,19 +225,21 @@ private extension ModelResolver {
     }
 }
 
-private extension JSONValue {
-    var stringValue: String? {
+extension JSONValue {
+    fileprivate var stringValue: String? {
         switch self {
-        case .string(let value):
+        case let .string(value):
             return value
-        case .number(let number):
+        case let .number(number):
             if floor(number) == number {
                 return String(Int(number))
             }
             return String(number)
-        case .bool(let bool):
+        case let .bool(bool):
             return String(bool)
-        case .array, .object, .null:
+        case .array,
+             .null,
+             .object:
             return nil
         }
     }

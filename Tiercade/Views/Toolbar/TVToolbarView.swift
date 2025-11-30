@@ -1,21 +1,33 @@
 import SwiftUI
 
 #if os(tvOS)
-internal struct TVToolbarView: View {
+struct TVToolbarView: View {
     @Bindable var app: AppState
-    internal var modalActive: Bool = false
+    var modalActive: Bool = false
     @Binding var editMode: EditMode
-    internal var glassNamespace: Namespace.ID
+    var glassNamespace: Namespace.ID
     // Seed and manage initial focus for tvOS toolbar controls
     @FocusState private var focusedControl: Control?
     @State private var showingSortPicker = false
 
     private enum Control: Hashable {
-        case undo, redo, randomize, reset, library, newTierList, multiSelect
-        case headToHead, analytics, sort, applySort, density, theme, aiChat
+        case undo
+        case redo
+        case randomize
+        case reset
+        case library
+        case newTierList
+        case multiSelect
+        case headToHead
+        case analytics
+        case sort
+        case applySort
+        case density
+        case theme
+        case aiChat
     }
 
-    internal var body: some View {
+    var body: some View {
         let randomizeEnabled = app.canRandomizeItems
         let headToHeadEnabled = app.canStartHeadToHead
         let analyticsActive = app.overlays.showAnalyticsSidebar
@@ -128,13 +140,15 @@ internal struct TVToolbarView: View {
             Button(action: {
                 withAnimation(.snappy(duration: 0.18, extraBounce: 0.04)) {
                     editMode = editMode == .active ? .inactive : .active
-                    if editMode == .inactive { app.clearSelection() }
+                    if editMode == .inactive {
+                        app.clearSelection()
+                    }
                 }
             }, label: {
                 Image(
                     systemName: editMode == .active
                         ? "rectangle.stack.fill.badge.plus"
-                        : "rectangle.stack.badge.plus"
+                        : "rectangle.stack.badge.plus",
                 )
                 .font(.system(size: Metrics.toolbarIconSize))
                 .frame(width: Metrics.toolbarButtonSize, height: Metrics.toolbarButtonSize)
@@ -165,7 +179,7 @@ internal struct TVToolbarView: View {
             .accessibilityHint(headToHeadHint)
             .focusTooltip(headToHeadTooltip)
             #if swift(>=6.0)
-            .glassEffectID("headToHeadButton", in: glassNamespace)
+                .glassEffectID("headToHeadButton", in: glassNamespace)
             #endif
 
             Button(action: { app.toggleAnalyticsSidebar() }, label: {
@@ -239,7 +253,7 @@ internal struct TVToolbarView: View {
             .accessibilityHint("Choose a color theme for your tiers")
             .focusTooltip("Tier Themes")
             #if swift(>=6.0)
-            .glassEffectID("themePickerButton", in: glassNamespace)
+                .glassEffectID("themePickerButton", in: glassNamespace)
             #endif
 
             if AIGenerationState.isSupportedOnCurrentPlatform {
@@ -255,7 +269,7 @@ internal struct TVToolbarView: View {
                 .accessibilityHint("Chat with Apple Intelligence")
                 .focusTooltip("AI Chat")
                 #if swift(>=6.0)
-                .glassEffectID("aiChatButton", in: glassNamespace)
+                    .glassEffectID("aiChatButton", in: glassNamespace)
                 #endif
             }
         }
@@ -263,32 +277,32 @@ internal struct TVToolbarView: View {
         .padding(.vertical, TVMetrics.barVerticalPadding)
         .tvGlassRounded(36)
         #if swift(>=6.0)
-        .glassEffectID("toolbar", in: glassNamespace)
-        .glassEffectUnion(id: "tiercade.controls", namespace: glassNamespace)
+            .glassEffectID("toolbar", in: glassNamespace)
+            .glassEffectUnion(id: "tiercade.controls", namespace: glassNamespace)
         #endif
-        .overlay(alignment: .bottom) {
-            Divider().opacity(0.12)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: TVMetrics.topBarHeight)
-        .fixedSize(horizontal: false, vertical: true)
+            .overlay(alignment: .bottom) {
+                Divider().opacity(0.12)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: TVMetrics.topBarHeight)
+            .fixedSize(horizontal: false, vertical: true)
         #if os(tvOS)
-        .focusSection()
+            .focusSection()
         #endif
-        .onChange(of: app.overlays.showAnalyticsSidebar) { _, isPresented in
-            if !isPresented {
-                focusedControl = .analytics
+            .onChange(of: app.overlays.showAnalyticsSidebar) { _, isPresented in
+                if !isPresented {
+                    focusedControl = .analytics
+                }
             }
-        }
-        .onAppear {
-            // In UI test mode, seed toolbar focus to the theme button to make tests deterministic
-            if ProcessInfo.processInfo.arguments.contains("-uiTest") {
-                focusedControl = .theme
+            .onAppear {
+                // In UI test mode, seed toolbar focus to the theme button to make tests deterministic
+                if ProcessInfo.processInfo.arguments.contains("-uiTest") {
+                    focusedControl = .theme
+                }
             }
-        }
-        .sheet(isPresented: $showingSortPicker) {
-            TVSortPickerOverlay(app: app, isPresented: $showingSortPicker)
-        }
+            .sheet(isPresented: $showingSortPicker) {
+                TVSortPickerOverlay(app: app, isPresented: $showingSortPicker)
+            }
     }
 }
 #endif

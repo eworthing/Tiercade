@@ -1,28 +1,14 @@
 import Foundation
 import SwiftData
 
+// MARK: - TierListEntity
+
 @Model
 final class TierListEntity {
-    @Attribute(.unique) var identifier: UUID
-    var title: String
-    var fileName: String?
-    var createdAt: Date
-    var updatedAt: Date
-    var isActive: Bool
-    var cardDensityRaw: String
-    var selectedThemeID: UUID?
-    var customThemesData: Data?
-    var globalSortModeData: Data?
-    var sourceRaw: String
-    var externalIdentifier: String?
-    var subtitle: String?
-    var iconSystemName: String?
-    var lastOpenedAt: Date
-    var projectData: Data?
-    @Relationship(deleteRule: .cascade, inverse: \TierEntity.list)
-    var tiers: [TierEntity]
 
-    internal init(
+    // MARK: Lifecycle
+
+    init(
         identifier: UUID = UUID(),
         title: String,
         fileName: String? = nil,
@@ -39,7 +25,7 @@ final class TierListEntity {
         iconSystemName: String? = nil,
         lastOpenedAt: Date = Date(),
         projectData: Data? = nil,
-        tiers: [TierEntity] = []
+        tiers: [TierEntity] = [],
     ) {
         self.identifier = identifier
         self.title = title
@@ -59,7 +45,31 @@ final class TierListEntity {
         self.projectData = projectData
         self.tiers = tiers
     }
+
+    // MARK: Internal
+
+    @Attribute(.unique) var identifier: UUID
+    var title: String
+    var fileName: String?
+    var createdAt: Date
+    var updatedAt: Date
+    var isActive: Bool
+    var cardDensityRaw: String
+    var selectedThemeID: UUID?
+    var customThemesData: Data?
+    var globalSortModeData: Data?
+    var sourceRaw: String
+    var externalIdentifier: String?
+    var subtitle: String?
+    var iconSystemName: String?
+    var lastOpenedAt: Date
+    var projectData: Data?
+    @Relationship(deleteRule: .cascade, inverse: \TierEntity.list)
+    var tiers: [TierEntity]
+
 }
+
+// MARK: - TierEntity
 
 @Model
 final class TierEntity {
@@ -73,14 +83,14 @@ final class TierEntity {
     var items: [TierItemEntity]
     @Relationship var list: TierListEntity?
 
-    internal init(
+    init(
         identifier: UUID = UUID(),
         key: String,
         displayName: String,
         colorHex: String?,
         order: Int,
         isLocked: Bool,
-        items: [TierItemEntity] = []
+        items: [TierItemEntity] = [],
     ) {
         self.identifier = identifier
         self.key = key
@@ -91,6 +101,8 @@ final class TierEntity {
         self.items = items
     }
 }
+
+// MARK: - TierItemEntity
 
 @Model
 final class TierItemEntity {
@@ -106,7 +118,7 @@ final class TierItemEntity {
     var position: Int
     @Relationship var tier: TierEntity?
 
-    internal init(
+    init(
         identifier: UUID = UUID(),
         itemID: String,
         name: String?,
@@ -117,7 +129,7 @@ final class TierItemEntity {
         imageUrl: String?,
         videoUrl: String?,
         position: Int = 0,
-        tier: TierEntity? = nil
+        tier: TierEntity? = nil,
     ) {
         self.identifier = identifier
         self.itemID = itemID

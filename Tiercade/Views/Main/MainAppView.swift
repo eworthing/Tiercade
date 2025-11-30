@@ -4,11 +4,58 @@ import TiercadeCore
 import Foundation
 #endif
 
+// MARK: - MainAppView
+
 // MainAppView: Top-level composition that was split out during modularization.
 // It composes SidebarView, TierGridView, ToolbarView and overlays (from the
 // ContentView+*.swift modular files).
 
-internal struct MainAppView: View {
+struct MainAppView: View {
+
+    // MARK: Internal
+
+    var body: some View {
+        @Bindable var app = app
+        // Note: Modal overlays (ThemePicker, TierListBrowser, HeadToHead, Analytics)
+        // use .fullScreenCover() which provides automatic focus containment via separate
+        // presentation context. This follows Apple's recommended pattern for modal presentations.
+        // Use centralized overlay blocking check from AppState for remaining ZStack overlays
+        let modalBlockingFocus = app.blocksBackgroundFocus
+
+        platformContent(modalBlockingFocus: modalBlockingFocus)
+        #if os(iOS) || os(tvOS)
+            .environment(\.editMode, $editMode)
+        #endif
+        #if os(tvOS)
+        .task { FocusUtils.seedFocus() }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                FocusUtils.seedFocus()
+            }
+        }
+        .onExitCommand { handleBackCommand() }
+        #endif
+        .overlay {
+            // Compose overlays here so they appear on all platforms (including tvOS)
+            ZStack { overlayStack }
+        }
+        #if !os(tvOS)
+        .overlay(alignment: .topLeading) {
+            Button(action: { handleBackCommand() }, label: {
+                EmptyView()
+            })
+            .keyboardShortcut(.cancelAction)
+            .frame(width: 0, height: 0)
+            .accessibilityHidden(true)
+        }
+        #endif
+        .applyDetailSheet(app: app)
+            .applyAlerts(app: app)
+            .applyModalPresentations(app: app)
+    }
+
+    // MARK: Private
+
     @Environment(AppState.self) private var app: AppState
     #if os(iOS) || os(tvOS)
     @State private var editMode: EditMode = .inactive
@@ -23,73 +70,15 @@ internal struct MainAppView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
 
-    internal var body: some View {
-        @Bindable var app = app
-        // Note: Modal overlays (ThemePicker, TierListBrowser, HeadToHead, Analytics)
-        // use .fullScreenCover() which provides automatic focus containment via separate
-        // presentation context. This follows Apple's recommended pattern for modal presentations.
-        // Use centralized overlay blocking check from AppState for remaining ZStack overlays
-        let modalBlockingFocus = app.blocksBackgroundFocus
-
-        platformContent(modalBlockingFocus: modalBlockingFocus)
-            #if os(iOS) || os(tvOS)
-            .environment(\.editMode, $editMode)
-            #endif
-            #if os(tvOS)
-            .task { FocusUtils.seedFocus() }
-            .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .active { FocusUtils.seedFocus() }
-            }
-            .onExitCommand { handleBackCommand() }
-            #endif
-            .overlay {
-                // Compose overlays here so they appear on all platforms (including tvOS)
-                ZStack { overlayStack }
-            }
-            #if !os(tvOS)
-            .overlay(alignment: .topLeading) {
-                Button(action: { handleBackCommand() }, label: {
-                    EmptyView()
-                })
-                .keyboardShortcut(.cancelAction)
-                .frame(width: 0, height: 0)
-                .accessibilityHidden(true)
-            }
-            #endif
-            .applyDetailSheet(app: app)
-            .applyAlerts(app: app)
-            .applyModalPresentations(app: app)
-    }
-
-    // MARK: - Content Helpers
-
-    @ViewBuilder
-    private func platformContent(modalBlockingFocus: Bool) -> some View {
-        Group {
-            #if os(tvOS)
-            tvOSPrimaryContent(modalBlockingFocus: modalBlockingFocus)
-            #elseif os(macOS)
-            macSplitView(modalBlockingFocus: modalBlockingFocus)
-            #elseif os(iOS)
-            if horizontalSizeClass == .regular {
-                regularWidthSplitView(modalBlockingFocus: modalBlockingFocus)
-            } else {
-                compactStack(modalBlockingFocus: modalBlockingFocus)
-            }
-            #else
-            platformPrimaryContent(modalBlockingFocus: modalBlockingFocus)
-            #endif
-        }
-    }
-
     // MARK: - Overlay Composition
+
     @ViewBuilder
     private var overlayStack: some View {
         if app.isLoading {
             ProgressIndicatorView(
                 isLoading: app.isLoading,
                 message: app.loadingMessage,
-                progress: app.operationProgress
+                progress: app.operationProgress,
             )
             .zIndex(OverlayZIndex.progress)
         }
@@ -112,14 +101,14 @@ internal struct MainAppView: View {
         // and ThemePicker are presented as fullScreenCover modals for proper focus containment
         // (see modal presentations after body)
 
-        if app.aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform {
+        if app.aiGeneration.showAIChat, AIGenerationState.isSupportedOnCurrentPlatform {
             AccessibilityBridgeView(identifier: "AIChat_Overlay")
 
             ZStack {
                 Palette.bg.opacity(0.5)
                     .ignoresSafeArea()
                     .allowsHitTesting(true)
-                    .accessibilityHidden(true)  // Dimmer is tap-to-dismiss; explicit close button exists in overlay
+                    .accessibilityHidden(true) // Dimmer is tap-to-dismiss; explicit close button exists in overlay
                     .onTapGesture {
                         app.closeAIChat()
                     }
@@ -155,6 +144,27 @@ internal struct MainAppView: View {
         }
     }
 
+    // MARK: - Content Helpers
+
+    @ViewBuilder
+    private func platformContent(modalBlockingFocus: Bool) -> some View {
+        Group {
+            #if os(tvOS)
+            tvOSPrimaryContent(modalBlockingFocus: modalBlockingFocus)
+            #elseif os(macOS)
+            macSplitView(modalBlockingFocus: modalBlockingFocus)
+            #elseif os(iOS)
+            if horizontalSizeClass == .regular {
+                regularWidthSplitView(modalBlockingFocus: modalBlockingFocus)
+            } else {
+                compactStack(modalBlockingFocus: modalBlockingFocus)
+            }
+            #else
+            platformPrimaryContent(modalBlockingFocus: modalBlockingFocus)
+            #endif
+        }
+    }
+
     @ViewBuilder
     private func detailOverlay(for detail: Item) -> some View {
         #if os(tvOS)
@@ -169,7 +179,7 @@ internal struct MainAppView: View {
         .onDisappear { detailFocus = nil }
         .transition(
             .move(edge: .trailing)
-                .combined(with: .opacity)
+                .combined(with: .opacity),
         )
         .zIndex(OverlayZIndex.detailSidebar)
         #endif
@@ -192,13 +202,13 @@ internal struct MainAppView: View {
         .navigationSplitViewStyle(.balanced)
         .toolbarRole(.editor)
         #if DEBUG
-        .overlay(alignment: .bottomTrailing) {
-            BuildInfoView()
-                .padding(.trailing, 16)
-                .padding(.bottom, 16)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-        }
+            .overlay(alignment: .bottomTrailing) {
+                BuildInfoView()
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 16)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
         #endif
     }
     #endif
@@ -222,13 +232,13 @@ internal struct MainAppView: View {
         .navigationSplitViewStyle(.balanced)
         .toolbarRole(.editor)
         #if DEBUG
-        .overlay(alignment: .bottomTrailing) {
-            BuildInfoView()
-                .padding(.trailing, 16)
-                .padding(.bottom, 16)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-        }
+            .overlay(alignment: .bottomTrailing) {
+                BuildInfoView()
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 16)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
         #endif
     }
 
@@ -246,12 +256,12 @@ internal struct MainAppView: View {
         }
         #if DEBUG
         .overlay(alignment: .bottomTrailing) {
-            BuildInfoView()
-                .padding(.trailing, 16)
-                .padding(.bottom, 16)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-        }
+                BuildInfoView()
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 16)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
         #endif
     }
     #endif
@@ -262,21 +272,21 @@ internal struct MainAppView: View {
     private func tierGridLayer(modalBlockingFocus: Bool) -> some View {
         TierGridView(tierOrder: app.tierOrder)
             .environment(app)
-            #if os(iOS)
+        #if os(iOS)
             .environment(\.editMode, $editMode)
-            .padding(.top, Metrics.grid * 2)  // Reduced for iOS to avoid nav bar overlap
+            .padding(.top, Metrics.grid * 2) // Reduced for iOS to avoid nav bar overlap
             .padding(.bottom, Metrics.grid * 3)
-            #elseif os(tvOS)
+        #elseif os(tvOS)
             .padding(.top, TVMetrics.contentTopInset)
             .padding(.bottom, TVMetrics.contentBottomInset)
-            #else
+        #else
             .padding(.top, Metrics.grid * 2)
             .padding(.bottom, Metrics.grid * 3)
-            #endif
+        #endif
             .allowsHitTesting(!modalBlockingFocus)
             // Note: Don't use .disabled() as it removes elements from accessibility tree
             // Only block hit testing when modals are active
-            .frame(maxWidth: .infinity, alignment: .top)  // Removed maxHeight to let NavigationStack manage sizing
+            .frame(maxWidth: .infinity, alignment: .top) // Removed maxHeight to let NavigationStack manage sizing
     }
 
     #if os(tvOS)
@@ -291,7 +301,7 @@ internal struct MainAppView: View {
                 app: app,
                 modalActive: modalBlockingFocus,
                 editMode: $editMode,
-                glassNamespace: glassNamespace
+                glassNamespace: glassNamespace,
             )
             .frame(maxWidth: .infinity)
             .frame(height: TVMetrics.topBarHeight)
@@ -308,12 +318,12 @@ internal struct MainAppView: View {
         }
         #if DEBUG
         .overlay(alignment: .bottomTrailing) {
-            BuildInfoView()
-                .padding(.trailing, TVMetrics.barHorizontalPadding)
-                .padding(.bottom, TVMetrics.barVerticalPadding + 4)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-        }
+                BuildInfoView()
+                    .padding(.trailing, TVMetrics.barHorizontalPadding)
+                    .padding(.bottom, TVMetrics.barVerticalPadding + 4)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
         #endif
     }
     #else
@@ -329,12 +339,20 @@ internal struct MainAppView: View {
     #endif
 }
 
-private extension MainAppView {
-    func handleBackCommand() {
-        if handleOverlayDismissals() { return }
-        if handleQuickActionDismissals() { return }
-        if handleCreatorDismissals() { return }
-        if handleModeDismissals() { return }
+extension MainAppView {
+    private func handleBackCommand() {
+        if handleOverlayDismissals() {
+            return
+        }
+        if handleQuickActionDismissals() {
+            return
+        }
+        if handleCreatorDismissals() {
+            return
+        }
+        if handleModeDismissals() {
+            return
+        }
     }
 
     private func handleOverlayDismissals() -> Bool {
@@ -401,7 +419,7 @@ private extension MainAppView {
     }
 }
 
-// MARK: - Previews
+// MARK: - MainAppViewPreview
 
 @MainActor
 private struct MainAppViewPreview: View {
@@ -423,15 +441,17 @@ private struct MainAppViewPreview: View {
         .preferredColorScheme(.dark)
 }
 
+// MARK: - AccessibilityBridgeView
+
 // File-scoped helper to expose an immediate accessibility element for UI tests.
 private struct AccessibilityBridgeView: View {
-    internal let identifier: String
+    let identifier: String
 
-    internal init(identifier: String = "ThemePicker_Overlay") {
+    init(identifier: String = "ThemePicker_Overlay") {
         self.identifier = identifier
     }
 
-    internal var body: some View {
+    var body: some View {
         Color.clear
             .frame(width: 1, height: 1)
             .accessibilityIdentifier(identifier)

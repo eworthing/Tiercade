@@ -1,12 +1,12 @@
+import os
 import SwiftUI
 import TiercadeCore
-import os
 
-// MARK: - Add Schema Field Sheet
+// MARK: - AddSchemaFieldSheet
 
-internal struct AddSchemaFieldSheet: View {
+struct AddSchemaFieldSheet: View {
     @Environment(\.dismiss) private var dismiss
-    internal var onAdd: (SchemaFieldDefinition) -> Void
+    var onAdd: (SchemaFieldDefinition) -> Void
 
     @State private var fieldName = ""
     @State private var fieldType: SchemaFieldDefinition.FieldType = .text
@@ -16,10 +16,10 @@ internal struct AddSchemaFieldSheet: View {
     @State private var newOption = ""
 
     private let gridColumns = [
-        GridItem(.adaptive(minimum: 200, maximum: 240), spacing: 16)
+        GridItem(.adaptive(minimum: 200, maximum: 240), spacing: 16),
     ]
 
-    internal var body: some View {
+    var body: some View {
         #if os(tvOS)
         // tvOS: Custom header approach for better control
         ZStack {
@@ -29,10 +29,10 @@ internal struct AddSchemaFieldSheet: View {
                 LinearGradient(
                     colors: [
                         Color.white.opacity(0.02),
-                        Color.clear
+                        Color.clear,
                     ],
                     startPoint: .top,
-                    endPoint: .bottom
+                    endPoint: .bottom,
                 )
             }
             .ignoresSafeArea()
@@ -58,7 +58,7 @@ internal struct AddSchemaFieldSheet: View {
                             fieldType: fieldType,
                             required: required,
                             allowMultiple: allowMultiple,
-                            options: options
+                            options: options,
                         )
                         onAdd(field)
                         dismiss()
@@ -106,7 +106,9 @@ internal struct AddSchemaFieldSheet: View {
             }
         }
         .onChange(of: fieldType) {
-            guard fieldType != .multiSelect else { return }
+            guard fieldType != .multiSelect else {
+                return
+            }
             if fieldType == .singleSelect {
                 allowMultiple = false
             }
@@ -163,33 +165,35 @@ internal struct AddSchemaFieldSheet: View {
             }
             .navigationTitle("Add Custom Field")
             #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.inline)
             #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            dismiss()
+                        }
                     }
-                }
 
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        let field = SchemaFieldDefinition(
-                            name: fieldName,
-                            fieldType: fieldType,
-                            required: required,
-                            allowMultiple: allowMultiple,
-                            options: options
-                        )
-                        onAdd(field)
-                        dismiss()
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Add") {
+                            let field = SchemaFieldDefinition(
+                                name: fieldName,
+                                fieldType: fieldType,
+                                required: required,
+                                allowMultiple: allowMultiple,
+                                options: options,
+                            )
+                            onAdd(field)
+                            dismiss()
+                        }
+                        .disabled(fieldName.isEmpty)
                     }
-                    .disabled(fieldName.isEmpty)
                 }
-            }
         }
         .onChange(of: fieldType) {
-            guard fieldType != .multiSelect else { return }
+            guard fieldType != .multiSelect else {
+                return
+            }
             if fieldType == .singleSelect {
                 allowMultiple = false
             }
@@ -206,7 +210,7 @@ internal struct AddSchemaFieldSheet: View {
                 .font(.headline.weight(.semibold))
 
             TextField("Field Name", text: $fieldName, prompt: Text("e.g., Genre, Platform, Developer"))
-                #if os(tvOS)
+            #if os(tvOS)
                 .padding(12)
                 .background {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -217,9 +221,9 @@ internal struct AddSchemaFieldSheet: View {
                         .stroke(Color.white.opacity(0.3), lineWidth: 2)
                 }
                 .focusEffectDisabled(false)
-                #else
+            #else
                 .textFieldStyle(.roundedBorder)
-                #endif
+            #endif
                 .accessibilityIdentifier("Schema_FieldName")
 
             Text("Give the field a clear label so editors know what to enter.")
@@ -260,7 +264,7 @@ internal struct AddSchemaFieldSheet: View {
             ForEach(SchemaFieldDefinition.FieldType.allCases, id: \.self) { type in
                 FieldTypeCard(
                     type: type,
-                    isSelected: fieldType == type
+                    isSelected: fieldType == type,
                 ) {
                     withAnimation(.easeInOut(duration: 0.15)) {
                         fieldType = type
@@ -337,7 +341,7 @@ internal struct AddSchemaFieldSheet: View {
 
             HStack(spacing: 12) {
                 TextField("New Option", text: $newOption)
-                    #if os(tvOS)
+                #if os(tvOS)
                     .padding(12)
                     .background {
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -349,12 +353,14 @@ internal struct AddSchemaFieldSheet: View {
                     }
                     .focusEffectDisabled(false)
                 #else
-                .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.roundedBorder)
                 #endif
 
                 Button {
                     let trimmed = newOption.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty else { return }
+                    guard !trimmed.isEmpty else {
+                        return
+                    }
                     options.append(trimmed)
                     newOption = ""
                 } label: {
@@ -386,14 +392,14 @@ internal struct AddSchemaFieldSheet: View {
     }
 }
 
-// MARK: - Field Type Support Views
+// MARK: - FieldTypeCard
 
 private struct FieldTypeCard: View {
-    internal let type: SchemaFieldDefinition.FieldType
-    internal let isSelected: Bool
-    internal let action: () -> Void
+    let type: SchemaFieldDefinition.FieldType
+    let isSelected: Bool
+    let action: () -> Void
 
-    internal var body: some View {
+    var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
@@ -433,24 +439,26 @@ private struct FieldTypeCard: View {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .strokeBorder(
                         isSelected ? Color.accentColor : Color.white.opacity(0.2),
-                        lineWidth: isSelected ? 3 : 1
+                        lineWidth: isSelected ? 3 : 1,
                     )
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         #if os(tvOS)
-        .buttonStyle(.plain)
+            .buttonStyle(.plain)
         #else
-        .buttonStyle(.plain)
+            .buttonStyle(.plain)
         #endif
-        .accessibilityIdentifier("Schema_FieldType_\(type.rawValue)")
+            .accessibilityIdentifier("Schema_FieldType_\(type.rawValue)")
     }
 }
 
-private struct FieldTypeDetailView: View {
-    internal let type: SchemaFieldDefinition.FieldType
+// MARK: - FieldTypeDetailView
 
-    internal var body: some View {
+private struct FieldTypeDetailView: View {
+    let type: SchemaFieldDefinition.FieldType
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: 12) {
                 Image(systemName: type.icon)

@@ -2,6 +2,8 @@ import Foundation
 import Testing
 @testable import TiercadeCore
 
+// MARK: - RandomUtilsTests
+
 @Suite("RandomUtils")
 struct RandomUtilsTests {
     @Test("Seeded RNG yields deterministic sequences")
@@ -9,7 +11,7 @@ struct RandomUtilsTests {
         var rngA = SeededRNG(seed: 42)
         var rngB = SeededRNG(seed: 42)
 
-        for _ in 0..<5 {
+        for _ in 0 ..< 5 {
             #expect(rngA.next() == rngB.next())
         }
     }
@@ -35,6 +37,8 @@ struct RandomUtilsTests {
         #expect(pair?.1 == "b")
     }
 }
+
+// MARK: - SequenceRNG
 
 private final class SequenceRNG {
     private let values: [Double]

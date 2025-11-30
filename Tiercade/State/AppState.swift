@@ -1,48 +1,53 @@
-import Foundation
-import SwiftUI
-import Observation
-import SwiftData
 import Accessibility
+import Foundation
+import Observation
 import os
+import SwiftData
+import SwiftUI
 
 import TiercadeCore
 
+// MARK: - ExportFormat
+
 //
 
-// MARK: - Export & Import System Types
-
 nonisolated enum ExportFormat: CaseIterable {
-    case text, json, markdown, csv, png, pdf
+    case text
+    case json
+    case markdown
+    case csv
+    case png
+    case pdf
 
     var fileExtension: String {
         switch self {
-        case .text: return "txt"
-        case .json: return "json"
-        case .markdown: return "md"
-        case .csv: return "csv"
-        case .png: return "png"
-        case .pdf: return "pdf"
+        case .text: "txt"
+        case .json: "json"
+        case .markdown: "md"
+        case .csv: "csv"
+        case .png: "png"
+        case .pdf: "pdf"
         }
     }
 
     var displayName: String {
         switch self {
-        case .text: return "Plain Text"
-        case .json: return "JSON"
-        case .markdown: return "Markdown"
-        case .csv: return "CSV"
-        case .png: return "PNG Image"
-        case .pdf: return "PDF"
+        case .text: "Plain Text"
+        case .json: "JSON"
+        case .markdown: "Markdown"
+        case .csv: "CSV"
+        case .png: "PNG Image"
+        case .pdf: "PDF"
         }
     }
 }
 
-// MARK: - Analysis & Statistics Types
+// MARK: - TierDistributionData
 
-internal struct TierDistributionData: Identifiable, Sendable {
+struct TierDistributionData: Identifiable, Sendable {
     let id = UUID()
-    let tierId: String        // Internal tier identifier (e.g., "S", "GOLD", "EPIC")
-    let tierLabel: String      // Display label (e.g., "Best", "Golden", "Epic Tier")
+    let tierId: String // Internal tier identifier (e.g., "S", "GOLD", "EPIC")
+    let tierLabel: String // Display label (e.g., "Best", "Golden", "Epic Tier")
     let count: Int
     let percentage: Double
 
@@ -50,7 +55,9 @@ internal struct TierDistributionData: Identifiable, Sendable {
     var tier: String { tierLabel }
 }
 
-internal struct TierAnalysisData: Sendable {
+// MARK: - TierAnalysisData
+
+struct TierAnalysisData: Sendable {
     let totalItems: Int
     let tierDistribution: [TierDistributionData]
     let mostPopulatedTier: String?
@@ -59,116 +66,30 @@ internal struct TierAnalysisData: Sendable {
     let insights: [String]
     let unrankedCount: Int
 
-    internal static let empty = TierAnalysisData(
+    static let empty = TierAnalysisData(
         totalItems: 0,
         tierDistribution: [],
         mostPopulatedTier: nil,
         leastPopulatedTier: nil,
         balanceScore: 0,
         insights: ["No items found - add some items to see analysis"],
-        unrankedCount: 0
+        unrankedCount: 0,
     )
 }
+
+// MARK: - AppState
 
 @MainActor
 @Observable
 final class AppState {
-    enum TierListDraftValidationCategory: String, Sendable {
-        case project
-        case tier
-        case item
-        case override
-        case media
-        case collaboration
-    }
 
-    struct TierListDraftValidationIssue: Identifiable, Equatable, Sendable {
-        let id = UUID()
-        var category: TierListDraftValidationCategory
-        var message: String
-        var contextIdentifier: String?
-    }
+    // MARK: Lifecycle
 
-    let modelContext: ModelContext
-
-    // MARK: - Injected Services (DI)
-    internal let persistenceStore: TierPersistenceStore
-    internal let listGenerator: UniqueListGenerating
-    internal let themeCatalog: ThemeCatalogProviding
-
-    // MARK: - Tier List State
-    /// Consolidated state for tier list data and operations
-    var tierList = TierListState()
-
-    var searchQuery: String = ""
-    var activeFilter: FilterType = .all
-    var currentToast: ToastMessage?
-    var quickRankTarget: Item?
-    var batchQuickMoveActive: Bool = false
-    // MARK: - Layout Preferences
-    var cardDensityPreference: CardDensityPreference = .compact
-
-    // MARK: - Debug/Demo
-    #if DEBUG
-    var showDesignDemo: Bool = false
-    #endif
-    // Tier List Creator state (active flags for focus management)
-    var tierListCreatorActive: Bool = false
-    var tierListWizardContext: TierListWizardContext = .create
-    var tierListCreatorDraft: TierProjectDraft?
-    var tierListCreatorIssues: [TierListDraftValidationIssue] = []
-    var tierListCreatorExportPayload: String?
-    // MARK: - AI Generation State
-    /// Consolidated state for Apple Intelligence chat and AI generation
-    var aiGeneration: AIGenerationState
-
-    // MARK: - HeadToHead State
-    /// Consolidated state for HeadToHead ranking mode (replaces 17 scattered h2h* properties)
-    var headToHead = HeadToHeadState()
-
-    // MARK: - Persistence State
-    /// Consolidated state for tier list persistence and file management
-    var persistence: PersistenceState
-
-    // MARK: - Overlays State
-    /// Consolidated state for modal/overlay routing and visibility
-    var overlays = OverlaysState()
-
-    // MARK: - Theme State
-    /// Consolidated state for theme selection and management
-    var theme: ThemeState
-
-    // MARK: - Progress State
-    /// Consolidated state for loading indicators and progress tracking
-    var progress = ProgressState()
-
-    // MARK: - Progress Tracking & Visual Feedback
-    var dragTargetTier: String?
-    var draggingId: String?
-    var isProcessingSearch: Bool = false
-    let bundledProjects: [BundledProject] = BundledProjects.all
-
-    var showRandomizeConfirmation: Bool = false
-    var showResetConfirmation: Bool = false
-
-    let tierListStateKey = "Tiercade.tierlist.active.v1"
-    let tierListRecentsKey = "Tiercade.tierlist.recents.v1"
-    var autosaveTask: Task<Void, Never>?
-    let autosaveInterval: TimeInterval = PersistenceIntervals.autosave
-
-    /// Centralized check for whether any overlay blocks background interaction
-    /// Use with `.allowsHitTesting(!app.blocksBackgroundFocus)` on background content
-    var blocksBackgroundFocus: Bool {
-        overlays.blocksBackgroundFocus
-        || headToHead.isActive
-        || (aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform)
-    }
-
-    internal init(
+    init(
         modelContext: ModelContext,
         persistenceStore: TierPersistenceStore? = nil,
         listGenerator: UniqueListGenerating? = nil,
-        themeCatalog: ThemeCatalogProviding? = nil
+        themeCatalog: ThemeCatalogProviding? = nil,
     ) {
         self.modelContext = modelContext
 
@@ -208,30 +129,115 @@ final class AppState {
         prefillBundledProjectsIfNeeded()
     }
 
-    // MARK: - Logging
+    // MARK: Internal
 
-    private func setupAutosave() {
-        autosaveTask?.cancel()
-        let interval = autosaveInterval
-        autosaveTask = Task { [weak self] in
-            while !Task.isCancelled {
-                do {
-                    try await Task.sleep(for: .seconds(interval))
-                } catch {
-                    return
-                }
-
-                guard let self else { return }
-                await self.performAutosaveIfNeeded()
-            }
-        }
+    enum TierListDraftValidationCategory: String, Sendable {
+        case project
+        case tier
+        case item
+        case override
+        case media
+        case collaboration
     }
 
-    @MainActor
-    private func performAutosaveIfNeeded() async {
-        if persistence.hasUnsavedChanges {
-            await autoSaveAsync()
-        }
+    struct TierListDraftValidationIssue: Identifiable, Equatable, Sendable {
+        let id = UUID()
+        var category: TierListDraftValidationCategory
+        var message: String
+        var contextIdentifier: String?
+    }
+
+    let modelContext: ModelContext
+
+    // MARK: - Injected Services (DI)
+
+    let persistenceStore: TierPersistenceStore
+    let listGenerator: UniqueListGenerating
+    let themeCatalog: ThemeCatalogProviding
+
+    // MARK: - Tier List State
+
+    /// Consolidated state for tier list data and operations
+    var tierList = TierListState()
+
+    var searchQuery: String = ""
+    var activeFilter: FilterType = .all
+    var currentToast: ToastMessage?
+    var quickRankTarget: Item?
+    var batchQuickMoveActive: Bool = false
+
+    // MARK: - Layout Preferences
+
+    var cardDensityPreference: CardDensityPreference = .compact
+
+    // MARK: - Debug/Demo
+
+    #if DEBUG
+    var showDesignDemo: Bool = false
+    #endif
+    // Tier List Creator state (active flags for focus management)
+    var tierListCreatorActive: Bool = false
+    var tierListWizardContext: TierListWizardContext = .create
+    var tierListCreatorDraft: TierProjectDraft?
+    var tierListCreatorIssues: [TierListDraftValidationIssue] = []
+    var tierListCreatorExportPayload: String?
+
+    // MARK: - AI Generation State
+
+    /// Consolidated state for Apple Intelligence chat and AI generation
+    var aiGeneration: AIGenerationState
+
+    // MARK: - HeadToHead State
+
+    /// Consolidated state for HeadToHead ranking mode (replaces 17 scattered h2h* properties)
+    var headToHead = HeadToHeadState()
+
+    // MARK: - Persistence State
+
+    /// Consolidated state for tier list persistence and file management
+    var persistence: PersistenceState
+
+    // MARK: - Overlays State
+
+    /// Consolidated state for modal/overlay routing and visibility
+    var overlays = OverlaysState()
+
+    // MARK: - Theme State
+
+    /// Consolidated state for theme selection and management
+    var theme: ThemeState
+
+    // MARK: - Progress State
+
+    /// Consolidated state for loading indicators and progress tracking
+    var progress = ProgressState()
+
+    // MARK: - Progress Tracking & Visual Feedback
+
+    var dragTargetTier: String?
+    var draggingId: String?
+    var isProcessingSearch: Bool = false
+    let bundledProjects: [BundledProject] = BundledProjects.all
+
+    var showRandomizeConfirmation: Bool = false
+    var showResetConfirmation: Bool = false
+
+    let tierListStateKey = "Tiercade.tierlist.active.v1"
+    let tierListRecentsKey = "Tiercade.tierlist.recents.v1"
+    var autosaveTask: Task<Void, Never>?
+    let autosaveInterval: TimeInterval = PersistenceIntervals.autosave
+
+    // MARK: - Analysis & Statistics System
+
+    var showingAnalysis = false
+    var analysisData: TierAnalysisData?
+
+    /// Centralized check for whether any overlay blocks background interaction
+    /// Use with `.allowsHitTesting(!app.blocksBackgroundFocus)` on background content
+    var blocksBackgroundFocus: Bool {
+        overlays.blocksBackgroundFocus
+            || headToHead.isActive
+            || (aiGeneration.showAIChat && AIGenerationState.isSupportedOnCurrentPlatform)
     }
 
     // MARK: - Tier List Convenience Accessors
@@ -278,16 +284,6 @@ final class AppState {
         set { tierList.globalSortMode = newValue }
     }
 
-    /// Convenience accessor for displayLabel
-    func displayLabel(for tierId: String) -> String {
-        tierList.displayLabel(for: tierId)
-    }
-
-    /// Convenience accessor for displayColorHex
-    func displayColorHex(for tierId: String) -> String? {
-        tierList.displayColorHex(for: tierId)
-    }
-
     // MARK: - Progress Convenience Accessors
 
     /// Convenience accessor for isLoading
@@ -308,42 +304,61 @@ final class AppState {
         set { progress.operationProgress = newValue }
     }
 
+    var canUndo: Bool { tierList.canUndo }
+    var canRedo: Bool { tierList.canRedo }
+    var totalItemCount: Int { tierList.totalItemCount }
+    var hasAnyItems: Bool { tierList.hasAnyItems }
+    var hasEnoughForPairing: Bool { tierList.hasEnoughForPairing }
+    var canRandomizeItems: Bool { tierList.canRandomizeItems }
+    var canStartHeadToHead: Bool { !headToHead.isActive && hasEnoughForPairing }
+    var canShowAnalysis: Bool { hasAnyItems }
+
+    /// Convenience accessor for displayLabel
+    func displayLabel(for tierId: String) -> String {
+        tierList.displayLabel(for: tierId)
+    }
+
+    /// Convenience accessor for displayColorHex
+    func displayColorHex(for tierId: String) -> String? {
+        tierList.displayColorHex(for: tierId)
+    }
+
     // MARK: - Undo/Redo Management
 
-    internal func updateUndoManager(_ manager: UndoManager?) {
+    func updateUndoManager(_ manager: UndoManager?) {
         tierList.updateUndoManager(manager)
     }
 
-    internal func captureTierSnapshot() -> TierListState.TierStateSnapshot {
+    func captureTierSnapshot() -> TierListState.TierStateSnapshot {
         tierList.captureTierSnapshot()
     }
 
-    internal func restore(from snapshot: TierListState.TierStateSnapshot) {
+    func restore(from snapshot: TierListState.TierStateSnapshot) {
         tierList.restore(from: snapshot)
     }
 
-    internal func finalizeChange(action: String, undoSnapshot: TierListState.TierStateSnapshot) {
+    func finalizeChange(action: String, undoSnapshot: TierListState.TierStateSnapshot) {
         tierList.finalizeChange(action: action, undoSnapshot: undoSnapshot) { [weak self] in
             self?.markAsChanged()
         }
 
-                if tierList.undoManager?.isUndoing == true {
+        if tierList.undoManager?.isUndoing == true {
             showInfoToast("Undone", message: "\(action) reverted {undo}")
         } else if tierList.undoManager?.isRedoing == true {
             showInfoToast("Redone", message: "\(action) repeated {redo}")
         }
     }
 
-    internal func markAsChanged() {
+    func markAsChanged() {
         persistence.hasUnsavedChanges = true
     }
 
     /// Log a general app state event using unified logging
-    internal func logEvent(_ message: String) {
+    func logEvent(_ message: String) {
         Logger.appState.info("\(message)")
     }
 
-    internal func seed() {
+    func seed() {
         // Load the first bundled project as default instead of placeholder items
         guard let defaultProject = bundledProjects.first else {
             // Fallback to empty state if no bundled projects available
@@ -367,41 +382,63 @@ final class AppState {
         }
     }
 
+    func undo() {
+        tierList.undo()
+    }
+
+    func redo() {
+        tierList.redo()
+    }
+
+    // MARK: - Accessibility
+
+    func announce(_ message: String) {
+        AccessibilityNotification.Announcement(message).post()
+    }
+
+    // MARK: Private
+
+    // MARK: - Logging
+
+    private func setupAutosave() {
+        autosaveTask?.cancel()
+        let interval = autosaveInterval
+        autosaveTask = Task { [weak self] in
+            while !Task.isCancelled {
+                do {
+                    try await Task.sleep(for: .seconds(interval))
+                } catch {
+                    return
+                }
+
+                guard let self else {
+                    return
+                }
+                await performAutosaveIfNeeded()
+            }
+        }
+    }
+
+    @MainActor
+    private func performAutosaveIfNeeded() async {
+        if persistence.hasUnsavedChanges {
+            await autoSaveAsync()
+        }
+    }
+
     private func isLegacyBundledListPlaceholder(_ tiers: Items) -> Bool {
         let placeholderIDs = Set(BundledProjects.all.map(\.id))
-        guard !placeholderIDs.isEmpty else { return false }
+        guard !placeholderIDs.isEmpty else {
+            return false
+        }
 
-        let allItems = tiers.values.flatMap { $0 }
-        guard allItems.count == placeholderIDs.count else { return false }
+        let allItems = tiers.values.flatMap(\.self)
+        guard allItems.count == placeholderIDs.count else {
+            return false
+        }
 
         let itemIDs = Set(allItems.map(\.id))
         return itemIDs == placeholderIDs
     }
 
-    internal func undo() {
-        tierList.undo()
-    }
-
-    internal func redo() {
-        tierList.redo()
-    }
-
-    var canUndo: Bool { tierList.canUndo }
-    var canRedo: Bool { tierList.canRedo }
-    var totalItemCount: Int { tierList.totalItemCount }
-    var hasAnyItems: Bool { tierList.hasAnyItems }
-    var hasEnoughForPairing: Bool { tierList.hasEnoughForPairing }
-    var canRandomizeItems: Bool { tierList.canRandomizeItems }
-    var canStartHeadToHead: Bool { !headToHead.isActive && hasEnoughForPairing }
-    var canShowAnalysis: Bool { hasAnyItems }
-
-    // MARK: - Analysis & Statistics System
-
-    var showingAnalysis = false
-    var analysisData: TierAnalysisData?
-
-    // MARK: - Accessibility
-    internal func announce(_ message: String) {
-        AccessibilityNotification.Announcement(message).post()
-    }
 }

@@ -8,7 +8,7 @@ import FoundationModels
 @available(iOS 26.0, macOS 26.0, *)
 extension UniqueListCoordinator {
     /// Export telemetry for a test run
-    internal func exportRunTelemetry(
+    func exportRunTelemetry(
         testId: String,
         query: String,
         targetN: Int,
@@ -19,9 +19,11 @@ extension UniqueListCoordinator {
         circuitBreakerTriggered: Bool? = nil,
         passCount: Int? = nil,
         failureReason: String? = nil,
-        topDuplicates: [String: Int]? = nil
+        topDuplicates: [String: Int]? = nil,
     ) {
-        guard !telemetry.isEmpty else { return }
+        guard !telemetry.isEmpty else {
+            return
+        }
 
         let osVersion: String = {
             let version = ProcessInfo.processInfo.operatingSystemVersion
@@ -53,7 +55,7 @@ extension UniqueListCoordinator {
                 circuitBreakerTriggered: circuitBreakerTriggered ?? lastRunCircuitBreakerTriggered,
                 passCount: passCount ?? lastRunPassCount,
                 failureReason: failureReason ?? lastRunFailureReason,
-                topDuplicates: topDuplicates ?? lastRunTopDuplicates
+                topDuplicates: topDuplicates ?? lastRunTopDuplicates,
             ))
         }
 
@@ -73,8 +75,8 @@ extension UniqueListCoordinator {
     }
 
     /// Retrieve diagnostics from the last uniqueList() run
-    internal func getDiagnostics() -> RunDiagnostics {
-        return RunDiagnostics(
+    func getDiagnostics() -> RunDiagnostics {
+        RunDiagnostics(
             totalGenerated: lastRunTotalGenerated,
             dupCount: lastRunDupCount,
             dupRate: lastRunDupRate,
@@ -82,11 +84,11 @@ extension UniqueListCoordinator {
             circuitBreakerTriggered: lastRunCircuitBreakerTriggered,
             passCount: lastRunPassCount,
             failureReason: lastRunFailureReason,
-            topDuplicates: lastRunTopDuplicates
+            topDuplicates: lastRunTopDuplicates,
         )
     }
 
-    internal func finalizeGeneration(state: GenerationState, targetCount: Int, startTime: Date) {
+    func finalizeGeneration(state: GenerationState, targetCount: Int, startTime: Date) {
         let elapsed = Date().timeIntervalSince(startTime)
         let success = state.ordered.count >= targetCount
 
@@ -101,13 +103,13 @@ extension UniqueListCoordinator {
         let dupRatePercent = Double(state.duplicatesFound) / Double(state.totalGeneratedCount) * 100
         logger(
             "📊 Stats: \(state.totalGeneratedCount) total generated, \(state.duplicatesFound) filtered " +
-            "(\(String(format: "%.1f", dupRatePercent))% dup rate)"
+                "(\(String(format: "%.1f", dupRatePercent))% dup rate)",
         )
 
         storeDiagnostics(state: state, targetCount: targetCount, success: success)
     }
 
-    internal func storeDiagnostics(state: GenerationState, targetCount: Int, success: Bool) {
+    func storeDiagnostics(state: GenerationState, targetCount: Int, success: Bool) {
         lastRunTotalGenerated = state.totalGeneratedCount
         lastRunDupCount = state.duplicatesFound
         lastRunDupRate = state.totalGeneratedCount > 0
@@ -134,12 +136,13 @@ extension UniqueListCoordinator {
         }
     }
 
-    internal func uniqueListWithMetrics(
+    func uniqueListWithMetrics(
         query: String,
         targetCount: Int,
         seed: UInt64? = nil,
-        decoderProfile: String = "diverse"
-    ) async throws -> (items: [String], metrics: RunMetrics) {
+        decoderProfile: String = "diverse",
+    ) async throws
+    -> (items: [String], metrics: RunMetrics) {
         let startTime = Date()
         let items = try await uniqueList(query: query, targetCount: targetCount, seed: seed)
         let elapsed = Date().timeIntervalSince(startTime)
@@ -154,7 +157,7 @@ extension UniqueListCoordinator {
             decoderProfile: decoderProfile,
             env: RunEnv(),
             generationTimeSeconds: elapsed,
-            totalPasses: 0 // Pass count tracking deferred for simplified metrics API
+            totalPasses: 0, // Pass count tracking deferred for simplified metrics API
         )
 
         return (items, metrics)

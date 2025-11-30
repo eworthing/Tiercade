@@ -1,11 +1,11 @@
 import Foundation
-import SwiftUI
 import os
+import SwiftUI
 import TiercadeCore
 
 // MARK: - File System Helpers
 
-internal extension AppState {
+extension AppState {
     func getAvailableSaveFiles() -> [String] {
         do {
             let projects = try projectsDirectory()
@@ -22,7 +22,7 @@ internal extension AppState {
 
     func writeProjectBundle(
         _ artifacts: ProjectExportArtifacts,
-        to destination: URL
+        to destination: URL,
     ) throws(PersistenceError) {
         let fileManager = FileManager.default
 
@@ -45,14 +45,14 @@ internal extension AppState {
                 // Validate relative path to prevent traversal attacks
                 guard try validateExportPath(exportFile.relativePath) else {
                     throw PersistenceError.fileSystemError(
-                        "Export path contains invalid components (traversal attempt): \(exportFile.relativePath)"
+                        "Export path contains invalid components (traversal attempt): \(exportFile.relativePath)",
                     )
                 }
 
                 let destinationURL = destination.appendingPathComponent(exportFile.relativePath)
                 try fileManager.createDirectory(
                     at: destinationURL.deletingLastPathComponent(),
-                    withIntermediateDirectories: true
+                    withIntermediateDirectories: true,
                 )
                 if fileManager.fileExists(atPath: destinationURL.path) {
                     continue
@@ -140,9 +140,12 @@ internal extension AppState {
 
     func relocateMediaList(
         _ mediaList: [Project.Media]?,
-        extractedAt tempDirectory: URL
-    ) throws -> MediaRelocationResult? {
-        guard let mediaList else { return nil }
+        extractedAt tempDirectory: URL,
+    ) throws
+    -> MediaRelocationResult? {
+        guard let mediaList else {
+            return nil
+        }
         var relocated: [Project.Media] = []
         var firstThumb: String?
 
@@ -165,8 +168,10 @@ internal extension AppState {
             updated.uri = destination.absoluteString
         }
 
-        if let thumb = media.thumbUri,
-           let destination = try relocateFile(fromBundleURI: thumb, extractedAt: tempDirectory) {
+        if
+            let thumb = media.thumbUri,
+            let destination = try relocateFile(fromBundleURI: thumb, extractedAt: tempDirectory)
+        {
             updated.thumbUri = destination.absoluteString
         }
 
@@ -174,7 +179,9 @@ internal extension AppState {
     }
 
     func relocateFile(fromBundleURI uri: String, extractedAt tempDirectory: URL) throws -> URL? {
-        guard let relativePath = bundleRelativePath(from: uri) else { return nil }
+        guard let relativePath = bundleRelativePath(from: uri) else {
+            return nil
+        }
 
         let fileManager = FileManager.default
         // Canonicalize and ensure the source lives under the extraction directory
@@ -184,13 +191,12 @@ internal extension AppState {
             throw PersistenceError.fileSystemError("Missing asset inside bundle at \(relativePath)")
         }
 
-        let destinationBase: URL
-        if relativePath.hasPrefix("Media/") {
-            destinationBase = try mediaStoreDirectory()
+        let destinationBase: URL = if relativePath.hasPrefix("Media/") {
+            try mediaStoreDirectory()
         } else if relativePath.hasPrefix("Thumbs/") {
-            destinationBase = try thumbsStoreDirectory()
+            try thumbsStoreDirectory()
         } else {
-            destinationBase = try mediaStoreDirectory()
+            try mediaStoreDirectory()
         }
 
         let fileName = (relativePath as NSString).lastPathComponent
@@ -240,7 +246,7 @@ internal extension AppState {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         } catch {
             throw PersistenceError.fileSystemError(
-                "Could not create directory at \(url.path): \(error.localizedDescription)"
+                "Could not create directory at \(url.path): \(error.localizedDescription)",
             )
         }
     }
@@ -255,17 +261,21 @@ internal extension AppState {
             try fileManager.copyItem(at: source, to: destination)
         } catch {
             throw PersistenceError.fileSystemError(
-                "Failed to copy asset to \(destination.path): \(error.localizedDescription)"
+                "Failed to copy asset to \(destination.path): \(error.localizedDescription)",
             )
         }
     }
 
     func bundleRelativePath(from uri: String) -> String? {
-        guard uri.hasPrefix("file://") else { return nil }
+        guard uri.hasPrefix("file://") else {
+            return nil
+        }
         let trimmed = String(uri.dropFirst("file://".count))
         let path = trimmed.hasPrefix("/") ? String(trimmed.dropFirst()) : trimmed
         // Reject attempts at path traversal or absolute paths
-        if path.contains("..") || path.hasPrefix("/") { return nil }
+        if path.contains("..") || path.hasPrefix("/") {
+            return nil
+        }
         return path
     }
 
@@ -273,18 +283,22 @@ internal extension AppState {
     /// Returns true if path is safe, false if it should be rejected
     private func validateExportPath(_ path: String) throws(PersistenceError) -> Bool {
         // Reject absolute paths
-        guard !path.hasPrefix("/") else { return false }
+        guard !path.hasPrefix("/") else {
+            return false
+        }
 
         // Reject paths with traversal sequences
-        guard !path.contains("..") else { return false }
+        guard !path.contains("..") else {
+            return false
+        }
 
         // Canonicalize and verify it stays relative
         let components = path.split(separator: "/").map(String.init)
         var normalized: [String] = []
         for component in components {
             if component == ".." {
-                return false  // Reject any .. components
-            } else if component != "." && !component.isEmpty {
+                return false // Reject any .. components
+            } else if component != ".", !component.isEmpty {
                 normalized.append(component)
             }
         }
@@ -299,6 +313,7 @@ internal extension AppState {
             .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
         return sanitized.isEmpty ? "tiercade-project" : sanitized
     }
+
     // MARK: - SwiftData helpers
 
 }

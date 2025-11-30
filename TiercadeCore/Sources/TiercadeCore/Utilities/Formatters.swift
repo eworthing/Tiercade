@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - ExportFormatter
+
 public enum ExportFormatter {
     /// Generate export text similar to the web app.
     public static func generate(
@@ -8,8 +10,9 @@ public enum ExportFormatter {
         themeName: String,
         tiers: Items,
         tierConfig: TierConfig,
-        locale: Locale = .current
-    ) -> String {
+        locale: Locale = .current,
+    )
+    -> String {
         let df = DateFormatter()
         df.locale = locale
         df.dateStyle = .medium
@@ -18,8 +21,10 @@ public enum ExportFormatter {
         text += "Created: \(df.string(from: date))\n"
         text += "Theme: \(themeName)\n\n"
         let ordered = tiers.filter { $0.key != "unranked" }
-        let parts = ordered.compactMap { (tier, items) -> String? in
-            guard !items.isEmpty else { return nil }
+        let parts = ordered.compactMap { tier, items -> String? in
+            guard !items.isEmpty else {
+                return nil
+            }
             // Fallback to tier name if config entry is missing (supports custom tiers)
             let label = tierConfig[tier]?.name ?? tier
             let desc = tierConfig[tier]?.description ?? ""
@@ -31,12 +36,15 @@ public enum ExportFormatter {
     }
 }
 
+// MARK: - AnalysisFormatter
+
 public enum AnalysisFormatter {
     public static func generateTierAnalysis(
-        tierName: String,
+        tierName _: String,
         tierInfo: TierConfigEntry,
-        items: [Item]
-    ) -> String {
+        items: [Item],
+    )
+    -> String {
         var s = "\(tierInfo.name) Tier Analysis - \(tierInfo.description ?? "")\n\n"
         let itemSummary = "You've placed \(items.count) item\(items.count == 1 ? "" : "s") in this tier:\n\n"
         s += itemSummary
@@ -44,7 +52,9 @@ public enum AnalysisFormatter {
             let season = c.seasonString ?? (c.seasonNumber.map(String.init) ?? "?")
             let status = c.status ?? ""
             s += "• \(c.name ?? c.id) (Season \(season), \(status))\n"
-            if let d = c.description, !d.isEmpty { s += "  \(d)\n\n" }
+            if let d = c.description, !d.isEmpty {
+                s += "  \(d)\n\n"
+            }
         }
         return s
     }

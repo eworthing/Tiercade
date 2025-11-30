@@ -1,34 +1,36 @@
 import Foundation
-import SwiftData
 import os
+import SwiftData
 
 /// Theme catalog that provides bundled system themes and user custom themes
 ///
 /// This implementation wraps TierThemeCatalog for bundled themes and
 /// uses SwiftData for persisting custom themes.
 @MainActor
-internal final class BundledThemeCatalog: ThemeCatalogProviding {
-    private let modelContext: ModelContext
-    private let logger = Logger(subsystem: "com.tiercade.themes", category: "Catalog")
+final class BundledThemeCatalog: ThemeCatalogProviding {
 
-    internal init(modelContext: ModelContext) {
+    // MARK: Lifecycle
+
+    init(modelContext: ModelContext) {
         self.modelContext = modelContext
     }
 
-    internal func allThemes() async -> [TierTheme] {
+    // MARK: Internal
+
+    func allThemes() async -> [TierTheme] {
         let bundled = await bundledThemes()
         let custom = await customThemes()
         return bundled + custom
     }
 
-    internal func bundledThemes() async -> [TierTheme] {
+    func bundledThemes() async -> [TierTheme] {
         TierThemeCatalog.allThemes
     }
 
-    internal func customThemes() async -> [TierTheme] {
+    func customThemes() async -> [TierTheme] {
         do {
             let descriptor = FetchDescriptor<TierThemeEntity>(
-                sortBy: [SortDescriptor(\.displayName)]
+                sortBy: [SortDescriptor(\.displayName)],
             )
             let entities = try modelContext.fetch(descriptor)
             return entities.map { TierTheme(entity: $0) }
@@ -38,12 +40,12 @@ internal final class BundledThemeCatalog: ThemeCatalogProviding {
         }
     }
 
-    internal func saveCustomTheme(_ theme: TierTheme) async throws {
+    func saveCustomTheme(_ theme: TierTheme) async throws {
         do {
             // Check if theme already exists
             let themeID = theme.id
             let descriptor = FetchDescriptor<TierThemeEntity>(
-                predicate: #Predicate { $0.themeID == themeID }
+                predicate: #Predicate { $0.themeID == themeID },
             )
             let existing = try modelContext.fetch(descriptor).first
 
@@ -66,7 +68,7 @@ internal final class BundledThemeCatalog: ThemeCatalogProviding {
                         name: tier.name,
                         colorHex: tier.colorHex,
                         isUnranked: tier.isUnranked,
-                        theme: existing
+                        theme: existing,
                     )
                     return colorEntity
                 }
@@ -78,7 +80,7 @@ internal final class BundledThemeCatalog: ThemeCatalogProviding {
                         index: tier.index,
                         name: tier.name,
                         colorHex: tier.colorHex,
-                        isUnranked: tier.isUnranked
+                        isUnranked: tier.isUnranked,
                     )
                 }
 
@@ -87,7 +89,7 @@ internal final class BundledThemeCatalog: ThemeCatalogProviding {
                     slug: theme.slug,
                     displayName: theme.displayName,
                     shortDescription: theme.shortDescription,
-                    tiers: colorEntities
+                    tiers: colorEntities,
                 )
                 modelContext.insert(entity)
             }
@@ -101,7 +103,7 @@ internal final class BundledThemeCatalog: ThemeCatalogProviding {
         }
     }
 
-    internal func deleteCustomTheme(id: String) async throws {
+    func deleteCustomTheme(id: String) async throws {
         guard let uuid = UUID(uuidString: id) else {
             throw ThemeError.themeNotFound(id)
         }
@@ -113,7 +115,7 @@ internal final class BundledThemeCatalog: ThemeCatalogProviding {
 
         do {
             let descriptor = FetchDescriptor<TierThemeEntity>(
-                predicate: #Predicate { $0.themeID == uuid }
+                predicate: #Predicate { $0.themeID == uuid },
             )
             guard let entity = try modelContext.fetch(descriptor).first else {
                 throw ThemeError.themeNotFound(id)
@@ -131,7 +133,7 @@ internal final class BundledThemeCatalog: ThemeCatalogProviding {
         }
     }
 
-    internal func findTheme(id: String) async -> TierTheme? {
+    func findTheme(id: String) async -> TierTheme? {
         guard let uuid = UUID(uuidString: id) else {
             return nil
         }
@@ -144,7 +146,7 @@ internal final class BundledThemeCatalog: ThemeCatalogProviding {
         // Check custom themes
         do {
             let descriptor = FetchDescriptor<TierThemeEntity>(
-                predicate: #Predicate { $0.themeID == uuid }
+                predicate: #Predicate { $0.themeID == uuid },
             )
             if let entity = try modelContext.fetch(descriptor).first {
                 return TierTheme(entity: entity)
@@ -155,6 +157,11 @@ internal final class BundledThemeCatalog: ThemeCatalogProviding {
 
         return nil
     }
+
+    // MARK: Private
+
+    private let modelContext: ModelContext
+    private let logger = Logger(subsystem: "com.tiercade.themes", category: "Catalog")
 
 }
 

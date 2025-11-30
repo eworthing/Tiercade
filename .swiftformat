@@ -1,0 +1,80 @@
+# .swiftformat
+# Tiercade SwiftFormat configuration (LLM-oriented, Swift 6.2)
+# Consensus config from Claude + ChatGPT analysis (2025-11-30)
+
+--swiftversion 6.2
+--language-mode 6
+
+# MARK: - Indentation & Line Length
+
+--indent 4
+--tabwidth 4
+--allman false
+--linebreaks lf
+--maxwidth 120
+--indentcase false
+--ifdef no-indent
+--xcodeindentation enabled
+
+# MARK: - Spacing & Punctuation
+
+--ranges spaced
+--trailing-commas always
+--semicolons never
+--trimwhitespace always
+--emptybraces no-space
+
+# MARK: - Wrapping (LLM-friendly vertical formatting)
+
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--wrapconditions before-first
+--wrapreturntype if-multiline
+--closingparen balanced
+
+# MARK: - Attributes & Annotations
+
+--funcattributes prev-line
+--typeattributes prev-line
+--varattributes same-line
+
+# MARK: - Organization (with thresholds for large types only)
+
+--import-grouping alpha
+--organization-mode visibility
+--extensionacl on-declarations
+--struct-threshold 40
+--class-threshold 50
+--enum-threshold 30
+
+# MARK: - Modern Swift Patterns
+
+--self init-only
+--property-types infer-locals-only
+--shortoptionals always
+
+# MARK: - Enabled Rules
+
+--enable isEmpty
+--enable wrapConditionalBodies
+--enable wrapEnumCases
+--enable wrapSwitchCases
+--enable sortSwitchCases
+--enable organizeDeclarations
+--enable markTypes
+
+# MARK: - Disabled Rules
+
+--disable acronyms
+--disable docComments
+--disable blankLinesAtStartOfScope
+--disable blankLinesAtEndOfScope
+
+# MARK: - Headers (strip for LLM token efficiency)
+
+--header strip
+
+# MARK: - Exclusions
+
+--exclude build,DerivedData,.build,TiercadeCore/.build,TiercadeCore/.swiftpm,node_modules

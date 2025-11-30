@@ -1,10 +1,12 @@
-import Testing
 import Foundation
+import Testing
 @testable import Tiercade
 
 /// Security tests for path traversal prevention in file operations
 @Suite("Path Traversal Security Tests")
 struct PathTraversalTests {
+
+    // MARK: Internal
 
     // MARK: - Bundle Relative Path Validation
 
@@ -61,6 +63,8 @@ struct PathTraversalTests {
             try appState.bundleRelativePath(from: "file://%2E%2E/%2E%2E/etc/passwd")
         }
     }
+
+    // MARK: Private
 
     // MARK: - Test Helpers
 

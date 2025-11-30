@@ -1,31 +1,3 @@
-// ============================================================================
-// COMPREHENSIVE PROMPT TESTING FRAMEWORK - FINAL VERSION
-// ============================================================================
-//
-// ⚠️ DEPRECATED: This testing infrastructure has been replaced by UnifiedPromptTester.
-//
-// Migration path:
-// 1. Replace EnhancedPromptTester.testPrompts() with UnifiedPromptTester.runSuite(suiteId: "diversity-comparison")
-// 2. All 12 enhanced prompts (G0-G11, F2-F3) are now in TestConfigs/SystemPrompts.json
-// 3. Customize test configuration via TestConfigs/TestSuites.json
-// 4. See TestConfigs/TESTING_FRAMEWORK.md for full configuration documentation
-//
-// Why replaced:
-// - Prompts hardcoded in Swift (G0-G11, F2-F3 defined in code)
-// - Configuration scattered across multiple methods
-// - Redundant with AcceptanceTestSuite and PilotTestRunner
-// - UnifiedPromptTester provides config-driven, multi-dimensional testing
-//
-// Original features (all preserved in UnifiedPromptTester):
-// - Dynamic token budgets per query
-// - Finish reason logging and truncation tracking
-// - Fresh session per run (no shared state)
-// - Enhanced metrics: surplus@N, jsonStrict%, timePerUnique, seed variance
-// - Stratified reporting by N-bucket and domain
-// - Pilot configuration (192 runs)
-// - New prompts: G7-G11, F2-F3
-// ============================================================================
-
 import Foundation
 
 #if canImport(FoundationModels) && DEBUG
@@ -33,55 +5,6 @@ import FoundationModels
 
 @MainActor
 class EnhancedPromptTester {
-    // MARK: - Testing
-
-    internal static func testPrompts(
-        config: TestConfig = TestConfig(),
-        onProgress: @MainActor @escaping (String) -> Void
-    ) async -> [AggregateResult] {
-        var aggregateResults: [AggregateResult] = []
-
-        logTestHeader(config: config, onProgress: onProgress)
-
-        let totalRuns = calculateTotalRuns(config: config)
-        var completedTests = 0
-
-        let pilotPrompts = selectPilotPrompts()
-
-        for (promptIndex, (promptName, promptText)) in pilotPrompts {
-            let promptNumber = promptIndex + 1
-            onProgress("\n📝 Testing Prompt: \(promptName)")
-
-            let runResults = await executePromptTestRuns(
-                context: TestExecutionContext(
-                    config: config,
-                    promptNumber: promptNumber,
-                    promptName: promptName,
-                    promptText: promptText,
-                    totalRuns: totalRuns
-                ),
-                completedTests: &completedTests,
-                onProgress: onProgress
-            )
-
-            let aggregate = computeAggregate(
-                config: config,
-                promptNumber: promptNumber,
-                promptName: promptName,
-                promptText: promptText,
-                runs: runResults
-            )
-
-            aggregateResults.append(aggregate)
-            logAggregateResult(aggregate, promptName: promptName, onProgress: onProgress)
-        }
-
-        logTestCompletion(completedTests: completedTests, onProgress: onProgress)
-        await saveAllResults(aggregateResults)
-
-        return aggregateResults
-    }
-
     struct SingleRunParameters {
         let config: TestConfig
         let promptNumber: Int
@@ -94,68 +17,6 @@ class EnhancedPromptTester {
         let decodingConfig: DecodingConfig
         let seed: UInt64
         let useGuidedSchema: Bool
-    }
-
-    internal static func testSingleRun(_ params: SingleRunParameters) async -> SingleRunResult {
-        let startTime = Date()
-
-        let effectiveTarget = params.targetCount ?? 40
-        let nBucket = params.config.nBucket(for: params.targetCount)
-        let overgenFactor = params.config.overgenFactor(for: effectiveTarget)
-        let maxTokens = params.config.dynamicMaxTokens(targetCount: effectiveTarget, overgenFactor: overgenFactor)
-
-        logRunStart(params: params, effectiveTarget: effectiveTarget, maxTokens: maxTokens)
-
-        do {
-            let response = try await executeLanguageModelRequest(
-                params: params,
-                maxTokens: maxTokens
-            )
-
-            let duration = Date().timeIntervalSince(startTime)
-            let analysis = analyzeResponse(response.content, targetCount: effectiveTarget)
-
-            let surplusAtN = max(0, analysis.uniqueItems - effectiveTarget)
-            let timePerUnique = analysis.uniqueItems > 0 ? duration / Double(analysis.uniqueItems) : duration
-
-            logRunSuccess(
-                analysis: analysis, surplusAtN: surplusAtN, timePerUnique: timePerUnique,
-                duration: duration, finishReason: response.finishReason
-            )
-
-            return buildSuccessResult(context: SuccessResultContext(
-                params: params,
-                nBucket: nBucket,
-                responseContent: response.content,
-                analysis: analysis,
-                surplusAtN: surplusAtN,
-                finishReason: response.finishReason,
-                wasTruncated: response.wasTruncated,
-                maxTokens: maxTokens,
-                duration: duration,
-                timePerUnique: timePerUnique
-            ))
-        } catch {
-            let duration = Date().timeIntervalSince(startTime)
-            logToFile("❌ ERROR: \(error.localizedDescription)")
-
-            return buildErrorResult(context: ErrorResultContext(
-                params: params,
-                nBucket: nBucket,
-                effectiveTarget: effectiveTarget,
-                maxTokens: maxTokens,
-                duration: duration,
-                error: error
-            ))
-        }
-    }
-
-    internal static func logRunStart(params: SingleRunParameters, effectiveTarget: Int, maxTokens: Int) {
-        logToFile(
-            "🔵 RUN #\(params.runNumber): prompt=\(params.promptName), query='\(params.query)', N=\(effectiveTarget), " +
-            "domain=\(params.domain), decoder=\(params.decodingConfig.name), seed=\(params.seed), " +
-            "guided=\(params.useGuidedSchema), maxTok=\(maxTokens)"
-        )
     }
 
     struct LanguageModelResponse: Sendable {
@@ -194,10 +55,123 @@ class EnhancedPromptTester {
         let totalRuns: Int
     }
 
-    internal static func executeLanguageModelRequest(
+    // MARK: - Testing
+
+    static func testPrompts(
+        config: TestConfig = TestConfig(),
+        onProgress: @MainActor @escaping (String) -> Void,
+    ) async
+    -> [AggregateResult] {
+        var aggregateResults: [AggregateResult] = []
+
+        logTestHeader(config: config, onProgress: onProgress)
+
+        let totalRuns = calculateTotalRuns(config: config)
+        var completedTests = 0
+
+        let pilotPrompts = selectPilotPrompts()
+
+        for (promptIndex, (promptName, promptText)) in pilotPrompts {
+            let promptNumber = promptIndex + 1
+            onProgress("\n📝 Testing Prompt: \(promptName)")
+
+            let runResults = await executePromptTestRuns(
+                context: TestExecutionContext(
+                    config: config,
+                    promptNumber: promptNumber,
+                    promptName: promptName,
+                    promptText: promptText,
+                    totalRuns: totalRuns,
+                ),
+                completedTests: &completedTests,
+                onProgress: onProgress,
+            )
+
+            let aggregate = computeAggregate(
+                config: config,
+                promptNumber: promptNumber,
+                promptName: promptName,
+                promptText: promptText,
+                runs: runResults,
+            )
+
+            aggregateResults.append(aggregate)
+            logAggregateResult(aggregate, promptName: promptName, onProgress: onProgress)
+        }
+
+        logTestCompletion(completedTests: completedTests, onProgress: onProgress)
+        await saveAllResults(aggregateResults)
+
+        return aggregateResults
+    }
+
+    static func testSingleRun(_ params: SingleRunParameters) async -> SingleRunResult {
+        let startTime = Date()
+
+        let effectiveTarget = params.targetCount ?? 40
+        let nBucket = params.config.nBucket(for: params.targetCount)
+        let overgenFactor = params.config.overgenFactor(for: effectiveTarget)
+        let maxTokens = params.config.dynamicMaxTokens(targetCount: effectiveTarget, overgenFactor: overgenFactor)
+
+        logRunStart(params: params, effectiveTarget: effectiveTarget, maxTokens: maxTokens)
+
+        do {
+            let response = try await executeLanguageModelRequest(
+                params: params,
+                maxTokens: maxTokens,
+            )
+
+            let duration = Date().timeIntervalSince(startTime)
+            let analysis = analyzeResponse(response.content, targetCount: effectiveTarget)
+
+            let surplusAtN = max(0, analysis.uniqueItems - effectiveTarget)
+            let timePerUnique = analysis.uniqueItems > 0 ? duration / Double(analysis.uniqueItems) : duration
+
+            logRunSuccess(
+                analysis: analysis, surplusAtN: surplusAtN, timePerUnique: timePerUnique,
+                duration: duration, finishReason: response.finishReason,
+            )
+
+            return buildSuccessResult(context: SuccessResultContext(
+                params: params,
+                nBucket: nBucket,
+                responseContent: response.content,
+                analysis: analysis,
+                surplusAtN: surplusAtN,
+                finishReason: response.finishReason,
+                wasTruncated: response.wasTruncated,
+                maxTokens: maxTokens,
+                duration: duration,
+                timePerUnique: timePerUnique,
+            ))
+        } catch {
+            let duration = Date().timeIntervalSince(startTime)
+            logToFile("❌ ERROR: \(error.localizedDescription)")
+
+            return buildErrorResult(context: ErrorResultContext(
+                params: params,
+                nBucket: nBucket,
+                effectiveTarget: effectiveTarget,
+                maxTokens: maxTokens,
+                duration: duration,
+                error: error,
+            ))
+        }
+    }
+
+    static func logRunStart(params: SingleRunParameters, effectiveTarget: Int, maxTokens: Int) {
+        logToFile(
+            "🔵 RUN #\(params.runNumber): prompt=\(params.promptName), query='\(params.query)', N=\(effectiveTarget), " +
+                "domain=\(params.domain), decoder=\(params.decodingConfig.name), seed=\(params.seed), " +
+                "guided=\(params.useGuidedSchema), maxTok=\(maxTokens)",
+        )
+    }
+
+    static func executeLanguageModelRequest(
         params: SingleRunParameters,
-        maxTokens: Int
-    ) async throws -> LanguageModelResponse {
+        maxTokens: Int,
+    ) async throws
+    -> LanguageModelResponse {
         let finalPrompt = params.promptText.replacingOccurrences(of: "{QUERY}", with: params.query)
         let instructions = Instructions(finalPrompt)
         let session = LanguageModelSession(model: .default, tools: [], instructions: instructions)
@@ -209,7 +183,7 @@ class EnhancedPromptTester {
                     to: Prompt(params.query),
                     generating: StringList.self,
                     includeSchemaInPrompt: true,
-                    options: opts
+                    options: opts,
                 ).content
             }
             let jsonData = try JSONEncoder().encode(stringList)
@@ -228,23 +202,23 @@ class EnhancedPromptTester {
         }
     }
 
-    internal static func logRunSuccess(
+    static func logRunSuccess(
         analysis: ResponseAnalysis,
         surplusAtN: Int,
         timePerUnique: Double,
         duration: TimeInterval,
-        finishReason: String?
+        finishReason: String?,
     ) {
         logToFile(
             "✅ SUCCESS: unique=\(analysis.uniqueItems), pass@N=\(analysis.passAtN), " +
-            "jsonStrict=\(analysis.wasJsonParsed), " +
-            "dup=\(String(format: "%.1f", analysis.dupRate * 100))%, surplus=\(surplusAtN), " +
-            "tpu=\(String(format: "%.3f", timePerUnique))s, " +
-            "dur=\(String(format: "%.2f", duration))s, finish=\(finishReason ?? "unknown")"
+                "jsonStrict=\(analysis.wasJsonParsed), " +
+                "dup=\(String(format: "%.1f", analysis.dupRate * 100))%, surplus=\(surplusAtN), " +
+                "tpu=\(String(format: "%.3f", timePerUnique))s, " +
+                "dur=\(String(format: "%.2f", duration))s, finish=\(finishReason ?? "unknown")",
         )
     }
 
-    internal static func buildSuccessResult(context: SuccessResultContext) -> SingleRunResult {
+    static func buildSuccessResult(context: SuccessResultContext) -> SingleRunResult {
         SingleRunResult(
             promptNumber: context.params.promptNumber,
             promptName: context.params.promptName,
@@ -273,11 +247,11 @@ class EnhancedPromptTester {
             wasTruncated: context.wasTruncated,
             maxTokensUsed: context.maxTokens,
             duration: context.duration,
-            timePerUnique: context.timePerUnique
+            timePerUnique: context.timePerUnique,
         )
     }
 
-    internal static func buildErrorResult(context: ErrorResultContext) -> SingleRunResult {
+    static func buildErrorResult(context: ErrorResultContext) -> SingleRunResult {
         SingleRunResult(
             promptNumber: context.params.promptNumber,
             promptName: context.params.promptName,
@@ -306,7 +280,7 @@ class EnhancedPromptTester {
             wasTruncated: false,
             maxTokensUsed: context.maxTokens,
             duration: context.duration,
-            timePerUnique: 0.0
+            timePerUnique: 0.0,
         )
     }
 }

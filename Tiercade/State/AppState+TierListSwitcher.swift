@@ -1,16 +1,18 @@
 import Foundation
-import SwiftUI
-import SwiftData
 import os
+import SwiftData
+import SwiftUI
 import TiercadeCore
 
-// MARK: - Tier List Source & Handle Types
+// MARK: - TierListSource
 
 enum TierListSource: String, Codable, Sendable {
     case bundled
     case file
     case authored
 }
+
+// MARK: - TierListHandle
 
 struct TierListHandle: Identifiable, Codable, Hashable, Sendable {
     var source: TierListSource
@@ -31,7 +33,7 @@ struct TierListHandle: Identifiable, Codable, Hashable, Sendable {
 // MARK: - AppState Tier List Switcher Extension
 
 @MainActor
-internal extension AppState {
+extension AppState {
 
     var activeTierDisplayName: String {
         persistence.activeTierList?.displayName ?? "Untitled Tier List"
@@ -78,7 +80,9 @@ internal extension AppState {
     func selectTierList(_ handle: TierListHandle) async {
         switch handle.source {
         case .bundled:
-            guard let project = bundledProjects.first(where: { $0.id == handle.identifier }) else { return }
+            guard let project = bundledProjects.first(where: { $0.id == handle.identifier }) else {
+                return
+            }
             await withLoadingIndicator(message: "Loading \(project.title)...") {
                 if let entity = (try? fetchEntity(for: handle)) ?? nil {
                     applyPersistedTierList(entity)
@@ -142,7 +146,7 @@ internal extension AppState {
             displayName: fileName,
             subtitle: "Saved Locally",
             iconSystemName: "externaldrive",
-            entityID: nil
+            entityID: nil,
         )
     }
 
@@ -159,11 +163,15 @@ internal extension AppState {
     }
 
     func loadActiveTierListIfNeeded() {
-        guard let handle = persistence.activeTierList else { return }
+        guard let handle = persistence.activeTierList else {
+            return
+        }
 
         switch handle.source {
         case .bundled:
-            guard let project = bundledProjects.first(where: { $0.id == handle.identifier }) else { return }
+            guard let project = bundledProjects.first(where: { $0.id == handle.identifier }) else {
+                return
+            }
             applyBundledProject(project)
             logEvent("loadActiveTierListIfNeeded: loaded bundled project \(project.id)")
         case .file:
@@ -180,7 +188,7 @@ internal extension AppState {
     private func refreshRecentTierListsFromStore() {
         do {
             let descriptor = FetchDescriptor<TierListEntity>(
-                sortBy: [SortDescriptor(\TierListEntity.lastOpenedAt, order: .reverse)]
+                sortBy: [SortDescriptor(\TierListEntity.lastOpenedAt, order: .reverse)],
             )
             let entities = try modelContext.fetch(descriptor)
             persistence.recentTierLists = entities
@@ -194,7 +202,7 @@ internal extension AppState {
 
     private func deactivateOtherLists(except activeID: UUID?) throws {
         let descriptor = FetchDescriptor<TierListEntity>(
-            predicate: #Predicate { $0.isActive == true }
+            predicate: #Predicate { $0.isActive == true },
         )
         let activeLists = try modelContext.fetch(descriptor)
         for entity in activeLists where entity.identifier != activeID {
@@ -218,7 +226,7 @@ internal extension AppState {
             externalIdentifier: handle.identifier,
             subtitle: handle.subtitle,
             iconSystemName: handle.iconSystemName,
-            lastOpenedAt: Date()
+            lastOpenedAt: Date(),
         )
         modelContext.insert(newEntity)
         return newEntity
@@ -227,7 +235,7 @@ internal extension AppState {
     private func fetchEntity(for handle: TierListHandle) throws -> TierListEntity? {
         if let entityID = handle.entityID {
             let descriptor = FetchDescriptor<TierListEntity>(
-                predicate: #Predicate { $0.identifier == entityID }
+                predicate: #Predicate { $0.identifier == entityID },
             )
             if let entity = try modelContext.fetch(descriptor).first {
                 return entity
@@ -235,7 +243,7 @@ internal extension AppState {
         }
         let sourceRaw = handle.source.rawValue
         let descriptor = FetchDescriptor<TierListEntity>(
-            predicate: #Predicate { $0.sourceRaw == sourceRaw }
+            predicate: #Predicate { $0.sourceRaw == sourceRaw },
         )
         let candidates = try modelContext.fetch(descriptor)
         return candidates.first { $0.externalIdentifier == handle.identifier }
@@ -243,25 +251,25 @@ internal extension AppState {
 }
 
 extension TierListHandle {
-    internal init(bundled project: BundledProject) {
+    init(bundled project: BundledProject) {
         self.init(
             source: .bundled,
             identifier: project.id,
             displayName: project.title,
             subtitle: project.subtitle,
             iconSystemName: "square.grid.2x2",
-            entityID: nil
+            entityID: nil,
         )
     }
 
-    internal init(entity: TierListEntity) {
+    init(entity: TierListEntity) {
         self.init(
             source: TierListSource(rawValue: entity.sourceRaw) ?? .bundled,
             identifier: entity.externalIdentifier ?? entity.identifier.uuidString,
             displayName: entity.title,
             subtitle: entity.subtitle,
             iconSystemName: entity.iconSystemName,
-            entityID: entity.identifier
+            entityID: entity.identifier,
         )
     }
 }

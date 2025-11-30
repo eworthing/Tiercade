@@ -1,55 +1,59 @@
 import SwiftUI
 
 #if !os(tvOS)
-internal struct PlatformCardLayout {
-    internal let density: CardDensityPreference
-    internal let cardWidth: CGFloat
-    internal let contentPadding: CGFloat
-    internal let interItemSpacing: CGFloat
-    internal let rowSpacing: CGFloat
-    internal let verticalContentSpacing: CGFloat
-    internal let titleFont: Font
-    internal let metadataFont: Font
-    internal let cornerRadius: CGFloat
-    internal let thumbnailHeight: CGFloat
+struct PlatformCardLayout {
+    let density: CardDensityPreference
+    let cardWidth: CGFloat
+    let contentPadding: CGFloat
+    let interItemSpacing: CGFloat
+    let rowSpacing: CGFloat
+    let verticalContentSpacing: CGFloat
+    let titleFont: Font
+    let metadataFont: Font
+    let cornerRadius: CGFloat
+    let thumbnailHeight: CGFloat
 
-    internal var showsText: Bool { density.showsOnCardText }
+    var showsText: Bool { density.showsOnCardText }
 
-    internal var thumbnailSize: CGSize {
+    var thumbnailSize: CGSize {
         let width = max(cardWidth - (contentPadding * 2), 60)
         return CGSize(width: width, height: thumbnailHeight)
     }
 
-    internal var thumbnailCornerRadius: CGFloat {
+    var thumbnailCornerRadius: CGFloat {
         max(cornerRadius - 4, 6)
     }
 
-    internal var gridColumns: [GridItem] {
+    var gridColumns: [GridItem] {
         [
             GridItem(
                 .adaptive(
                     minimum: cardWidth,
-                    maximum: cardWidth + interItemSpacing
+                    maximum: cardWidth + interItemSpacing,
                 ),
                 spacing: interItemSpacing,
-                alignment: .topLeading
-            )
+                alignment: .topLeading,
+            ),
         ]
     }
 }
 
-internal enum PlatformCardLayoutProvider {
-    internal static func layout(
+enum PlatformCardLayoutProvider {
+
+    // MARK: Internal
+
+    static func layout(
         for itemCount: Int,
         preference: CardDensityPreference,
-        horizontalSizeClass: UserInterfaceSizeClass?
-    ) -> PlatformCardLayout {
+        horizontalSizeClass: UserInterfaceSizeClass?,
+    )
+    -> PlatformCardLayout {
         let effectiveDensity = resolveDensity(for: itemCount, preference: preference)
         let spec = spec(for: effectiveDensity)
 
         let scale: CGFloat = {
             #if os(macOS)
-            return 1.0  // Native macOS uses 1:1 scaling
+            return 1.0 // Native macOS uses 1:1 scaling
             #else
             switch horizontalSizeClass {
             case .some(.regular):
@@ -74,9 +78,11 @@ internal enum PlatformCardLayoutProvider {
             titleFont: spec.titleFont,
             metadataFont: spec.metadataFont,
             cornerRadius: scaled(spec.cornerRadius),
-            thumbnailHeight: max(80, scaled(spec.thumbnailHeight))
+            thumbnailHeight: max(80, scaled(spec.thumbnailHeight)),
         )
     }
+
+    // MARK: Private
 
     private struct LayoutSpec {
         let cardWidth: CGFloat
@@ -92,8 +98,9 @@ internal enum PlatformCardLayoutProvider {
 
     private static func resolveDensity(
         for itemCount: Int,
-        preference: CardDensityPreference
-    ) -> CardDensityPreference {
+        preference: CardDensityPreference,
+    )
+    -> CardDensityPreference {
         func minDensity(_ lhs: CardDensityPreference, _ rhs: CardDensityPreference) -> CardDensityPreference {
             lhs.sizeRank <= rhs.sizeRank ? lhs : rhs
         }
@@ -113,12 +120,12 @@ internal enum PlatformCardLayoutProvider {
 
     private static func spec(for density: CardDensityPreference) -> LayoutSpec {
         switch density {
-        case .ultraMicro: return ultraMicroSpec()
-        case .micro: return microSpec()
-        case .tight: return tightSpec()
-        case .compact: return compactSpec()
-        case .standard: return standardSpec()
-        case .expanded: return expandedSpec()
+        case .ultraMicro: ultraMicroSpec()
+        case .micro: microSpec()
+        case .tight: tightSpec()
+        case .compact: compactSpec()
+        case .standard: standardSpec()
+        case .expanded: expandedSpec()
         }
     }
 
@@ -126,7 +133,7 @@ internal enum PlatformCardLayoutProvider {
         LayoutSpec(
             cardWidth: 120, contentPadding: 8, interItemSpacing: 12, rowSpacing: 14,
             verticalContentSpacing: 4, cornerRadius: 10, thumbnailHeight: 135,
-            titleFont: .caption.weight(.semibold), metadataFont: .caption2.weight(.regular)
+            titleFont: .caption.weight(.semibold), metadataFont: .caption2.weight(.regular),
         )
     }
 
@@ -134,7 +141,7 @@ internal enum PlatformCardLayoutProvider {
         LayoutSpec(
             cardWidth: 148, contentPadding: 10, interItemSpacing: 14, rowSpacing: 16,
             verticalContentSpacing: 5, cornerRadius: 11, thumbnailHeight: 160,
-            titleFont: .footnote.weight(.semibold), metadataFont: .caption.weight(.regular)
+            titleFont: .footnote.weight(.semibold), metadataFont: .caption.weight(.regular),
         )
     }
 
@@ -142,7 +149,7 @@ internal enum PlatformCardLayoutProvider {
         LayoutSpec(
             cardWidth: 176, contentPadding: 12, interItemSpacing: 16, rowSpacing: 18,
             verticalContentSpacing: 6, cornerRadius: 12, thumbnailHeight: 188,
-            titleFont: .subheadline.weight(.semibold), metadataFont: .footnote.weight(.regular)
+            titleFont: .subheadline.weight(.semibold), metadataFont: .footnote.weight(.regular),
         )
     }
 
@@ -150,7 +157,7 @@ internal enum PlatformCardLayoutProvider {
         LayoutSpec(
             cardWidth: 204, contentPadding: 14, interItemSpacing: 18, rowSpacing: 20,
             verticalContentSpacing: 7, cornerRadius: 14, thumbnailHeight: 212,
-            titleFont: .callout.weight(.semibold), metadataFont: .footnote.weight(.regular)
+            titleFont: .callout.weight(.semibold), metadataFont: .footnote.weight(.regular),
         )
     }
 
@@ -158,7 +165,7 @@ internal enum PlatformCardLayoutProvider {
         LayoutSpec(
             cardWidth: 232, contentPadding: 16, interItemSpacing: 20, rowSpacing: 22,
             verticalContentSpacing: 8, cornerRadius: 16, thumbnailHeight: 236,
-            titleFont: .title3.weight(.semibold), metadataFont: .callout.weight(.regular)
+            titleFont: .title3.weight(.semibold), metadataFont: .callout.weight(.regular),
         )
     }
 
@@ -166,7 +173,7 @@ internal enum PlatformCardLayoutProvider {
         LayoutSpec(
             cardWidth: 260, contentPadding: 18, interItemSpacing: 22, rowSpacing: 24,
             verticalContentSpacing: 9, cornerRadius: 18, thumbnailHeight: 260,
-            titleFont: .title2.weight(.semibold), metadataFont: .headline.weight(.regular)
+            titleFont: .title2.weight(.semibold), metadataFont: .headline.weight(.regular),
         )
     }
 }

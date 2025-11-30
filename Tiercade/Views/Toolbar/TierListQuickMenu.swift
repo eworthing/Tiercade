@@ -1,16 +1,12 @@
 import SwiftUI
 
-internal struct TierListQuickMenu: View {
+struct TierListQuickMenu: View {
+
+    // MARK: Internal
+
     @Bindable var app: AppState
 
-    #if os(tvOS)
-    private var tierTitleFont: Font {
-        let nameLength = app.activeTierDisplayName.count
-        return nameLength <= 16 ? TypeScale.h2 : TypeScale.h3
-    }
-    #endif
-
-    internal var body: some View {
+    var body: some View {
         #if os(tvOS)
         // tvOS doesn't support Menu dropdowns; use direct button to browser
         Button(action: {
@@ -34,6 +30,15 @@ internal struct TierListQuickMenu: View {
         #endif
     }
 
+    // MARK: Private
+
+    #if os(tvOS)
+    private var tierTitleFont: Font {
+        let nameLength = app.activeTierDisplayName.count
+        return nameLength <= 16 ? TypeScale.h2 : TypeScale.h3
+    }
+    #endif
+
     @ViewBuilder
     private var menuContent: some View {
         if app.quickPickTierListsDeduped.isEmpty {
@@ -43,9 +48,11 @@ internal struct TierListQuickMenu: View {
             Picker("Tier List", selection: Binding(
                 get: { app.persistence.activeTierList },
                 set: { newValue in
-                    guard let newValue, newValue != app.persistence.activeTierList else { return }
+                    guard let newValue, newValue != app.persistence.activeTierList else {
+                        return
+                    }
                     Task { await app.selectTierList(newValue) }
-                }
+                },
             )) {
                 ForEach(app.quickPickTierListsDeduped) { handle in
                     Label(handle.displayName, systemImage: iconName(for: handle))
@@ -54,7 +61,7 @@ internal struct TierListQuickMenu: View {
             }
             .pickerStyle(.inline)
             #if os(iOS)
-            .menuOrder(.fixed)
+                .menuOrder(.fixed)
             #endif
         }
 
@@ -117,12 +124,12 @@ internal struct TierListQuickMenu: View {
                     LinearGradient(
                         colors: [
                             Color.white.opacity(0.18),
-                            Color.white.opacity(0.08)
+                            Color.white.opacity(0.08),
                         ],
                         startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                        endPoint: .bottomTrailing,
+                    ),
+                ),
         )
         #endif
     }

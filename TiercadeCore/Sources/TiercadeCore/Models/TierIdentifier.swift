@@ -1,12 +1,6 @@
-//
-//  TierIdentifier.swift
-//  TiercadeCore
-//
-//  Created by AI Assistant on 9/30/25.
-//  Type-safe tier identification system with backward compatibility
-//
-
 import Foundation
+
+// MARK: - TierIdentifier
 
 /// Type-safe tier identifier with string-based backward compatibility
 ///
@@ -28,48 +22,9 @@ public enum TierIdentifier: String, Codable, Sendable, CaseIterable, Hashable {
     case c = "C"
     case d = "D"
     case f = "F"
-    case unranked = "unranked"
+    case unranked
 
-    /// Human-readable display name
-    public var displayName: String {
-        switch self {
-        case .unranked:
-            return "Unranked"
-        default:
-            return rawValue
-        }
-    }
-
-    /// Sort order for display (S at top, unranked at bottom)
-    public var sortOrder: Int {
-        switch self {
-        case .s: return 0
-        case .a: return 1
-        case .b: return 2
-        case .c: return 3
-        case .d: return 4
-        case .f: return 5
-        case .unranked: return 6
-        }
-    }
-
-    /// Default color for tier (if not overridden by TierConfig)
-    public var defaultColorHex: String {
-        switch self {
-        case .s: return "#FF4444"
-        case .a: return "#FF8C00"
-        case .b: return "#FFD700"
-        case .c: return "#90EE90"
-        case .d: return "#87CEEB"
-        case .f: return "#DDA0DD"
-        case .unranked: return "#888888"
-        }
-    }
-
-    /// Check if this is a ranked tier (not unranked)
-    public var isRanked: Bool {
-        self != .unranked
-    }
+    // MARK: Public
 
     /// All standard tier keys in sort order
     public static var standardOrder: [TierIdentifier] {
@@ -78,8 +33,50 @@ public enum TierIdentifier: String, Codable, Sendable, CaseIterable, Hashable {
 
     /// All ranked tiers (excluding unranked)
     public static var rankedTiers: [TierIdentifier] {
-        allCases.filter { $0.isRanked }
+        allCases.filter(\.isRanked)
     }
+
+    /// Human-readable display name
+    public var displayName: String {
+        switch self {
+        case .unranked:
+            "Unranked"
+        default:
+            rawValue
+        }
+    }
+
+    /// Sort order for display (S at top, unranked at bottom)
+    public var sortOrder: Int {
+        switch self {
+        case .s: 0
+        case .a: 1
+        case .b: 2
+        case .c: 3
+        case .d: 4
+        case .f: 5
+        case .unranked: 6
+        }
+    }
+
+    /// Default color for tier (if not overridden by TierConfig)
+    public var defaultColorHex: String {
+        switch self {
+        case .s: "#FF4444"
+        case .a: "#FF8C00"
+        case .b: "#FFD700"
+        case .c: "#90EE90"
+        case .d: "#87CEEB"
+        case .f: "#DDA0DD"
+        case .unranked: "#888888"
+        }
+    }
+
+    /// Check if this is a ranked tier (not unranked)
+    public var isRanked: Bool {
+        self != .unranked
+    }
+
 }
 
 // MARK: - Backward Compatibility Extensions
@@ -87,7 +84,7 @@ public enum TierIdentifier: String, Codable, Sendable, CaseIterable, Hashable {
 /// Typed Items collection using TierIdentifier keys
 public typealias TypedItems = [TierIdentifier: [Item]]
 
-extension Dictionary where Key == String, Value == [Item] {
+extension [String: [Item]] {
     /// Convert string-keyed Items to type-safe TypedItems
     public func toTyped() -> TypedItems {
         var typed: TypedItems = [:]
@@ -109,7 +106,7 @@ extension Dictionary where Key == String, Value == [Item] {
     }
 }
 
-extension Dictionary where Key == TierIdentifier, Value == [Item] {
+extension [TierIdentifier: [Item]] {
     /// Convert type-safe TypedItems to string-keyed Items
     public func toStringKeyed() -> Items {
         var items: Items = [:]
@@ -120,7 +117,7 @@ extension Dictionary where Key == TierIdentifier, Value == [Item] {
     }
 }
 
-// MARK: - Comparable for Sorting
+// MARK: - TierIdentifier + Comparable
 
 extension TierIdentifier: Comparable {
     public static func < (lhs: TierIdentifier, rhs: TierIdentifier) -> Bool {
@@ -128,7 +125,7 @@ extension TierIdentifier: Comparable {
     }
 }
 
-// MARK: - CustomStringConvertible
+// MARK: - TierIdentifier + CustomStringConvertible
 
 extension TierIdentifier: CustomStringConvertible {
     public var description: String {
@@ -136,7 +133,7 @@ extension TierIdentifier: CustomStringConvertible {
     }
 }
 
-// MARK: - ExpressibleByStringLiteral (for testing/migration)
+// MARK: - TierIdentifier + ExpressibleByStringLiteral
 
 extension TierIdentifier: ExpressibleByStringLiteral {
     public init(stringLiteral value: String) {

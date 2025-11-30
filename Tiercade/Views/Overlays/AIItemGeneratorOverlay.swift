@@ -11,52 +11,17 @@ import TiercadeCore
 /// - Note: Only available on macOS/iOS 26+. tvOS shows platform message.
 /// - Note: All items default to selected; users deselect unwanted items.
 struct AIItemGeneratorOverlay: View {
-    @Bindable var appState: AppState
-    let draft: TierProjectDraft
 
-    @State private var itemDescription: String = ""
-    @State private var itemCount: Int = 25
-    @State private var searchText: String = ""
-    #if os(iOS)
-    @Environment(\.editMode) private var editMode
-    #endif
-    @FocusState private var focusedField: Field?
-    @Namespace private var focusNamespace
+    // MARK: Internal
 
     enum Field: Hashable {
         case description
         case count
     }
 
-    private enum Stage {
-        case input
-        case generating
-        case review
-    }
+    @Bindable var appState: AppState
 
-    private var stage: Stage {
-        if appState.aiGeneration.aiGenerationInProgress {
-            return .generating
-        } else if !appState.aiGeneration.aiGeneratedCandidates.isEmpty {
-            return .review
-        } else {
-            return .input
-        }
-    }
-
-    private var selectedCount: Int {
-        appState.aiGeneration.aiGeneratedCandidates.filter(\.isSelected).count
-    }
-
-    private var filteredCandidates: [AIGeneratedItemCandidate] {
-        if searchText.isEmpty {
-            return appState.aiGeneration.aiGeneratedCandidates
-        } else {
-            return appState.aiGeneration.aiGeneratedCandidates.filter {
-                $0.name.localizedCaseInsensitiveContains(searchText)
-            }
-        }
-    }
+    let draft: TierProjectDraft
 
     var body: some View {
         NavigationStack {
@@ -72,34 +37,75 @@ struct AIItemGeneratorOverlay: View {
             }
             .navigationTitle("Generate Items with AI")
             #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.inline)
             #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        appState.aiGeneration.aiGenerationRequest = nil
-                        appState.aiGeneration.aiGeneratedCandidates = []
-                        appState.aiGeneration.aiGenerationInProgress = false
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            appState.aiGeneration.aiGenerationRequest = nil
+                            appState.aiGeneration.aiGeneratedCandidates = []
+                            appState.aiGeneration.aiGenerationInProgress = false
+                        }
                     }
-                }
 
-                #if os(iOS)
-                if stage == .review {
-                    ToolbarItem(placement: .primaryAction) {
-                        EditButton()
+                    #if os(iOS)
+                    if stage == .review {
+                        ToolbarItem(placement: .primaryAction) {
+                            EditButton()
+                        }
                     }
+                    #endif
                 }
-                #endif
-            }
         }
         .accessibilityIdentifier("AIGenerator_Overlay")
         #if os(tvOS)
-        .onExitCommand {
-            appState.aiGeneration.aiGenerationRequest = nil
-            appState.aiGeneration.aiGeneratedCandidates = []
-            appState.aiGeneration.aiGenerationInProgress = false
-        }
+            .onExitCommand {
+                appState.aiGeneration.aiGenerationRequest = nil
+                appState.aiGeneration.aiGeneratedCandidates = []
+                appState.aiGeneration.aiGenerationInProgress = false
+            }
         #endif
+    }
+
+    // MARK: Private
+
+    private enum Stage {
+        case input
+        case generating
+        case review
+    }
+
+    @State private var itemDescription: String = ""
+    @State private var itemCount: Int = 25
+    @State private var searchText: String = ""
+    #if os(iOS)
+    @Environment(\.editMode) private var editMode
+    #endif
+    @FocusState private var focusedField: Field?
+    @Namespace private var focusNamespace
+
+    private var stage: Stage {
+        if appState.aiGeneration.aiGenerationInProgress {
+            .generating
+        } else if !appState.aiGeneration.aiGeneratedCandidates.isEmpty {
+            .review
+        } else {
+            .input
+        }
+    }
+
+    private var selectedCount: Int {
+        appState.aiGeneration.aiGeneratedCandidates.filter(\.isSelected).count
+    }
+
+    private var filteredCandidates: [AIGeneratedItemCandidate] {
+        if searchText.isEmpty {
+            appState.aiGeneration.aiGeneratedCandidates
+        } else {
+            appState.aiGeneration.aiGeneratedCandidates.filter {
+                $0.name.localizedCaseInsensitiveContains(searchText)
+            }
+        }
     }
 
     // MARK: - Input Form
@@ -110,13 +116,13 @@ struct AIItemGeneratorOverlay: View {
             Section {
                 TextField("e.g., Best sci-fi movies of all time", text: $itemDescription)
                     .focused($focusedField, equals: .description)
-                    #if os(tvOS)
+                #if os(tvOS)
                     .prefersDefaultFocus(true, in: focusNamespace)
-                    #endif
-                    #if os(iOS)
-                    .textInputAutocapitalization(.sentences)
-                    #endif
-                    .accessibilityIdentifier("AIGenerator_Description")
+                #endif
+                #if os(iOS)
+                .textInputAutocapitalization(.sentences)
+                #endif
+                .accessibilityIdentifier("AIGenerator_Description")
             } header: {
                 Text("What kind of items?")
             }
@@ -154,14 +160,14 @@ struct AIItemGeneratorOverlay: View {
                 // iOS/macOS: Hybrid TextField + Stepper
                 HStack {
                     TextField("Count", value: $itemCount, format: .number)
-                        #if os(iOS)
+                    #if os(iOS)
                         .keyboardType(.numberPad)
-                        #endif
+                    #endif
                         .accessibilityIdentifier("AIGenerator_Count")
                         .frame(width: 80)
                         .textFieldStyle(.roundedBorder)
 
-                    Stepper("", value: $itemCount, in: 5...100, step: 5)
+                    Stepper("", value: $itemCount, in: 5 ... 100, step: 5)
                         .labelsHidden()
                 }
                 #endif
@@ -178,7 +184,7 @@ struct AIItemGeneratorOverlay: View {
                     Task {
                         await appState.generateItems(
                             description: itemDescription,
-                            count: itemCount
+                            count: itemCount,
                         )
                     }
                 } label: {
@@ -236,16 +242,16 @@ struct AIItemGeneratorOverlay: View {
                         // iOS: Show checkboxes when not editing (EditMode available)
                         if editMode?.wrappedValue.isEditing == false || editMode == nil {
                             Image(systemName: candidate.isSelected
-                                  ? "checkmark.circle.fill"
-                                  : "circle")
+                                ? "checkmark.circle.fill"
+                                : "circle")
                                 .foregroundStyle(candidate.isSelected ? .green : .secondary)
                                 .accessibilityHidden(true)
                         }
                         #else
                         // macOS/tvOS: Always show checkboxes (no EditMode)
                         Image(systemName: candidate.isSelected
-                              ? "checkmark.circle.fill"
-                              : "circle")
+                            ? "checkmark.circle.fill"
+                            : "circle")
                             .foregroundStyle(candidate.isSelected ? .green : .secondary)
                             .accessibilityHidden(true)
                         #endif
@@ -284,7 +290,7 @@ struct AIItemGeneratorOverlay: View {
                     Task {
                         await appState.generateItems(
                             description: itemDescription,
-                            count: itemCount
+                            count: itemCount,
                         )
                     }
                 }

@@ -3,29 +3,31 @@ import TiercadeCore
 import UniformTypeIdentifiers
 
 #if !os(tvOS)
-internal struct CardFocus: Hashable {
-    internal let tier: String
-    internal let itemID: String
+struct CardFocus: Hashable {
+    let tier: String
+    let itemID: String
 }
 #endif
 
-internal struct TierRowWrapper: View {
+// MARK: - TierRowWrapper
+
+struct TierRowWrapper: View {
     @Environment(AppState.self) private var app: AppState
-    internal let tier: String
+    let tier: String
     #if os(tvOS)
     @FocusState private var focusedItemId: String?
     @State private var showMenu = false
     #else
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    internal let hardwareFocus: FocusState<CardFocus?>.Binding
+    let hardwareFocus: FocusState<CardFocus?>.Binding
     #endif
 
     private var filteredCards: [Item] {
         app.filteredItems(for: tier)
     }
 
-    internal var body: some View {
+    var body: some View {
         if !filteredCards.isEmpty {
             let accent = tierAccentColor()
 
@@ -36,15 +38,15 @@ internal struct TierRowWrapper: View {
             // NOTE: Don't set accessibilityIdentifier on parent - it overrides children!
             // Individual cards and buttons have their own IDs
             .background(
-                RoundedRectangle(cornerRadius: 12).fill(Palette.cardBackground)
+                RoundedRectangle(cornerRadius: 12).fill(Palette.cardBackground),
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 12).stroke(Palette.stroke, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 12).stroke(Palette.stroke, lineWidth: 1),
             )
             .overlay {
                 DragTargetHighlight(
                     isTarget: app.dragTargetTier == tier,
-                    color: accent
+                    color: accent,
                 )
             }
             #if !os(tvOS)
@@ -87,8 +89,8 @@ internal struct TierRowWrapper: View {
             VerticalTierText(
                 label: app.displayLabel(for: tier),
                 textColor: dynamicTextOn(
-                    hex: app.displayColorHex(for: tier) ?? defaultHex(for: tier)
-                )
+                    hex: app.displayColorHex(for: tier) ?? defaultHex(for: tier),
+                ),
             )
             .layoutPriority(1)
 
@@ -99,10 +101,10 @@ internal struct TierRowWrapper: View {
                 tier: tier,
                 isLocked: app.isTierLocked(tier),
                 textColor: dynamicTextOn(
-                    hex: app.displayColorHex(for: tier) ?? defaultHex(for: tier)
+                    hex: app.displayColorHex(for: tier) ?? defaultHex(for: tier),
                 ),
                 onToggleLock: { app.toggleTierLocked(tier) },
-                onShowMenu: { showMenu = true }
+                onShowMenu: { showMenu = true },
             )
             #endif
         }
@@ -114,8 +116,8 @@ internal struct TierRowWrapper: View {
                 .fill(accent)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .stroke(Palette.stroke, lineWidth: 1)
-                )
+                        .stroke(Palette.stroke, lineWidth: 1),
+                ),
         )
         #if os(tvOS)
         .sheet(isPresented: $showMenu) {
@@ -124,7 +126,7 @@ internal struct TierRowWrapper: View {
         #endif
     }
 
-    private func tierContent(accent: Color) -> some View {
+    private func tierContent(accent _: Color) -> some View {
         VStack(alignment: .leading, spacing: Metrics.grid) {
             header
             cardsSection
@@ -148,7 +150,7 @@ internal struct TierRowWrapper: View {
         #if os(tvOS)
         let layout = TVMetrics.cardLayout(
             for: filteredCards.count,
-            preference: app.cardDensityPreference
+            preference: app.cardDensityPreference,
         )
         ScrollView(.horizontal) {
             LazyHStack(spacing: layout.interItemSpacing) {
@@ -170,13 +172,13 @@ internal struct TierRowWrapper: View {
         let layout = PlatformCardLayoutProvider.layout(
             for: filteredCards.count,
             preference: app.cardDensityPreference,
-            horizontalSizeClass: horizontalSizeClass
+            horizontalSizeClass: horizontalSizeClass,
         )
 
         LazyVGrid(
             columns: layout.gridColumns,
             alignment: .leading,
-            spacing: layout.rowSpacing
+            spacing: layout.rowSpacing,
         ) {
             ForEach(filteredCards, id: \.id) { item in
                 let focusID = CardFocus(tier: tier, itemID: item.id)
@@ -200,12 +202,12 @@ internal struct TierRowWrapper: View {
 
     private func defaultHex(for tier: String) -> String {
         switch tier.uppercased() {
-        case "S": return "#FF0037"
-        case "A": return "#FFA000"
-        case "B": return "#00EC57"
-        case "C": return "#00D9FE"
-        case "D": return "#1E3A8A"
-        default: return "#808080"
+        case "S": "#FF0037"
+        case "A": "#FFA000"
+        case "B": "#00EC57"
+        case "C": "#00D9FE"
+        case "D": "#1E3A8A"
+        default: "#808080"
         }
     }
 
@@ -213,12 +215,14 @@ internal struct TierRowWrapper: View {
     /// Handle move command for both single item and block moves
     private func handleMoveCommand(for itemId: String, in tierName: String, direction: MoveCommandDirection) {
         // Don't reorder if not in custom sort mode - let focus navigate
-        guard app.globalSortMode.isCustom else { return }
+        guard app.globalSortMode.isCustom else {
+            return
+        }
 
         // Check if item is selected and we're in multi-select mode with multiple items
         #if os(tvOS)
         // tvOS doesn't have editMode, check selection directly
-        if app.isSelected(itemId) && app.selection.count > 1 {
+        if app.isSelected(itemId), app.selection.count > 1 {
             handleBlockMove(tierName: tierName, direction: direction)
         } else {
             // Single item move
@@ -236,16 +240,20 @@ internal struct TierRowWrapper: View {
 
     /// Handle block move for multi-select: move all selected items in a tier together
     private func handleBlockMove(tierName: String, direction: MoveCommandDirection) {
-        guard let items = app.tiers[tierName] else { return }
+        guard let items = app.tiers[tierName] else {
+            return
+        }
 
         // Get indices of all selected items in this tier
         let selectedIndices = IndexSet(
             items.enumerated()
                 .filter { app.selection.contains($0.element.id) }
-                .map { $0.offset }
+                .map(\.offset),
         )
 
-        guard !selectedIndices.isEmpty else { return }
+        guard !selectedIndices.isEmpty else {
+            return
+        }
 
         // Calculate destination index based on direction
         let minIndex = selectedIndices.min() ?? 0
@@ -278,7 +286,7 @@ private func dynamicTextOn(hex: String) -> Color {
 // MARK: - Color Extension
 
 extension Color {
-    internal func toHex() -> String? {
+    func toHex() -> String? {
         #if os(tvOS) || os(iOS)
         let cgColor = UIColor(self).cgColor
         #else
@@ -291,11 +299,13 @@ extension Color {
             let srgb = cgColor.converted(
                 to: srgbColorSpace,
                 intent: .defaultIntent,
-                options: nil
+                options: nil,
             ),
             let components = srgb.components,
             components.count >= 3
-        else { return nil }
+        else {
+            return nil
+        }
 
         let red = Int(components[0] * 255.0)
         let green = Int(components[1] * 255.0)
@@ -305,13 +315,13 @@ extension Color {
     }
 }
 
-// MARK: - Vertical Tier Components
+// MARK: - VerticalTierText
 
 private struct VerticalTierText: View {
-    internal let label: String
-    internal let textColor: Color
+    let label: String
+    let textColor: Color
 
-    internal var body: some View {
+    var body: some View {
         GeometryReader { geometry in
             let availableHeight = geometry.size.height
             let charCount = CGFloat(label.count)
@@ -339,13 +349,13 @@ private struct VerticalTierText: View {
 
 #if os(tvOS)
 private struct TierControlButtons: View {
-    internal let tier: String
-    internal let isLocked: Bool
-    internal let textColor: Color
-    internal let onToggleLock: () -> Void
-    internal let onShowMenu: () -> Void
+    let tier: String
+    let isLocked: Bool
+    let textColor: Color
+    let onToggleLock: () -> Void
+    let onShowMenu: () -> Void
 
-    internal var body: some View {
+    var body: some View {
         Button(action: onShowMenu, label: {
             Image(systemName: "ellipsis.circle")
                 .font(TypeScale.cardBody)
@@ -360,7 +370,7 @@ private struct TierControlButtons: View {
 
 private struct TierLabelEditor: View {
     @Bindable var app: AppState
-    internal let tierId: String
+    let tierId: String
     @Binding var showMenu: Bool
     @State private var label: String = ""
     @State private var colorHex: String = ""
@@ -386,10 +396,10 @@ private struct TierLabelEditor: View {
         ("Blue", "#1E3A8A"),
         ("Purple", "#9333EA"),
         ("Pink", "#EC4899"),
-        ("Gray", "#808080")
+        ("Gray", "#808080"),
     ]
 
-    internal var body: some View {
+    var body: some View {
         VStack(spacing: 20) {
             Text("Tier \(tierId)").font(.title2)
 
@@ -408,9 +418,9 @@ private struct TierLabelEditor: View {
                         .cornerRadius(8)
                         .frame(width: ScaledDimensions.formFieldWidth)
                         .focused($focusedField, equals: .label)
-                        #if os(tvOS)
+                    #if os(tvOS)
                         .focusEffectDisabled(false)
-                        #endif
+                    #endif
                     Button("Apply") {
                         app.setDisplayLabel(label, for: tierId)
                         app.showInfoToast("Renamed", message: "Tier \(tierId) → \(label)")
@@ -437,7 +447,7 @@ private struct TierLabelEditor: View {
                                     .frame(width: 60, height: 40)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 8)
-                                            .stroke(colorHex == hex ? Color.white : Color.clear, lineWidth: 3)
+                                            .stroke(colorHex == hex ? Color.white : Color.clear, lineWidth: 3),
                                     )
                                 Text(name)
                                     .font(.caption2)
@@ -500,9 +510,9 @@ private struct TierLabelEditor: View {
                             app.setDisplayColorHex(hex, for: tierId)
                             app.showInfoToast("Recolored", message: hex)
                         }
-                    }
+                    },
                 ),
-                title: "Tier \(tierId) Color"
+                title: "Tier \(tierId) Color",
             )
             #else
             VStack(spacing: 20) {
@@ -519,9 +529,9 @@ private struct TierLabelEditor: View {
                                 colorHex = hex
                                 app.setDisplayColorHex(hex, for: tierId)
                             }
-                        }
+                        },
                     ),
-                    supportsOpacity: false
+                    supportsOpacity: false,
                 )
                 .labelsHidden()
                 .padding()

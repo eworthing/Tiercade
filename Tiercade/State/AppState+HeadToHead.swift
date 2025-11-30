@@ -3,7 +3,7 @@ import os
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     // MARK: - HeadToHead lifecycle
 
     func startHeadToHead() {
@@ -24,7 +24,7 @@ internal extension AppState {
             records: [:],
             tierOrder: tierOrder,
             currentTiers: tiers,
-            targetComparisonsPerItem: targetComparisons
+            targetComparisonsPerItem: targetComparisons,
         )
 
         guard !pairs.isEmpty else {
@@ -51,21 +51,23 @@ internal extension AppState {
 
         Logger.headToHead.info(
             """
-            Started HeadToHead: pool=\(self.headToHead.pool.count) \
-            target=\(targetComparisons) pairs=\(self.headToHead.totalComparisons)
-            """
+            Started HeadToHead: pool=\(headToHead.pool.count) \
+            target=\(targetComparisons) pairs=\(headToHead.totalComparisons)
+            """,
         )
 
         nextHeadToHeadPair()
     }
 
     func nextHeadToHeadPair() {
-        guard headToHead.isActive else { return }
+        guard headToHead.isActive else {
+            return
+        }
 
         if headToHead.pairsQueue.isEmpty, !headToHead.deferredPairs.isEmpty {
             headToHead.pairsQueue = headToHead.deferredPairs
             headToHead.deferredPairs = []
-            Logger.headToHead.info("Recycling skipped pairs: count=\(self.headToHead.pairsQueue.count)")
+            Logger.headToHead.info("Recycling skipped pairs: count=\(headToHead.pairsQueue.count)")
         }
 
         guard !headToHead.pairsQueue.isEmpty else {
@@ -76,25 +78,27 @@ internal extension AppState {
 
         let pair = headToHead.pairsQueue.removeFirst()
         headToHead.currentPair = (pair.0, pair.1)
-        Logger.headToHead.debug("Next pair: \(pair.0.id)-\(pair.1.id), queue=\(self.headToHead.pairsQueue.count)")
+        Logger.headToHead.debug("Next pair: \(pair.0.id)-\(pair.1.id), queue=\(headToHead.pairsQueue.count)")
     }
 
     func voteHeadToHead(winner: Item) {
-        guard headToHead.isActive, let pair = headToHead.currentPair else { return }
+        guard headToHead.isActive, let pair = headToHead.currentPair else {
+            return
+        }
         let a = pair.0
         let b = pair.1
         #if DEBUG
         let poolIds = Set(headToHead.pool.map(\.id))
         assert(
             poolIds.contains(a.id) && poolIds.contains(b.id),
-            "Voting on items that are no longer in the HeadToHead pool"
+            "Voting on items that are no longer in the HeadToHead pool",
         )
         #endif
         HeadToHeadLogic.vote(a, b, winner: winner, records: &headToHead.records)
         if headToHead.phase == .refinement {
             headToHead.refinementCompletedComparisons = min(
                 headToHead.refinementCompletedComparisons + 1,
-                headToHead.refinementTotalComparisons
+                headToHead.refinementTotalComparisons,
             )
         } else {
             headToHead.completedComparisons = min(headToHead.completedComparisons + 1, headToHead.totalComparisons)
@@ -116,26 +120,34 @@ internal extension AppState {
     }
 
     func skipCurrentHeadToHeadPair() {
-        guard headToHead.isActive, let pair = headToHead.currentPair else { return }
+        guard headToHead.isActive, let pair = headToHead.currentPair else {
+            return
+        }
         headToHead.deferredPairs.append(pair)
         headToHead.skippedPairKeys.insert(headToHeadPairKey(pair))
         headToHead.currentPair = nil
         Logger.headToHead.info(
-            "Skipped pair: \(pair.0.id)-\(pair.1.id), deferred=\(self.headToHead.deferredPairs.count)"
+            "Skipped pair: \(pair.0.id)-\(pair.1.id), deferred=\(headToHead.deferredPairs.count)",
         )
         nextHeadToHeadPair()
     }
 
     func finishHeadToHead() {
-        guard headToHead.isActive else { return }
+        guard headToHead.isActive else {
+            return
+        }
         handleCombinedCompletion()
     }
 
     private func autoAdvanceIfNeeded() {
-        guard headToHead.isActive else { return }
+        guard headToHead.isActive else {
+            return
+        }
         let queueEmpty = headToHead.pairsQueue.isEmpty
         let deferredEmpty = headToHead.deferredPairs.isEmpty
-        guard queueEmpty, deferredEmpty, headToHead.currentPair == nil else { return }
+        guard queueEmpty, deferredEmpty, headToHead.currentPair == nil else {
+            return
+        }
         handleCombinedCompletion()
     }
 
@@ -149,7 +161,7 @@ internal extension AppState {
             from: headToHead.pool,
             records: headToHead.records,
             tierOrder: tierOrder,
-            baseTiers: tiers
+            baseTiers: tiers,
         )
 
         tiers = quick.tiers
@@ -183,7 +195,7 @@ internal extension AppState {
                 artifacts: artifacts,
                 records: headToHead.records,
                 tierOrder: tierOrder,
-                baseTiers: tiers
+                baseTiers: tiers,
             )
             tiers = result.tiers
         }
@@ -193,7 +205,7 @@ internal extension AppState {
         logPhaseSummary(
             prefix: "combined phase complete",
             debugSuffix: "combined phase complete counts",
-            summary: tierSummary()
+            summary: tierSummary(),
         )
         headToHead.initialSnapshot = nil
         resetHeadToHeadSession()
@@ -204,7 +216,7 @@ internal extension AppState {
             artifacts: artifacts,
             records: headToHead.records,
             tierOrder: tierOrder,
-            baseTiers: tiers
+            baseTiers: tiers,
         )
 
         tiers = result.tiers
@@ -219,16 +231,20 @@ internal extension AppState {
             .joined(separator: ", ")
     }
 
-    private func logPhaseSummary(prefix: String, debugSuffix: String, summary: String) {
+    private func logPhaseSummary(prefix: String, debugSuffix _: String, summary: String) {
         Logger.headToHead.info("HeadToHead \(prefix): \(summary)")
     }
 
     func cancelHeadToHead(fromExitCommand: Bool = false) {
-        guard headToHead.isActive else { return }
+        guard headToHead.isActive else {
+            return
+        }
         #if os(tvOS)
         let debounceWindow = TVInteraction.exitCommandDebounce
-        if fromExitCommand, let activated = headToHead.activatedAt,
-           Date().timeIntervalSince(activated) < debounceWindow {
+        if
+            fromExitCommand, let activated = headToHead.activatedAt,
+            Date().timeIntervalSince(activated) < debounceWindow
+        {
             Logger.headToHead.debug("Cancel ignored: exitCommand within debounce window")
             return
         }
@@ -264,7 +280,9 @@ internal extension AppState {
     }
 
     private func quickPhaseTargetComparisons(for poolCount: Int) -> Int {
-        guard poolCount > 1 else { return 0 }
+        guard poolCount > 1 else {
+            return 0
+        }
         let maxUnique = poolCount - 1
 
         // Adaptive comparison budget based on simulation evidence
@@ -278,24 +296,23 @@ internal extension AppState {
         //
         // This scaling ensures consistent quality across pool sizes while
         // respecting the user's time budget (Swiss system log₂(n) principle)
-        let desired: Int
-        switch poolCount {
-        case 0..<10:
+        let desired = switch poolCount {
+        case 0 ..< 10:
             // Small pools: Excellent coverage with 3 comparisons/item
             // Simulation: tau=0.73, tier_accuracy=50%
-            desired = 3
-        case 10..<20:
+            3
+        case 10 ..< 20:
             // Medium pools: Scale up to maintain quality
             // Simulation: 4 comp/item improves tau from 0.42 → 0.63
-            desired = 4
-        case 20..<40:
+            4
+        case 20 ..< 40:
             // Large pools: Additional comparisons needed
             // Simulation: 5 comp/item achieves tau=0.66, efficiency=0.13
-            desired = 5
+            5
         default:
             // XL pools: Maximum practical budget
             // Beyond 6, diminishing returns set in (see budget analysis)
-            desired = 6
+            6
         }
 
         return max(1, min(desired, maxUnique))

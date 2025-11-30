@@ -1,7 +1,9 @@
 import Foundation
 import SwiftUI
 
-internal struct ThemeTierDraft: Identifiable, Hashable, Sendable {
+// MARK: - ThemeTierDraft
+
+struct ThemeTierDraft: Identifiable, Hashable, Sendable {
     let id: UUID
     let index: Int
     let name: String
@@ -9,8 +11,24 @@ internal struct ThemeTierDraft: Identifiable, Hashable, Sendable {
     let isUnranked: Bool
 }
 
-internal struct ThemeDraft: Identifiable, Hashable, Sendable {
-    var id: UUID = UUID()
+// MARK: - ThemeDraft
+
+struct ThemeDraft: Identifiable, Hashable, Sendable {
+
+    // MARK: Lifecycle
+
+    init(baseTheme: TierTheme, tierOrder: [String]) {
+        self.displayName = "\(baseTheme.displayName) Variant"
+        self.slug = ThemeDraft.slugify(displayName)
+        self.shortDescription = "Inspired by \(baseTheme.displayName)"
+        self.baseThemeID = baseTheme.id
+        self.tiers = ThemeDraft.buildTierDrafts(baseTheme: baseTheme, tierOrder: tierOrder)
+        self.activeTierID = tiers.first?.id ?? UUID()
+    }
+
+    // MARK: Internal
+
+    var id: UUID = .init()
     var displayName: String
     var slug: String
     var shortDescription: String
@@ -18,17 +36,93 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
     var activeTierID: UUID
     var baseThemeID: UUID?
 
-    internal init(baseTheme: TierTheme, tierOrder: [String]) {
-        displayName = "\(baseTheme.displayName) Variant"
-        slug = ThemeDraft.slugify(displayName)
-        shortDescription = "Inspired by \(baseTheme.displayName)"
-        baseThemeID = baseTheme.id
-        tiers = ThemeDraft.buildTierDrafts(baseTheme: baseTheme, tierOrder: tierOrder)
-        activeTierID = tiers.first?.id ?? UUID()
-    }
-
     var activeTier: ThemeTierDraft? {
         tiers.first { $0.id == activeTierID }
+    }
+
+    static func buildTierDrafts(baseTheme: TierTheme, tierOrder: [String]) -> [ThemeTierDraft] {
+        var drafts: [ThemeTierDraft] = []
+
+        for (index, tierName) in tierOrder.enumerated() {
+            let hex = ThemeDraft.normalizeHex(
+                baseTheme.colorHex(forRank: tierName, fallbackIndex: index),
+            )
+
+            if let matched = baseTheme.tiers.first(where: { $0.matches(identifier: tierName) }) {
+                drafts.append(
+                    ThemeTierDraft(
+                        id: UUID(),
+                        index: matched.index,
+                        name: matched.name,
+                        colorHex: ThemeDraft.normalizeHex(matched.colorHex),
+                        isUnranked: matched.isUnranked,
+                    ),
+                )
+            } else {
+                drafts.append(
+                    ThemeTierDraft(
+                        id: UUID(),
+                        index: index,
+                        name: tierName,
+                        colorHex: hex,
+                        isUnranked: false,
+                    ),
+                )
+            }
+        }
+
+        if let unranked = baseTheme.tiers.first(where: { $0.isUnranked }) {
+            drafts.append(
+                ThemeTierDraft(
+                    id: UUID(),
+                    index: max(tierOrder.count, unranked.index),
+                    name: unranked.name,
+                    colorHex: ThemeDraft.normalizeHex(unranked.colorHex),
+                    isUnranked: true,
+                ),
+            )
+        } else {
+            drafts.append(
+                ThemeTierDraft(
+                    id: UUID(),
+                    index: tierOrder.count,
+                    name: "Unranked",
+                    colorHex: ThemeDraft.normalizeHex(baseTheme.unrankedColorHex),
+                    isUnranked: true,
+                ),
+            )
+        }
+
+        return drafts
+    }
+
+    static func slugify(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return "custom-theme"
+        }
+        let lowercase = trimmed.lowercased()
+        let allowed = lowercase.compactMap { character -> Character? in
+            if character.isLetter || character.isNumber {
+                return character
+            }
+            if character == " " || character == "-" || character == "_" {
+                return "-"
+            }
+            return nil
+        }
+        let collapsed = String(allowed)
+            .replacingOccurrences(of: "-+", with: "-", options: .regularExpression)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        return collapsed.isEmpty ? "custom-theme" : collapsed
+    }
+
+    static func normalizeHex(_ value: String) -> String {
+        let sanitized = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if sanitized.hasPrefix("#") {
+            return sanitized.uppercased()
+        }
+        return "#" + sanitized.uppercased()
     }
 
     mutating func setName(_ newName: String) {
@@ -44,13 +138,17 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
     }
 
     mutating func selectTier(_ tierID: UUID) {
-        guard tiers.contains(where: { $0.id == tierID }) else { return }
+        guard tiers.contains(where: { $0.id == tierID }) else {
+            return
+        }
         activeTierID = tierID
     }
 
     mutating func assignColor(_ hex: String, to tierID: UUID) {
         tiers = tiers.map { tier in
-            guard tier.id == tierID else { return tier }
+            guard tier.id == tierID else {
+                return tier
+            }
             var updated = tier
             updated.colorHex = ThemeDraft.normalizeHex(hex)
             return updated
@@ -69,7 +167,7 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
                 index: tier.index,
                 name: tier.name,
                 colorHex: ThemeDraft.normalizeHex(tier.colorHex),
-                isUnranked: tier.isUnranked
+                isUnranked: tier.isUnranked,
             )
         }
         return TierTheme(
@@ -77,94 +175,20 @@ internal struct ThemeDraft: Identifiable, Hashable, Sendable {
             slug: finalSlug,
             displayName: displayName.isEmpty ? "Untitled Theme" : displayName,
             shortDescription: shortDescription.isEmpty ? "Custom theme" : shortDescription,
-            tiers: tierModels
+            tiers: tierModels,
         )
     }
 
-    static func buildTierDrafts(baseTheme: TierTheme, tierOrder: [String]) -> [ThemeTierDraft] {
-        var drafts: [ThemeTierDraft] = []
-
-        for (index, tierName) in tierOrder.enumerated() {
-            let hex = ThemeDraft.normalizeHex(
-                baseTheme.colorHex(forRank: tierName, fallbackIndex: index)
-            )
-
-            if let matched = baseTheme.tiers.first(where: { $0.matches(identifier: tierName) }) {
-                drafts.append(
-                    ThemeTierDraft(
-                        id: UUID(),
-                        index: matched.index,
-                        name: matched.name,
-                        colorHex: ThemeDraft.normalizeHex(matched.colorHex),
-                        isUnranked: matched.isUnranked
-                    )
-                )
-            } else {
-                drafts.append(
-                    ThemeTierDraft(
-                        id: UUID(),
-                        index: index,
-                        name: tierName,
-                        colorHex: hex,
-                        isUnranked: false
-                    )
-                )
-            }
-        }
-
-        if let unranked = baseTheme.tiers.first(where: { $0.isUnranked }) {
-            drafts.append(
-                ThemeTierDraft(
-                    id: UUID(),
-                    index: max(tierOrder.count, unranked.index),
-                    name: unranked.name,
-                    colorHex: ThemeDraft.normalizeHex(unranked.colorHex),
-                    isUnranked: true
-                )
-            )
-        } else {
-            drafts.append(
-                ThemeTierDraft(
-                    id: UUID(),
-                    index: tierOrder.count,
-                    name: "Unranked",
-                    colorHex: ThemeDraft.normalizeHex(baseTheme.unrankedColorHex),
-                    isUnranked: true
-                )
-            )
-        }
-
-        return drafts
-    }
-
-    static func slugify(_ value: String) -> String {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return "custom-theme" }
-        let lowercase = trimmed.lowercased()
-        let allowed = lowercase.compactMap { character -> Character? in
-            if character.isLetter || character.isNumber { return character }
-            if character == " " || character == "-" || character == "_" { return "-" }
-            return nil
-        }
-        let collapsed = String(allowed)
-            .replacingOccurrences(of: "-+", with: "-", options: .regularExpression)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
-        return collapsed.isEmpty ? "custom-theme" : collapsed
-    }
-
-    static func normalizeHex(_ value: String) -> String {
-        let sanitized = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        if sanitized.hasPrefix("#") { return sanitized.uppercased() }
-        return "#" + sanitized.uppercased()
-    }
 }
 
 // MARK: - Theme Creation Workflow
 
-internal extension AppState {
+extension AppState {
     var availableThemes: [TierTheme] {
         let bundled = TierThemeCatalog.allThemes
-        guard !theme.customThemes.isEmpty else { return bundled }
+        guard !theme.customThemes.isEmpty else {
+            return bundled
+        }
         let bundledIDs = Set(bundled.map(\TierTheme.id))
         let uniqueCustom = theme.customThemes.filter { !bundledIDs.contains($0.id) }
         return bundled + uniqueCustom.sorted { lhs, rhs in
@@ -177,8 +201,10 @@ internal extension AppState {
     }
 
     func theme(with id: UUID) -> TierTheme? {
-        if let bundled = TierThemeCatalog.theme(id: id) { return bundled }
-        return self.theme.customThemes.first { $0.id == id }
+        if let bundled = TierThemeCatalog.theme(id: id) {
+            return bundled
+        }
+        return theme.customThemes.first { $0.id == id }
     }
 
     func beginThemeCreation(baseTheme: TierTheme? = nil) {
@@ -189,25 +215,33 @@ internal extension AppState {
     }
 
     func updateThemeDraftName(_ newName: String) {
-        guard var draft = theme.themeDraft else { return }
+        guard var draft = theme.themeDraft else {
+            return
+        }
         draft.setName(newName)
         theme.themeDraft = draft
     }
 
     func updateThemeDraftDescription(_ newDescription: String) {
-        guard var draft = theme.themeDraft else { return }
+        guard var draft = theme.themeDraft else {
+            return
+        }
         draft.setDescription(newDescription)
         theme.themeDraft = draft
     }
 
     func selectThemeDraftTier(_ tierID: UUID) {
-        guard var draft = theme.themeDraft else { return }
+        guard var draft = theme.themeDraft else {
+            return
+        }
         draft.selectTier(tierID)
         theme.themeDraft = draft
     }
 
     func assignColorToActiveTier(_ hex: String) {
-        guard var draft = theme.themeDraft else { return }
+        guard var draft = theme.themeDraft else {
+            return
+        }
         draft.applyColorToActiveTier(hex)
         theme.themeDraft = draft
         markAsChanged()
@@ -222,7 +256,9 @@ internal extension AppState {
     }
 
     func completeThemeCreation() {
-        guard var draft = theme.themeDraft else { return }
+        guard var draft = theme.themeDraft else {
+            return
+        }
 
         let cleanedName = draft.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleanedName.isEmpty else {

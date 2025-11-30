@@ -26,7 +26,7 @@ struct HeadToHeadSimulations {
         let poolSize: Int
         let comparisonsPerItem: Int
         let tierCount: Int
-        let noiseLevel: Double  // 0.0 = perfect comparisons, 0.3 = 30% noise
+        let noiseLevel: Double // 0.0 = perfect comparisons, 0.3 = 30% noise
         let scenario: GroundTruthScenario
 
         var totalComparisons: Int {
@@ -36,10 +36,10 @@ struct HeadToHeadSimulations {
 
     /// Different ground-truth ranking scenarios
     enum GroundTruthScenario: Sendable {
-        case uniform           // All items similar strength
-        case clustered(Int)    // N distinct skill groups
-        case zipf              // Power-law distribution
-        case bimodal           // Two populations
+        case uniform // All items similar strength
+        case clustered(Int) // N distinct skill groups
+        case zipf // Power-law distribution
+        case bimodal // Two populations
     }
 
     // MARK: - Simulation Metrics
@@ -47,24 +47,24 @@ struct HeadToHeadSimulations {
     /// Comprehensive metrics for evaluating algorithm performance
     struct SimulationMetrics: Sendable {
         // Ranking Quality
-        let kendallsTau: Double           // Correlation with ground truth (-1 to 1)
-        let tierAccuracy: Double          // % items in correct tier
-        let adjacentTierAccuracy: Double  // % items within ±1 tier
+        let kendallsTau: Double // Correlation with ground truth (-1 to 1)
+        let tierAccuracy: Double // % items in correct tier
+        let adjacentTierAccuracy: Double // % items within ±1 tier
 
         // Distribution Quality
-        let tierSizeVariance: Double      // Variance in tier sizes
-        let maxTierFraction: Double       // Largest tier as % of total
-        let emptyTierCount: Int           // Number of empty tiers
+        let tierSizeVariance: Double // Variance in tier sizes
+        let maxTierFraction: Double // Largest tier as % of total
+        let emptyTierCount: Int // Number of empty tiers
 
         // Stability
-        let quickToFinalChurn: Double     // % items that changed tiers
+        let quickToFinalChurn: Double // % items that changed tiers
 
         // Efficiency
-        let comparisonsUsed: Int          // Total comparisons performed
-        let comparisonsPerItem: Double    // Average per item
+        let comparisonsUsed: Int // Total comparisons performed
+        let comparisonsPerItem: Double // Average per item
 
         // Additional Diagnostics
-        let intransitiveCycles: Int       // Count of A>B>C>A loops (not enforced, just measured)
+        let intransitiveCycles: Int // Count of A>B>C>A loops (not enforced, just measured)
         let averageWilsonInterval: Double // Mean interval width (measure of confidence)
     }
 
@@ -77,27 +77,27 @@ struct HeadToHeadSimulations {
         switch config.scenario {
         case .uniform:
             // All items clustered around 0.5 with small variance
-            strengths = (0..<config.poolSize).map { _ in
-                0.5 + Double.random(in: -0.1...0.1)
+            strengths = (0 ..< config.poolSize).map { _ in
+                0.5 + Double.random(in: -0.1 ... 0.1)
             }
 
-        case .clustered(let clusterCount):
+        case let .clustered(clusterCount):
             // Distinct skill groups with clear separation
             let itemsPerCluster = config.poolSize / clusterCount
-            for clusterIdx in 0..<clusterCount {
+            for clusterIdx in 0 ..< clusterCount {
                 let clusterMean = 1.0 - Double(clusterIdx) / Double(clusterCount - 1)
-                for _ in 0..<itemsPerCluster {
-                    strengths.append(clusterMean + Double.random(in: -0.05...0.05))
+                for _ in 0 ..< itemsPerCluster {
+                    strengths.append(clusterMean + Double.random(in: -0.05 ... 0.05))
                 }
             }
             // Handle remainder
             while strengths.count < config.poolSize {
-                strengths.append(Double.random(in: 0.3...0.7))
+                strengths.append(Double.random(in: 0.3 ... 0.7))
             }
 
         case .zipf:
             // Power-law distribution: few strong, many weak
-            for rank in 1...config.poolSize {
+            for rank in 1 ... config.poolSize {
                 let strength = 1.0 / Double(rank)
                 strengths.append(strength)
             }
@@ -108,11 +108,11 @@ struct HeadToHeadSimulations {
         case .bimodal:
             // Two distinct populations
             let splitPoint = config.poolSize / 2
-            for idx in 0..<config.poolSize {
+            for idx in 0 ..< config.poolSize {
                 if idx < splitPoint {
-                    strengths.append(0.75 + Double.random(in: -0.1...0.1))
+                    strengths.append(0.75 + Double.random(in: -0.1 ... 0.1))
                 } else {
-                    strengths.append(0.25 + Double.random(in: -0.1...0.1))
+                    strengths.append(0.25 + Double.random(in: -0.1 ... 0.1))
                 }
             }
         }
@@ -132,8 +132,9 @@ struct HeadToHeadSimulations {
         _ item1: Item,
         _ item2: Item,
         groundTruth: [Item: Double],
-        noiseLevel: Double
-    ) -> Item {
+        noiseLevel: Double,
+    )
+    -> Item {
         let strength1 = groundTruth[item1] ?? 0.5
         let strength2 = groundTruth[item2] ?? 0.5
 
@@ -144,7 +145,7 @@ struct HeadToHeadSimulations {
         // Apply noise: random chance of incorrect outcome
         let noisyWinProb = (1.0 - noiseLevel) * trueWinProb + noiseLevel * 0.5
 
-        return Double.random(in: 0...1) < noisyWinProb ? item1 : item2
+        return Double.random(in: 0 ... 1) < noisyWinProb ? item1 : item2
     }
 
     // MARK: - Simulation Execution
@@ -172,7 +173,7 @@ struct HeadToHeadSimulations {
             records: [:],
             tierOrder: tierOrder,
             currentTiers: baseTiers,
-            targetComparisonsPerItem: targetComparisons
+            targetComparisonsPerItem: targetComparisons,
         )
 
         // Perform comparisons and record results
@@ -190,7 +191,7 @@ struct HeadToHeadSimulations {
             from: pool,
             records: records,
             tierOrder: tierOrder,
-            baseTiers: baseTiers
+            baseTiers: baseTiers,
         )
 
         let quickTiers = quickResult.tiers
@@ -212,7 +213,7 @@ struct HeadToHeadSimulations {
                 artifacts: artifacts,
                 records: records,
                 tierOrder: tierOrder,
-                baseTiers: quickTiers
+                baseTiers: quickTiers,
             )
             finalTiers = finalResult.tiers
         }
@@ -226,7 +227,7 @@ struct HeadToHeadSimulations {
             finalTiers: finalTiers,
             tierOrder: tierOrder,
             comparisonsUsed: comparisonCount,
-            records: records
+            records: records,
         )
     }
 
@@ -235,22 +236,29 @@ struct HeadToHeadSimulations {
     /// Calculate Kendall's Tau correlation between two rankings
     static func kendallsTau(
         groundTruth: [Item: Double],
-        finalRanking: [Item]
-    ) -> Double {
+        finalRanking: [Item],
+    )
+    -> Double {
         let items = Array(groundTruth.keys)
-        guard items.count >= 2 else { return 1.0 }
+        guard items.count >= 2 else {
+            return 1.0
+        }
 
         var concordant = 0
         var discordant = 0
 
-        for i in 0..<items.count {
-            for j in (i + 1)..<items.count {
+        for i in 0 ..< items.count {
+            for j in (i + 1) ..< items.count {
                 let item1 = items[i]
                 let item2 = items[j]
 
                 let trueOrder = (groundTruth[item1] ?? 0) > (groundTruth[item2] ?? 0)
-                guard let idx1 = finalRanking.firstIndex(of: item1),
-                      let idx2 = finalRanking.firstIndex(of: item2) else { continue }
+                guard
+                    let idx1 = finalRanking.firstIndex(of: item1),
+                    let idx2 = finalRanking.firstIndex(of: item2)
+                else {
+                    continue
+                }
                 let inferredOrder = idx1 < idx2
 
                 if trueOrder == inferredOrder {
@@ -262,7 +270,9 @@ struct HeadToHeadSimulations {
         }
 
         let totalPairs = concordant + discordant
-        guard totalPairs > 0 else { return 0.0 }
+        guard totalPairs > 0 else {
+            return 0.0
+        }
 
         return Double(concordant - discordant) / Double(totalPairs)
     }
@@ -271,8 +281,9 @@ struct HeadToHeadSimulations {
     static func tierAccuracy(
         groundTruth: [Item: Double],
         tiers: Items,
-        tierOrder: [String]
-    ) -> (exact: Double, adjacent: Double) {
+        tierOrder: [String],
+    )
+    -> (exact: Double, adjacent: Double) {
         // Map ground truth to ideal tier assignments
         let sortedItems = groundTruth.sorted { $0.value > $1.value }
         let itemsPerTier = Double(sortedItems.count) / Double(tierOrder.count)
@@ -297,8 +308,12 @@ struct HeadToHeadSimulations {
         let totalItems = groundTruth.count
 
         for item in groundTruth.keys {
-            guard let ideal = idealTiers[item],
-                  let actual = actualTiers[item] else { continue }
+            guard
+                let ideal = idealTiers[item],
+                let actual = actualTiers[item]
+            else {
+                continue
+            }
 
             if ideal == actual {
                 exactMatches += 1
@@ -310,7 +325,7 @@ struct HeadToHeadSimulations {
 
         return (
             exact: Double(exactMatches) / Double(totalItems),
-            adjacent: Double(adjacentMatches) / Double(totalItems)
+            adjacent: Double(adjacentMatches) / Double(totalItems),
         )
     }
 
@@ -318,8 +333,9 @@ struct HeadToHeadSimulations {
     static func calculateChurn(
         quickTiers: Items,
         finalTiers: Items,
-        tierOrder: [String]
-    ) -> Double {
+        tierOrder: [String],
+    )
+    -> Double {
         var quickAssignments: [String: String] = [:]
         var finalAssignments: [String: String] = [:]
 
@@ -337,22 +353,25 @@ struct HeadToHeadSimulations {
             quickAssignments[itemId] != finalAssignments[itemId]
         }
 
-        guard !allItems.isEmpty else { return 0.0 }
+        guard !allItems.isEmpty else {
+            return 0.0
+        }
         return Double(moved.count) / Double(allItems.count)
     }
 
     /// Detect intransitive cycles in comparison records
     static func countIntransitiveCycles(
         records: [String: HeadToHeadRecord],
-        pool: [Item]
-    ) -> Int {
+        pool: [Item],
+    )
+    -> Int {
         // Simplified cycle detection: check for A>B>C>A patterns
         // This is a heuristic count, not exhaustive
         var cycles = 0
 
-        for i in 0..<pool.count {
-            for j in (i + 1)..<pool.count {
-                for k in (j + 1)..<pool.count {
+        for i in 0 ..< pool.count {
+            for j in (i + 1) ..< pool.count {
+                for k in (j + 1) ..< pool.count {
                     let a = pool[i]
                     let b = pool[j]
                     let c = pool[k]
@@ -362,7 +381,7 @@ struct HeadToHeadSimulations {
                     let cWins = records[c.id]?.wins ?? 0
 
                     // Simple heuristic: if A>B, B>C, but C>A, count as cycle
-                    if aWins > bWins && bWins > cWins && cWins > aWins {
+                    if aWins > bWins, bWins > cWins, cWins > aWins {
                         cycles += 1
                     }
                 }
@@ -379,8 +398,9 @@ struct HeadToHeadSimulations {
         finalTiers: Items,
         tierOrder: [String],
         comparisonsUsed: Int,
-        records: [String: HeadToHeadRecord]
-    ) -> SimulationMetrics {
+        records: [String: HeadToHeadRecord],
+    )
+    -> SimulationMetrics {
         // Create final ranking order
         var finalRanking: [Item] = []
         for tierName in tierOrder {
@@ -396,7 +416,7 @@ struct HeadToHeadSimulations {
         let meanSize = tierSizes.reduce(0, +) / Double(tierSizes.count)
         let variance = tierSizes.map { pow($0 - meanSize, 2) }.reduce(0, +) / Double(tierSizes.count)
         let maxFraction = (tierSizes.max() ?? 0) / Double(groundTruth.count)
-        let emptyCount = tierSizes.filter { $0 == 0 }.count
+        let emptyCount = tierSizes.count(where: { $0 == 0 })
 
         // Confidence metrics
         let totalComparisons = records.values.reduce(0) { $0 + $1.total }
@@ -422,7 +442,7 @@ struct HeadToHeadSimulations {
             comparisonsUsed: comparisonsUsed,
             comparisonsPerItem: avgComparisonsPerItem,
             intransitiveCycles: cycles,
-            averageWilsonInterval: avgInterval
+            averageWilsonInterval: avgInterval,
         )
     }
 
@@ -435,7 +455,7 @@ struct HeadToHeadSimulations {
         }
         // For more than 6 tiers, add numbered tiers
         var tiers = standardTiers
-        for i in 1...(count - standardTiers.count) {
+        for i in 1 ... (count - standardTiers.count) {
             tiers.append("T\(i)")
         }
         return tiers
@@ -450,7 +470,7 @@ struct HeadToHeadSimulations {
             comparisonsPerItem: 3,
             tierCount: 5,
             noiseLevel: 0.1,
-            scenario: .zipf
+            scenario: .zipf,
         )
 
         let metrics = Self.runSimulation(config: config)
@@ -475,7 +495,7 @@ struct HeadToHeadSimulations {
             comparisonsPerItem: 3,
             tierCount: 6,
             noiseLevel: 0.1,
-            scenario: .clustered(4)
+            scenario: .clustered(4),
         )
 
         let metrics = Self.runSimulation(config: config)
@@ -495,7 +515,7 @@ struct HeadToHeadSimulations {
             comparisonsPerItem: 3,
             tierCount: 5,
             noiseLevel: 0.2,
-            scenario: .uniform
+            scenario: .uniform,
         )
 
         let metrics = Self.runSimulation(config: config)

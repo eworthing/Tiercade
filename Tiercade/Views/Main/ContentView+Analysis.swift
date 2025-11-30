@@ -1,13 +1,15 @@
 import SwiftUI
 import TiercadeCore
 
-// MARK: - Analysis & Statistics Views
+// MARK: - AnalysisView
 
-internal struct AnalysisView: View {
+struct AnalysisView: View {
+
+    // MARK: Internal
+
     @Bindable var app: AppState
-    @Environment(\.dismiss) private var dismiss
 
-    internal var body: some View {
+    var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
@@ -36,7 +38,7 @@ internal struct AnalysisView: View {
                             }
                             .buttonStyle(PrimaryButtonStyle())
                             #if !os(tvOS)
-                            .controlSize(.large)
+                                .controlSize(.large)
                             #endif
                         }
                         .padding(Metrics.grid * 2)
@@ -47,24 +49,31 @@ internal struct AnalysisView: View {
             .navigationTitle("Tier Analysis")
             #if !os(macOS)
             #if !os(tvOS)
-            .navigationBarTitleDisplayMode(.large)
+                .navigationBarTitleDisplayMode(.large)
             #endif
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Done") {
-                        dismiss()
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Done") {
+                            dismiss()
+                        }
                     }
                 }
-            }
             #endif
         }
     }
+
+    // MARK: Private
+
+    @Environment(\.dismiss) private var dismiss
+
 }
 
-internal struct AnalysisContentView: View {
-    internal let analysis: TierAnalysisData
+// MARK: - AnalysisContentView
 
-    internal var body: some View {
+struct AnalysisContentView: View {
+    let analysis: TierAnalysisData
+
+    var body: some View {
         VStack(spacing: 24) {
             // Overall Statistics
             OverallStatsView(analysis: analysis)
@@ -81,10 +90,12 @@ internal struct AnalysisContentView: View {
     }
 }
 
-internal struct OverallStatsView: View {
-    internal let analysis: TierAnalysisData
+// MARK: - OverallStatsView
 
-    internal var body: some View {
+struct OverallStatsView: View {
+    let analysis: TierAnalysisData
+
+    var body: some View {
         VStack(spacing: 16) {
             Text("Overall Statistics")
                 .font(.title2)
@@ -93,24 +104,24 @@ internal struct OverallStatsView: View {
             LazyVGrid(columns: [
                 GridItem(.flexible()),
                 GridItem(.flexible()),
-                GridItem(.flexible())
+                GridItem(.flexible()),
             ], spacing: 16) {
                 StatCardView(
                     title: "Total Items",
                     value: "\(analysis.totalItems)",
-                    icon: "person.3.fill"
+                    icon: "person.3.fill",
                 )
 
                 StatCardView(
                     title: "Most Populated",
                     value: analysis.mostPopulatedTier ?? "—",
-                    icon: "arrow.up.circle.fill"
+                    icon: "arrow.up.circle.fill",
                 )
 
                 StatCardView(
                     title: "Unranked",
                     value: "\(analysis.unrankedCount)",
-                    icon: "questionmark.circle.fill"
+                    icon: "questionmark.circle.fill",
                 )
             }
         }
@@ -119,12 +130,14 @@ internal struct OverallStatsView: View {
     }
 }
 
-internal struct StatCardView: View {
-    internal let title: String
-    internal let value: String
-    internal let icon: String
+// MARK: - StatCardView
 
-    internal var body: some View {
+struct StatCardView: View {
+    let title: String
+    let value: String
+    let icon: String
+
+    var body: some View {
         VStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.title2)
@@ -145,10 +158,12 @@ internal struct StatCardView: View {
     }
 }
 
-internal struct TierDistributionChartView: View {
-    internal let distribution: [TierDistributionData]
+// MARK: - TierDistributionChartView
 
-    internal var body: some View {
+struct TierDistributionChartView: View {
+    let distribution: [TierDistributionData]
+
+    var body: some View {
         VStack(spacing: 16) {
             Text("Tier Distribution")
                 .font(.title2)
@@ -165,17 +180,37 @@ internal struct TierDistributionChartView: View {
     }
 }
 
-internal struct TierBarView: View {
-    internal let tierData: TierDistributionData
-    @Environment(AppState.self) private var app: AppState
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+// MARK: - TierBarView
 
-    internal var body: some View {
+struct TierBarView: View {
+
+    // MARK: Internal
+
+    let tierData: TierDistributionData
+
+    var body: some View {
         VStack(spacing: 4) {
             header
             bar
         }
         .padding(.horizontal, Metrics.grid * 2)
+    }
+
+    // MARK: Private
+
+    @Environment(AppState.self) private var app: AppState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var barColor: Color {
+        Palette.tierColor(tierData.tierId, from: app.tierColors)
+    }
+
+    private var percentageText: String {
+        String(format: "(%.1f%%)", clampedPercentage)
+    }
+
+    private var clampedPercentage: Double {
+        min(max(tierData.percentage, 0), 100)
     }
 
     private var header: some View {
@@ -207,29 +242,21 @@ internal struct TierBarView: View {
         .frame(height: 8)
     }
 
-    private var barColor: Color {
-        Palette.tierColor(tierData.tierId, from: app.tierColors)
-    }
-
-    private var percentageText: String {
-        String(format: "(%.1f%%)", clampedPercentage)
-    }
-
-    private var clampedPercentage: Double {
-        min(max(tierData.percentage, 0), 100)
-    }
-
     private func barWidth(in totalWidth: CGFloat) -> CGFloat {
         let scaledWidth = totalWidth * CGFloat(clampedPercentage / 100)
         return max(scaledWidth, 4)
     }
 }
 
-internal struct BalanceScoreView: View {
-    internal let score: Double
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+// MARK: - BalanceScoreView
 
-    internal var body: some View {
+struct BalanceScoreView: View {
+
+    // MARK: Internal
+
+    let score: Double
+
+    var body: some View {
         VStack(spacing: 16) {
             Text("Balance Score")
                 .font(.title2)
@@ -269,33 +296,39 @@ internal struct BalanceScoreView: View {
         .panel()
     }
 
+    // MARK: Private
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private var scoreColor: Color {
         switch score {
         case 80...:
-            return .green
-        case 60..<80:
-            return .orange
+            .green
+        case 60 ..< 80:
+            .orange
         default:
-            return .red
+            .red
         }
     }
 
     private var scoreDescription: String {
         switch score {
         case 80...:
-            return "Excellent balance across all tiers"
-        case 60..<80:
-            return "Good distribution with room for improvement"
+            "Excellent balance across all tiers"
+        case 60 ..< 80:
+            "Good distribution with room for improvement"
         default:
-            return "Uneven distribution - consider rebalancing"
+            "Uneven distribution - consider rebalancing"
         }
     }
 }
 
-internal struct InsightsView: View {
-    internal let insights: [String]
+// MARK: - InsightsView
 
-    internal var body: some View {
+struct InsightsView: View {
+    let insights: [String]
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Insights & Recommendations")
                 .font(.title2)

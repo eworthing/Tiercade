@@ -27,7 +27,7 @@ struct TierIdentifierTests {
         let unknownItem = Item(id: "mystery", name: "Mystery")
         let items: Items = [
             "S": [sItem],
-            "custom": [unknownItem]
+            "custom": [unknownItem],
         ]
 
         let typed = items.toTyped()

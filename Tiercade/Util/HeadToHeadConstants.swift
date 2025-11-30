@@ -9,6 +9,8 @@ public enum TVInteraction {
 }
 #endif
 
+// MARK: - HeadToHeadWeights
+
 /// HeadToHead phase weighting for progress calculation
 public enum HeadToHeadWeights {
     /// Weight given to quick-phase comparisons in overall progress (75%)
@@ -17,6 +19,8 @@ public enum HeadToHeadWeights {
     /// Weight given to refinement-phase comparisons in overall progress (25%)
     public static let refinementPhase: Double = 0.25
 }
+
+// MARK: - HeadToHeadHeuristics
 
 /// Heuristics for determining comparison requirements based on pool size
 public enum HeadToHeadHeuristics {
@@ -36,6 +40,8 @@ public enum HeadToHeadHeuristics {
     /// Desired comparisons per item for small pools
     public static let smallDesiredComparisons = 2
 }
+
+// MARK: - ToastDefaults
 
 /// Toast notification timing defaults
 public enum ToastDefaults {

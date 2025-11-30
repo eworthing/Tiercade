@@ -6,16 +6,16 @@ extension AIChatOverlay {
     // MARK: - Unified Prompt Tester (New)
 
     /// Run a unified test suite (new config-driven approach)
-    internal func runUnifiedTestSuite(suiteId: String = "quick-smoke") {
+    func runUnifiedTestSuite(suiteId: String = "quick-smoke") {
         let debugLogPath = NSTemporaryDirectory().appending("tiercade_prompt_test_debug.log")
 
         ai.messages.append(AIChatMessage(
             content: "🚀 Starting unified test suite '\(suiteId)'...",
-            isUser: false
+            isUser: false,
         ))
         ai.messages.append(AIChatMessage(
             content: "🔍 Debug log: \(debugLogPath)",
-            isUser: false
+            isUser: false,
         ))
 
         Task {
@@ -34,7 +34,7 @@ extension AIChatOverlay {
                 await MainActor.run {
                     ai.messages.append(AIChatMessage(
                         content: "❌ Test error: \(error.localizedDescription)",
-                        isUser: false
+                        isUser: false,
                     ))
                 }
             }
@@ -86,13 +86,13 @@ extension AIChatOverlay {
 
             ai.messages.append(AIChatMessage(
                 content: "📄 Detailed report: \(reportPath)",
-                isUser: false
+                isUser: false,
             ))
         } catch {
             print("❌ Failed to save report: \(error)")
             ai.messages.append(AIChatMessage(
                 content: "⚠️ Could not save report file: \(error.localizedDescription)",
-                isUser: false
+                isUser: false,
             ))
         }
     }
@@ -110,10 +110,10 @@ extension AIChatOverlay {
     // MARK: - Legacy Test Integrations (Deprecated)
 
     /// @deprecated Use runUnifiedTestSuite(suiteId:) instead
-    internal func startAcceptanceTests() {
+    func startAcceptanceTests() {
         ai.messages.append(AIChatMessage(
             content: "🧪 Starting acceptance test suite...",
-            isUser: false
+            isUser: false,
         ))
 
         Task {
@@ -123,13 +123,13 @@ extension AIChatOverlay {
             } catch {
                 ai.messages.append(AIChatMessage(
                     content: "❌ Test suite error: \(error.localizedDescription)",
-                    isUser: false
+                    isUser: false,
                 ))
             }
         }
     }
 
-    internal func handleAcceptanceTestResults(_ report: AcceptanceTestSuite.TestReport) {
+    func handleAcceptanceTestResults(_ report: AcceptanceTestSuite.TestReport) {
         let summary = buildAcceptanceTestSummary(report)
         ai.messages.append(AIChatMessage(content: summary, isUser: false))
 
@@ -137,39 +137,39 @@ extension AIChatOverlay {
         showAcceptanceTestToast(report)
     }
 
-    internal func buildAcceptanceTestSummary(_ report: AcceptanceTestSuite.TestReport) -> String {
+    func buildAcceptanceTestSummary(_ report: AcceptanceTestSuite.TestReport) -> String {
         let failedTests = report.results
             .filter { !$0.passed }
             .map { "• \($0.testName): \($0.message)" }
             .joined(separator: "\n")
 
         return """
-            ✅ Test Results: \(report.passed)/\(report.totalTests) passed \
-            (\(String(format: "%.1f", report.passRate * 100))%)
+        ✅ Test Results: \(report.passed)/\(report.totalTests) passed \
+        (\(String(format: "%.1f", report.passRate * 100))%)
 
-            Environment:
-            • OS: \(report.environment.osVersion)
-            • Top-P: \(report.environment.hasTopP ? "Available" : "Not available")
+        Environment:
+        • OS: \(report.environment.osVersion)
+        • Top-P: \(report.environment.hasTopP ? "Available" : "Not available")
 
-            Failed tests:
-            \(failedTests)
-            """
+        Failed tests:
+        \(failedTests)
+        """
     }
 
-    internal func saveAcceptanceTestReport(_ report: AcceptanceTestSuite.TestReport) {
+    func saveAcceptanceTestReport(_ report: AcceptanceTestSuite.TestReport) {
         let reportPath = "/tmp/tiercade_acceptance_test_report.json"
         do {
             try AcceptanceTestSuite.saveReport(report, to: reportPath)
             ai.messages.append(AIChatMessage(
                 content: "📄 Detailed report saved to: \(reportPath)",
-                isUser: false
+                isUser: false,
             ))
         } catch {
             print("❌ Failed to save report: \(error)")
         }
     }
 
-    internal func showAcceptanceTestToast(_ report: AcceptanceTestSuite.TestReport) {
+    func showAcceptanceTestToast(_ report: AcceptanceTestSuite.TestReport) {
         if report.passRate == 1.0 {
             app.showSuccessToast("All Tests Passed!", message: "\(report.totalTests)/\(report.totalTests)")
         } else {
@@ -177,10 +177,10 @@ extension AIChatOverlay {
         }
     }
 
-    internal func startPilotTests() {
+    func startPilotTests() {
         ai.messages.append(AIChatMessage(
             content: "🧪 Starting pilot test grid (this will take several minutes)...",
-            isUser: false
+            isUser: false,
         ))
 
         Task {
@@ -190,7 +190,7 @@ extension AIChatOverlay {
         }
     }
 
-    internal func handlePilotTestResults(_ report: PilotTestReport, runner: PilotTestRunner) {
+    func handlePilotTestResults(_ report: PilotTestReport, runner: PilotTestRunner) {
         let summary = buildPilotTestSummary(report)
         ai.messages.append(AIChatMessage(content: summary, isUser: false))
 
@@ -198,7 +198,7 @@ extension AIChatOverlay {
         app.showSuccessToast("Pilot Tests Complete", message: "\(report.completedRuns) runs")
     }
 
-    internal func buildPilotTestSummary(_ report: PilotTestReport) -> String {
+    func buildPilotTestSummary(_ report: PilotTestReport) -> String {
         let passBySize = report.summary.passBySize
             .sorted { Int($0.key) ?? 0 < Int($1.key) ?? 0 }
             .map { "• N=\($0.key): \(String(format: "%.0f%%", $0.value * 100))" }
@@ -214,22 +214,22 @@ extension AIChatOverlay {
         let throughput = String(format: "%.1f", report.summary.meanItemsPerSecond)
 
         return """
-            ✅ Pilot Test Complete
+        ✅ Pilot Test Complete
 
-            Overall Metrics:
-            • Pass@N rate: \(passRate)
-            • Mean dup rate: \(meanDup)±\(stdevDup)%%
-            • Throughput: \(throughput) items/sec
+        Overall Metrics:
+        • Pass@N rate: \(passRate)
+        • Mean dup rate: \(meanDup)±\(stdevDup)%%
+        • Throughput: \(throughput) items/sec
 
-            Pass by Size:
-            \(passBySize)
+        Pass by Size:
+        \(passBySize)
 
-            Top Performers:
-            \(topPerformers)
-            """
+        Top Performers:
+        \(topPerformers)
+        """
     }
 
-    internal func savePilotTestReports(_ report: PilotTestReport, runner: PilotTestRunner) {
+    func savePilotTestReports(_ report: PilotTestReport, runner: PilotTestRunner) {
         let jsonPath = "/tmp/tiercade_pilot_test_report.json"
         let txtPath = "/tmp/tiercade_pilot_test_report.txt"
 
@@ -240,7 +240,7 @@ extension AIChatOverlay {
 
             ai.messages.append(AIChatMessage(
                 content: "📄 Reports saved:\n• \(jsonPath)\n• \(txtPath)",
-                isUser: false
+                isUser: false,
             ))
         } catch {
             print("❌ Failed to save reports: \(error)")

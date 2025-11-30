@@ -1,31 +1,38 @@
 import Foundation
 
 extension HeadToHeadLogic {
-    internal struct WarmStartPreparation {
-        internal let tiersByName: [String: [Item]]
-        internal let unranked: [Item]
-        internal let anchors: [Item]
+    struct WarmStartPreparation {
+        let tiersByName: [String: [Item]]
+        let unranked: [Item]
+        let anchors: [Item]
     }
 
-    internal struct WarmStartQueueBuilder {
-        internal let target: Int
-        internal private(set) var queue: [(Item, Item)] = []
-        private var counts: [String: Int]
-        private var seen: Set<PairKey> = []
+    struct WarmStartQueueBuilder {
 
-        internal init(pool: [Item], target: Int) {
+        // MARK: Lifecycle
+
+        init(pool: [Item], target: Int) {
             self.target = target
-            counts = Dictionary(uniqueKeysWithValues: pool.map { ($0.id, 0) })
+            self.counts = Dictionary(uniqueKeysWithValues: pool.map { ($0.id, 0) })
         }
 
-        internal var isSatisfied: Bool {
+        // MARK: Internal
+
+        let target: Int
+        private(set) var queue: [(Item, Item)] = []
+
+        var isSatisfied: Bool {
             counts.values.allSatisfy { $0 >= target }
         }
 
-        internal mutating func enqueue(_ first: Item, _ second: Item) {
-            guard first.id != second.id else { return }
+        mutating func enqueue(_ first: Item, _ second: Item) {
+            guard first.id != second.id else {
+                return
+            }
             let key = PairKey(first, second)
-            guard !seen.contains(key) else { return }
+            guard !seen.contains(key) else {
+                return
+            }
             if needsMore(first) || needsMore(second) {
                 queue.append((first, second))
                 seen.insert(key)
@@ -34,73 +41,100 @@ extension HeadToHeadLogic {
             }
         }
 
-        internal mutating func enqueueBoundaryPairs(
+        mutating func enqueueBoundaryPairs(
             tierOrder: [String],
             tiersByName: [String: [Item]],
-            frontierWidth: Int
-        ) -> Bool {
-            guard tierOrder.count >= 2 else { return isSatisfied }
-            for index in 0..<(tierOrder.count - 1) {
-                guard let upper = tiersByName[tierOrder[index]],
-                      let lower = tiersByName[tierOrder[index + 1]],
-                      !upper.isEmpty, !lower.isEmpty else { continue }
+            frontierWidth: Int,
+        )
+        -> Bool {
+            guard tierOrder.count >= 2 else {
+                return isSatisfied
+            }
+            for index in 0 ..< (tierOrder.count - 1) {
+                guard
+                    let upper = tiersByName[tierOrder[index]],
+                    let lower = tiersByName[tierOrder[index + 1]],
+                    !upper.isEmpty, !lower.isEmpty
+                else {
+                    continue
+                }
 
                 let upperTail = Array(upper.suffix(min(frontierWidth, upper.count)))
                 let lowerHead = Array(lower.prefix(min(frontierWidth, lower.count)))
                 for upperItem in upperTail {
                     for lowerItem in lowerHead {
                         enqueue(upperItem, lowerItem)
-                        if isSatisfied { return true }
+                        if isSatisfied {
+                            return true
+                        }
                     }
                 }
             }
             return isSatisfied
         }
 
-        internal mutating func enqueueUnranked(_ unranked: [Item], anchors: [Item]) -> Bool {
-            guard !anchors.isEmpty else { return isSatisfied }
+        mutating func enqueueUnranked(_ unranked: [Item], anchors: [Item]) -> Bool {
+            guard !anchors.isEmpty else {
+                return isSatisfied
+            }
             for item in unranked {
                 var added = 0
                 for anchor in anchors {
                     enqueue(item, anchor)
-                    if isSatisfied { return true }
+                    if isSatisfied {
+                        return true
+                    }
                     added += 1
-                    if added >= 2 { break }
+                    if added >= 2 {
+                        break
+                    }
                 }
             }
             return isSatisfied
         }
 
-        internal mutating func enqueueAdjacentPairs(in tiersByName: [String: [Item]]) -> Bool {
+        mutating func enqueueAdjacentPairs(in tiersByName: [String: [Item]]) -> Bool {
             for items in tiersByName.values where items.count >= 2 {
-                for index in 0..<(items.count - 1) {
+                for index in 0 ..< (items.count - 1) {
                     enqueue(items[index], items[index + 1])
-                    if isSatisfied { return true }
+                    if isSatisfied {
+                        return true
+                    }
                 }
             }
             return isSatisfied
         }
 
-        internal mutating func enqueueFallback(from pool: [Item]) {
-            guard !isSatisfied else { return }
-            let fallbackPairs = HeadToHeadLogic.pairings(from: pool, rng: { Double.random(in: 0...1) })
+        mutating func enqueueFallback(from pool: [Item]) {
+            guard !isSatisfied else {
+                return
+            }
+            let fallbackPairs = HeadToHeadLogic.pairings(from: pool, rng: { Double.random(in: 0 ... 1) })
             for pair in fallbackPairs {
                 enqueue(pair.0, pair.1)
-                if isSatisfied { return }
+                if isSatisfied {
+                    return
+                }
             }
         }
+
+        // MARK: Private
+
+        private var counts: [String: Int]
+        private var seen: Set<PairKey> = []
 
         private func needsMore(_ item: Item) -> Bool {
             counts[item.id, default: 0] < target
         }
     }
 
-    internal static func prepareWarmStart(
+    static func prepareWarmStart(
         pool: [Item],
         tierOrder: [String],
         currentTiers: Items,
-        metrics: [String: HeadToHeadMetrics]
-    ) -> WarmStartPreparation {
+        metrics: [String: HeadToHeadMetrics],
+    )
+    -> WarmStartPreparation {
         let poolById = Dictionary(uniqueKeysWithValues: pool.map { ($0.id, $0) })
         var tiersByName: [String: [Item]] = [:]
         var accounted: Set<String> = []
@@ -121,10 +155,14 @@ extension HeadToHeadLogic {
         let frontierWidth = max(1, Tun.frontierWidth)
         var anchors: [Item] = []
 
-        for index in 0..<(tierOrder.count - 1) {
-            guard let upper = tiersByName[tierOrder[index]],
-                  let lower = tiersByName[tierOrder[index + 1]],
-                  !upper.isEmpty, !lower.isEmpty else { continue }
+        for index in 0 ..< (tierOrder.count - 1) {
+            guard
+                let upper = tiersByName[tierOrder[index]],
+                let lower = tiersByName[tierOrder[index + 1]],
+                !upper.isEmpty, !lower.isEmpty
+            else {
+                continue
+            }
             anchors.append(contentsOf: upper.suffix(min(frontierWidth, upper.count)))
             anchors.append(contentsOf: lower.prefix(min(frontierWidth, lower.count)))
         }
@@ -136,7 +174,7 @@ extension HeadToHeadLogic {
         return WarmStartPreparation(
             tiersByName: tiersByName,
             unranked: unranked,
-            anchors: anchors
+            anchors: anchors,
         )
     }
 }

@@ -1,7 +1,7 @@
 import Foundation
-import SwiftUI
 import Observation
 import os
+import SwiftUI
 import TiercadeCore
 
 /// Consolidated state for theme selection and management
@@ -13,7 +13,19 @@ import TiercadeCore
 /// - Theme application and color updates
 @MainActor
 @Observable
-internal final class ThemeState {
+final class ThemeState {
+
+    // MARK: Lifecycle
+
+    // MARK: - Initialization
+
+    init(themeCatalog: ThemeCatalogProviding) {
+        self.themeCatalog = themeCatalog
+        Logger.appState.info("ThemeState initialized")
+    }
+
+    // MARK: Internal
+
     // MARK: - Selected Theme
 
     /// Currently selected theme ID
@@ -35,26 +47,15 @@ internal final class ThemeState {
     /// Draft theme being edited in the theme creator
     var themeDraft: ThemeDraft?
 
-    // MARK: - Dependencies
-
-    private let themeCatalog: ThemeCatalogProviding
-
-    // MARK: - Initialization
-
-    internal init(themeCatalog: ThemeCatalogProviding) {
-        self.themeCatalog = themeCatalog
-        Logger.appState.info("ThemeState initialized")
-    }
-
     // MARK: - Available Themes
 
     /// All available themes (bundled + custom)
-    internal var availableThemes: [TierTheme] {
+    var availableThemes: [TierTheme] {
         TierThemeCatalog.allThemes + customThemes
     }
 
     /// Find a theme by ID
-    internal func theme(with id: UUID) -> TierTheme? {
+    func theme(with id: UUID) -> TierTheme? {
         availableThemes.first { $0.id == id }
     }
 
@@ -62,7 +63,7 @@ internal final class ThemeState {
 
     /// Apply a theme and return the color mappings
     /// Supports variable-length tier lists by repeating last color when tiers exceed theme ranks
-    internal func applyTheme(_ theme: TierTheme, to tierOrder: [String]) -> [String: String] {
+    func applyTheme(_ theme: TierTheme, to tierOrder: [String]) -> [String: String] {
         selectedTheme = theme
         selectedThemeID = theme.id
 
@@ -77,25 +78,45 @@ internal final class ThemeState {
     }
 
     /// Get color hex for a tier from the current theme
-    internal func colorHex(forRank rank: String, fallbackIndex: Int) -> String {
+    func colorHex(forRank rank: String, fallbackIndex: Int) -> String {
         selectedTheme.colorHex(forRank: rank, fallbackIndex: fallbackIndex)
     }
 
     // MARK: - Custom Theme Management
 
     /// Add a custom theme
-    internal func addCustomTheme(_ theme: TierTheme) {
-        guard !customThemeIDs.contains(theme.id) else { return }
+    func addCustomTheme(_ theme: TierTheme) {
+        guard !customThemeIDs.contains(theme.id) else {
+            return
+        }
         customThemes.append(theme)
         customThemeIDs.insert(theme.id)
         sortCustomThemes()
     }
 
     /// Remove a custom theme
-    internal func removeCustomTheme(_ theme: TierTheme) {
+    func removeCustomTheme(_ theme: TierTheme) {
         customThemes.removeAll { $0.id == theme.id }
         customThemeIDs.remove(theme.id)
     }
+
+    // MARK: - Theme Draft Management
+
+    /// Set the current theme draft
+    func setThemeDraft(_ draft: ThemeDraft?) {
+        themeDraft = draft
+    }
+
+    /// Clear the theme draft
+    func clearThemeDraft() {
+        themeDraft = nil
+    }
+
+    // MARK: Private
+
+    // MARK: - Dependencies
+
+    private let themeCatalog: ThemeCatalogProviding
 
     /// Sort custom themes alphabetically
     private func sortCustomThemes() {
@@ -104,15 +125,4 @@ internal final class ThemeState {
         }
     }
 
-    // MARK: - Theme Draft Management
-
-    /// Set the current theme draft
-    internal func setThemeDraft(_ draft: ThemeDraft?) {
-        themeDraft = draft
-    }
-
-    /// Clear the theme draft
-    internal func clearThemeDraft() {
-        themeDraft = nil
-    }
 }

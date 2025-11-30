@@ -2,10 +2,10 @@ import SwiftUI
 import TiercadeCore
 
 #if os(tvOS)
-internal struct TVActionBar: View {
+struct TVActionBar: View {
     @Bindable var app: AppState
     @Environment(\.editMode) private var editMode
-    internal var glassNamespace: Namespace.ID
+    var glassNamespace: Namespace.ID
     @FocusState private var focusedControl: FocusTarget?
 
     private enum FocusTarget: Hashable {
@@ -17,7 +17,7 @@ internal struct TVActionBar: View {
         editMode?.wrappedValue == .active
     }
 
-    internal var body: some View {
+    var body: some View {
         if isMultiSelectActive {
             let hasSelection = !app.selection.isEmpty
             let defaultFocus = hasSelection ? FocusTarget.move : .clear
@@ -43,7 +43,7 @@ internal struct TVActionBar: View {
                     .tvGlassRounded(18)
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(Palette.brand.opacity(0.9), lineWidth: 2)
+                            .stroke(Palette.brand.opacity(0.9), lineWidth: 2),
                     )
                     .accessibilityIdentifier("ActionBar_SelectionCount")
                     .accessibilityLabel("\(app.selection.count) items selected")
@@ -76,20 +76,22 @@ internal struct TVActionBar: View {
                 .padding(.vertical, TVMetrics.barVerticalPadding)
                 .tvGlassRounded(28)
                 #if swift(>=6.0)
-                .glassEffectID("actionBar", in: glassNamespace)
-                .glassEffectUnion(id: "tiercade.controls", namespace: glassNamespace)
+                    .glassEffectID("actionBar", in: glassNamespace)
+                    .glassEffectUnion(id: "tiercade.controls", namespace: glassNamespace)
                 #endif
-                .focusSection()
-                .defaultFocus($focusedControl, defaultFocus)
-                .onAppear { focusedControl = defaultFocus }
-                .onDisappear { focusedControl = nil }
-                .onExitCommand {
-                    guard editMode != nil else { return }
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        editMode?.wrappedValue = .inactive
-                        app.clearSelection()
+                    .focusSection()
+                    .defaultFocus($focusedControl, defaultFocus)
+                    .onAppear { focusedControl = defaultFocus }
+                    .onDisappear { focusedControl = nil }
+                    .onExitCommand {
+                        guard editMode != nil else {
+                            return
+                        }
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            editMode?.wrappedValue = .inactive
+                            app.clearSelection()
+                        }
                     }
-                }
             }
             .frame(maxWidth: .infinity)
             .frame(height: TVMetrics.bottomBarHeight)

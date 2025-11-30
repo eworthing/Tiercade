@@ -2,6 +2,8 @@ import Foundation
 import Testing
 @testable import TiercadeCore
 
+// MARK: - QuickRankLogicTests
+
 @Suite("QuickRankLogic")
 struct QuickRankLogicTests {
     @Test("Assign moves item into desired tier")
@@ -28,15 +30,15 @@ struct QuickRankLogicTests {
     }
 }
 
-private extension QuickRankLogicTests {
-    func makeSampleTiers() -> Items {
+extension QuickRankLogicTests {
+    private func makeSampleTiers() -> Items {
         [
             "S": [Item(id: "sigma", name: "Sigma")],
             "A": [
                 Item(id: "alpha", name: "Alpha"),
-                Item(id: "beta", name: "Beta")
+                Item(id: "beta", name: "Beta"),
             ],
-            "unranked": []
+            "unranked": [],
         ]
     }
 }

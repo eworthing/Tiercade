@@ -6,10 +6,10 @@ let package = Package(
     platforms: [
         .iOS(.v26),
         .macOS(.v26),
-        .tvOS(.v26)
+        .tvOS(.v26),
     ],
     products: [
-        .library(name: "TiercadeCore", targets: ["TiercadeCore"])
+        .library(name: "TiercadeCore", targets: ["TiercadeCore"]),
     ],
     targets: [
         .target(
@@ -18,10 +18,10 @@ let package = Package(
                 .swiftLanguageMode(.v6),
                 // Strict concurrency checking for data-race safety
                 .enableUpcomingFeature("StrictConcurrency"),
-                .unsafeFlags(["-strict-concurrency=complete"])
+                .unsafeFlags(["-strict-concurrency=complete"]),
                 // Note: No default MainActor isolation for library code
                 // Library remains nonisolated by default for maximum flexibility
-            ]
+            ],
         ),
         .testTarget(
             name: "TiercadeCoreTests",
@@ -29,8 +29,8 @@ let package = Package(
             swiftSettings: [
                 .swiftLanguageMode(.v6),
                 .enableUpcomingFeature("StrictConcurrency"),
-                .unsafeFlags(["-strict-concurrency=complete"])
-            ]
-        )
-    ]
+                .unsafeFlags(["-strict-concurrency=complete"]),
+            ],
+        ),
+    ],
 )

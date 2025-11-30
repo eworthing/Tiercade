@@ -2,7 +2,7 @@ import Foundation
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     /// Ensure every item has canonical properties populated.
     static func normalizedTiers(from tiers: Items) -> Items {
         var normalized: Items = [:]
@@ -16,7 +16,7 @@ internal extension AppState {
                     status: item.status,
                     description: item.description,
                     imageUrl: item.imageUrl,
-                    videoUrl: item.videoUrl
+                    videoUrl: item.videoUrl,
                 )
             }
         }

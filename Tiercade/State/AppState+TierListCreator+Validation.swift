@@ -1,15 +1,17 @@
 import Foundation
-import SwiftUI
-import SwiftData
 import os
+import SwiftData
+import SwiftUI
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     // MARK: - Validation & Export
 
     func validateTierListDraft() -> [TierListDraftValidationIssue] {
-        guard let draft = tierListCreatorDraft else { return [] }
+        guard let draft = tierListCreatorDraft else {
+            return []
+        }
         var issues: [TierListDraftValidationIssue] = []
 
         issues += validateProjectInfo(draft)
@@ -49,8 +51,8 @@ internal extension AppState {
                     .init(
                         category: .tier,
                         message: "Tier \(tier.label) has an invalid color hex value.",
-                        contextIdentifier: tier.identifier.uuidString
-                    )
+                        contextIdentifier: tier.identifier.uuidString,
+                    ),
                 )
             }
         }
@@ -67,8 +69,8 @@ internal extension AppState {
                     .init(
                         category: .item,
                         message: "Every item must have a stable identifier.",
-                        contextIdentifier: item.identifier.uuidString
-                    )
+                        contextIdentifier: item.identifier.uuidString,
+                    ),
                 )
             }
             if item.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -76,8 +78,8 @@ internal extension AppState {
                     .init(
                         category: .item,
                         message: "Item identifiers \(item.itemId) require a display title.",
-                        contextIdentifier: item.identifier.uuidString
-                    )
+                        contextIdentifier: item.identifier.uuidString,
+                    ),
                 )
             }
         }
@@ -93,8 +95,8 @@ internal extension AppState {
                 .init(
                     category: .media,
                     message: "Media assets require both a URI and MIME type.",
-                    contextIdentifier: media.identifier.uuidString
-                )
+                    contextIdentifier: media.identifier.uuidString,
+                ),
             )
         }
 
@@ -102,7 +104,9 @@ internal extension AppState {
     }
 
     func exportTierListDraftPayload() -> String? {
-        guard let draft = tierListCreatorDraft else { return nil }
+        guard let draft = tierListCreatorDraft else {
+            return nil
+        }
         do {
             let project = try buildProject(from: draft)
             let encoder = JSONEncoder()
@@ -118,14 +122,16 @@ internal extension AppState {
     }
 
     func saveTierListDraft(action: TierListDraftCommitAction) async {
-        guard let draft = tierListCreatorDraft else { return }
+        guard let draft = tierListCreatorDraft else {
+            return
+        }
         let context = tierListWizardContext
         let issues = validateTierListDraft()
         guard issues.isEmpty else {
             showToast(
                 type: .warning,
                 title: "Needs Attention",
-                message: issues.first?.message ?? "Resolve validation issues before saving."
+                message: issues.first?.message ?? "Resolve validation issues before saving.",
             )
             return
         }
@@ -150,17 +156,18 @@ internal extension AppState {
     private func successFeedback(
         for context: TierListWizardContext,
         action: TierListDraftCommitAction,
-        entityTitle: String
-    ) -> (title: String, message: String) {
+        entityTitle: String,
+    )
+    -> (title: String, message: String) {
         switch (context, action) {
         case (.edit, .save):
-            return ("Project Updated", "\(entityTitle) changes are saved.")
+            ("Project Updated", "\(entityTitle) changes are saved.")
         case (.edit, .publish):
-            return ("Project Republished", "\(entityTitle) is ready to rank.")
+            ("Project Republished", "\(entityTitle) is ready to rank.")
         case (.create, .publish):
-            return ("Project Published", "\(entityTitle) is ready to rank.")
+            ("Project Published", "\(entityTitle) is ready to rank.")
         case (.create, .save):
-            return ("Draft Saved", "\(entityTitle) draft stored for later.")
+            ("Draft Saved", "\(entityTitle) draft stored for later.")
         }
     }
 }

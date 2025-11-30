@@ -5,6 +5,7 @@ import FoundationModels
 #endif
 
 // MARK: - Model Output Diagnostics
+
 //
 // This file contains diagnostic tests to understand exactly what the on-device
 // model is generating and why @Generable decoding might be failing.
@@ -18,15 +19,18 @@ import FoundationModels
 #if canImport(FoundationModels) && DEBUG
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
-internal struct ModelDiagnostics {
-    private let logger: (String) -> Void
+struct ModelDiagnostics {
 
-    internal init(logger: @escaping (String) -> Void = { print($0) }) {
+    // MARK: Lifecycle
+
+    init(logger: @escaping (String) -> Void = { print($0) }) {
         self.logger = logger
     }
 
+    // MARK: Internal
+
     /// Run comprehensive diagnostics
-    internal func runAll() async -> DiagnosticReport {
+    func runAll() async -> DiagnosticReport {
         logger("🔬 ========================================")
         logger("🔬 MODEL OUTPUT DIAGNOSTICS")
         logger("🔬 ========================================")
@@ -35,29 +39,29 @@ internal struct ModelDiagnostics {
         var results: [DiagnosticResult] = []
 
         // Test 1: Raw output (no schema constraint)
-        results.append(await testRawOutput(itemCount: 10, tokens: 112))
-        results.append(await testRawOutput(itemCount: 40, tokens: 280))
-        results.append(await testRawOutput(itemCount: 80, tokens: 560))
+        await results.append(testRawOutput(itemCount: 10, tokens: 112))
+        await results.append(testRawOutput(itemCount: 40, tokens: 280))
+        await results.append(testRawOutput(itemCount: 80, tokens: 560))
 
         // Test 2: @Generable with increased token limits
-        results.append(await testGenerableWithTokens(itemCount: 40, tokensPerItem: 7, seed: 42))
-        results.append(await testGenerableWithTokens(itemCount: 40, tokensPerItem: 10, seed: 42))
-        results.append(await testGenerableWithTokens(itemCount: 40, tokensPerItem: 15, seed: 42))
+        await results.append(testGenerableWithTokens(itemCount: 40, tokensPerItem: 7, seed: 42))
+        await results.append(testGenerableWithTokens(itemCount: 40, tokensPerItem: 10, seed: 42))
+        await results.append(testGenerableWithTokens(itemCount: 40, tokensPerItem: 15, seed: 42))
 
         // Test 2b: Same test but with seed 123 (the coordinator's seed)
-        results.append(await testGenerableWithTokens(itemCount: 40, tokensPerItem: 7, seed: 123))
+        await results.append(testGenerableWithTokens(itemCount: 40, tokensPerItem: 7, seed: 123))
 
         // Test 3: Find breaking point (binary search style)
-        results.append(await testGenerableWithTokens(itemCount: 20, tokensPerItem: 7))
-        results.append(await testGenerableWithTokens(itemCount: 30, tokensPerItem: 7))
+        await results.append(testGenerableWithTokens(itemCount: 20, tokensPerItem: 7))
+        await results.append(testGenerableWithTokens(itemCount: 30, tokensPerItem: 7))
 
         // Test 4: CRITICAL - Replicate exact acceptance test flow
-        results.append(await testViaCoordinator(itemCount: 25))
+        await results.append(testViaCoordinator(itemCount: 25))
 
         let report = DiagnosticReport(
             timestamp: Date(),
             results: results,
-            environment: RunEnv()
+            environment: RunEnv(),
         )
 
         logger("")
@@ -65,12 +69,25 @@ internal struct ModelDiagnostics {
         logger("🔬 DIAGNOSTICS COMPLETE")
         logger("🔬 ========================================")
         logger("🔬 Total tests: \(results.count)")
-        logger("🔬 Successful: \(results.filter { $0.success }.count)")
-        logger("🔬 Failed: \(results.filter { !$0.success }.count)")
+        logger("🔬 Successful: \(results.count(where: { $0.success }))")
+        logger("🔬 Failed: \(results.count(where: { !$0.success }))")
         logger("")
 
         return report
     }
+
+    // MARK: Private
+
+    private struct GenerableSuccessContext: Sendable {
+        let testName: String
+        let items: [String]
+        let elapsed: TimeInterval
+        let tokensPerItem: Int
+        let maxTokens: Int
+        let seed: UInt64
+    }
+
+    private let logger: (String) -> Void
 
     // MARK: - Test 1: Raw Output (No Schema)
 
@@ -81,7 +98,7 @@ internal struct ModelDiagnostics {
             guard let session = try? await createTestSession() else {
                 return buildFailureResult(
                     testName: "RawOutput_\(itemCount)items_\(tokens)tokens",
-                    message: "Failed to create session"
+                    message: "Failed to create session",
                 )
             }
 
@@ -103,14 +120,14 @@ internal struct ModelDiagnostics {
                 rawText: rawText,
                 elapsed: elapsed,
                 parseSuccess: parseSuccess,
-                itemsParsed: itemsParsed
+                itemsParsed: itemsParsed,
             )
 
         } catch {
             logger("  ❌ Error: \(error)")
             return buildFailureResult(
                 testName: "RawOutput_\(itemCount)items_\(tokens)tokens",
-                message: "Exception: \(error.localizedDescription)"
+                message: "Exception: \(error.localizedDescription)",
             )
         }
     }
@@ -126,7 +143,7 @@ internal struct ModelDiagnostics {
         GenerationOptions(
             sampling: .random(probabilityThreshold: 0.92, seed: 42),
             temperature: 0.8,
-            maximumResponseTokens: tokens
+            maximumResponseTokens: tokens,
         )
     }
 
@@ -171,8 +188,9 @@ internal struct ModelDiagnostics {
         rawText: String,
         elapsed: TimeInterval,
         parseSuccess: Bool,
-        itemsParsed: Int
-    ) -> DiagnosticResult {
+        itemsParsed: Int,
+    )
+    -> DiagnosticResult {
         DiagnosticResult(
             testName: testName,
             success: true,
@@ -182,8 +200,8 @@ internal struct ModelDiagnostics {
                 "responseLength": "\(rawText.count)",
                 "elapsedSeconds": "\(String(format: "%.2f", elapsed))",
                 "manualParseSuccess": "\(parseSuccess)",
-                "itemsParsed": "\(itemsParsed)"
-            ]
+                "itemsParsed": "\(itemsParsed)",
+            ],
         )
     }
 
@@ -193,7 +211,7 @@ internal struct ModelDiagnostics {
             success: false,
             message: message,
             rawOutput: nil,
-            details: [:]
+            details: [:],
         )
     }
 
@@ -202,12 +220,13 @@ internal struct ModelDiagnostics {
     private func testGenerableWithTokens(
         itemCount: Int,
         tokensPerItem: Int,
-        seed: UInt64 = 42
-    ) async -> DiagnosticResult {
+        seed: UInt64 = 42,
+    ) async
+    -> DiagnosticResult {
         let maxTokens = itemCount * tokensPerItem
         let testName = "Generable_\(itemCount)items_\(tokensPerItem)tpi_seed\(seed)"
         logger(
-            "🔬 [Test] @Generable - \(itemCount) items, \(tokensPerItem) tokens/item = \(maxTokens) total, seed=\(seed)"
+            "🔬 [Test] @Generable - \(itemCount) items, \(tokensPerItem) tokens/item = \(maxTokens) total, seed=\(seed)",
         )
 
         do {
@@ -224,7 +243,7 @@ internal struct ModelDiagnostics {
                 to: Prompt(prompt),
                 generating: UniqueListResponse.self,
                 includeSchemaInPrompt: true,
-                options: options
+                options: options,
             )
             let elapsed = Date().timeIntervalSince(start)
             let items = response.content.items
@@ -237,7 +256,7 @@ internal struct ModelDiagnostics {
                 elapsed: elapsed,
                 tokensPerItem: tokensPerItem,
                 maxTokens: maxTokens,
-                seed: seed
+                seed: seed,
             ))
 
         } catch let e as LanguageModelSession.GenerationError {
@@ -246,14 +265,14 @@ internal struct ModelDiagnostics {
                 testName: testName,
                 tokensPerItem: tokensPerItem,
                 maxTokens: maxTokens,
-                seed: seed
+                seed: seed,
             )
         } catch {
             logger("  ❌ Unexpected error: \(error)")
             return buildGenerableFailureResult(
                 testName: testName,
                 message: "Unexpected error: \(error.localizedDescription)",
-                seed: seed
+                seed: seed,
             )
         }
     }
@@ -262,7 +281,7 @@ internal struct ModelDiagnostics {
         GenerationOptions(
             sampling: .random(probabilityThreshold: 0.92, seed: seed),
             temperature: 0.8,
-            maximumResponseTokens: maxTokens
+            maximumResponseTokens: maxTokens,
         )
     }
 
@@ -280,15 +299,6 @@ internal struct ModelDiagnostics {
         logger("  📄 First 3 items: \(items.prefix(3).joined(separator: ", "))")
     }
 
-    private struct GenerableSuccessContext: Sendable {
-        let testName: String
-        let items: [String]
-        let elapsed: TimeInterval
-        let tokensPerItem: Int
-        let maxTokens: Int
-        let seed: UInt64
-    }
-
     private func buildGenerableSuccessResult(context: GenerableSuccessContext) -> DiagnosticResult {
         DiagnosticResult(
             testName: context.testName,
@@ -300,8 +310,8 @@ internal struct ModelDiagnostics {
                 "elapsedSeconds": "\(String(format: "%.2f", context.elapsed))",
                 "tokensPerItem": "\(context.tokensPerItem)",
                 "maxTokens": "\(context.maxTokens)",
-                "seed": "\(context.seed)"
-            ]
+                "seed": "\(context.seed)",
+            ],
         )
     }
 
@@ -310,13 +320,14 @@ internal struct ModelDiagnostics {
         testName: String,
         tokensPerItem: Int,
         maxTokens: Int,
-        seed: UInt64
-    ) -> DiagnosticResult {
+        seed: UInt64,
+    )
+    -> DiagnosticResult {
         logger("  ❌ @Generable failed: \(error)")
 
         var errorType = "unknown"
         var contextInfo = ""
-        if case .decodingFailure(let context) = error {
+        if case let .decodingFailure(context) = error {
             errorType = "decodingFailure"
             contextInfo = context.debugDescription
             logger("  📋 Context: \(contextInfo)")
@@ -333,8 +344,8 @@ internal struct ModelDiagnostics {
                 "contextInfo": contextInfo,
                 "tokensPerItem": "\(tokensPerItem)",
                 "maxTokens": "\(maxTokens)",
-                "seed": "\(seed)"
-            ]
+                "seed": "\(seed)",
+            ],
         )
     }
 
@@ -344,7 +355,7 @@ internal struct ModelDiagnostics {
             success: false,
             message: message,
             rawOutput: nil,
-            details: ["seed": "\(seed)"]
+            details: ["seed": "\(seed)"],
         )
     }
 
@@ -374,7 +385,7 @@ internal struct ModelDiagnostics {
                 items: items,
                 uniqueKeys: uniqueKeys,
                 allUnique: allUnique,
-                elapsed: elapsed
+                elapsed: elapsed,
             )
 
         } catch let e as LanguageModelSession.GenerationError {
@@ -383,7 +394,7 @@ internal struct ModelDiagnostics {
             logger("  ❌ Unexpected error: \(error)")
             return buildCoordinatorFailureResult(
                 testName: testName,
-                message: "Unexpected error: \(error.localizedDescription)"
+                message: "Unexpected error: \(error.localizedDescription)",
             )
         }
     }
@@ -399,7 +410,7 @@ internal struct ModelDiagnostics {
         return try await coordinator.uniqueList(
             query: "famous scientists throughout history",
             targetCount: itemCount,
-            seed: 123
+            seed: 123,
         )
     }
 
@@ -410,7 +421,7 @@ internal struct ModelDiagnostics {
     }
 
     private func checkUniqueness(items: [String]) -> (uniqueKeys: Set<String>, allUnique: Bool) {
-        let normKeys = items.map { $0.normKey }
+        let normKeys = items.map(\.normKey)
         let uniqueKeys = Set(normKeys)
         let allUnique = normKeys.count == uniqueKeys.count
         return (uniqueKeys, allUnique)
@@ -421,8 +432,9 @@ internal struct ModelDiagnostics {
         items: [String],
         uniqueKeys: Set<String>,
         allUnique: Bool,
-        elapsed: TimeInterval
-    ) -> DiagnosticResult {
+        elapsed: TimeInterval,
+    )
+    -> DiagnosticResult {
         DiagnosticResult(
             testName: testName,
             success: true,
@@ -432,20 +444,21 @@ internal struct ModelDiagnostics {
                 "itemsReceived": "\(items.count)",
                 "uniqueCount": "\(uniqueKeys.count)",
                 "allUnique": "\(allUnique)",
-                "elapsedSeconds": "\(String(format: "%.2f", elapsed))"
-            ]
+                "elapsedSeconds": "\(String(format: "%.2f", elapsed))",
+            ],
         )
     }
 
     private func handleCoordinatorGenerationError(
         error: LanguageModelSession.GenerationError,
-        testName: String
-    ) -> DiagnosticResult {
+        testName: String,
+    )
+    -> DiagnosticResult {
         logger("  ❌ Coordinator failed with GenerationError: \(error)")
 
         var errorType = "unknown"
         var contextInfo = ""
-        if case .decodingFailure(let context) = error {
+        if case let .decodingFailure(context) = error {
             errorType = "decodingFailure"
             contextInfo = context.debugDescription
             logger("  📋 Context: \(contextInfo)")
@@ -459,8 +472,8 @@ internal struct ModelDiagnostics {
             details: [
                 "errorType": errorType,
                 "errorDescription": error.localizedDescription,
-                "contextInfo": contextInfo
-            ]
+                "contextInfo": contextInfo,
+            ],
         )
     }
 
@@ -470,7 +483,7 @@ internal struct ModelDiagnostics {
             success: false,
             message: message,
             rawOutput: nil,
-            details: [:]
+            details: [:],
         )
     }
 
@@ -486,7 +499,7 @@ internal struct ModelDiagnostics {
         return LanguageModelSession(
             model: .default,
             tools: [],
-            instructions: instructions
+            instructions: instructions,
         )
     }
 }
@@ -494,7 +507,7 @@ internal struct ModelDiagnostics {
 // MARK: - Diagnostic Data Structures
 
 @available(iOS 26.0, macOS 26.0, *)
-internal struct DiagnosticResult: Codable {
+struct DiagnosticResult: Codable {
     let testName: String
     let success: Bool
     let message: String
@@ -503,7 +516,7 @@ internal struct DiagnosticResult: Codable {
 }
 
 @available(iOS 26.0, macOS 26.0, *)
-internal struct DiagnosticReport: Codable {
+struct DiagnosticReport: Codable {
     let timestamp: Date
     let results: [DiagnosticResult]
     let environment: RunEnv

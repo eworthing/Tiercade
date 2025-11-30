@@ -3,7 +3,7 @@ import SwiftUI
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     // MARK: - Import System (JSON/CSV)
 
     func importFromJSON(_ jsonString: String) async throws(ImportError) {
@@ -62,11 +62,11 @@ internal extension AppState {
     }
 
     // Static CSV parser - called via Task.detached to run on background thread pool
-    nonisolated
-    private static func parseCSVData(
+    private nonisolated static func parseCSVData(
         _ csvString: String,
-        currentTierOrder: [String]
-    ) throws(ImportError) -> (Items, [String]) {
+        currentTierOrder: [String],
+    ) throws(ImportError)
+    -> (Items, [String]) {
         let lines = csvString.components(separatedBy: .newlines)
         guard lines.count > 1 else {
             throw ImportError.invalidData("CSV file appears to be empty")
@@ -80,7 +80,7 @@ internal extension AppState {
 
         var seenIDs = Set<String>()
         var counters: [String: Int] = [:]
-        var discoveredTiers: Set<String> = []  // Track new tier names from CSV
+        var discoveredTiers: Set<String> = [] // Track new tier names from CSV
 
         func uniqueID(from base: String) -> String {
             var id = base
@@ -96,10 +96,14 @@ internal extension AppState {
         }
 
         for line in lines.dropFirst() {
-            guard !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+            guard !line.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                continue
+            }
 
             let components = Self.parseCSVLine(line)
-            guard components.count >= 3 else { continue }
+            guard components.count >= 3 else {
+                continue
+            }
 
             if let item = Self.createItemFromCSVComponents(components) {
                 // Ensure unique ID per import session
@@ -113,7 +117,7 @@ internal extension AppState {
                     status: item.status,
                     description: item.description,
                     imageUrl: item.imageUrl,
-                    videoUrl: item.videoUrl
+                    videoUrl: item.videoUrl,
                 )
                 let tierName = components[2]
                 Self.addItemToTier(adjusted, tier: tierName, in: &newTiers, discoveredTiers: &discoveredTiers)
@@ -124,11 +128,13 @@ internal extension AppState {
         return (newTiers, Array(discoveredTiers).sorted())
     }
 
-    nonisolated private static func createItemFromCSVComponents(_ components: [String]) -> Item? {
+    private nonisolated static func createItemFromCSVComponents(_ components: [String]) -> Item? {
         let name = components[0].trimmingCharacters(in: .whitespacesAndNewlines)
         let season = components[1].trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard !name.isEmpty else { return nil }
+        guard !name.isEmpty else {
+            return nil
+        }
 
         let id = name.lowercased().replacingOccurrences(of: " ", with: "_")
         var attributes: [String: String] = ["name": name]
@@ -139,11 +145,11 @@ internal extension AppState {
         return Item(id: id, attributes: attributes.isEmpty ? nil : attributes)
     }
 
-    nonisolated private static func addItemToTier(
+    private nonisolated static func addItemToTier(
         _ item: Item,
         tier: String,
         in tiers: inout Items,
-        discoveredTiers: inout Set<String>
+        discoveredTiers: inout Set<String>,
     ) {
         let tierKey = tier.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedKey = tierKey.lowercased() == "unranked" ? "unranked" : tierKey.uppercased()
@@ -168,14 +174,13 @@ internal extension AppState {
             project,
             action: "Import Project",
             fileName: url.deletingPathExtension().lastPathComponent,
-            undoSnapshot: snapshot
+            undoSnapshot: snapshot,
         )
         showSuccessToast("Import Complete", message: "Project loaded successfully {import}")
     }
 
     // Swift 6 (Swift 6.2 toolchain) pattern: file I/O and ModelResolver on background via Task.detached
-    nonisolated
-    private func loadProjectFromFile(_ url: URL) async throws(ImportError) -> Project {
+    private nonisolated func loadProjectFromFile(_ url: URL) async throws(ImportError) -> Project {
         do {
             return try await ModelResolver.loadProjectAsync(from: url)
         } catch {
@@ -199,8 +204,7 @@ internal extension AppState {
     }
 
     // Swift 6 (Swift 6.2 toolchain) pattern: file I/O on background via Task.detached
-    nonisolated
-    private func loadCSVFromFile(_ url: URL) async throws(ImportError) -> String {
+    private nonisolated func loadCSVFromFile(_ url: URL) async throws(ImportError) -> String {
         do {
             let data = try Data(contentsOf: url)
             guard let content = String(data: data, encoding: .utf8) else {
@@ -220,7 +224,7 @@ internal extension AppState {
 
         for ch in line {
             if ch == "\"" {
-                if insideQuotes && prevWasQuote {
+                if insideQuotes, prevWasQuote {
                     current.append("\"")
                     prevWasQuote = false
                 } else if insideQuotes {
@@ -228,7 +232,7 @@ internal extension AppState {
                 } else {
                     insideQuotes = true
                 }
-            } else if ch == "," && !insideQuotes {
+            } else if ch == ",", !insideQuotes {
                 fields.append(current.trimmingCharacters(in: .whitespaces))
                 current = ""
                 prevWasQuote = false
@@ -250,7 +254,7 @@ internal extension AppState {
         _ project: Project,
         action: String,
         fileName: String?,
-        undoSnapshot: TierListState.TierStateSnapshot
+        undoSnapshot: TierListState.TierStateSnapshot,
     ) {
         let state = resolvedTierState(from: project)
         tierOrder = state.order
@@ -276,8 +280,10 @@ internal extension AppState {
                 applyTheme(slug: themeSlug)
             }
 
-            if let densityValue = settings.additional?["cardDensityPreference"]?.stringValue,
-               let preference = CardDensityPreference(rawValue: densityValue) {
+            if
+                let densityValue = settings.additional?["cardDensityPreference"]?.stringValue,
+                let preference = CardDensityPreference(rawValue: densityValue)
+            {
                 cardDensityPreference = preference
             }
         }
@@ -342,19 +348,21 @@ internal extension AppState {
                     index: Int(indexValue),
                     name: name,
                     colorHex: colorHex,
-                    isUnranked: isUnranked
-                )
+                    isUnranked: isUnranked,
+                ),
             )
         }
 
-        guard !tiers.isEmpty else { return nil }
+        guard !tiers.isEmpty else {
+            return nil
+        }
 
         return TierTheme(
             id: id,
             slug: slug,
             displayName: displayName,
             shortDescription: shortDescription,
-            tiers: tiers
+            tiers: tiers,
         )
     }
 
@@ -376,16 +384,14 @@ internal extension AppState {
 
     // MARK: - Decoding helpers
 
-    nonisolated
-    private func decodeProject(fromJSON jsonString: String) async throws(ImportError) -> Project {
+    private nonisolated func decodeProject(fromJSON jsonString: String) async throws(ImportError) -> Project {
         guard let data = jsonString.data(using: .utf8) else {
             throw ImportError.invalidFormat("String is not valid UTF-8")
         }
         return try await decodeProject(fromData: data)
     }
 
-    nonisolated
-    private func decodeProject(fromData data: Data) async throws(ImportError) -> Project {
+    private nonisolated func decodeProject(fromData data: Data) async throws(ImportError) -> Project {
         do {
             return try await Task.detached(priority: .userInitiated) {
                 try ModelResolver.decodeProject(from: data)
@@ -398,39 +404,39 @@ internal extension AppState {
     }
 }
 
-private extension JSONValue {
-    var stringValue: String? {
+extension JSONValue {
+    fileprivate var stringValue: String? {
         switch self {
-        case .string(let value):
-            return value
-        case .number(let number):
-            return String(number)
-        case .bool(let bool):
-            return bool ? "true" : "false"
+        case let .string(value):
+            value
+        case let .number(number):
+            String(number)
+        case let .bool(bool):
+            bool ? "true" : "false"
         default:
-            return nil
+            nil
         }
     }
 
-    var numberValue: Double? {
+    fileprivate var numberValue: Double? {
         switch self {
-        case .number(let value):
-            return value
-        case .string(let string):
-            return Double(string)
+        case let .number(value):
+            value
+        case let .string(string):
+            Double(string)
         default:
-            return nil
+            nil
         }
     }
 
-    var boolValue: Bool? {
+    fileprivate var boolValue: Bool? {
         switch self {
-        case .bool(let value):
-            return value
-        case .string(let string):
-            return (string as NSString).boolValue
+        case let .bool(value):
+            value
+        case let .string(string):
+            (string as NSString).boolValue
         default:
-            return nil
+            nil
         }
     }
 }

@@ -2,6 +2,8 @@ import Foundation
 import Testing
 @testable import TiercadeCore
 
+// MARK: - ModelResolverTests
+
 @Suite("ModelResolver")
 struct ModelResolverTests {
     @Test("decodeProject validates offline manifests")
@@ -42,11 +44,11 @@ struct ModelResolverTests {
     }
 }
 
-private extension ModelResolverTests {
-    static func sampleProject() -> Project {
+extension ModelResolverTests {
+    fileprivate static func sampleProject() -> Project {
         let audit = Project.Audit(
             createdAt: Date(timeIntervalSince1970: 0),
-            updatedAt: Date(timeIntervalSince1970: 0)
+            updatedAt: Date(timeIntervalSince1970: 0),
         )
 
         let baseMedia = Project.Media(
@@ -54,7 +56,7 @@ private extension ModelResolverTests {
             kind: .image,
             uri: "file://base.png",
             mime: "image/png",
-            thumbUri: "file://base-thumb.png"
+            thumbUri: "file://base-thumb.png",
         )
 
         let overrideMedia = Project.Media(
@@ -62,7 +64,7 @@ private extension ModelResolverTests {
             kind: .image,
             uri: "file://override.png",
             mime: "image/png",
-            thumbUri: "file://override-thumb.png"
+            thumbUri: "file://override-thumb.png",
         )
 
         let items: [String: Project.Item] = [
@@ -71,13 +73,13 @@ private extension ModelResolverTests {
                 title: "Alpha",
                 summary: "Base summary",
                 media: [baseMedia],
-                rating: 3.0
+                rating: 3.0,
             ),
             "beta": Project.Item(
                 id: "beta",
                 title: "Beta",
-                media: [baseMedia]
-            )
+                media: [baseMedia],
+            ),
         ]
 
         let overrides: [String: Project.ItemOverride] = [
@@ -86,8 +88,8 @@ private extension ModelResolverTests {
                 notes: "Override notes",
                 rating: 4.5,
                 media: [overrideMedia],
-                additional: ["season": .string("2")]
-            )
+                additional: ["season": .string("2")],
+            ),
         ]
 
         let tiers: [Project.Tier] = [
@@ -96,14 +98,14 @@ private extension ModelResolverTests {
                 label: "S",
                 color: "#FFD700",
                 order: 0,
-                itemIds: ["alpha"]
+                itemIds: ["alpha"],
             ),
             Project.Tier(
                 id: "tier-unranked",
                 label: "Unranked",
                 order: 1,
-                itemIds: ["beta"]
-            )
+                itemIds: ["beta"],
+            ),
         ]
 
         return Project(
@@ -114,11 +116,11 @@ private extension ModelResolverTests {
             items: items,
             overrides: overrides,
             storage: .init(mode: "local"),
-            audit: audit
+            audit: audit,
         )
     }
 
-    static func sampleProjectData() throws -> Data {
+    fileprivate static func sampleProjectData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         encoder.dateEncodingStrategy = .iso8601

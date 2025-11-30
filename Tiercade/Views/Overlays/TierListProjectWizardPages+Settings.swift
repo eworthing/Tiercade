@@ -1,23 +1,20 @@
+import os
 import SwiftUI
 import TiercadeCore
-import os
 
 // MARK: - Settings Wizard Page
 
-internal struct SettingsWizardPage: View, WizardPage {
+struct SettingsWizardPage: View, WizardPage {
+
+    // MARK: Internal
+
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
 
-    internal let pageTitle = "Project Settings"
-    internal let pageDescription = "Configure basic project information and options"
+    let pageTitle = "Project Settings"
+    let pageDescription = "Configure basic project information and options"
 
-    #if os(tvOS)
-    @Namespace private var defaultFocusNamespace
-    @FocusState private var focusedField: Field?
-    private enum Field: Hashable { case title, description }
-    #endif
-
-    internal var body: some View {
+    var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
                 projectInfoSection
@@ -39,34 +36,42 @@ internal struct SettingsWizardPage: View, WizardPage {
         #endif
     }
 
+    // MARK: Private
+
+    #if os(tvOS)
+    @Namespace private var defaultFocusNamespace
+    @FocusState private var focusedField: Field?
+    private enum Field: Hashable { case title, description }
+    #endif
+
     // MARK: - Sections
 
     private var projectInfoSection: some View {
         sectionContainer(title: "Project Information") {
             TextField("Project Title", text: $draft.title, prompt: Text("Enter a descriptive title"))
                 .font(.title3)
-                #if os(tvOS)
+            #if os(tvOS)
                 .wizardFieldDecoration()
-                #else
+            #else
                 .textFieldStyle(.roundedBorder)
-                #endif
+            #endif
                 .accessibilityIdentifier("Settings_TitleField")
                 .onChange(of: draft.title) { appState.markDraftEdited(draft) }
-                #if os(tvOS)
+            #if os(tvOS)
                 .focused($focusedField, equals: .title)
                 .prefersDefaultFocus(true, in: defaultFocusNamespace)
             #endif
 
             TextField("Description", text: $draft.summary, prompt: Text("Short description"), axis: .vertical)
-                .lineLimit(3...6)
-                #if os(tvOS)
+                .lineLimit(3 ... 6)
+            #if os(tvOS)
                 .wizardFieldDecoration()
-                #else
+            #else
                 .textFieldStyle(.roundedBorder)
-                #endif
+            #endif
                 .accessibilityIdentifier("Settings_DescriptionField")
                 .onChange(of: draft.summary) { appState.markDraftEdited(draft) }
-                #if os(tvOS)
+            #if os(tvOS)
                 .focused($focusedField, equals: .description)
             #endif
         }
@@ -75,7 +80,7 @@ internal struct SettingsWizardPage: View, WizardPage {
     private var displayOptionsSection: some View {
         sectionContainer(title: "Display Options") {
             #if !os(tvOS)
-            Stepper(value: $draft.schemaVersion, in: 1...9) {
+            Stepper(value: $draft.schemaVersion, in: 1 ... 9) {
                 Text("Schema Version: \(draft.schemaVersion)")
             }
             .onChange(of: draft.schemaVersion) { appState.markDraftEdited(draft) }
@@ -92,14 +97,14 @@ internal struct SettingsWizardPage: View, WizardPage {
             Toggle("Show Unranked Tier", isOn: $draft.showUnranked)
                 .accessibilityIdentifier("Settings_ShowUnrankedToggle")
                 .onChange(of: draft.showUnranked) { appState.markDraftEdited(draft) }
-                #if os(tvOS)
+            #if os(tvOS)
                 .wizardTogglePadding()
             #endif
 
             Toggle("Enable Grid Snap", isOn: $draft.gridSnap)
                 .accessibilityIdentifier("Settings_GridSnapToggle")
                 .onChange(of: draft.gridSnap) { appState.markDraftEdited(draft) }
-                #if os(tvOS)
+            #if os(tvOS)
                 .wizardTogglePadding()
             #endif
         }
@@ -110,14 +115,14 @@ internal struct SettingsWizardPage: View, WizardPage {
             Toggle("VoiceOver Hints", isOn: $draft.accessibilityVoiceOver)
                 .accessibilityIdentifier("Settings_VoiceOverToggle")
                 .onChange(of: draft.accessibilityVoiceOver) { appState.markDraftEdited(draft) }
-                #if os(tvOS)
+            #if os(tvOS)
                 .wizardTogglePadding()
             #endif
 
             Toggle("High Contrast Mode", isOn: $draft.accessibilityHighContrast)
                 .accessibilityIdentifier("Settings_HighContrastToggle")
                 .onChange(of: draft.accessibilityHighContrast) { appState.markDraftEdited(draft) }
-                #if os(tvOS)
+            #if os(tvOS)
                 .wizardTogglePadding()
             #endif
         }
@@ -143,7 +148,7 @@ internal struct SettingsWizardPage: View, WizardPage {
                     icon: "checkmark.circle.fill",
                     tint: Palette.tierColor("B", from: appState.tierColors),
                     title: "No issues found",
-                    message: "Your project configuration is valid"
+                    message: "Your project configuration is valid",
                 )
             } else {
                 VStack(alignment: .leading, spacing: Metrics.grid * 2) {
@@ -152,7 +157,7 @@ internal struct SettingsWizardPage: View, WizardPage {
                             icon: "exclamationmark.triangle.fill",
                             tint: Palette.tierColor("S", from: appState.tierColors),
                             title: issue.category.rawValue.capitalized,
-                            message: issue.message
+                            message: issue.message,
                         )
                     }
                 }
@@ -166,10 +171,11 @@ internal struct SettingsWizardPage: View, WizardPage {
             .foregroundStyle(.primary)
     }
 
-    private func sectionContainer<Content: View>(
+    private func sectionContainer(
         title: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
+        @ViewBuilder content: () -> some View,
+    )
+    -> some View {
         VStack(alignment: .leading, spacing: Metrics.grid * 2.5) {
             sectionHeader(title)
             content()
@@ -181,8 +187,8 @@ internal struct SettingsWizardPage: View, WizardPage {
                 .fill(Palette.cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: Metrics.rLg, style: .continuous)
-                        .stroke(Palette.stroke, lineWidth: 1)
-                )
+                        .stroke(Palette.stroke, lineWidth: 1),
+                ),
         )
         .shadow(color: Palette.stroke.opacity(0.6), radius: 8, y: 4)
     }
@@ -209,8 +215,8 @@ internal struct SettingsWizardPage: View, WizardPage {
                 .fill(tint.opacity(0.15))
                 .overlay(
                     RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
-                        .stroke(tint.opacity(0.35), lineWidth: 1)
-                )
+                        .stroke(tint.opacity(0.35), lineWidth: 1),
+                ),
         )
     }
 }

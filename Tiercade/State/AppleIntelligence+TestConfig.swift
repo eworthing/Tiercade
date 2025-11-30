@@ -1,10 +1,3 @@
-//
-//  AppleIntelligence+TestConfig.swift
-//  Tiercade
-//
-//  Configuration system for testing different prompt templates and settings
-//
-
 import Foundation
 
 #if canImport(FoundationModels) && (os(iOS) || os(macOS))
@@ -12,7 +5,7 @@ import Foundation
 
 // MARK: - Test Configuration Types
 
-internal struct TestConfiguration: Codable {
+struct TestConfiguration: Codable {
     let name: String
     let description: String
     let tokenPerItem: Int
@@ -32,14 +25,14 @@ internal struct TestConfiguration: Codable {
     }
 }
 
-internal struct SamplingProfile: Codable {
+struct SamplingProfile: Codable {
     let name: String
     let type: String
     let value: Double?
     let temperature: Double
 }
 
-internal struct TestScenario: Codable {
+struct TestScenario: Codable {
     let name: String
     let config: String
     let sampling: String
@@ -55,7 +48,7 @@ internal struct TestScenario: Codable {
     }
 }
 
-internal struct TestConfigFile: Codable {
+struct TestConfigFile: Codable {
     let configurations: [TestConfiguration]
     let samplingProfiles: [SamplingProfile]
     let testScenarios: [TestScenario]
@@ -70,7 +63,7 @@ internal struct TestConfigFile: Codable {
 extension UniqueListCoordinator {
 
     /// Load test configurations from file
-    internal static func loadTestConfigurations() -> TestConfigFile? {
+    static func loadTestConfigurations() -> TestConfigFile? {
         // First try project directory
         let projectPath = URL(fileURLWithPath: #file)
             .deletingLastPathComponent()
@@ -85,9 +78,11 @@ extension UniqueListCoordinator {
         // Try /tmp as fallback
         let tmpPath = URL(fileURLWithPath: "/tmp/test_configs.json")
 
-        for path in [projectPath, docsPath, tmpPath].compactMap({ $0 }) {
-            if let data = try? Data(contentsOf: path),
-               let config = try? JSONDecoder().decode(TestConfigFile.self, from: data) {
+        for path in [projectPath, docsPath, tmpPath].compactMap(\.self) {
+            if
+                let data = try? Data(contentsOf: path),
+                let config = try? JSONDecoder().decode(TestConfigFile.self, from: data)
+            {
                 print("📋 Loaded test configurations from: \(path.path)")
                 return config
             }
@@ -98,7 +93,7 @@ extension UniqueListCoordinator {
     }
 
     /// Apply a test configuration to the current generation settings
-    internal func applyConfiguration(_ config: TestConfiguration) {
+    func applyConfiguration(_ config: TestConfiguration) {
         print("🔧 Applying configuration: \(config.name) - \(config.description)")
 
         // Store configuration in UserDefaults for the actual generation code to use
@@ -120,7 +115,7 @@ extension UniqueListCoordinator {
     }
 
     /// Get current configuration overrides
-    internal static func getCurrentConfigOverrides() -> ConfigOverrides {
+    static func getCurrentConfigOverrides() -> ConfigOverrides {
         let defaults = UserDefaults.standard
 
         // Clean up old values if test is not active
@@ -130,7 +125,7 @@ extension UniqueListCoordinator {
                 minTokens: nil,
                 tokenMultiplier: nil,
                 maxChunkSize: nil,
-                promptTemplate: nil
+                promptTemplate: nil,
             )
         }
 
@@ -139,17 +134,18 @@ extension UniqueListCoordinator {
             minTokens: defaults.object(forKey: "test_config_min_tokens") as? Int,
             tokenMultiplier: defaults.object(forKey: "test_config_token_multiplier") as? Double,
             maxChunkSize: defaults.object(forKey: "test_config_max_chunk_size") as? Int,
-            promptTemplate: defaults.string(forKey: "test_config_prompt_template")
+            promptTemplate: defaults.string(forKey: "test_config_prompt_template"),
         )
     }
 
     /// Build prompt with configuration template
-    internal static func buildPromptFromTemplate(
+    static func buildPromptFromTemplate(
         template: String,
         count: Int,
         query: String,
-        avoidList: [String]
-    ) -> String {
+        avoidList: [String],
+    )
+    -> String {
         let avoidJSON = avoidList.map { "\"\($0)\"" }.joined(separator: ", ")
 
         return template
@@ -228,23 +224,22 @@ extension FMClient {
     }
 
     /// Generate with configuration overrides
-    internal func generateWithConfig(
+    func generateWithConfig(
         _ params: GenerateWithConfigParameters,
-        telemetry: inout [AttemptMetrics]
-    ) async throws -> [String] {
+        telemetry: inout [AttemptMetrics],
+    ) async throws
+    -> [String] {
         // Check for configuration overrides
         let overrides = UniqueListCoordinator.getCurrentConfigOverrides()
 
         // Use overridden values if available
         let actualMaxTokens = overrides.minTokens ?? params.maxTokens
-        let actualPrompt: String
-
-        if overrides.promptTemplate != nil {
+        let actualPrompt: String = if overrides.promptTemplate != nil {
             // Parse the prompt to extract count, query, and avoid list
             // This is a simplified extraction - in production would need better parsing
-            actualPrompt = params.prompt  // For now, use original until we implement full parsing
+            params.prompt // For now, use original until we implement full parsing
         } else {
-            actualPrompt = params.prompt
+            params.prompt
         }
 
         // Call the actual generation method
@@ -255,9 +250,9 @@ extension FMClient {
                 initialSeed: params.initialSeed,
                 temperature: params.temperature,
                 maxTokens: actualMaxTokens,
-                maxRetries: 3
+                maxRetries: 3,
             ),
-            telemetry: &telemetry
+            telemetry: &telemetry,
         )
     }
 }

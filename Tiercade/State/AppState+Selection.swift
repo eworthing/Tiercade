@@ -2,8 +2,9 @@ import Foundation
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     // MARK: - Selection / Multi-Select
+
     // Note: editMode is managed by view layer via environment
     // AppState only manages the selection Set
     func isSelected(_ id: String) -> Bool { selection.contains(id) }
@@ -27,7 +28,9 @@ internal extension AppState {
         }
         let snapshot = captureTierSnapshot()
         let next = TierLogic.moveItem(tiers, itemId: id, targetTierName: tier)
-        guard next != tiers else { return }
+        guard next != tiers else {
+            return
+        }
         tiers = next
         finalizeChange(action: "Move Item", undoSnapshot: snapshot)
         let displayTier = displayLabel(for: tier)
@@ -45,7 +48,9 @@ internal extension AppState {
     }
 
     func batchMove(_ ids: [String], to tier: String) {
-        guard !ids.isEmpty else { return }
+        guard !ids.isEmpty else {
+            return
+        }
         let displayTier = displayLabel(for: tier)
         guard !lockedTiers.contains(tier) else {
             showErrorToast("Tier Locked", message: "Cannot move into \(displayTier) {lock}")
@@ -57,7 +62,9 @@ internal extension AppState {
         for id in ids {
             next = TierLogic.moveItem(next, itemId: id, targetTierName: tier)
         }
-        guard next != tiers else { return }
+        guard next != tiers else {
+            return
+        }
         tiers = next
         finalizeChange(action: "Move Items", undoSnapshot: snapshot)
         clearSelection()
@@ -68,7 +75,7 @@ internal extension AppState {
     }
 
     func currentTier(of id: String) -> String? {
-        for tierName in tierOrder + ["unranked"] where (tiers[tierName]?.contains(where: { $0.id == id }) ?? false) {
+        for tierName in tierOrder + ["unranked"] where tiers[tierName]?.contains(where: { $0.id == id }) ?? false {
             return tierName
         }
         return nil
@@ -80,7 +87,9 @@ internal extension AppState {
 
     func clearTier(_ tier: String) {
         var next = tiers
-        guard let moving = next[tier], !moving.isEmpty else { return }
+        guard let moving = next[tier], !moving.isEmpty else {
+            return
+        }
         next[tier] = []
         next["unranked", default: []].append(contentsOf: moving)
         let snapshot = captureTierSnapshot()
@@ -95,6 +104,7 @@ internal extension AppState {
     }
 
     // MARK: - Tier Locking
+
     func isTierLocked(_ id: String) -> Bool { lockedTiers.contains(id) }
 
     func toggleTierLocked(_ id: String) {
@@ -119,7 +129,9 @@ internal extension AppState {
         }
         let snapshot = captureTierSnapshot()
         let previous = tierLabels[tierId]
-        guard previous != label else { return }
+        guard previous != label else {
+            return
+        }
         tierLabels[tierId] = label
         finalizeChange(action: "Rename Tier", undoSnapshot: snapshot)
     }
@@ -127,7 +139,9 @@ internal extension AppState {
     func setDisplayColorHex(_ hex: String?, for tierId: String) {
         let snapshot = captureTierSnapshot()
         let previous = tierColors[tierId]
-        guard previous != hex else { return }
+        guard previous != hex else {
+            return
+        }
         tierColors[tierId] = hex
         finalizeChange(action: "Recolor Tier", undoSnapshot: snapshot)
     }

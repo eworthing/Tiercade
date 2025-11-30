@@ -9,7 +9,16 @@ import FoundationModels
 #if DEBUG && canImport(FoundationModels)
 @available(iOS 26.0, macOS 26.0, *)
 @MainActor
-internal struct CoordinatorExperimentRunner {
+struct CoordinatorExperimentRunner {
+
+    // MARK: Lifecycle
+
+    init(onProgress: @escaping (String) -> Void = { print($0) }) {
+        self.onProgress = onProgress
+    }
+
+    // MARK: Internal
+
     struct Scenario: Sendable {
         let id: String
         let name: String
@@ -53,11 +62,13 @@ internal struct CoordinatorExperimentRunner {
         let results: [SingleRunResult]
     }
 
-    let onProgress: (String) -> Void
-
-    init(onProgress: @escaping (String) -> Void = { print($0) }) {
-        self.onProgress = onProgress
+    struct RunResult {
+        let items: [String]
+        let duration: Double
+        let diagnostics: UniqueListCoordinator.RunDiagnostics
     }
+
+    let onProgress: (String) -> Void
 
     func runDefaultSuite() async -> Report {
         let scenarios: [Scenario] = [
@@ -70,7 +81,7 @@ internal struct CoordinatorExperimentRunner {
                 useGuidedBackfill: true,
                 prewarm: false,
                 hybridSwitchEnabled: false,
-                guidedBudgetBumpFirst: false
+                guidedBudgetBumpFirst: false,
             ),
             Scenario(
                 id: "unguided-n50",
@@ -81,7 +92,7 @@ internal struct CoordinatorExperimentRunner {
                 useGuidedBackfill: false,
                 prewarm: false,
                 hybridSwitchEnabled: false,
-                guidedBudgetBumpFirst: false
+                guidedBudgetBumpFirst: false,
             ),
             Scenario(
                 id: "guided-n150-prewarm",
@@ -92,8 +103,8 @@ internal struct CoordinatorExperimentRunner {
                 useGuidedBackfill: true,
                 prewarm: true,
                 hybridSwitchEnabled: false,
-                guidedBudgetBumpFirst: false
-            )
+                guidedBudgetBumpFirst: false,
+            ),
         ]
 
         return await run(scenarios: scenarios)
@@ -110,7 +121,7 @@ internal struct CoordinatorExperimentRunner {
                 useGuidedBackfill: true,
                 prewarm: false,
                 hybridSwitchEnabled: false,
-                guidedBudgetBumpFirst: false
+                guidedBudgetBumpFirst: false,
             ),
             Scenario(
                 id: "guided-n150-hybrid-on",
@@ -121,8 +132,8 @@ internal struct CoordinatorExperimentRunner {
                 useGuidedBackfill: true,
                 prewarm: false,
                 hybridSwitchEnabled: true,
-                guidedBudgetBumpFirst: false
-            )
+                guidedBudgetBumpFirst: false,
+            ),
         ]
 
         return await run(scenarios: scenarios)
@@ -142,7 +153,7 @@ internal struct CoordinatorExperimentRunner {
                 useGuidedBackfill: true,
                 prewarm: false,
                 hybridSwitchEnabled: false,
-                guidedBudgetBumpFirst: false
+                guidedBudgetBumpFirst: false,
             ),
             // Guided with budget bump only (no hybrid switch)
             Scenario(
@@ -154,7 +165,7 @@ internal struct CoordinatorExperimentRunner {
                 useGuidedBackfill: true,
                 prewarm: false,
                 hybridSwitchEnabled: false,
-                guidedBudgetBumpFirst: true
+                guidedBudgetBumpFirst: true,
             ),
             // Hybrid (guided → unguided)
             Scenario(
@@ -166,8 +177,8 @@ internal struct CoordinatorExperimentRunner {
                 useGuidedBackfill: true,
                 prewarm: false,
                 hybridSwitchEnabled: true,
-                guidedBudgetBumpFirst: false
-            )
+                guidedBudgetBumpFirst: false,
+            ),
         ]
 
         let report = await run(scenarios: scenarios)
@@ -183,7 +194,9 @@ internal struct CoordinatorExperimentRunner {
             let key = r.scenarioId
             var entry = perScenario[key] ?? ScenarioMetrics(pass: 0, total: 0, timePerUnique: 0.0)
             entry.total += 1
-            if r.passAtN { entry.pass += 1 }
+            if r.passAtN {
+                entry.pass += 1
+            }
             let tpu = r.uniqueItems > 0 ? r.duration / Double(r.uniqueItems) : r.duration
             entry.timePerUnique += tpu
             perScenario[key] = entry
@@ -199,12 +212,14 @@ internal struct CoordinatorExperimentRunner {
             let avgTPU = v.timePerUnique / Double(max(1, v.total))
             ranked.append(RankedScenario(id: id, score: passRate, tpu: avgTPU))
         }
-        ranked.sort { (a, b) in
-            if abs(a.score - b.score) > 0.0001 { return a.score > b.score }
+        ranked.sort { a, b in
+            if abs(a.score - b.score) > 0.0001 {
+                return a.score > b.score
+            }
             return a.tpu < b.tpu
         }
         if let best = ranked.first, let scenario = scenarios.first(where: { $0.id == best.id }) {
-            let scoreStr = String(format: "%.1f%%", best.score*100)
+            let scoreStr = String(format: "%.1f%%", best.score * 100)
             let tpuStr = String(format: "%.2f", best.tpu)
             onProgress("🏆 Medium‑N best arm: \(scenario.name) — pass@N=\(scoreStr), avg TPU=\(tpuStr)")
         }
@@ -225,11 +240,13 @@ internal struct CoordinatorExperimentRunner {
                 do {
                     let result = try await runSingle(
                         scenario: scenario,
-                        seed: seed
+                        seed: seed,
                     )
 
                     let pass = result.items.count >= scenario.targetN
-                    if pass { success += 1 }
+                    if pass {
+                        success += 1
+                    }
 
                     let escalate = shouldEscalatePCC(diagnostics: result.diagnostics, pass: pass)
 
@@ -249,9 +266,9 @@ internal struct CoordinatorExperimentRunner {
                             backfillRounds: result.diagnostics.backfillRounds,
                             circuitBreakerTriggered: result.diagnostics.circuitBreakerTriggered,
                             passCount: result.diagnostics.passCount,
-                            failureReason: result.diagnostics.failureReason
+                            failureReason: result.diagnostics.failureReason,
                         ),
-                        wouldEscalatePCC: escalate
+                        wouldEscalatePCC: escalate,
                     ))
 
                     let dupPct = result.diagnostics.dupRate.map { String(format: "%.1f%%", $0 * 100) } ?? "n/a"
@@ -268,10 +285,10 @@ internal struct CoordinatorExperimentRunner {
 
         let report = Report(
             timestamp: Date(),
-            scenarios: scenarios.map { $0.name },
+            scenarios: scenarios.map(\.name),
             totalRuns: results.count,
             successfulRuns: success,
-            results: results
+            results: results,
         )
 
         saveReport(report)
@@ -280,11 +297,7 @@ internal struct CoordinatorExperimentRunner {
         return report
     }
 
-    struct RunResult {
-        let items: [String]
-        let duration: Double
-        let diagnostics: UniqueListCoordinator.RunDiagnostics
-    }
+    // MARK: Private
 
     private func runSingle(scenario: Scenario, seed: UInt64) async throws -> RunResult {
         let instructions = Instructions("""
@@ -307,14 +320,14 @@ internal struct CoordinatorExperimentRunner {
             logger: { _ in },
             useGuidedBackfill: scenario.useGuidedBackfill,
             hybridSwitchEnabled: scenario.hybridSwitchEnabled,
-            guidedBudgetBumpFirst: scenario.guidedBudgetBumpFirst
+            guidedBudgetBumpFirst: scenario.guidedBudgetBumpFirst,
         )
 
         let t0 = Date()
-        let items = (try? await coordinator.uniqueList(
+        let items = await (try? coordinator.uniqueList(
             query: scenario.query,
             targetCount: scenario.targetN,
-            seed: seed
+            seed: seed,
         )) ?? []
         let dt = Date().timeIntervalSince(t0)
 
@@ -323,9 +336,15 @@ internal struct CoordinatorExperimentRunner {
     }
 
     private func shouldEscalatePCC(diagnostics: UniqueListCoordinator.RunDiagnostics, pass: Bool) -> Bool {
-        if pass { return false }
-        if diagnostics.circuitBreakerTriggered == true { return true }
-        if let passCount = diagnostics.passCount, passCount >= 3 { return true }
+        if pass {
+            return false
+        }
+        if diagnostics.circuitBreakerTriggered == true {
+            return true
+        }
+        if let passCount = diagnostics.passCount, passCount >= 3 {
+            return true
+        }
         return false
     }
 

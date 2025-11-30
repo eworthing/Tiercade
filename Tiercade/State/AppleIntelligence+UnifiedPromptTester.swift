@@ -27,13 +27,17 @@ struct StringList: Sendable {
 @available(iOS 26.0, macOS 26.0, *)
 final class UnifiedPromptTester {
 
+    // MARK: Internal
+
     // MARK: - Config Loading
 
     /// Load system prompts from SystemPrompts.json
     static func loadSystemPrompts() throws -> SystemPromptsLibrary {
-        guard let url = Bundle.main.url(
-            forResource: "SystemPrompts", withExtension: "json", subdirectory: "TestConfigs"
-        ) else {
+        guard
+            let url = Bundle.main.url(
+                forResource: "SystemPrompts", withExtension: "json", subdirectory: "TestConfigs",
+            )
+        else {
             throw TestingError.configurationNotFound("SystemPrompts.json in TestConfigs/")
         }
         return try loadJSON(from: url)
@@ -41,9 +45,11 @@ final class UnifiedPromptTester {
 
     /// Load test queries from TestQueries.json
     static func loadTestQueries() throws -> TestQueriesLibrary {
-        guard let url = Bundle.main.url(
-            forResource: "TestQueries", withExtension: "json", subdirectory: "TestConfigs"
-        ) else {
+        guard
+            let url = Bundle.main.url(
+                forResource: "TestQueries", withExtension: "json", subdirectory: "TestConfigs",
+            )
+        else {
             throw TestingError.configurationNotFound("TestQueries.json in TestConfigs/")
         }
         return try loadJSON(from: url)
@@ -51,9 +57,11 @@ final class UnifiedPromptTester {
 
     /// Load decoding configs from DecodingConfigs.json
     static func loadDecodingConfigs() throws -> DecodingConfigsLibrary {
-        guard let url = Bundle.main.url(
-            forResource: "DecodingConfigs", withExtension: "json", subdirectory: "TestConfigs"
-        ) else {
+        guard
+            let url = Bundle.main.url(
+                forResource: "DecodingConfigs", withExtension: "json", subdirectory: "TestConfigs",
+            )
+        else {
             throw TestingError.configurationNotFound("DecodingConfigs.json in TestConfigs/")
         }
         return try loadJSON(from: url)
@@ -61,20 +69,14 @@ final class UnifiedPromptTester {
 
     /// Load test suites from TestSuites.json
     static func loadTestSuites() throws -> TestSuitesLibrary {
-        guard let url = Bundle.main.url(
-            forResource: "TestSuites", withExtension: "json", subdirectory: "TestConfigs"
-        ) else {
+        guard
+            let url = Bundle.main.url(
+                forResource: "TestSuites", withExtension: "json", subdirectory: "TestConfigs",
+            )
+        else {
             throw TestingError.configurationNotFound("TestSuites.json in TestConfigs/")
         }
         return try loadJSON(from: url)
-    }
-
-    /// Generic JSON loading
-    private static func loadJSON<T: Decodable>(from url: URL) throws -> T {
-        let data = try Data(contentsOf: url)
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(T.self, from: data)
     }
 
     // MARK: - Suite Execution
@@ -82,8 +84,9 @@ final class UnifiedPromptTester {
     /// Run a predefined test suite
     static func runSuite(
         suiteId: String,
-        onProgress: @escaping @MainActor (String) -> Void
-    ) async throws -> TestReport {
+        onProgress: @escaping @MainActor (String) -> Void,
+    ) async throws
+    -> TestReport {
         await MainActor.run { onProgress("📦 Loading test suite '\(suiteId)'...") }
 
         // 🔍 DEBUG: Log suite loading
@@ -152,7 +155,12 @@ final class UnifiedPromptTester {
         debugLog("")
 
         // swiftlint:disable:next line_length - Progress message should remain readable as single line
-        await MainActor.run { onProgress("🎯 Test matrix: \(prompts.count) prompts × \(queries.count) queries × \(decoders.count) decoders × \(suite.config.seeds.count) seeds × \(suite.config.guidedModes.count) modes") }
+        await MainActor
+            .run {
+                onProgress(
+                    "🎯 Test matrix: \(prompts.count) prompts × \(queries.count) queries × \(decoders.count) decoders × \(suite.config.seeds.count) seeds × \(suite.config.guidedModes.count) modes",
+                )
+            }
 
         // Build test runs
         let testRuns = buildTestRuns(
@@ -160,7 +168,7 @@ final class UnifiedPromptTester {
             queries: queries,
             decoders: decoders,
             seeds: suite.config.seeds,
-            guidedModes: suite.config.guidedModes
+            guidedModes: suite.config.guidedModes,
         )
 
         await MainActor.run { onProgress("🚀 Starting \(testRuns.count) test runs...") }
@@ -171,17 +179,43 @@ final class UnifiedPromptTester {
             suite: suite,
             timeoutSeconds: suite.config.timeoutSeconds ?? 60,
             maxTokensOverride: suite.config.maxTokensOverride,
-            onProgress: onProgress
+            onProgress: onProgress,
         )
 
         // Aggregate results
         let report = try aggregateResults(
             suite: suite,
             results: results,
-            prompts: prompts
+            prompts: prompts,
         )
 
         return report
+    }
+
+    // MARK: Private
+
+    // MARK: - Response Analysis
+
+    private struct ResponseAnalysis {
+        let parsedItems: [String]
+        let normalizedItems: [String]
+        let totalItems: Int
+        let uniqueItems: Int
+        let duplicateCount: Int
+        let dupRate: Double
+        let passAtN: Bool
+        let surplusAtN: Int
+        let insufficient: Bool
+        let formatError: Bool
+        let wasJsonParsed: Bool
+    }
+
+    /// Generic JSON loading
+    private static func loadJSON<T: Decodable>(from url: URL) throws -> T {
+        let data = try Data(contentsOf: url)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(T.self, from: data)
     }
 
     // MARK: - Test Run Building
@@ -191,8 +225,9 @@ final class UnifiedPromptTester {
         queries: [TestQueryConfig],
         decoders: [DecodingConfigDef],
         seeds: [UInt64],
-        guidedModes: [Bool]
-    ) -> [TestRun] {
+        guidedModes: [Bool],
+    )
+    -> [TestRun] {
         var runs: [TestRun] = []
         var runNumber = 1
 
@@ -208,7 +243,7 @@ final class UnifiedPromptTester {
                                 query: query,
                                 decoder: decoder,
                                 seed: seed,
-                                useGuidedSchema: guided
+                                useGuidedSchema: guided,
                             ))
                             runNumber += 1
                         }
@@ -227,8 +262,9 @@ final class UnifiedPromptTester {
         suite: TestSuiteConfig,
         timeoutSeconds: Int,
         maxTokensOverride: Int?,
-        onProgress: @escaping @MainActor (String) -> Void
-    ) async -> [SingleTestResult] {
+        onProgress: @escaping @MainActor (String) -> Void,
+    ) async
+    -> [SingleTestResult] {
         var results: [SingleTestResult] = []
         let startTime = Date()
 
@@ -265,7 +301,7 @@ final class UnifiedPromptTester {
             // Show periodic progress summary for long-running suites
             if (index + 1) % 10 == 0 || (index + 1) == runs.count {
                 let percentage = (index + 1) * 100 / runs.count
-                let successCount = results.filter { $0.isSuccess }.count
+                let successCount = results.count(where: { $0.isSuccess })
                 let successRate = successCount * 100 / max(1, results.count)
                 let elapsed = Date().timeIntervalSince(startTime)
                 let elapsedStr = String(format: "%.1f", elapsed)
@@ -294,8 +330,9 @@ final class UnifiedPromptTester {
     private static func executeTestRun(
         _ run: TestRun,
         context: TestRunContext,
-        timeoutSeconds: Int
-    ) async throws -> SingleTestResult {
+        timeoutSeconds: Int,
+    ) async throws
+    -> SingleTestResult {
         let startTime = Date()
 
         // Render prompt with substitutions
@@ -303,7 +340,7 @@ final class UnifiedPromptTester {
         let substitutions: [PromptTemplate.Variable: String] = [
             .query: run.query.query,
             .targetCount: String(run.effectiveTarget),
-            .domain: run.query.domain
+            .domain: run.query.domain,
         ]
         let renderedPrompt = template.render(substitutions: substitutions)
 
@@ -364,7 +401,7 @@ final class UnifiedPromptTester {
                         to: Prompt(run.query.query),
                         generating: StringList.self,
                         includeSchemaInPrompt: true,
-                        options: opts
+                        options: opts,
                     )
                     return response.content.items
                 }
@@ -472,28 +509,12 @@ final class UnifiedPromptTester {
             jsonStrict: analysis.wasJsonParsed,
             insufficient: analysis.insufficient,
             formatError: analysis.formatError,
-            finishReason: "stop",  // Default until Apple exposes this in the API
-            wasTruncated: false,   // Cannot detect without finishReason
+            finishReason: "stop", // Default until Apple exposes this in the API
+            wasTruncated: false, // Cannot detect without finishReason
             maxTokensUsed: context.maxTokens,
             duration: duration,
-            timePerUnique: analysis.uniqueItems > 0 ? duration / Double(analysis.uniqueItems) : duration
+            timePerUnique: analysis.uniqueItems > 0 ? duration / Double(analysis.uniqueItems) : duration,
         )
-    }
-
-    // MARK: - Response Analysis
-
-    private struct ResponseAnalysis {
-        let parsedItems: [String]
-        let normalizedItems: [String]
-        let totalItems: Int
-        let uniqueItems: Int
-        let duplicateCount: Int
-        let dupRate: Double
-        let passAtN: Bool
-        let surplusAtN: Int
-        let insufficient: Bool
-        let formatError: Bool
-        let wasJsonParsed: Bool
     }
 
     private static func analyzeResponse(_ response: String, targetCount: Int) -> ResponseAnalysis {
@@ -514,12 +535,14 @@ final class UnifiedPromptTester {
         // Remove markdown code fence with optional language specifier
         let markdownPattern = #"^```(?:json)?\s*\n?(.*?)\n?```$"#
         let regexOpts: NSRegularExpression.Options = [.dotMatchesLineSeparators]
-        if let regex = try? NSRegularExpression(pattern: markdownPattern, options: regexOpts),
-           let match = regex.firstMatch(
-               in: response, options: [],
-               range: NSRange(response.startIndex..., in: response)
-           ),
-           let contentRange = Range(match.range(at: 1), in: response) {
+        if
+            let regex = try? NSRegularExpression(pattern: markdownPattern, options: regexOpts),
+            let match = regex.firstMatch(
+                in: response, options: [],
+                range: NSRange(response.startIndex..., in: response),
+            ),
+            let contentRange = Range(match.range(at: 1), in: response)
+        {
             cleanedResponse = String(response[contentRange])
         }
 
@@ -533,7 +556,9 @@ final class UnifiedPromptTester {
         }
 
         let trimmed = cleanedResponse.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let data = trimmed.data(using: .utf8) else { return nil }
+        guard let data = trimmed.data(using: .utf8) else {
+            return nil
+        }
 
         // Try parsing as bare array first: ["item1", "item2", ...]
         if let items = try? JSONDecoder().decode([String].self, from: data) {
@@ -541,8 +566,10 @@ final class UnifiedPromptTester {
         }
 
         // Try parsing as envelope format: {"items": ["item1", "item2", ...]}
-        if let envelope = try? JSONDecoder().decode([String: [String]].self, from: data),
-           let items = envelope["items"] {
+        if
+            let envelope = try? JSONDecoder().decode([String: [String]].self, from: data),
+            let items = envelope["items"]
+        {
             return items
         }
 
@@ -579,7 +606,7 @@ final class UnifiedPromptTester {
 
     private static func analyzeItems(_ items: [String], targetCount: Int, wasJsonParsed: Bool) -> ResponseAnalysis {
         // Normalize items
-        let normalized = items.map { $0.normKey }
+        let normalized = items.map(\.normKey)
 
         // Count unique
         let uniqueSet = Set(normalized)
@@ -602,7 +629,7 @@ final class UnifiedPromptTester {
             surplusAtN: surplusAtN,
             insufficient: insufficient,
             formatError: items.isEmpty,
-            wasJsonParsed: wasJsonParsed
+            wasJsonParsed: wasJsonParsed,
         )
     }
 
@@ -611,13 +638,16 @@ final class UnifiedPromptTester {
     private static func aggregateResults(
         suite: TestSuiteConfig,
         results: [SingleTestResult],
-        prompts: [SystemPromptConfig]
-    ) throws -> TestReport {
+        prompts: [SystemPromptConfig],
+    ) throws
+    -> TestReport {
         var aggregates: [AggregateTestResult] = []
 
         for prompt in prompts {
             let promptResults = results.filter { $0.promptId == prompt.id }
-            guard !promptResults.isEmpty else { continue }
+            guard !promptResults.isEmpty else {
+                continue
+            }
 
             let aggregate = aggregatePromptResults(prompt: prompt, results: promptResults)
             aggregates.append(aggregate)
@@ -625,8 +655,8 @@ final class UnifiedPromptTester {
 
         let rankings = computeRankings(aggregates: aggregates)
 
-        let successfulRuns = results.filter { $0.isSuccess }.count
-        let totalDuration = results.map { $0.duration }.reduce(0, +)
+        let successfulRuns = results.count(where: { $0.isSuccess })
+        let totalDuration = results.map(\.duration).reduce(0, +)
 
         return TestReport(
             id: UUID(),
@@ -641,14 +671,15 @@ final class UnifiedPromptTester {
             environment: getEnvironmentInfo(),
             aggregateResults: aggregates,
             allResults: results,
-            rankings: rankings
+            rankings: rankings,
         )
     }
 
     private static func aggregatePromptResults(
         prompt: SystemPromptConfig,
-        results: [SingleTestResult]
-    ) -> AggregateTestResult {
+        results: [SingleTestResult],
+    )
+    -> AggregateTestResult {
         let overallStats = computeOverallStats(results: results)
         let byNBucket = stratifyByNBucket(results: results)
         let byDomain = stratifyByDomain(results: results)
@@ -669,16 +700,16 @@ final class UnifiedPromptTester {
             byDecoder: byDecoder,
             overallStats: overallStats,
             bestRun: bestRun,
-            worstRun: worstRun
+            worstRun: worstRun,
         )
     }
 
     private static func computeOverallStats(results: [SingleTestResult]) -> AggregateTestResult.OverallStats {
-        let passAtNRate = Double(results.filter { $0.passAtN }.count) / Double(max(1, results.count))
+        let passAtNRate = Double(results.count(where: { $0.passAtN })) / Double(max(1, results.count))
         let uniqueItems = results.map { Double($0.uniqueItems) }
-        let dupRates = results.map { $0.dupRate }
-        let timesPerUnique = results.map { $0.timePerUnique }
-        let qualityScores = results.map { $0.qualityScore }
+        let dupRates = results.map(\.dupRate)
+        let timesPerUnique = results.map(\.timePerUnique)
+        let qualityScores = results.map(\.qualityScore)
 
         return AggregateTestResult.OverallStats(
             passAtNRate: passAtNRate,
@@ -688,12 +719,12 @@ final class UnifiedPromptTester {
             stdevDupRate: stdev(dupRates),
             meanTimePerUnique: mean(timesPerUnique),
             stdevTimePerUnique: stdev(timesPerUnique),
-            jsonStrictRate: Double(results.filter { $0.jsonStrict }.count) / Double(max(1, results.count)),
-            truncationRate: Double(results.filter { $0.wasTruncated }.count) / Double(max(1, results.count)),
-            insufficientRate: Double(results.filter { $0.insufficient }.count) / Double(max(1, results.count)),
-            formatErrorRate: Double(results.filter { $0.formatError }.count) / Double(max(1, results.count)),
+            jsonStrictRate: Double(results.count(where: { $0.jsonStrict })) / Double(max(1, results.count)),
+            truncationRate: Double(results.count(where: { $0.wasTruncated })) / Double(max(1, results.count)),
+            insufficientRate: Double(results.count(where: { $0.insufficient })) / Double(max(1, results.count)),
+            formatErrorRate: Double(results.count(where: { $0.formatError })) / Double(max(1, results.count)),
             meanQualityScore: mean(qualityScores),
-            seedVariance: variance(uniqueItems)
+            seedVariance: variance(uniqueItems),
         )
     }
 
@@ -713,10 +744,10 @@ final class UnifiedPromptTester {
     }
 
     private static func computeBucketStats(results: [SingleTestResult]) -> AggregateTestResult.BucketStats {
-        let passAtNRate = Double(results.filter { $0.passAtN }.count) / Double(max(1, results.count))
+        let passAtNRate = Double(results.count(where: { $0.passAtN })) / Double(max(1, results.count))
         let uniqueItems = results.map { Double($0.uniqueItems) }
-        let dupRates = results.map { $0.dupRate }
-        let timesPerUnique = results.map { $0.timePerUnique }
+        let dupRates = results.map(\.dupRate)
+        let timesPerUnique = results.map(\.timePerUnique)
 
         return AggregateTestResult.BucketStats(
             count: results.count,
@@ -725,7 +756,7 @@ final class UnifiedPromptTester {
             meanDupRate: mean(dupRates),
             stdevDupRate: stdev(dupRates),
             meanTimePerUnique: mean(timesPerUnique),
-            jsonStrictRate: Double(results.filter { $0.jsonStrict }.count) / Double(max(1, results.count))
+            jsonStrictRate: Double(results.count(where: { $0.jsonStrict })) / Double(max(1, results.count)),
         )
     }
 
@@ -733,33 +764,34 @@ final class UnifiedPromptTester {
 
     private static func computeRankings(aggregates: [AggregateTestResult]) -> TestReport.Rankings {
         let byPassRate = rankBy(
-            aggregates: aggregates, metric: "passAtN", getter: { $0.overallStats.passAtNRate }
+            aggregates: aggregates, metric: "passAtN", getter: { $0.overallStats.passAtNRate },
         )
         let byQuality = rankBy(
-            aggregates: aggregates, metric: "quality", getter: { $0.overallStats.meanQualityScore }
+            aggregates: aggregates, metric: "quality", getter: { $0.overallStats.meanQualityScore },
         )
         let bySpeed = rankBy(
             aggregates: aggregates, metric: "speed",
-            getter: { 1.0 / max(0.001, $0.overallStats.meanTimePerUnique) }
+            getter: { 1.0 / max(0.001, $0.overallStats.meanTimePerUnique) },
         )
         let byConsistency = rankBy(
             aggregates: aggregates, metric: "consistency",
-            getter: { 1.0 / max(0.001, $0.overallStats.seedVariance) }
+            getter: { 1.0 / max(0.001, $0.overallStats.seedVariance) },
         )
 
         return TestReport.Rankings(
             byPassRate: byPassRate,
             byQuality: byQuality,
             bySpeed: bySpeed,
-            byConsistency: byConsistency
+            byConsistency: byConsistency,
         )
     }
 
     private static func rankBy(
         aggregates: [AggregateTestResult],
         metric: String,
-        getter: (AggregateTestResult) -> Double
-    ) -> [TestReport.Rankings.RankedPrompt] {
+        getter: (AggregateTestResult) -> Double,
+    )
+    -> [TestReport.Rankings.RankedPrompt] {
         aggregates
             .map { (aggregate: $0, score: getter($0)) }
             .sorted { $0.score > $1.score }
@@ -770,7 +802,7 @@ final class UnifiedPromptTester {
                     promptId: item.aggregate.promptId,
                     promptName: item.aggregate.promptName,
                     score: item.score,
-                    metric: metric
+                    metric: metric,
                 )
             }
     }
@@ -817,7 +849,9 @@ final class UnifiedPromptTester {
     }
 
     private static func estimateTimeRemaining(completed: Int, total: Int, elapsed: TimeInterval) -> TimeInterval? {
-        guard completed > 0 else { return nil }
+        guard completed > 0 else {
+            return nil
+        }
         let avgTime = elapsed / Double(completed)
         let remaining = total - completed
         return avgTime * Double(remaining)
@@ -829,7 +863,7 @@ final class UnifiedPromptTester {
         suite: TestSuiteConfig,
         results: [SingleTestResult],
         completed: Int,
-        total: Int
+        total: Int,
     ) {
         let checkpointPath = NSTemporaryDirectory()
             .appending("tiercade_test_checkpoint.json")
@@ -841,9 +875,9 @@ final class UnifiedPromptTester {
             "timestamp": ISO8601DateFormatter().string(from: Date()),
             "completed": completed,
             "total": total,
-            "successCount": results.filter { $0.isSuccess }.count,
-            "failureCount": results.filter { !$0.isSuccess }.count,
-            "meanDupRate": results.isEmpty ? 0.0 : results.map { $0.dupRate }.reduce(0, +) / Double(results.count)
+            "successCount": results.count(where: { $0.isSuccess }),
+            "failureCount": results.count(where: { !$0.isSuccess }),
+            "meanDupRate": results.isEmpty ? 0.0 : results.map(\.dupRate).reduce(0, +) / Double(results.count),
         ]
 
         do {
@@ -886,7 +920,7 @@ final class UnifiedPromptTester {
             wasTruncated: false,
             maxTokensUsed: context.maxTokens,
             duration: 0,
-            timePerUnique: 0
+            timePerUnique: 0,
         )
     }
 
@@ -895,21 +929,25 @@ final class UnifiedPromptTester {
         return TestReport.EnvironmentInfo(
             osVersion: "\(v.majorVersion).\(v.minorVersion).\(v.patchVersion)",
             osVersionString: ProcessInfo.processInfo.operatingSystemVersionString,
-            hasTopP: true,  // iOS 26+ always has topP
+            hasTopP: true, // iOS 26+ always has topP
             device: nil,
-            buildDate: ISO8601DateFormatter().string(from: Date())
+            buildDate: ISO8601DateFormatter().string(from: Date()),
         )
     }
 
     // MARK: - Math Utilities
 
     private static func mean(_ values: [Double]) -> Double {
-        guard !values.isEmpty else { return 0.0 }
+        guard !values.isEmpty else {
+            return 0.0
+        }
         return values.reduce(0, +) / Double(values.count)
     }
 
     private static func variance(_ values: [Double]) -> Double {
-        guard values.count > 1 else { return 0.0 }
+        guard values.count > 1 else {
+            return 0.0
+        }
         let m = mean(values)
         let squaredDiffs = values.map { pow($0 - m, 2) }
         return mean(squaredDiffs)
@@ -923,8 +961,9 @@ final class UnifiedPromptTester {
 
     private nonisolated static func withTimeout<T: Sendable>(
         seconds: Int,
-        operation: @Sendable @escaping () async throws -> T
-    ) async throws -> T {
+        operation: @Sendable @escaping () async throws -> T,
+    ) async throws
+    -> T {
         try await withThrowingTaskGroup(of: T.self) { group in
             group.addTask {
                 try await operation()

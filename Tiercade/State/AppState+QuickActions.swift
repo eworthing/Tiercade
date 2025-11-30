@@ -2,8 +2,9 @@ import Foundation
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     // MARK: - Quick Rank
+
     func beginQuickRank(_ item: Item) {
         quickRankTarget = item
     }
@@ -13,7 +14,9 @@ internal extension AppState {
     }
 
     func commitQuickRank(to tier: String) {
-        guard let target = quickRankTarget else { return }
+        guard let target = quickRankTarget else {
+            return
+        }
         let snapshot = captureTierSnapshot()
         let next = QuickRankLogic.assign(tiers, itemId: target.id, to: tier)
         guard next != tiers else {
@@ -29,6 +32,7 @@ internal extension AppState {
     }
 
     // MARK: - Quick Move (tvOS Play/Pause)
+
     func beginQuickMove(_ item: Item) {
         overlays.quickMoveTarget = item
         batchQuickMoveActive = false
@@ -46,7 +50,9 @@ internal extension AppState {
             return
         }
 
-        guard let item = overlays.quickMoveTarget else { return }
+        guard let item = overlays.quickMoveTarget else {
+            return
+        }
         let snapshot = captureTierSnapshot()
         let next = QuickRankLogic.assign(tiers, itemId: item.id, to: tier)
         guard next != tiers else {
@@ -65,8 +71,11 @@ internal extension AppState {
     }
 
     // MARK: - Batch Quick Move
+
     func presentBatchQuickMove() {
-        guard !selection.isEmpty else { return }
+        guard !selection.isEmpty else {
+            return
+        }
         batchQuickMoveActive = true
         // Use a dummy item to trigger the overlay
         overlays.quickMoveTarget = Item(id: "batch", attributes: ["name": "\(selection.count) Items"])

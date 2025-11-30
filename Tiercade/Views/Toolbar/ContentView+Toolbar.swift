@@ -5,28 +5,15 @@ import UniformTypeIdentifiers
 
 import TiercadeCore
 
-// MARK: - Toolbar and supporting components
+// MARK: - ToolbarView
 
-internal struct ToolbarView: ToolbarContent {
+struct ToolbarView: ToolbarContent {
+
+    // MARK: Internal
+
     @Bindable var app: AppState
-    #if os(iOS)
-    @Environment(\.editMode) private var editMode
-    #endif
-    @State private var exportText: String = ""
-    @State private var showingSettings = false
-    @State private var showingExportFormatSheet = false
-    @State private var selectedExportFormat: ExportFormat = .text
-    @State private var exportingJSON = false
-    @State private var importingJSON = false
-    #if os(iOS)
-    @State private var jsonDoc = TiersDocument()
-    #endif
-    @State private var showingImportSheet = false
-    @State private var showingSaveDialog = false
-    @State private var showingLoadDialog = false
-    @State private var saveFileName = ""
 
-    internal var body: some ToolbarContent {
+    var body: some ToolbarContent {
         // Quick menu - iOS uses leading position, macOS uses principal
         #if os(iOS)
         ToolbarItemGroup(placement: .topBarLeading) {
@@ -131,7 +118,7 @@ internal struct ToolbarView: ToolbarContent {
             onShowExportFormat: handleExportFormatSelection,
             onImportJSON: { importingJSON = true },
             onImportCSV: { showingImportSheet = true },
-            onShowSettings: { showingSettings = true }
+            onShowSettings: { showingSettings = true },
         )
         #endif
 
@@ -149,7 +136,7 @@ internal struct ToolbarView: ToolbarContent {
             showingImportSheet: $showingImportSheet,
             showingSaveDialog: $showingSaveDialog,
             showingLoadDialog: $showingLoadDialog,
-            saveFileName: $saveFileName
+            saveFileName: $saveFileName,
         )
         #else
         MacAndTVToolbarSheets(
@@ -157,10 +144,43 @@ internal struct ToolbarView: ToolbarContent {
             showingSaveDialog: $showingSaveDialog,
             showingLoadDialog: $showingLoadDialog,
             saveFileName: $saveFileName,
-            showingSettings: $showingSettings
+            showingSettings: $showingSettings,
         )
         #endif
     }
+
+    func handleExportFormatSelection(_ format: ExportFormat) {
+        selectedExportFormat = format
+        #if os(iOS)
+        if format == .json {
+            jsonDoc = TiersDocument(tiers: app.tiers)
+            exportingJSON = true
+        } else {
+            showingExportFormatSheet = true
+        }
+        #else
+        showingExportFormatSheet = true
+        #endif
+    }
+
+    // MARK: Private
+
+    #if os(iOS)
+    @Environment(\.editMode) private var editMode
+    #endif
+    @State private var exportText: String = ""
+    @State private var showingSettings = false
+    @State private var showingExportFormatSheet = false
+    @State private var selectedExportFormat: ExportFormat = .text
+    @State private var exportingJSON = false
+    @State private var importingJSON = false
+    #if os(iOS)
+    @State private var jsonDoc = TiersDocument()
+    #endif
+    @State private var showingImportSheet = false
+    @State private var showingSaveDialog = false
+    @State private var showingLoadDialog = false
+    @State private var saveFileName = ""
 
     @ViewBuilder
     private var primaryActionButtons: some View {
@@ -174,7 +194,7 @@ internal struct ToolbarView: ToolbarContent {
                 } label: {
                     Label(
                         density.displayName,
-                        systemImage: app.cardDensityPreference == density ? "checkmark" : ""
+                        systemImage: app.cardDensityPreference == density ? "checkmark" : "",
                     )
                 }
             }
@@ -183,7 +203,7 @@ internal struct ToolbarView: ToolbarContent {
         }
         .accessibilityIdentifier("Toolbar_CardSize")
         #if os(macOS)
-        .help("Card Size")
+            .help("Card Size")
         #endif
         #endif
 
@@ -194,7 +214,7 @@ internal struct ToolbarView: ToolbarContent {
             Section {
                 Label(
                     "Current: \(app.globalSortMode.displayName)",
-                    systemImage: "checkmark.circle"
+                    systemImage: "checkmark.circle",
                 )
             }
 
@@ -206,7 +226,7 @@ internal struct ToolbarView: ToolbarContent {
             } label: {
                 Label(
                     "Manual Order",
-                    systemImage: app.globalSortMode.isCustom ? "checkmark" : ""
+                    systemImage: app.globalSortMode.isCustom ? "checkmark" : "",
                 )
             }
 
@@ -215,7 +235,9 @@ internal struct ToolbarView: ToolbarContent {
                 app.setGlobalSortMode(.alphabetical(ascending: true))
             } label: {
                 let isSelected = {
-                    if case .alphabetical(let asc) = app.globalSortMode, asc { return true }
+                    if case let .alphabetical(asc) = app.globalSortMode, asc {
+                        return true
+                    }
                     return false
                 }()
                 Label("A → Z", systemImage: isSelected ? "checkmark" : "")
@@ -225,7 +247,9 @@ internal struct ToolbarView: ToolbarContent {
                 app.setGlobalSortMode(.alphabetical(ascending: false))
             } label: {
                 let isSelected = {
-                    if case .alphabetical(let asc) = app.globalSortMode, !asc { return true }
+                    if case let .alphabetical(asc) = app.globalSortMode, !asc {
+                        return true
+                    }
                     return false
                 }()
                 Label("Z → A", systemImage: isSelected ? "checkmark" : "")
@@ -243,8 +267,12 @@ internal struct ToolbarView: ToolbarContent {
                                 app.setGlobalSortMode(.byAttribute(key: key, ascending: true, type: type))
                             } label: {
                                 let isSelected = {
-                                    if case .byAttribute(let k, let asc, _) = app.globalSortMode,
-                                       k == key, asc { return true }
+                                    if
+                                        case let .byAttribute(k, asc, _) = app.globalSortMode,
+                                        k == key, asc
+                                    {
+                                        return true
+                                    }
                                     return false
                                 }()
                                 Label("\(key.capitalized) ↑", systemImage: isSelected ? "checkmark" : "")
@@ -254,8 +282,12 @@ internal struct ToolbarView: ToolbarContent {
                                 app.setGlobalSortMode(.byAttribute(key: key, ascending: false, type: type))
                             } label: {
                                 let isSelected = {
-                                    if case .byAttribute(let k, let asc, _) = app.globalSortMode,
-                                       k == key, !asc { return true }
+                                    if
+                                        case let .byAttribute(k, asc, _) = app.globalSortMode,
+                                        k == key, !asc
+                                    {
+                                        return true
+                                    }
                                     return false
                                 }()
                                 Label("\(key.capitalized) ↓", systemImage: isSelected ? "checkmark" : "")
@@ -295,10 +327,10 @@ internal struct ToolbarView: ToolbarContent {
         .disabled(!app.canStartHeadToHead)
         .accessibilityIdentifier("Toolbar_HeadToHead")
         #if os(iOS)
-        .keyboardShortcut("r", modifiers: [.command])
+            .keyboardShortcut("r", modifiers: [.command])
         #elseif os(macOS)
-        .keyboardShortcut("h", modifiers: [.control, .command])
-        .help("Start HeadToHead ranking (⌃⌘H)")
+            .keyboardShortcut("h", modifiers: [.control, .command])
+            .help("Start HeadToHead ranking (⌃⌘H)")
         #endif
         #endif
 
@@ -309,16 +341,16 @@ internal struct ToolbarView: ToolbarContent {
         } label: {
             Label(
                 "Analysis",
-                systemImage: app.showingAnalysis ? "chart.bar.fill" : "chart.bar"
+                systemImage: app.showingAnalysis ? "chart.bar.fill" : "chart.bar",
             )
         }
         .disabled(!app.canShowAnalysis && !app.showingAnalysis)
         .accessibilityIdentifier("Toolbar_Analysis")
         #if os(iOS)
-        .keyboardShortcut("i", modifiers: [.command])
+            .keyboardShortcut("i", modifiers: [.command])
         #elseif os(macOS)
-        .keyboardShortcut("a", modifiers: [.command, .option])
-        .help(app.showingAnalysis ? "Hide Analysis (⌥⌘A)" : "Show Analysis (⌥⌘A)")
+            .keyboardShortcut("a", modifiers: [.command, .option])
+            .help(app.showingAnalysis ? "Hide Analysis (⌥⌘A)" : "Show Analysis (⌥⌘A)")
         #endif
         #endif
 
@@ -331,9 +363,9 @@ internal struct ToolbarView: ToolbarContent {
         }
         .accessibilityIdentifier("Toolbar_Themes")
         #if !os(tvOS)
-        .keyboardShortcut("t", modifiers: [.command, .option])
+            .keyboardShortcut("t", modifiers: [.command, .option])
         #if os(macOS)
-        .help("Browse tier themes (⌥⌘T)")
+            .help("Browse tier themes (⌥⌘T)")
         #endif
         #endif
         #endif
@@ -347,7 +379,7 @@ internal struct ToolbarView: ToolbarContent {
             }
             .accessibilityIdentifier("Toolbar_AIChat")
             #if os(macOS)
-            .help("Chat with Apple Intelligence")
+                .help("Chat with Apple Intelligence")
             #endif
         }
 
@@ -365,7 +397,7 @@ internal struct ToolbarView: ToolbarContent {
         } label: {
             Label(
                 multiSelectActive ? "Done" : "Select",
-                systemImage: multiSelectActive ? "checkmark.rectangle.stack.fill" : "rectangle.stack.badge.plus"
+                systemImage: multiSelectActive ? "checkmark.rectangle.stack.fill" : "rectangle.stack.badge.plus",
             )
             .symbolRenderingMode(.hierarchical)
         }
@@ -382,48 +414,39 @@ internal struct ToolbarView: ToolbarContent {
     private func matchesMode(_ mode: GlobalSortMode) -> Bool {
         switch (app.globalSortMode, mode) {
         case (.custom, .custom):
-            return true
-        case (.alphabetical(let asc1), .alphabetical(let asc2)):
-            return asc1 == asc2
+            true
+        case let (.alphabetical(asc1), .alphabetical(asc2)):
+            asc1 == asc2
         default:
-            return false
+            false
         }
     }
 
     private func matchesAttributeMode(key: String, ascending: Bool) -> Bool {
-        if case .byAttribute(let k, let asc, _) = app.globalSortMode {
+        if case let .byAttribute(k, asc, _) = app.globalSortMode {
             return k == key && asc == ascending
         }
         return false
     }
 
-    internal func handleExportFormatSelection(_ format: ExportFormat) {
-        selectedExportFormat = format
-        #if os(iOS)
-        if format == .json {
-            jsonDoc = TiersDocument(tiers: app.tiers)
-            exportingJSON = true
-        } else {
-            showingExportFormatSheet = true
-        }
-        #else
-        showingExportFormatSheet = true
-        #endif
-    }
 }
 
-// MARK: - Secondary Toolbar Actions
+// MARK: - SecondaryToolbarActions
 
-internal struct SecondaryToolbarActions: ToolbarContent {
+struct SecondaryToolbarActions: ToolbarContent {
+
+    // MARK: Internal
+
     @Bindable var app: AppState
-    internal var onShowSave: () -> Void = {}
-    internal var onShowLoad: () -> Void = {}
-    internal var onShowExportFormat: (ExportFormat) -> Void = { _ in }
-    internal var onImportJSON: () -> Void = {}
-    internal var onImportCSV: () -> Void = {}
-    internal var onShowSettings: () -> Void = {}
 
-    internal var body: some ToolbarContent {
+    var onShowSave: () -> Void = {}
+    var onShowLoad: () -> Void = {}
+    var onShowExportFormat: (ExportFormat) -> Void = { _ in }
+    var onImportJSON: () -> Void = {}
+    var onImportCSV: () -> Void = {}
+    var onShowSettings: () -> Void = {}
+
+    var body: some ToolbarContent {
         ToolbarItemGroup(placement: toolbarPlacement) {
             Menu("Actions") {
                 ForEach(app.tierOrder, id: \.self) { tier in
@@ -444,6 +467,8 @@ internal struct SecondaryToolbarActions: ToolbarContent {
         }
     }
 
+    // MARK: Private
+
     private var toolbarPlacement: ToolbarItemPlacement {
         #if os(tvOS)
         .automatic
@@ -455,20 +480,20 @@ internal struct SecondaryToolbarActions: ToolbarContent {
     private var fileOperationsMenu: some View {
         Menu("File Operations") {
             Button("Save Locally") { try? app.save() }
-                #if !os(tvOS)
+            #if !os(tvOS)
                 .keyboardShortcut("s", modifiers: [.command])
             #endif
             Button("Load Saved") { _ = app.load() }
-                #if !os(tvOS)
+            #if !os(tvOS)
                 .keyboardShortcut("o", modifiers: [.command])
             #endif
             Divider()
             Button("Save to File...") { onShowSave() }
-                #if !os(tvOS)
+            #if !os(tvOS)
                 .keyboardShortcut("S", modifiers: [.command, .shift])
             #endif
             Button("Load from File...") { onShowLoad() }
-                #if !os(tvOS)
+            #if !os(tvOS)
                 .keyboardShortcut("O", modifiers: [.command, .shift])
             #endif
             Button("Browse Tier Lists") { app.presentTierListBrowser() }

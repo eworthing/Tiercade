@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - HeadToHeadRecord
+
 public struct HeadToHeadRecord: Sendable {
     public var wins: Int = 0
     public var losses: Int = 0
@@ -7,9 +9,14 @@ public struct HeadToHeadRecord: Sendable {
     public var winRate: Double { total == 0 ? 0 : Double(wins) / Double(total) }
 }
 
+// MARK: - HeadToHeadLogic
+
 public enum HeadToHeadLogic {
+
+    // MARK: Public
+
     /// Controls diagnostic logging during refinement; set to `false` in tests to suppress noisy output.
-    nonisolated(unsafe) public static var loggingEnabled: Bool = true
+    public nonisolated(unsafe) static var loggingEnabled: Bool = true
 
     // MARK: Pair generation & voting
 
@@ -18,16 +25,20 @@ public enum HeadToHeadLogic {
     }
 
     public static func pairings(from pool: [Item], rng: () -> Double) -> [(Item, Item)] {
-        guard pool.count >= 2 else { return [] }
+        guard pool.count >= 2 else {
+            return []
+        }
         var combinations: [(Item, Item)] = []
         combinations.reserveCapacity(pool.count * (pool.count - 1) / 2)
-        for i in 0..<(pool.count - 1) {
+        for i in 0 ..< (pool.count - 1) {
             let left = pool[i]
-            for j in (i + 1)..<pool.count {
+            for j in (i + 1) ..< pool.count {
                 combinations.append((left, pool[j]))
             }
         }
-        guard combinations.count > 1 else { return combinations }
+        guard combinations.count > 1 else {
+            return combinations
+        }
         var shuffled = combinations
         var idx = shuffled.count - 1
         while idx > 0 {
@@ -54,8 +65,9 @@ public enum HeadToHeadLogic {
         from pool: [Item],
         records: [String: HeadToHeadRecord],
         tierOrder: [String],
-        baseTiers: Items
-    ) -> HeadToHeadQuickResult {
+        baseTiers: Items,
+    )
+    -> HeadToHeadQuickResult {
         guard !pool.isEmpty else {
             return HeadToHeadQuickResult(tiers: baseTiers, artifacts: nil, suggestedPairs: [])
         }
@@ -68,7 +80,7 @@ public enum HeadToHeadLogic {
         let (rankable, undersampled) = partitionByComparisons(
             pool,
             records: records,
-            minimumComparisons: Tun.minimumComparisonsPerItem
+            minimumComparisons: Tun.minimumComparisonsPerItem,
         )
 
         var tiers = clearedTiers(baseTiers, removing: pool, tierNames: tierNames)
@@ -78,7 +90,7 @@ public enum HeadToHeadLogic {
                 undersampled: undersampled,
                 baseTiers: baseTiers,
                 tierOrder: tierOrder,
-                records: records
+                records: records,
             )
         }
 
@@ -99,13 +111,13 @@ public enum HeadToHeadLogic {
             undersampled: undersampled,
             operativeNames: operativeNames,
             cuts: cuts,
-            metrics: metrics
+            metrics: metrics,
         )
 
         let suggested = refinementPairs(
             artifacts: artifacts,
             records: records,
-            limit: suggestedPairLimit(for: artifacts)
+            limit: suggestedPairLimit(for: artifacts),
         )
 
         return HeadToHeadQuickResult(tiers: tiers, artifacts: artifacts, suggestedPairs: suggested)
@@ -114,12 +126,17 @@ public enum HeadToHeadLogic {
     public static func refinementPairs(
         artifacts: HeadToHeadArtifacts,
         records: [String: HeadToHeadRecord],
-        limit: Int
-    ) -> [(Item, Item)] {
-        guard artifacts.mode != .done,
-              !artifacts.rankable.isEmpty,
-              !artifacts.frontier.isEmpty,
-              limit > 0 else { return [] }
+        limit: Int,
+    )
+    -> [(Item, Item)] {
+        guard
+            artifacts.mode != .done,
+            !artifacts.rankable.isEmpty,
+            !artifacts.frontier.isEmpty,
+            limit > 0
+        else {
+            return []
+        }
 
         let metrics = metricsDictionary(for: artifacts.rankable, records: records, z: Tun.zQuick)
         let ordered = orderedItems(artifacts.rankable, metrics: metrics)
@@ -129,19 +146,21 @@ public enum HeadToHeadLogic {
             ordered: ordered,
             metrics: metrics,
             limit: limit,
-            seen: &seen
+            seen: &seen,
         )
 
-        guard results.count < limit else { return Array(results.prefix(limit)) }
+        guard results.count < limit else {
+            return Array(results.prefix(limit))
+        }
 
         let candidates = frontierCandidatePairs(
             artifacts: artifacts,
             metrics: metrics,
-            seen: &seen
+            seen: &seen,
         )
 
         let remaining = max(0, limit - results.count)
-        results.append(contentsOf: candidates.prefix(remaining).map { $0.pair })
+        results.append(contentsOf: candidates.prefix(remaining).map(\.pair))
 
         return results
     }
@@ -151,9 +170,12 @@ public enum HeadToHeadLogic {
         records: [String: HeadToHeadRecord],
         tierOrder: [String],
         currentTiers: Items,
-        targetComparisonsPerItem: Int
-    ) -> [(Item, Item)] {
-        guard pool.count >= 2, targetComparisonsPerItem > 0 else { return [] }
+        targetComparisonsPerItem: Int,
+    )
+    -> [(Item, Item)] {
+        guard pool.count >= 2, targetComparisonsPerItem > 0 else {
+            return []
+        }
 
         let priors = buildPriors(from: currentTiers, tierOrder: tierOrder)
         let metrics = metricsDictionary(for: pool, records: records, z: Tun.zQuick, priors: priors)
@@ -161,17 +183,19 @@ public enum HeadToHeadLogic {
             pool: pool,
             tierOrder: tierOrder,
             currentTiers: currentTiers,
-            metrics: metrics
+            metrics: metrics,
         )
 
         var builder = WarmStartQueueBuilder(pool: pool, target: targetComparisonsPerItem)
         let frontierWidth = max(1, Tun.frontierWidth)
 
-        if builder.enqueueBoundaryPairs(
-            tierOrder: tierOrder,
-            tiersByName: preparation.tiersByName,
-            frontierWidth: frontierWidth
-        ) {
+        if
+            builder.enqueueBoundaryPairs(
+                tierOrder: tierOrder,
+                tiersByName: preparation.tiersByName,
+                frontierWidth: frontierWidth,
+            )
+        {
             return builder.queue
         }
 
@@ -187,18 +211,13 @@ public enum HeadToHeadLogic {
         return builder.queue
     }
 
-    /// Chooses how many refinement pairs to surface, ensuring we can touch every active boundary at least once.
-    private static func suggestedPairLimit(for artifacts: HeadToHeadArtifacts) -> Int {
-        let cutsNeeded = max(artifacts.tierNames.count - 1, 1)
-        return max(Tun.maxSuggestedPairs, cutsNeeded)
-    }
-
     public static func finalizeTiers(
         artifacts: HeadToHeadArtifacts,
         records: [String: HeadToHeadRecord],
         tierOrder: [String],
-        baseTiers: Items
-    ) -> (tiers: Items, updatedArtifacts: HeadToHeadArtifacts) {
+        baseTiers: Items,
+    )
+    -> (tiers: Items, updatedArtifacts: HeadToHeadArtifacts) {
         guard !artifacts.rankable.isEmpty else {
             return (baseTiers, artifacts)
         }
@@ -207,7 +226,7 @@ public enum HeadToHeadLogic {
         var tiers = clearedTiers(
             baseTiers,
             removing: artifacts.rankable + artifacts.undersampled,
-            tierNames: tierNames
+            tierNames: tierNames,
         )
 
         let tierCount = artifacts.tierNames.count
@@ -215,7 +234,7 @@ public enum HeadToHeadLogic {
             artifacts: artifacts,
             records: records,
             tierCount: tierCount,
-            requiredComparisons: artifacts.warmUpComparisons
+            requiredComparisons: artifacts.warmUpComparisons,
         )
 
         logRefinementDetails(computation.logContext(required: artifacts.warmUpComparisons))
@@ -224,15 +243,15 @@ public enum HeadToHeadLogic {
         let refinedMap = tierMapForCuts(
             ordered: computation.ordered,
             cuts: computation.refinedCuts,
-            tierCount: tierCount
+            tierCount: tierCount,
         )
         let churn = churnFraction(old: quantMap, new: refinedMap, universe: computation.ordered)
 
         let cuts = selectRefinedCuts(
             computation.cutContext(
                 churn: churn,
-                requiredComparisons: artifacts.warmUpComparisons
-            )
+                requiredComparisons: artifacts.warmUpComparisons,
+            ),
         )
 
         assignByCuts(ordered: computation.ordered, cuts: cuts, tierNames: artifacts.tierNames, into: &tiers)
@@ -248,7 +267,7 @@ public enum HeadToHeadLogic {
             artifacts: artifacts,
             ordered: computation.ordered,
             cuts: cuts,
-            metrics: computation.metrics
+            metrics: computation.metrics,
         )
 
         return (tiers, updated)
@@ -259,23 +278,35 @@ public enum HeadToHeadLogic {
         from pool: [Item],
         records: [String: HeadToHeadRecord],
         tierOrder: [String],
-        baseTiers: Items
-    ) -> Items {
+        baseTiers: Items,
+    )
+    -> Items {
         let quick = quickTierPass(from: pool, records: records, tierOrder: tierOrder, baseTiers: baseTiers)
         guard let artifacts = quick.artifacts else {
             return quick.tiers
         }
         return finalizeTiers(artifacts: artifacts, records: records, tierOrder: tierOrder, baseTiers: baseTiers).tiers
     }
+
+    // MARK: Private
+
+    /// Chooses how many refinement pairs to surface, ensuring we can touch every active boundary at least once.
+    private static func suggestedPairLimit(for artifacts: HeadToHeadArtifacts) -> Int {
+        let cutsNeeded = max(artifacts.tierNames.count - 1, 1)
+        return max(Tun.maxSuggestedPairs, cutsNeeded)
+    }
+
 }
 
-// MARK: - Public support types
+// MARK: - HeadToHeadQuickResult
 
 public struct HeadToHeadQuickResult: Sendable {
     public let tiers: Items
     public let artifacts: HeadToHeadArtifacts?
     public let suggestedPairs: [(Item, Item)]
 }
+
+// MARK: - HeadToHeadArtifacts
 
 public struct HeadToHeadArtifacts: Sendable {
     public enum Mode: Sendable { case quick, done }
@@ -289,7 +320,7 @@ public struct HeadToHeadArtifacts: Sendable {
     public let mode: Mode
     fileprivate let metrics: [String: HeadToHeadLogic.HeadToHeadMetrics]
 
-    internal init(
+    init(
         tierNames: [String],
         rankable: [Item],
         undersampled: [Item],
@@ -297,7 +328,7 @@ public struct HeadToHeadArtifacts: Sendable {
         frontier: [HeadToHeadFrontier],
         warmUpComparisons: Int,
         mode: Mode,
-        metrics: [String: HeadToHeadLogic.HeadToHeadMetrics]
+        metrics: [String: HeadToHeadLogic.HeadToHeadMetrics],
     ) {
         self.tierNames = tierNames
         self.rankable = rankable
@@ -309,6 +340,8 @@ public struct HeadToHeadArtifacts: Sendable {
         self.metrics = metrics
     }
 }
+
+// MARK: - HeadToHeadFrontier
 
 public struct HeadToHeadFrontier: Sendable {
     public let index: Int

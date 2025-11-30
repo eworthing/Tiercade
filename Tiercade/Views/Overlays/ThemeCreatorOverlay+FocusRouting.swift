@@ -2,10 +2,12 @@ import SwiftUI
 
 // MARK: - Focus Routing for ThemeCreatorOverlay
 
-internal extension ThemeCreatorOverlay {
+extension ThemeCreatorOverlay {
     #if os(tvOS)
     func handleMoveCommand(_ direction: MoveCommandDirection) {
-        guard let move = DirectionalMove(moveCommand: direction) else { return }
+        guard let move = DirectionalMove(moveCommand: direction) else {
+            return
+        }
         handleDirectionalMove(move)
     }
     #endif
@@ -14,15 +16,17 @@ internal extension ThemeCreatorOverlay {
         #if !os(tvOS)
         setOverlayHasFocus(true)
         #endif
-        guard let focus = currentFocusedElement else { return }
+        guard let focus = currentFocusedElement else {
+            return
+        }
         switch focus {
         case .name:
             handleNameMove(move)
         case .description:
             handleDescriptionMove(move)
-        case .tier(let id):
+        case let .tier(id):
             handleTierMove(move, tierID: id)
-        case .palette(let index):
+        case let .palette(index):
             handlePaletteMove(move, index: index)
         case .advancedPicker:
             handleAdvancedPickerMove(move)
@@ -34,14 +38,17 @@ internal extension ThemeCreatorOverlay {
     }
 
     func handlePrimaryAction() {
-        guard let focus = currentFocusedElement else { return }
+        guard let focus = currentFocusedElement else {
+            return
+        }
         switch focus {
-        case .name, .description:
+        case .description,
+             .name:
             // Let system handle text field activation
             break
-        case .tier(let id):
+        case let .tier(id):
             setActiveTier(id)
-        case .palette(let index):
+        case let .palette(index):
             updatePaletteFocusIndex(index)
             if index < Self.paletteHexes.count {
                 let hex = Self.paletteHexes[index]
@@ -72,7 +79,8 @@ internal extension ThemeCreatorOverlay {
         switch move {
         case .up:
             setFocusField(.name)
-        case .down, .right:
+        case .down,
+             .right:
             setFocusField(.tier(draft.activeTierID))
         default:
             setFocusField(.description)
@@ -80,7 +88,9 @@ internal extension ThemeCreatorOverlay {
     }
 
     func handleTierMove(_ move: DirectionalMove, tierID: UUID) {
-        guard let currentIndex = tierIndex(for: tierID) else { return }
+        guard let currentIndex = tierIndex(for: tierID) else {
+            return
+        }
         switch move {
         case .up:
             if currentIndex == 0 {
@@ -156,7 +166,8 @@ internal extension ThemeCreatorOverlay {
         switch move {
         case .up:
             setFocusField(.tier(draft.activeTierID))
-        case .right, .down:
+        case .down,
+             .right:
             setFocusField(.save)
         case .left:
             setFocusField(.name)
@@ -175,7 +186,9 @@ internal extension ThemeCreatorOverlay {
     }
 
     func paletteIndex(for hex: String?) -> Int {
-        guard let hex else { return 0 }
+        guard let hex else {
+            return 0
+        }
         let normalized = ThemeDraft.normalizeHex(hex)
         return Self.paletteHexes.firstIndex { ThemeDraft.normalizeHex($0) == normalized } ?? 0
     }

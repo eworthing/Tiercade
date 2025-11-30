@@ -2,8 +2,9 @@ import Foundation
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     // MARK: - Search & Filter
+
     func filteredItems(for tier: String) -> [Item] {
         var items = tiers[tier] ?? []
 
@@ -16,9 +17,13 @@ internal extension AppState {
         case .all:
             break
         case .ranked:
-            if tier == "unranked" { return [] }
+            if tier == "unranked" {
+                return []
+            }
         case .unranked:
-            if tier != "unranked" { return [] }
+            if tier != "unranked" {
+                return []
+            }
         }
 
         items = applySearchFilter(to: items)
@@ -46,7 +51,9 @@ internal extension AppState {
 
     func applySearchFilter(to items: [Item]) -> [Item] {
         let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !query.isEmpty else { return items }
+        guard !query.isEmpty else {
+            return items
+        }
 
         if items.count > 50 {
             setSearchProcessing(true)

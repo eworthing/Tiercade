@@ -1,13 +1,14 @@
 import Foundation
 
 extension HeadToHeadLogic {
-    internal static func quickResultForUndersampled(
+    static func quickResultForUndersampled(
         tiers: Items,
         undersampled: [Item],
         baseTiers: Items,
         tierOrder: [String],
-        records: [String: HeadToHeadRecord]
-    ) -> HeadToHeadQuickResult {
+        records: [String: HeadToHeadRecord],
+    )
+    -> HeadToHeadQuickResult {
         guard !undersampled.isEmpty else {
             return HeadToHeadQuickResult(tiers: tiers, artifacts: nil, suggestedPairs: [])
         }
@@ -20,25 +21,28 @@ extension HeadToHeadLogic {
         return HeadToHeadQuickResult(tiers: updatedTiers, artifacts: nil, suggestedPairs: [])
     }
 
-    internal static func appendUndersampled(
+    static func appendUndersampled(
         _ undersampled: [Item],
         to tiers: inout Items,
         records: [String: HeadToHeadRecord],
-        priors: [String: Prior]
+        priors: [String: Prior],
     ) {
-        guard !undersampled.isEmpty else { return }
+        guard !undersampled.isEmpty else {
+            return
+        }
         let unrankedKey = TierIdentifier.unranked.rawValue
         let metrics = metricsDictionary(for: undersampled, records: records, z: Tun.zQuick, priors: priors)
         tiers[unrankedKey, default: []] = orderedItems(undersampled, metrics: metrics)
     }
 
-    internal static func makeQuickArtifacts(
+    static func makeQuickArtifacts(
         ordered: [Item],
         undersampled: [Item],
         operativeNames: [String],
         cuts: [Int],
-        metrics: [String: HeadToHeadMetrics]
-    ) -> HeadToHeadArtifacts {
+        metrics: [String: HeadToHeadMetrics],
+    )
+    -> HeadToHeadArtifacts {
         let audits = buildAudits(orderedCount: ordered.count, cuts: cuts, width: Tun.frontierWidth)
         return HeadToHeadArtifacts(
             tierNames: operativeNames,
@@ -48,7 +52,7 @@ extension HeadToHeadLogic {
             frontier: audits,
             warmUpComparisons: warmUpComparisons(rankableCount: ordered.count, tierCount: operativeNames.count),
             mode: .quick,
-            metrics: metrics
+            metrics: metrics,
         )
     }
 }

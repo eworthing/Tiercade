@@ -2,30 +2,30 @@ import SwiftUI
 
 // MARK: - View Modifiers for HeadToHeadOverlay
 
-internal extension View {
+extension View {
     func headToHeadOverlayChrome(namespace: Namespace.ID) -> some View {
-        self
-            .tvGlassRounded(40)
-            #if swift(>=6.0)
+        tvGlassRounded(40)
+        #if swift(>=6.0)
             .modifier(GlassEffectModifier(namespace: namespace))
-            #endif
+        #endif
             .overlay(
                 RoundedRectangle(cornerRadius: 36, style: .continuous)
-                    .stroke(Color.white.opacity(0.18), lineWidth: 1.2)
+                    .stroke(Color.white.opacity(0.18), lineWidth: 1.2),
             )
             .shadow(color: Color.black.opacity(0.3), radius: 36, y: 18)
             .padding(.horizontal, Metrics.grid * 2)
             .accessibilityElement(children: .contain)
-            #if os(tvOS)
+        #if os(tvOS)
             .focusSection()
-            #endif
+        #endif
     }
 
     func headToHeadFocusModifiers(
         focusAnchor: FocusState<HeadToHeadFocusAnchor?>.Binding,
         defaultFocus: HeadToHeadFocusAnchor,
-        onAppear: @escaping () -> Void
-    ) -> some View {
+        onAppear: @escaping () -> Void,
+    )
+    -> some View {
         self
             .defaultFocus(focusAnchor, defaultFocus)
             .onAppear { onAppear() }
@@ -34,10 +34,10 @@ internal extension View {
     func trackHeadToHeadPairs(
         app: AppState,
         onSync: @escaping () -> Void,
-        onDisappear: @escaping () -> Void
-    ) -> some View {
-        self
-            .onChange(of: app.headToHead.currentPair?.0.id) { _, _ in onSync() }
+        onDisappear: @escaping () -> Void,
+    )
+    -> some View {
+        onChange(of: app.headToHead.currentPair?.0.id) { _, _ in onSync() }
             .onChange(of: app.headToHead.currentPair?.1.id) { _, _ in onSync() }
             .onChange(of: app.headToHead.currentPair == nil) { _, _ in onSync() }
             .onDisappear { onDisappear() }
@@ -46,10 +46,10 @@ internal extension View {
     #if os(tvOS)
     func headToHeadTVModifiers(
         app: AppState,
-        handleMove: @escaping (MoveCommandDirection) -> Void
-    ) -> some View {
-        self
-            .onExitCommand { app.cancelHeadToHead(fromExitCommand: true) }
+        handleMove: @escaping (MoveCommandDirection) -> Void,
+    )
+    -> some View {
+        onExitCommand { app.cancelHeadToHead(fromExitCommand: true) }
             .onMoveCommand(perform: handleMove)
     }
     #else
@@ -57,18 +57,32 @@ internal extension View {
         overlayHasFocus: FocusState<Bool>.Binding,
         handleInput: @escaping (DirectionalMove) -> Void,
         handleAction: @escaping () -> Void,
-        handleCancel: @escaping () -> Void
-    ) -> some View {
-        self
-            .focusable()
+        handleCancel: @escaping () -> Void,
+    )
+    -> some View {
+        focusable()
             .focused(overlayHasFocus)
-            .onKeyPress(.upArrow) { handleInput(.up); return .handled }
-            .onKeyPress(.downArrow) { handleInput(.down); return .handled }
-            .onKeyPress(.leftArrow) { handleInput(.left); return .handled }
-            .onKeyPress(.rightArrow) { handleInput(.right); return .handled }
-            .onKeyPress(.space) { handleAction(); return .handled }
-            .onKeyPress(.return) { handleAction(); return .handled }
-            .onKeyPress(.escape) { handleCancel(); return .handled }
+            .onKeyPress(.upArrow) { handleInput(.up)
+                return .handled
+            }
+            .onKeyPress(.downArrow) { handleInput(.down)
+                return .handled
+            }
+            .onKeyPress(.leftArrow) { handleInput(.left)
+                return .handled
+            }
+            .onKeyPress(.rightArrow) { handleInput(.right)
+                return .handled
+            }
+            .onKeyPress(.space) { handleAction()
+                return .handled
+            }
+            .onKeyPress(.return) { handleAction()
+                return .handled
+            }
+            .onKeyPress(.escape) { handleCancel()
+                return .handled
+            }
             .accessibilityAddTraits(.isModal)
     }
     #endif
@@ -76,9 +90,9 @@ internal extension View {
 
 #if swift(>=6.0)
 private struct GlassEffectModifier: ViewModifier {
-    internal let namespace: Namespace.ID
+    let namespace: Namespace.ID
 
-    internal func body(content: Content) -> some View {
+    func body(content: Content) -> some View {
         content
             .glassEffectID("headToHeadOverlay", in: namespace)
             .glassEffectTransition(.matchedGeometry)

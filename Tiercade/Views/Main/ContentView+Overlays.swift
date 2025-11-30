@@ -1,5 +1,5 @@
-import SwiftUI
 import Foundation
+import SwiftUI
 #if os(iOS)
 import UIKit
 import UniformTypeIdentifiers
@@ -10,24 +10,15 @@ import AppKit
 
 import TiercadeCore
 
-// MARK: - Toast View
+// MARK: - ToastView
 
-internal struct ToastView: View {
-    internal let toast: ToastMessage
-    @State private var isVisible = false
-    @Environment(AppState.self) private var app
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    private static let symbolMap: [String: String] = [
-        "{undo}": "arrow.uturn.backward.circle",
-        "{redo}": "arrow.uturn.forward.circle",
-        "{lock}": "lock.circle",
-        "{import}": "tray.and.arrow.down.fill",
-        "{export}": "square.and.arrow.up",
-        "{file}": "doc.text",
-        "{warning}": "exclamationmark.triangle.fill"
-    ]
+struct ToastView: View {
 
-    internal var body: some View {
+    // MARK: Internal
+
+    let toast: ToastMessage
+
+    var body: some View {
         HStack(spacing: 12) {
             Image(systemName: toast.type.icon)
                 .foregroundColor(toast.type.color)
@@ -60,13 +51,13 @@ internal struct ToastView: View {
         .padding(.vertical, Metrics.grid * 1.5)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Palette.bg.opacity(0.88))
+                .fill(Palette.bg.opacity(0.88)),
         )
         .tint(toast.type.color.opacity(0.24))
         .shadow(color: Palette.bg.opacity(0.24), radius: 20, y: 10)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(toast.type.color.opacity(0.3), lineWidth: 1)
+                .stroke(toast.type.color.opacity(0.3), lineWidth: 1),
         )
         .scaleEffect(isVisible ? 1.0 : 0.8)
         .opacity(isVisible ? 1.0 : 0.0)
@@ -102,21 +93,41 @@ internal struct ToastView: View {
         #endif
     }
 
+    // MARK: Private
+
+    private static let symbolMap: [String: String] = [
+        "{undo}": "arrow.uturn.backward.circle",
+        "{redo}": "arrow.uturn.forward.circle",
+        "{lock}": "lock.circle",
+        "{import}": "tray.and.arrow.down.fill",
+        "{export}": "square.and.arrow.up",
+        "{file}": "doc.text",
+        "{warning}": "exclamationmark.triangle.fill",
+    ]
+
+    @State private var isVisible = false
+    @Environment(AppState.self) private var app
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     /// Parses message text and converts symbol markers like {undo} to inline SF Symbols
     private func parseMessageWithSymbols(_ message: String) -> Text {
         let attributedString = NSMutableAttributedString()
         var remaining = message
 
-        while let openBrace = remaining.firstIndex(of: "{"),
-              let closeBrace = remaining[openBrace...].firstIndex(of: "}") {
+        while
+            let openBrace = remaining.firstIndex(of: "{"),
+            let closeBrace = remaining[openBrace...].firstIndex(of: "}")
+        {
             let beforeMarker = String(remaining[..<openBrace])
             if !beforeMarker.isEmpty {
                 attributedString.append(NSAttributedString(string: beforeMarker))
             }
 
-            let marker = String(remaining[openBrace...closeBrace])
-            if let symbolName = Self.symbolMap[marker],
-               let attachment = makeSymbolAttachment(named: symbolName) {
+            let marker = String(remaining[openBrace ... closeBrace])
+            if
+                let symbolName = Self.symbolMap[marker],
+                let attachment = makeSymbolAttachment(named: symbolName)
+            {
                 attributedString.append(NSAttributedString(attachment: attachment))
             } else {
                 attributedString.append(NSAttributedString(string: marker))
@@ -140,12 +151,16 @@ internal struct ToastView: View {
 
     private func makeSymbolAttachment(named symbolName: String) -> NSTextAttachment? {
         #if os(iOS)
-        guard let image = UIImage(systemName: symbolName) else { return nil }
+        guard let image = UIImage(systemName: symbolName) else {
+            return nil
+        }
         let attachment = NSTextAttachment()
         attachment.image = image
         return attachment
         #elseif os(macOS)
-        guard let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) else { return nil }
+        guard let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) else {
+            return nil
+        }
         let attachment = NSTextAttachment()
         attachment.image = image
         return attachment
@@ -155,14 +170,14 @@ internal struct ToastView: View {
     }
 }
 
-// MARK: - Progress Indicator View
+// MARK: - ProgressIndicatorView
 
-internal struct ProgressIndicatorView: View {
-    internal let isLoading: Bool
-    internal let message: String
-    internal let progress: Double
+struct ProgressIndicatorView: View {
+    let isLoading: Bool
+    let message: String
+    let progress: Double
 
-    internal var body: some View {
+    var body: some View {
         if isLoading {
             VStack(spacing: 16) {
                 HStack(spacing: 12) {
@@ -189,20 +204,20 @@ internal struct ProgressIndicatorView: View {
     }
 }
 
-// MARK: - Drag Target Highlight
+// MARK: - DragTargetHighlight
 
-internal struct DragTargetHighlight: View {
-    internal let isTarget: Bool
-    internal let color: Color
+struct DragTargetHighlight: View {
+    let isTarget: Bool
+    let color: Color
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    internal var body: some View {
+    var body: some View {
         if isTarget {
             RoundedRectangle(cornerRadius: 8)
                 .stroke(color, lineWidth: 3)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(color.opacity(0.12))
+                        .fill(color.opacity(0.12)),
                 )
                 .shadow(color: color.opacity(0.45), radius: 20)
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
@@ -211,19 +226,15 @@ internal struct DragTargetHighlight: View {
     }
 }
 
-// MARK: - Quick Rank overlay
+// MARK: - QuickRankOverlay
 
-internal struct QuickRankOverlay: View {
+struct QuickRankOverlay: View {
+
+    // MARK: Internal
+
     @Bindable var app: AppState
-    @FocusState private var focused: FocusField?
-    private enum FocusField: Hashable {
-        case tier(String)
-        case cancel
-    }
-    #if !os(tvOS)
-    @FocusState private var overlayHasFocus: Bool
-    #endif
-    internal var body: some View {
+
+    var body: some View {
         if let item = app.quickRankTarget {
             let isUITest = ProcessInfo.processInfo.arguments.contains("-uiTest")
             ZStack {
@@ -252,36 +263,36 @@ internal struct QuickRankOverlay: View {
                 .padding(Metrics.grid * 1.5)
                 .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(Palette.bg.opacity(0.85))
+                        .fill(Palette.bg.opacity(0.85)),
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(Palette.stroke, lineWidth: 1.25)
+                        .stroke(Palette.stroke, lineWidth: 1.25),
                 )
                 .shadow(color: Palette.bg.opacity(0.22), radius: 22, y: 8)
                 .padding(Metrics.grid)
                 .accessibilityElement(children: .contain)
                 .accessibilityAddTraits(.isModal)
                 #if os(tvOS)
-                .focusSection()
-                .defaultFocus($focused, defaultFocusField)
-                .onAppear { focused = defaultFocusField }
-                .onDisappear { focused = nil }
+                    .focusSection()
+                    .defaultFocus($focused, defaultFocusField)
+                    .onAppear { focused = defaultFocusField }
+                    .onDisappear { focused = nil }
                 #else
-                .focusable()
-                .focused($overlayHasFocus)
-                .onKeyPress(.escape) {
-                    app.cancelQuickRank()
-                    return .handled
-                }
-                .onAppear {
-                    focused = defaultFocusField
-                    overlayHasFocus = true
-                }
-                .onDisappear {
-                    focused = nil
-                    overlayHasFocus = false
-                }
+                    .focusable()
+                    .focused($overlayHasFocus)
+                    .onKeyPress(.escape) {
+                        app.cancelQuickRank()
+                        return .handled
+                    }
+                    .onAppear {
+                        focused = defaultFocusField
+                        overlayHasFocus = true
+                    }
+                    .onDisappear {
+                        focused = nil
+                        overlayHasFocus = false
+                    }
                 // Note: Removed focus reassertion anti-pattern per AGENTS.md
                 // QuickRank is a transient overlay - focus can naturally escape
                 #endif
@@ -289,6 +300,18 @@ internal struct QuickRankOverlay: View {
             .transition(isUITest ? .identity : .move(edge: .bottom).combined(with: .opacity))
         }
     }
+
+    // MARK: Private
+
+    private enum FocusField: Hashable {
+        case tier(String)
+        case cancel
+    }
+
+    @FocusState private var focused: FocusField?
+    #if !os(tvOS)
+    @FocusState private var overlayHasFocus: Bool
+    #endif
 
     private var defaultFocusField: FocusField {
         if let first = app.tierOrder.first {

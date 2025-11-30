@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  Tiercade
-//
-//  Created by PL on 9/14/25.
-//
-
 import SwiftUI
 #if os(iOS)
 import UniformTypeIdentifiers
@@ -12,13 +5,20 @@ import UniformTypeIdentifiers
 
 import TiercadeCore
 
-internal struct AppTier: Identifiable, Hashable { let id: String; var name: String }
+// MARK: - AppTier
+
+struct AppTier: Identifiable, Hashable { let id: String
+    var name: String
+}
+
+// MARK: - ContentView
+
 // (Several view components — ToastView, ProgressIndicatorView, DragTargetHighlight,
 // QuickRank / HeadToHead overlays, toolbar, sidebar and grid subviews — were moved to
 // smaller files under `Tiercade/Views/ContentView+*.swift` to reduce compile
 // specialization cost and keep this file focused. See those files for implementations.)
 
-internal struct ContentView: View {
+struct ContentView: View {
     @Environment(AppState.self) private var app
     @Environment(\.undoManager) private var undoManager
     @State private var showingAddItems = false
@@ -28,7 +28,7 @@ internal struct ContentView: View {
     }
     #endif
 
-    internal var body: some View {
+    var body: some View {
         MainAppView()
             .task {
                 app.updateUndoManager(undoManager)
@@ -44,15 +44,19 @@ internal struct ContentView: View {
 #endif
 
 // MARK: - Tier grid
+
 // Implementations for TierGridView, TierRowView, UnrankedView, CardView and
 // ThumbnailView were moved to `Tiercade/Views/ContentView+TierGrid.swift`.
 // Keeping this small pointer here so the file remains easy to scan.
 
-private extension Gradient {
-    static var tierListBackground: Gradient { .init(colors: [Palette.bg.opacity(0.6), Palette.brand.opacity(0.2)]) }
+extension Gradient {
+    fileprivate static var tierListBackground: Gradient { .init(colors: [
+        Palette.bg.opacity(0.6),
+        Palette.brand.opacity(0.2),
+    ]) }
 }
 
-// MARK: - Previews
+// MARK: - ContentViewPreview
 
 @MainActor
 private struct ContentViewPreview: View {
@@ -79,10 +83,12 @@ private struct ContentViewPreview: View {
 #endif
 
 // MARK: - Quick Rank overlay
+
 // QuickRankOverlay (and the other overlays like HeadToHeadOverlay, ToastView,
 // etc.) were moved to `Tiercade/Views/ContentView+Overlays.swift`.
 
 // MARK: - JSON FileDocument
+
 // HeadToHead, quick-rank and overlay components are implemented in
 // `Tiercade/Views/ContentView+Overlays.swift`.
 

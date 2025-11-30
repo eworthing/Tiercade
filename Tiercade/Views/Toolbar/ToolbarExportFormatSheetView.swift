@@ -1,19 +1,19 @@
 #if !os(tvOS)
-import SwiftUI
-import UniformTypeIdentifiers
 import Observation
+import SwiftUI
 import TiercadeCore
+import UniformTypeIdentifiers
 
 @MainActor
-internal protocol ToolbarExportCoordinating: AnyObject, Observable {
+protocol ToolbarExportCoordinating: AnyObject, Observable {
     var isLoading: Bool { get }
     func exportToFormat(_ format: ExportFormat) async throws(ExportError) -> (Data, String)
     func showToast(type: ToastType, title: String, message: String?)
 }
 
-internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
+struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: View {
     @Bindable var coordinator: Coordinator
-    internal let exportFormat: ExportFormat
+    let exportFormat: ExportFormat
     @Binding var isPresented: Bool
     @State private var isExporting = false
     @State private var exportedData: Data?
@@ -21,7 +21,7 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
     @State private var showingFileExporter = false
     @State private var shareFileURL: URL?
 
-    internal var body: some View {
+    var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
                 informationSection
@@ -31,35 +31,35 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
             .padding(Metrics.grid * 2)
             .navigationTitle("Export Tier List")
             #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.inline)
             #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { isPresented = false }
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { isPresented = false }
+                    }
                 }
-            }
         }
         .fileExporter(
             isPresented: $showingFileExporter,
             document: ExportDocument(
                 data: exportedData ?? Data(),
-                filename: exportFileName
+                filename: exportFileName,
             ),
             contentType: contentType,
-            defaultFilename: exportFileName
+            defaultFilename: exportFileName,
         ) { result in
             switch result {
             case .success:
                 coordinator.showToast(
                     type: .success,
                     title: "Export Complete",
-                    message: "File saved successfully"
+                    message: "File saved successfully",
                 )
-            case .failure(let error):
+            case let .failure(error):
                 coordinator.showToast(
                     type: .error,
                     title: "Export Failed",
-                    message: error.localizedDescription
+                    message: error.localizedDescription,
                 )
             }
             isPresented = false
@@ -81,7 +81,7 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
                     ShareLink(
                         item: shareURL,
                         subject: Text("Tier List Export"),
-                        message: Text("Sharing tier list in \(exportFormat.displayName) format")
+                        message: Text("Sharing tier list in \(exportFormat.displayName) format"),
                     ) {
                         Label("Share", systemImage: "square.and.arrow.up")
                             .frame(maxWidth: .infinity)
@@ -111,39 +111,41 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
     private var formatDescription: String {
         switch exportFormat {
         case .text:
-            return "Plain text format with tiers and items listed in readable format"
+            "Plain text format with tiers and items listed in readable format"
         case .json:
-            return "JSON format with complete data structure, perfect for importing back later"
+            "JSON format with complete data structure, perfect for importing back later"
         case .markdown:
-            return "Markdown format with formatted tables and headers, great for documentation"
+            "Markdown format with formatted tables and headers, great for documentation"
         case .csv:
-            return "CSV format suitable for spreadsheets and data analysis"
+            "CSV format suitable for spreadsheets and data analysis"
         case .png:
-            return "High-resolution PNG image export"
+            "High-resolution PNG image export"
         case .pdf:
-            return "PDF render with vector text and layout"
+            "PDF render with vector text and layout"
         }
     }
 
     private var contentType: UTType {
         switch exportFormat {
         case .text:
-            return .plainText
+            .plainText
         case .json:
-            return .json
+            .json
         case .markdown:
-            return .plainText
+            .plainText
         case .csv:
-            return .commaSeparatedText
+            .commaSeparatedText
         case .png:
-            return .png
+            .png
         case .pdf:
-            return .pdf
+            .pdf
         }
     }
 
     private func exportToFiles() async {
-        guard !isExporting else { return }
+        guard !isExporting else {
+            return
+        }
         isExporting = true
         defer { isExporting = false }
 
@@ -162,7 +164,9 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
     }
 
     private func prepareShareFile() async {
-        guard !isExporting else { return }
+        guard !isExporting else {
+            return
+        }
         isExporting = true
         defer { isExporting = false }
 
@@ -179,7 +183,7 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
                     coordinator.showToast(
                         type: .error,
                         title: "Export Failed",
-                        message: "Could not prepare file: \(error.localizedDescription)"
+                        message: "Could not prepare file: \(error.localizedDescription)",
                     )
                 }
             }
@@ -191,23 +195,23 @@ internal struct ExportFormatSheetView<Coordinator: ToolbarExportCoordinating>: V
     }
 }
 
-internal struct ExportDocument: FileDocument {
-    internal static var readableContentTypes: [UTType] { [.data] }
+struct ExportDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.data] }
 
-    internal let data: Data
-    internal let filename: String
+    let data: Data
+    let filename: String
 
-    internal init(data: Data, filename: String) {
+    init(data: Data, filename: String) {
         self.data = data
         self.filename = filename
     }
 
-    internal init(configuration: ReadConfiguration) throws {
+    init(configuration: ReadConfiguration) throws {
         self.data = configuration.file.regularFileContents ?? Data()
         self.filename = "export"
     }
 
-    internal func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+    func fileWrapper(configuration _: WriteConfiguration) throws -> FileWrapper {
         FileWrapper(regularFileWithContents: data)
     }
 }

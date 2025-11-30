@@ -7,10 +7,14 @@ import AppKit
 import UIKit
 #endif
 
-internal enum ExternalOpenResult { case success, handoff, unsupported }
+// MARK: - ExternalOpenResult
 
-internal struct OpenExternal {
-    internal static func open(_ url: URL, completion: @escaping @MainActor (ExternalOpenResult) -> Void) {
+enum ExternalOpenResult { case success, handoff, unsupported }
+
+// MARK: - OpenExternal
+
+enum OpenExternal {
+    static func open(_ url: URL, completion: @escaping @MainActor (ExternalOpenResult) -> Void) {
         guard URLValidator.isAllowedExternalURL(url) else {
             Task { @MainActor in completion(.unsupported) }
             return

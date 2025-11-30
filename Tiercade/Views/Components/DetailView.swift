@@ -4,21 +4,23 @@ import TiercadeCore
 import AVKit
 #endif
 
-internal struct DetailView: View {
-    internal let item: Item
-    #if os(tvOS)
-    @State private var showVideoPlayer: Bool = false
-    @State private var activePlayer: AVPlayer?
-    #endif
-    @State private var showQR: Bool = false
-    @State private var pendingURL: URL?
-    internal var body: some View {
+// MARK: - DetailView
+
+struct DetailView: View {
+
+    // MARK: Internal
+
+    let item: Item
+
+    var body: some View {
         VStack(spacing: 16) {
             // Hero gallery (image URIs only)
             let galleryUris: [String] = [item.imageUrl, item.videoUrl]
-                .compactMap { $0 }
+                .compactMap(\.self)
                 .filter { s in
-                    guard let url = URL(string: s) else { return false }
+                    guard let url = URL(string: s) else {
+                        return false
+                    }
                     return ["png", "jpg", "jpeg", "gif", "webp"].contains(url.pathExtension.lowercased())
                 }
             if !galleryUris.isEmpty {
@@ -35,9 +37,15 @@ internal struct DetailView: View {
             // Metadata grid placeholder
             VStack(alignment: .leading, spacing: 8) {
                 Text("Metadata").font(.headline)
-                if let name = item.name { Text("Name: \(name)") }
-                if let s = item.seasonString { Text("Season: \(s)") }
-                if let d = item.description { Text(d).foregroundStyle(.secondary) }
+                if let name = item.name {
+                    Text("Name: \(name)")
+                }
+                if let s = item.seasonString {
+                    Text("Season: \(s)")
+                }
+                if let d = item.description {
+                    Text(d).foregroundStyle(.secondary)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -58,9 +66,16 @@ internal struct DetailView: View {
                     .accessibilityIdentifier("Detail_PlayVideo")
                     #else
                     Button("Play Video") {
-                        guard URLValidator.isAllowedExternalURL(url) else { pendingURL = url; showQR = true; return }
+                        guard URLValidator.isAllowedExternalURL(url) else {
+                            pendingURL = url
+                            showQR = true
+                            return
+                        }
                         OpenExternal.open(url) { result in
-                            if case .unsupported = result { pendingURL = url; showQR = true }
+                            if case .unsupported = result {
+                                pendingURL = url
+                                showQR = true
+                            }
                         }
                     }
                     .buttonStyle(.bordered)
@@ -69,35 +84,46 @@ internal struct DetailView: View {
                 Spacer()
             }
             .sheet(isPresented: $showQR, content: {
-                if let u = pendingURL { QRSheet(url: u) }
+                if let u = pendingURL {
+                    QRSheet(url: u)
+                }
             })
         }
         .padding(Metrics.cardPadding)
         #if os(tvOS)
-        .fullScreenCover(
-            isPresented: $showVideoPlayer,
-            onDismiss: {
-                activePlayer?.pause()
-                activePlayer = nil
-            },
-            content: {
-                TVVideoPlayerContainer(player: activePlayer) {
-                    showVideoPlayer = false
+            .fullScreenCover(
+                isPresented: $showVideoPlayer,
+                onDismiss: {
                     activePlayer?.pause()
                     activePlayer = nil
-                }
-            }
-        )
+                },
+                content: {
+                    TVVideoPlayerContainer(player: activePlayer) {
+                        showVideoPlayer = false
+                        activePlayer?.pause()
+                        activePlayer = nil
+                    }
+                },
+            )
         #endif
     }
+
+    // MARK: Private
+
+    #if os(tvOS)
+    @State private var showVideoPlayer: Bool = false
+    @State private var activePlayer: AVPlayer?
+    #endif
+    @State private var showQR: Bool = false
+    @State private var pendingURL: URL?
 }
 
 #if os(tvOS)
 private struct TVVideoPlayerContainer: View {
-    internal let player: AVPlayer?
-    internal let dismiss: () -> Void
+    let player: AVPlayer?
+    let dismiss: () -> Void
 
-    internal var body: some View {
+    var body: some View {
         ZStack {
             if let player {
                 VideoPlayer(player: player)

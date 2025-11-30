@@ -4,147 +4,148 @@ import Foundation
 import FoundationModels
 
 // MARK: - Runtime Models (Internal Test Execution)
+
 // swiftlint:disable nesting - Nested types for test execution state
 
 @available(iOS 26.0, macOS 26.0, *)
 extension UnifiedPromptTester {
 
-// MARK: - Test Run
+    // MARK: - Test Run
 
-/// A single test run configuration
-internal struct TestRun: Identifiable, Sendable {
-    let id: UUID
-    let runNumber: Int
+    /// A single test run configuration
+    struct TestRun: Identifiable, Sendable {
+        let id: UUID
+        let runNumber: Int
 
-    /// Configuration
-    let prompt: SystemPromptConfig
-    let query: TestQueryConfig
-    let decoder: DecodingConfigDef
-    let seed: UInt64
-    let useGuidedSchema: Bool
+        /// Configuration
+        let prompt: SystemPromptConfig
+        let query: TestQueryConfig
+        let decoder: DecodingConfigDef
+        let seed: UInt64
+        let useGuidedSchema: Bool
 
-    /// Computed properties
-    var effectiveTarget: Int {
-        query.targetCount ?? 40  // Default for open-ended queries
-    }
+        /// Computed properties
+        var effectiveTarget: Int {
+            query.targetCount ?? 40 // Default for open-ended queries
+        }
 
-    var nBucket: String {
-        switch effectiveTarget {
-        case ...25: return "small"
-        case 26...50: return "medium"
-        default: return "large"
+        var nBucket: String {
+            switch effectiveTarget {
+            case ...25: "small"
+            case 26 ... 50: "medium"
+            default: "large"
+            }
+        }
+
+        /// Create a unique fingerprint for caching/deduplication
+        var fingerprint: String {
+            "\(prompt.id):\(query.id):\(decoder.id):\(seed):\(useGuidedSchema)"
         }
     }
 
-    /// Create a unique fingerprint for caching/deduplication
-    var fingerprint: String {
-        "\(prompt.id):\(query.id):\(decoder.id):\(seed):\(useGuidedSchema)"
-    }
-}
+    // MARK: - Test Run Context
 
-// MARK: - Test Run Context
+    /// Context for a test run (includes runtime state)
+    struct TestRunContext: Sendable {
+        let run: TestRun
+        let maxTokens: Int
+        let overgenFactor: Double
+        let startTime: Date
 
-/// Context for a test run (includes runtime state)
-internal struct TestRunContext: Sendable {
-    let run: TestRun
-    let maxTokens: Int
-    let overgenFactor: Double
-    let startTime: Date
+        /// Calculate overgen factor based on target count
+        static func calculateOvergenFactor(targetCount: Int) -> Double {
+            switch targetCount {
+            case ...50: 1.4
+            case 51 ... 150: 1.6
+            default: 2.0
+            }
+        }
 
-    /// Calculate overgen factor based on target count
-    static func calculateOvergenFactor(targetCount: Int) -> Double {
-        switch targetCount {
-        case ...50: return 1.4
-        case 51...150: return 1.6
-        default: return 2.0
+        /// Calculate max tokens based on target and overgen factor
+        static func calculateMaxTokens(targetCount: Int, overgenFactor: Double) -> Int {
+            let tokensPerItem = 10 // Increased from 6 to account for JSON formatting overhead
+            let calculated = Int(ceil(Double(targetCount) * overgenFactor * Double(tokensPerItem) * 1.5))
+            return min(4096, calculated) // Increased cap to allow for larger lists
+        }
+
+        init(run: TestRun, maxTokensOverride: Int? = nil) {
+            self.run = run
+            let target = run.effectiveTarget
+            self.overgenFactor = Self.calculateOvergenFactor(targetCount: target)
+
+            // Use override if provided, otherwise calculate
+            if let override = maxTokensOverride {
+                self.maxTokens = override
+            } else {
+                self.maxTokens = Self.calculateMaxTokens(targetCount: target, overgenFactor: overgenFactor)
+            }
+
+            self.startTime = Date()
         }
     }
 
-    /// Calculate max tokens based on target and overgen factor
-    static func calculateMaxTokens(targetCount: Int, overgenFactor: Double) -> Int {
-        let tokensPerItem = 10  // Increased from 6 to account for JSON formatting overhead
-        let calculated = Int(ceil(Double(targetCount) * overgenFactor * Double(tokensPerItem) * 1.5))
-        return min(4096, calculated)  // Increased cap to allow for larger lists
-    }
+    // MARK: - Prompt Template
 
-    internal init(run: TestRun, maxTokensOverride: Int? = nil) {
-        self.run = run
-        let target = run.effectiveTarget
-        self.overgenFactor = Self.calculateOvergenFactor(targetCount: target)
+    /// Handles prompt template variable substitution
+    struct PromptTemplate {
+        let raw: String
 
-        // Use override if provided, otherwise calculate
-        if let override = maxTokensOverride {
-            self.maxTokens = override
-        } else {
-            self.maxTokens = Self.calculateMaxTokens(targetCount: target, overgenFactor: overgenFactor)
+        /// Available variables that can be substituted
+        enum Variable: String, CaseIterable {
+            case query = "{QUERY}"
+            case delta = "{DELTA}"
+            case avoidList = "{AVOID_LIST}"
+            case targetCount = "{TARGET_COUNT}"
+            case domain = "{DOMAIN}"
         }
 
-        self.startTime = Date()
-    }
-}
-
-// MARK: - Prompt Template
-
-/// Handles prompt template variable substitution
-internal struct PromptTemplate {
-    let raw: String
-
-    /// Available variables that can be substituted
-    enum Variable: String, CaseIterable {
-        case query = "{QUERY}"
-        case delta = "{DELTA}"
-        case avoidList = "{AVOID_LIST}"
-        case targetCount = "{TARGET_COUNT}"
-        case domain = "{DOMAIN}"
-    }
-
-    /// Substitute variables in the template
-    internal func render(substitutions: [Variable: String]) -> String {
-        var result = raw
-        for (variable, value) in substitutions {
-            result = result.replacingOccurrences(of: variable.rawValue, with: value)
+        /// Substitute variables in the template
+        func render(substitutions: [Variable: String]) -> String {
+            var result = raw
+            for (variable, value) in substitutions {
+                result = result.replacingOccurrences(of: variable.rawValue, with: value)
+            }
+            return result
         }
-        return result
-    }
 
-    /// Check which variables are required by this template
-    internal func requiredVariables() -> Set<Variable> {
-        var required = Set<Variable>()
-        for variable in Variable.allCases where raw.contains(variable.rawValue) {
-            required.insert(variable)
+        /// Check which variables are required by this template
+        func requiredVariables() -> Set<Variable> {
+            var required = Set<Variable>()
+            for variable in Variable.allCases where raw.contains(variable.rawValue) {
+                required.insert(variable)
+            }
+            return required
         }
-        return required
-    }
 
-    /// Validate that all required substitutions are provided
-    internal func validate(substitutions: [Variable: String]) throws {
-        let required = requiredVariables()
-        let provided = Set(substitutions.keys)
-        let missing = required.subtracting(provided)
+        /// Validate that all required substitutions are provided
+        func validate(substitutions: [Variable: String]) throws {
+            let required = requiredVariables()
+            let provided = Set(substitutions.keys)
+            let missing = required.subtracting(provided)
 
-        if !missing.isEmpty {
-            throw TestingError.promptTemplateError(.missingVariables(missing.map { $0.rawValue }))
+            if !missing.isEmpty {
+                throw TestingError.promptTemplateError(.missingVariables(missing.map(\.rawValue)))
+            }
         }
     }
-}
 
-// MARK: - Test Progress
+    // MARK: - Test Progress
 
-/// Progress information during test execution
-internal struct TestProgress: Sendable {
-    let completedRuns: Int
-    let totalRuns: Int
-    let currentRun: TestRun?
-    let estimatedTimeRemaining: TimeInterval?
+    /// Progress information during test execution
+    struct TestProgress: Sendable {
+        let completedRuns: Int
+        let totalRuns: Int
+        let currentRun: TestRun?
+        let estimatedTimeRemaining: TimeInterval?
 
-    var percentComplete: Double {
-        Double(completedRuns) / Double(max(1, totalRuns))
+        var percentComplete: Double {
+            Double(completedRuns) / Double(max(1, totalRuns))
+        }
+
+        var progressText: String {
+            "\(completedRuns)/\(totalRuns) runs completed (\(Int(percentComplete * 100))%)"
+        }
     }
-
-    var progressText: String {
-        "\(completedRuns)/\(totalRuns) runs completed (\(Int(percentComplete * 100))%)"
-    }
-}
 
 }
 // swiftlint:enable nesting

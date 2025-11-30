@@ -1,5 +1,5 @@
-import SwiftUI
 import Observation
+import SwiftUI
 
 #if canImport(UIKit)
 import UIKit
@@ -15,9 +15,10 @@ import AppKit
 
 @Observable
 final class ColorPickerState {
-    private var _red: Double = 0
-    private var _green: Double = 0
-    private var _blue: Double = 0
+
+    // MARK: Internal
+
+    private(set) var hex: String = "#000000"
 
     var red: Double {
         get { _red }
@@ -43,22 +44,18 @@ final class ColorPickerState {
         }
     }
 
-    private(set) var hex: String = "#000000"
-
     var color: Color { Color(red: red / 255, green: green / 255, blue: blue / 255) }
-
-    private func syncHex() {
-        hex = String(format: "#%02X%02X%02X", Int(_red), Int(_green), Int(_blue))
-    }
 
     func load(fromHex input: String) {
         let cleaned = input.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "#"))
             .uppercased()
-        guard cleaned.count == 6, let value = UInt32(cleaned, radix: 16) else { return }
-        red   = Double((value & 0xFF0000) >> 16)
+        guard cleaned.count == 6, let value = UInt32(cleaned, radix: 16) else {
+            return
+        }
+        red = Double((value & 0xFF0000) >> 16)
         green = Double((value & 0x00FF00) >> 8)
-        blue  = Double(value & 0x0000FF)
+        blue = Double(value & 0x0000FF)
     }
 
     // Convert any input CGColor to sRGB before extracting components.
@@ -68,20 +65,54 @@ final class ColorPickerState {
             let srgb = cgColor.converted(
                 to: srgbColorSpace,
                 intent: .defaultIntent,
-                options: nil
+                options: nil,
             ),
             let components = srgb.components,
             components.count >= 3
-        else { return }
+        else {
+            return
+        }
         red = Double(components[0] * 255)
         green = Double(components[1] * 255)
         blue = Double(components[2] * 255)
     }
+
+    // MARK: Private
+
+    private var _red: Double = 0
+    private var _green: Double = 0
+    private var _blue: Double = 0
+
+    private func syncHex() {
+        hex = String(format: "#%02X%02X%02X", Int(_red), Int(_green), Int(_blue))
+    }
+
 }
 
 // MARK: - Public ColorPicker View (tvOS 26, SwiftUI-only)
 
 public struct TVColorPickerView: View {
+
+    // MARK: Lifecycle
+
+    public init(
+        selection: Binding<Color>,
+        title: String = "Color",
+        swatches: [Swatch] = [
+            .init("Red", 255, 59, 48), .init("Orange", 255, 149, 0),
+            .init("Yellow", 255, 204, 0), .init("Green", 52, 199, 89),
+            .init("Blue", 0, 122, 255), .init("Indigo", 88, 86, 214),
+            .init("Purple", 175, 82, 222), .init("Pink", 255, 45, 85),
+            .init("Cyan", 50, 173, 230), .init("Mint", 99, 230, 226),
+        ],
+    ) {
+        self._selection = selection
+        self.title = title
+        self.swatches = swatches
+    }
+
+    // MARK: Public
+
     public struct RGB: Hashable, Equatable {
         public let red: UInt8
         public let green: UInt8
@@ -107,46 +138,16 @@ public struct TVColorPickerView: View {
             Color(
                 red: Double(rgb.red) / 255,
                 green: Double(rgb.green) / 255,
-                blue: Double(rgb.blue) / 255
+                blue: Double(rgb.blue) / 255,
             )
         }
-    }
-
-    @Binding private var selection: Color
-    @State private var state = ColorPickerState()
-
-    @State private var showHexEditor = false
-    @State private var hexDraft = ""
-
-    private let title: String
-    private let swatches: [Swatch]
-
-    private enum Field: Hashable {
-        case red, green, blue, hexBtn, swatch(Int), apply, cancel
-    }
-    @FocusState private var focus: Field?
-
-    public init(
-        selection: Binding<Color>,
-        title: String = "Color",
-        swatches: [Swatch] = [
-            .init("Red", 255, 59, 48), .init("Orange", 255, 149, 0),
-            .init("Yellow", 255, 204, 0), .init("Green", 52, 199, 89),
-            .init("Blue", 0, 122, 255), .init("Indigo", 88, 86, 214),
-            .init("Purple", 175, 82, 222), .init("Pink", 255, 45, 85),
-            .init("Cyan", 50, 173, 230), .init("Mint", 99, 230, 226)
-        ]
-    ) {
-        self._selection = selection
-        self.title = title
-        self.swatches = swatches
     }
 
     public var body: some View {
         ZStack {
             RadialGradient(
                 colors: [state.color.opacity(0.32), Palette.bg.opacity(0.88)],
-                center: .topLeading, startRadius: 120, endRadius: 1000
+                center: .topLeading, startRadius: 120, endRadius: 1000,
             ).ignoresSafeArea()
 
             // Glass is applied to inner sections only.
@@ -177,7 +178,28 @@ public struct TVColorPickerView: View {
         .sheet(isPresented: $showHexEditor) { hexSheet }
     }
 
-    // MARK: sections
+    // MARK: Private
+
+    private enum Field: Hashable {
+        case red
+        case green
+        case blue
+        case hexBtn
+        case swatch(Int)
+        case apply
+        case cancel
+    }
+
+    @Binding private var selection: Color
+    @State private var state = ColorPickerState()
+
+    @State private var showHexEditor = false
+    @State private var hexDraft = ""
+
+    @FocusState private var focus: Field?
+
+    private let title: String
+    private let swatches: [Swatch]
 
     private var previewSection: some View {
         VStack(spacing: 20) {
@@ -187,7 +209,7 @@ public struct TVColorPickerView: View {
                 .glassEffect(.regular, in: .rect(cornerRadius: 24))
                 .accessibilityLabel("Selected color")
                 .accessibilityValue(
-                    "Red \(Int(state.red)), Green \(Int(state.green)), Blue \(Int(state.blue))"
+                    "Red \(Int(state.red)), Green \(Int(state.green)), Blue \(Int(state.blue))",
                 )
 
             HStack(spacing: 16) {
@@ -244,7 +266,7 @@ public struct TVColorPickerView: View {
 
             LazyVGrid(
                 columns: [GridItem(.adaptive(minimum: 90), spacing: 28)],
-                spacing: 28
+                spacing: 28,
             ) {
                 ForEach(Array(swatches.enumerated()), id: \.offset) { index, swatch in
                     Button {
@@ -319,9 +341,9 @@ public struct TVColorPickerView: View {
                         .stroke(Palette.stroke.opacity(2.0), lineWidth: 2)
                 }
                 .cornerRadius(Metrics.rLg)
-                #if os(tvOS)
+            #if os(tvOS)
                 .focusEffectDisabled(false)
-                #endif
+            #endif
 
             Text("Format: #RRGGBB").font(TypeScale.label).foregroundStyle(Palette.textDim)
 
@@ -346,12 +368,13 @@ public struct TVColorPickerView: View {
 // MARK: - Remote-optimized slider (focus, step size tuned for TV)
 
 private struct ChannelSlider: View {
-    @Binding var value: Double   // 0...255
+
+    // MARK: Internal
+
+    @Binding var value: Double // 0...255
+
     let label: String
     let tint: Color
-    @FocusState private var isFocused: Bool
-
-    private var pos: Double { value / 255.0 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -378,8 +401,8 @@ private struct ChannelSlider: View {
                             LinearGradient(
                                 colors: [.black, tint],
                                 startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                                endPoint: .trailing,
+                            ),
                         )
                         .frame(height: 32)
                         .overlay {
@@ -405,7 +428,7 @@ private struct ChannelSlider: View {
         .onMoveCommand { direction in
             let step = 6.0
             switch direction {
-            case .left:  value = max(0, value - step)
+            case .left: value = max(0, value - step)
             case .right: value = min(255, value + step)
             default: break
             }
@@ -422,6 +445,13 @@ private struct ChannelSlider: View {
             }
         }
     }
+
+    // MARK: Private
+
+    @FocusState private var isFocused: Bool
+
+    private var pos: Double { value / 255.0 }
+
 }
 
 #endif // os(tvOS)

@@ -1,7 +1,7 @@
 import Foundation
-import SwiftUI
 import Observation
 import os
+import SwiftUI
 import TiercadeCore
 
 /// Consolidated state for tier list data and operations
@@ -14,7 +14,29 @@ import TiercadeCore
 /// - Undo/redo history management
 @MainActor
 @Observable
-internal final class TierListState {
+final class TierListState {
+
+    // MARK: Lifecycle
+
+    // MARK: - Initialization
+
+    init() {
+        Logger.appState.info("TierListState initialized")
+    }
+
+    // MARK: Internal
+
+    // MARK: - Snapshot for Undo/Redo
+
+    /// Snapshot of tier state for undo/redo
+    struct TierStateSnapshot: Sendable {
+        var tiers: Items
+        var tierOrder: [String]
+        var tierLabels: [String: String]
+        var tierColors: [String: String]
+        var lockedTiers: Set<String>
+    }
+
     // MARK: - Tier Data
 
     /// Core tier structure: tier name -> array of items
@@ -57,46 +79,58 @@ internal final class TierListState {
     /// Undo manager for tier operations
     var undoManager: UndoManager?
 
-    /// Flag to prevent undo registration during undo/redo operations
-    private var isPerformingUndoRedo = false
-
-    // MARK: - Snapshot for Undo/Redo
-
-    /// Snapshot of tier state for undo/redo
-    internal struct TierStateSnapshot: Sendable {
-        var tiers: Items
-        var tierOrder: [String]
-        var tierLabels: [String: String]
-        var tierColors: [String: String]
-        var lockedTiers: Set<String>
+    /// Check if undo is available
+    var canUndo: Bool {
+        undoManager?.canUndo ?? false
     }
 
-    // MARK: - Initialization
+    /// Check if redo is available
+    var canRedo: Bool {
+        undoManager?.canRedo ?? false
+    }
 
-    internal init() {
-        Logger.appState.info("TierListState initialized")
+    /// Total number of items across all tiers
+    var totalItemCount: Int {
+        tiers.values.reduce(into: 0) { partialResult, items in
+            partialResult += items.count
+        }
+    }
+
+    /// Whether there are any items
+    var hasAnyItems: Bool {
+        totalItemCount > 0
+    }
+
+    /// Whether there are enough items for pairing (HeadToHead mode)
+    var hasEnoughForPairing: Bool {
+        totalItemCount >= 2
+    }
+
+    /// Whether there are enough items to randomize
+    var canRandomizeItems: Bool {
+        totalItemCount > 1
     }
 
     // MARK: - Undo/Redo Management
 
     /// Update the undo manager
-    internal func updateUndoManager(_ manager: UndoManager?) {
+    func updateUndoManager(_ manager: UndoManager?) {
         undoManager = manager
     }
 
     /// Capture current tier state as a snapshot
-    internal func captureTierSnapshot() -> TierStateSnapshot {
+    func captureTierSnapshot() -> TierStateSnapshot {
         TierStateSnapshot(
             tiers: tiers,
             tierOrder: tierOrder,
             tierLabels: tierLabels,
             tierColors: tierColors,
-            lockedTiers: lockedTiers
+            lockedTiers: lockedTiers,
         )
     }
 
     /// Restore tier state from a snapshot
-    internal func restore(from snapshot: TierStateSnapshot) {
+    func restore(from snapshot: TierStateSnapshot) {
         tiers = snapshot.tiers
         tierOrder = snapshot.tierOrder
         tierLabels = snapshot.tierLabels
@@ -105,7 +139,7 @@ internal final class TierListState {
     }
 
     /// Finalize a change by registering undo and marking as changed
-    internal func finalizeChange(action: String, undoSnapshot: TierStateSnapshot, markChanged: @escaping () -> Void) {
+    func finalizeChange(action: String, undoSnapshot: TierStateSnapshot, markChanged: @escaping () -> Void) {
         if !isPerformingUndoRedo {
             let redoSnapshot = captureTierSnapshot()
             registerUndo(
@@ -113,27 +147,81 @@ internal final class TierListState {
                 undoSnapshot: undoSnapshot,
                 redoSnapshot: redoSnapshot,
                 isRedo: false,
-                markChanged: markChanged
+                markChanged: markChanged,
             )
         }
         markChanged()
     }
+
+    /// Perform undo if available
+    func undo() {
+        if let manager = undoManager, manager.canUndo {
+            manager.undo()
+        }
+    }
+
+    /// Perform redo if available
+    func redo() {
+        if let manager = undoManager, manager.canRedo {
+            manager.redo()
+        }
+    }
+
+    // MARK: - Selection Helpers
+
+    /// Check if an item is selected
+    func isSelected(_ id: String) -> Bool {
+        selection.contains(id)
+    }
+
+    /// Toggle selection for an item
+    func toggleSelection(_ id: String) {
+        if selection.contains(id) {
+            selection.remove(id)
+        } else {
+            selection.insert(id)
+        }
+    }
+
+    /// Clear all selections
+    func clearSelection() {
+        selection.removeAll()
+    }
+
+    // MARK: - Tier Display Helpers
+
+    /// Get the display label for a tier (with fallback to tier ID)
+    func displayLabel(for tierId: String) -> String {
+        tierLabels[tierId] ?? tierId
+    }
+
+    /// Get the display color hex for a tier (with fallback)
+    func displayColorHex(for tierId: String) -> String? {
+        tierColors[tierId]
+    }
+
+    // MARK: Private
+
+    /// Flag to prevent undo registration during undo/redo operations
+    private var isPerformingUndoRedo = false
 
     private func registerUndo(
         action: String,
         undoSnapshot: TierStateSnapshot,
         redoSnapshot: TierStateSnapshot,
         isRedo: Bool,
-        markChanged: @escaping () -> Void
+        markChanged: @escaping () -> Void,
     ) {
-        guard let manager = undoManager else { return }
+        guard let manager = undoManager else {
+            return
+        }
         manager.registerUndo(withTarget: self) { target in
             target.performUndo(
                 action: action,
                 undoSnapshot: undoSnapshot,
                 redoSnapshot: redoSnapshot,
                 isRedo: isRedo,
-                markChanged: markChanged
+                markChanged: markChanged,
             )
         }
         manager.setActionName(action)
@@ -144,7 +232,7 @@ internal final class TierListState {
         undoSnapshot: TierStateSnapshot,
         redoSnapshot: TierStateSnapshot,
         isRedo: Bool,
-        markChanged: @escaping () -> Void
+        markChanged: @escaping () -> Void,
     ) {
         isPerformingUndoRedo = true
         defer { isPerformingUndoRedo = false }
@@ -157,90 +245,10 @@ internal final class TierListState {
                 undoSnapshot: redoSnapshot,
                 redoSnapshot: inverseSnapshot,
                 isRedo: !isRedo,
-                markChanged: markChanged
+                markChanged: markChanged,
             )
         }
         undoManager?.setActionName(action)
     }
 
-    /// Perform undo if available
-    internal func undo() {
-        if let manager = undoManager, manager.canUndo {
-            manager.undo()
-        }
-    }
-
-    /// Perform redo if available
-    internal func redo() {
-        if let manager = undoManager, manager.canRedo {
-            manager.redo()
-        }
-    }
-
-    /// Check if undo is available
-    internal var canUndo: Bool {
-        undoManager?.canUndo ?? false
-    }
-
-    /// Check if redo is available
-    internal var canRedo: Bool {
-        undoManager?.canRedo ?? false
-    }
-
-    // MARK: - Computed Properties
-
-    /// Total number of items across all tiers
-    internal var totalItemCount: Int {
-        tiers.values.reduce(into: 0) { partialResult, items in
-            partialResult += items.count
-        }
-    }
-
-    /// Whether there are any items
-    internal var hasAnyItems: Bool {
-        totalItemCount > 0
-    }
-
-    /// Whether there are enough items for pairing (HeadToHead mode)
-    internal var hasEnoughForPairing: Bool {
-        totalItemCount >= 2
-    }
-
-    /// Whether there are enough items to randomize
-    internal var canRandomizeItems: Bool {
-        totalItemCount > 1
-    }
-
-    // MARK: - Selection Helpers
-
-    /// Check if an item is selected
-    internal func isSelected(_ id: String) -> Bool {
-        selection.contains(id)
-    }
-
-    /// Toggle selection for an item
-    internal func toggleSelection(_ id: String) {
-        if selection.contains(id) {
-            selection.remove(id)
-        } else {
-            selection.insert(id)
-        }
-    }
-
-    /// Clear all selections
-    internal func clearSelection() {
-        selection.removeAll()
-    }
-
-    // MARK: - Tier Display Helpers
-
-    /// Get the display label for a tier (with fallback to tier ID)
-    internal func displayLabel(for tierId: String) -> String {
-        tierLabels[tierId] ?? tierId
-    }
-
-    /// Get the display color hex for a tier (with fallback)
-    internal func displayColorHex(for tierId: String) -> String? {
-        tierColors[tierId]
-    }
 }

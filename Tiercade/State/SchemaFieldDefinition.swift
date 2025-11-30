@@ -1,13 +1,6 @@
 import Foundation
 
-internal struct SchemaFieldDefinition: Identifiable, Codable, Hashable, Sendable {
-    var id = UUID()
-    var name: String
-    var fieldType: FieldType
-    var required: Bool
-    var allowMultiple: Bool
-    var options: [String]
-
+struct SchemaFieldDefinition: Identifiable, Codable, Hashable, Sendable {
     enum FieldType: String, Codable, CaseIterable, Sendable {
         case text
         case textarea
@@ -17,64 +10,74 @@ internal struct SchemaFieldDefinition: Identifiable, Codable, Hashable, Sendable
         case multiSelect
         case boolean
 
+        // MARK: Internal
+
         var displayName: String {
             switch self {
-            case .text: return "Text"
-            case .textarea: return "Text Area"
-            case .number: return "Number"
-            case .date: return "Date"
-            case .singleSelect: return "Single Select"
-            case .multiSelect: return "Multi-Select"
-            case .boolean: return "Yes/No"
+            case .text: "Text"
+            case .textarea: "Text Area"
+            case .number: "Number"
+            case .date: "Date"
+            case .singleSelect: "Single Select"
+            case .multiSelect: "Multi-Select"
+            case .boolean: "Yes/No"
             }
         }
 
         var icon: String {
             switch self {
-            case .text: return "textformat"
-            case .textarea: return "text.alignleft"
-            case .number: return "number"
-            case .date: return "calendar"
-            case .singleSelect: return "list.bullet"
-            case .multiSelect: return "checklist"
-            case .boolean: return "checkmark.square"
+            case .text: "textformat"
+            case .textarea: "text.alignleft"
+            case .number: "number"
+            case .date: "calendar"
+            case .singleSelect: "list.bullet"
+            case .multiSelect: "checklist"
+            case .boolean: "checkmark.square"
             }
         }
 
         var guidance: String {
             switch self {
-            case .text: return "Developer or publisher name"
-            case .textarea: return "Long-form notes"
-            case .number: return "Metacritic rating (0–100)"
-            case .date: return "Release date"
-            case .singleSelect: return "Platform family"
-            case .multiSelect: return "Gameplay tags"
-            case .boolean: return "Cross-play enabled?"
+            case .text: "Developer or publisher name"
+            case .textarea: "Long-form notes"
+            case .number: "Metacritic rating (0–100)"
+            case .date: "Release date"
+            case .singleSelect: "Platform family"
+            case .multiSelect: "Gameplay tags"
+            case .boolean: "Cross-play enabled?"
             }
         }
 
         var suggestion: String {
             switch self {
-            case .text: return "Genre, Developer, Publisher"
-            case .textarea: return "Notes, Synopsis, Strategy"
-            case .number: return "Rating, Score, Year"
-            case .date: return "Release Date, Launch"
-            case .singleSelect: return "Platform, Status, Category"
-            case .multiSelect: return "Tags, Genres, Features"
-            case .boolean: return "Completed, Owned, Favorite"
+            case .text: "Genre, Developer, Publisher"
+            case .textarea: "Notes, Synopsis, Strategy"
+            case .number: "Rating, Score, Year"
+            case .date: "Release Date, Launch"
+            case .singleSelect: "Platform, Status, Category"
+            case .multiSelect: "Tags, Genres, Features"
+            case .boolean: "Completed, Owned, Favorite"
             }
         }
 
         var exampleValue: String {
             switch self {
-            case .text: return "Arcadia Studios"
-            case .textarea: return "Boss fight strategy overview"
-            case .number: return "87"
-            case .date: return "Oct 22, 2024"
-            case .singleSelect: return "Console"
-            case .multiSelect: return "Co-op, Ranked"
-            case .boolean: return "Yes"
+            case .text: "Arcadia Studios"
+            case .textarea: "Boss fight strategy overview"
+            case .number: "87"
+            case .date: "Oct 22, 2024"
+            case .singleSelect: "Console"
+            case .multiSelect: "Co-op, Ranked"
+            case .boolean: "Yes"
             }
         }
     }
+
+    var id = UUID()
+    var name: String
+    var fieldType: FieldType
+    var required: Bool
+    var allowMultiple: Bool
+    var options: [String]
+
 }

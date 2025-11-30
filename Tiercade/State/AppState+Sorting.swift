@@ -4,7 +4,7 @@ import TiercadeCore
 // MARK: - Sorting Extension
 
 @MainActor
-internal extension AppState {
+extension AppState {
 
     // MARK: - Set Global Sort Mode
 
@@ -30,7 +30,9 @@ internal extension AppState {
 
         // Apply sort to all tiers and bake into arrays
         for tierName in tierOrder + ["unranked"] {
-            guard let items = tiers[tierName] else { continue }
+            guard let items = tiers[tierName] else {
+                continue
+            }
             tiers[tierName] = Sorting.sortItems(items, by: globalSortMode)
         }
 
@@ -54,12 +56,14 @@ internal extension AppState {
         guard globalSortMode.isCustom else {
             showInfoToast(
                 "Sort Active",
-                message: "Tap 'Apply Global Sort' to enable reordering"
+                message: "Tap 'Apply Global Sort' to enable reordering",
             )
             return
         }
 
-        guard let index = indices.first else { return }
+        guard let index = indices.first else {
+            return
+        }
         let snapshot = captureTierSnapshot()
 
         // Use existing TierLogic.reorderWithin
@@ -78,13 +82,17 @@ internal extension AppState {
         guard globalSortMode.isCustom else {
             showInfoToast(
                 "Sort Active",
-                message: "Tap 'Apply Global Sort' to enable reordering"
+                message: "Tap 'Apply Global Sort' to enable reordering",
             )
             return
         }
 
-        guard var items = tiers[tierName] else { return }
-        guard !indices.isEmpty else { return }
+        guard var items = tiers[tierName] else {
+            return
+        }
+        guard !indices.isEmpty else {
+            return
+        }
 
         let snapshot = captureTierSnapshot()
 
@@ -97,7 +105,7 @@ internal extension AppState {
         }
 
         // Calculate adjusted destination (accounts for removed items)
-        let adjustedDestination = destination - indices.filter { $0 < destination }.count
+        let adjustedDestination = destination - indices.count(where: { $0 < destination })
 
         // Insert items at destination, preserving their relative order
         items.insert(contentsOf: itemsToMove, at: adjustedDestination)
@@ -116,9 +124,15 @@ internal extension AppState {
             return
         }
 
-        guard var items = tiers[tierName] else { return }
-        guard let currentIndex = items.firstIndex(where: { $0.id == itemId }) else { return }
-        guard currentIndex > 0 else { return } // Already at start
+        guard var items = tiers[tierName] else {
+            return
+        }
+        guard let currentIndex = items.firstIndex(where: { $0.id == itemId }) else {
+            return
+        }
+        guard currentIndex > 0 else {
+            return
+        } // Already at start
 
         let snapshot = captureTierSnapshot()
 
@@ -139,9 +153,15 @@ internal extension AppState {
             return
         }
 
-        guard var items = tiers[tierName] else { return }
-        guard let currentIndex = items.firstIndex(where: { $0.id == itemId }) else { return }
-        guard currentIndex < items.count - 1 else { return } // Already at end
+        guard var items = tiers[tierName] else {
+            return
+        }
+        guard let currentIndex = items.firstIndex(where: { $0.id == itemId }) else {
+            return
+        }
+        guard currentIndex < items.count - 1 else {
+            return
+        } // Already at end
 
         let snapshot = captureTierSnapshot()
 
@@ -157,6 +177,6 @@ internal extension AppState {
     /// Discover sortable attributes available across all tiers
     /// - Returns: Dictionary of attribute key to inferred type
     func discoverSortableAttributes() -> [String: AttributeType] {
-        return Sorting.discoverSortableAttributes(in: tiers)
+        Sorting.discoverSortableAttributes(in: tiers)
     }
 }

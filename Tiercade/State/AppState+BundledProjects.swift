@@ -1,10 +1,10 @@
 import Foundation
-import SwiftData
 import os
+import SwiftData
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     func applyBundledProject(_ bundled: BundledProject) {
         let snapshot = captureTierSnapshot()
         let state = resolvedTierState(from: bundled.project)
@@ -24,7 +24,7 @@ internal extension AppState {
     }
 }
 
-internal extension AppState {
+extension AppState {
     struct BundledTierState {
         var order: [String]
         var items: Items
@@ -39,7 +39,7 @@ internal extension AppState {
             items: [:],
             labels: [:],
             colors: [:],
-            locked: []
+            locked: [],
         )
 
         let metadata = Dictionary(uniqueKeysWithValues: project.tiers.map { ($0.id, $0) })
@@ -58,7 +58,7 @@ internal extension AppState {
     func populateState(
         with resolvedTiers: [ResolvedTier],
         metadata: [String: Project.Tier],
-        state: inout BundledTierState
+        state: inout BundledTierState,
     ) {
         for resolved in resolvedTiers {
             let normalizedLabel = normalizeTierName(resolved.label)
@@ -71,17 +71,25 @@ internal extension AppState {
     func appendMissingTiers(from tiers: [Project.Tier], state: inout BundledTierState) {
         for tier in tiers {
             let normalizedLabel = normalizeTierName(tier.label)
-            guard state.items[normalizedLabel] == nil else { continue }
+            guard state.items[normalizedLabel] == nil else {
+                continue
+            }
             appendTierToOrderIfNeeded(normalizedLabel, order: &state.order)
             state.items[normalizedLabel] = []
             state.labels[normalizedLabel] = tier.label
-            if let color = tier.color { state.colors[normalizedLabel] = color }
-            if tier.locked == true { state.locked.insert(normalizedLabel) }
+            if let color = tier.color {
+                state.colors[normalizedLabel] = color
+            }
+            if tier.locked == true {
+                state.locked.insert(normalizedLabel)
+            }
         }
     }
 
     func appendTierToOrderIfNeeded(_ normalizedLabel: String, order: inout [String]) {
-        guard normalizedLabel != "unranked" else { return }
+        guard normalizedLabel != "unranked" else {
+            return
+        }
         if !order.contains(normalizedLabel) {
             order.append(normalizedLabel)
         }
@@ -90,12 +98,18 @@ internal extension AppState {
     func applyTierMetadata(
         _ tier: Project.Tier?,
         normalizedLabel: String,
-        state: inout BundledTierState
+        state: inout BundledTierState,
     ) {
-        guard let tier else { return }
+        guard let tier else {
+            return
+        }
         state.labels[normalizedLabel] = tier.label
-        if let color = tier.color { state.colors[normalizedLabel] = color }
-        if tier.locked == true { state.locked.insert(normalizedLabel) }
+        if let color = tier.color {
+            state.colors[normalizedLabel] = color
+        }
+        if tier.locked == true {
+            state.locked.insert(normalizedLabel)
+        }
     }
 
     func makeItem(from entry: ResolvedItem) -> Item {
@@ -104,7 +118,7 @@ internal extension AppState {
             name: entry.title,
             status: nil,
             description: entry.description,
-            imageUrl: entry.thumbUri
+            imageUrl: entry.thumbUri,
         )
     }
 
@@ -123,10 +137,10 @@ internal extension AppState {
         do {
             let bundledSource = TierListSource.bundled.rawValue
             let descriptor = FetchDescriptor<TierListEntity>(
-                predicate: #Predicate { $0.sourceRaw == bundledSource }
+                predicate: #Predicate { $0.sourceRaw == bundledSource },
             )
             let existing = try modelContext.fetch(descriptor)
-            let existingIdentifiers = Set(existing.compactMap { $0.externalIdentifier })
+            let existingIdentifiers = Set(existing.compactMap(\.externalIdentifier))
             var created = false
             for project in bundledProjects where !existingIdentifiers.contains(project.id) {
                 let entity = makeBundledTierListEntity(from: project, source: bundledSource)
@@ -158,7 +172,7 @@ internal extension AppState {
             iconSystemName: "square.grid.2x2",
             lastOpenedAt: .distantPast,
             projectData: encodedProject,
-            tiers: []
+            tiers: [],
         )
 
         let metadata = Dictionary(uniqueKeysWithValues: project.project.tiers.map { ($0.id, $0) })
@@ -170,7 +184,7 @@ internal extension AppState {
                 index: index,
                 totalTiers: resolvedTiers.count,
                 metadata: metadata,
-                listEntity: entity
+                listEntity: entity,
             )
             entity.tiers.append(tierEntity)
         }
@@ -183,8 +197,9 @@ internal extension AppState {
         index: Int,
         totalTiers: Int,
         metadata: [String: Project.Tier],
-        listEntity: TierListEntity
-    ) -> TierEntity {
+        listEntity: TierListEntity,
+    )
+    -> TierEntity {
         let normalizedKey = normalizeTierName(resolvedTier.label)
         let tierMetadata = metadata[resolvedTier.id]
         let order = normalizedKey == "unranked" ? totalTiers : index
@@ -193,7 +208,7 @@ internal extension AppState {
             displayName: resolvedTier.label,
             colorHex: tierMetadata?.color,
             order: order,
-            isLocked: tierMetadata?.locked ?? false
+            isLocked: tierMetadata?.locked ?? false,
         )
         tierEntity.list = listEntity
 
@@ -209,7 +224,7 @@ internal extension AppState {
                 imageUrl: item.thumbUri,
                 videoUrl: nil,
                 position: position,
-                tier: tierEntity
+                tier: tierEntity,
             )
             tierEntity.items.append(newItem)
         }
@@ -218,7 +233,9 @@ internal extension AppState {
     }
 
     private func seasonInfo(from attributes: [String: String]?) -> (String?, Int?) {
-        guard let attributes else { return (nil, nil) }
+        guard let attributes else {
+            return (nil, nil)
+        }
         if let seasonNumberString = attributes["seasonNumber"], let value = Int(seasonNumberString) {
             return (seasonNumberString, value)
         }

@@ -1,15 +1,17 @@
 import SwiftUI
 
 /// Shared directional movement abstraction that bridges Siri Remote move commands and hardware keyboard arrows.
-internal enum DirectionalMove {
+enum DirectionalMove {
     case left
     case right
     case up
     case down
 
+    // MARK: Lifecycle
+
     #if os(tvOS)
     /// Maps `MoveCommandDirection` (available on tvOS/macOS family) to the shared directional enum.
-    internal init?(moveCommand: MoveCommandDirection) {
+    init?(moveCommand: MoveCommandDirection) {
         switch moveCommand {
         case .left: self = .left
         case .right: self = .right
@@ -23,7 +25,7 @@ internal enum DirectionalMove {
 
     #if !os(tvOS)
     /// Maps keyboard arrow key equivalents to the shared directional enum.
-    internal init?(keyEquivalent: KeyEquivalent) {
+    init?(keyEquivalent: KeyEquivalent) {
         switch keyEquivalent {
         case .upArrow: self = .up
         case .downArrow: self = .down

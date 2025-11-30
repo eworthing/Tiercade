@@ -1,10 +1,12 @@
 import Foundation
 
+// MARK: - ThemeCatalogProviding
+
 /// Protocol for providing and managing tier list themes
 ///
 /// Implementations can provide bundled themes, user-created themes,
 /// or dynamically fetched themes from remote sources.
-internal protocol ThemeCatalogProviding: Sendable {
+protocol ThemeCatalogProviding: Sendable {
     /// Get all available themes
     /// - Returns: Array of all themes (bundled + custom)
     func allThemes() async -> [TierTheme]
@@ -33,8 +35,10 @@ internal protocol ThemeCatalogProviding: Sendable {
     func findTheme(id: String) async -> TierTheme?
 }
 
+// MARK: - ThemeError
+
 /// Errors specific to theme operations
-internal enum ThemeError: Error, CustomStringConvertible {
+enum ThemeError: Error, CustomStringConvertible {
     case themeNotFound(String)
     case cannotDeleteBundledTheme
     case saveFailed(String)
@@ -42,14 +46,14 @@ internal enum ThemeError: Error, CustomStringConvertible {
 
     var description: String {
         switch self {
-        case .themeNotFound(let id):
-            return "Theme not found: \(id)"
+        case let .themeNotFound(id):
+            "Theme not found: \(id)"
         case .cannotDeleteBundledTheme:
-            return "Cannot delete bundled system themes"
-        case .saveFailed(let message):
-            return "Failed to save theme: \(message)"
+            "Cannot delete bundled system themes"
+        case let .saveFailed(message):
+            "Failed to save theme: \(message)"
         case .invalidThemeData:
-            return "Invalid theme data provided"
+            "Invalid theme data provided"
         }
     }
 }

@@ -10,11 +10,11 @@ import FoundationModels
 
 @available(iOS 26.0, macOS 26.0, *)
 extension UniqueListCoordinator {
-    internal func executePass1(
+    func executePass1(
         query: String,
         targetCount: Int,
         seed: UInt64?,
-        state: inout GenerationState
+        state: inout GenerationState,
     ) async throws {
         logger("🎯 [Pass 1] Target: \(targetCount) unique items")
 
@@ -30,9 +30,9 @@ extension UniqueListCoordinator {
                 initialSeed: seed,
                 temperature: Defaults.tempDiverse,
                 maxTokens: maxTok1,
-                maxRetries: 5
+                maxRetries: 5,
             ),
-            telemetry: &state.localTelemetry
+            telemetry: &state.localTelemetry,
         )
 
         // Pre-normalization, pre-dedup log: exact model items before placeholder filtering
@@ -53,7 +53,7 @@ extension UniqueListCoordinator {
         logger("  Result: \(state.ordered.count)/\(targetCount) unique, \(state.duplicatesFound) duplicates filtered")
     }
 
-    internal func calculatePass1Budget(query: String, targetCount: Int) -> (overGenCount: Int, maxTok: Int) {
+    func calculatePass1Budget(query: String, targetCount: Int) -> (overGenCount: Int, maxTok: Int) {
         let budget = 3500
         let prompt1Base = """
         Return ONLY a JSON object matching the schema.
@@ -68,15 +68,15 @@ extension UniqueListCoordinator {
         return (overGenCount, maxTok1)
     }
 
-    internal func buildPass1Prompt(query: String, overGenCount: Int) -> String {
+    func buildPass1Prompt(query: String, overGenCount: Int) -> String {
         switch promptStyle {
         case .strict:
-            return """
+            """
             Return ONLY a JSON object matching the schema.
             Task: \(query). Produce \(overGenCount) distinct items.
             """
         case .minimal:
-            return """
+            """
             Return a JSON object matching the schema.
             Task: \(query). Provide about \(overGenCount) varied, concrete items.
             Avoid placeholders. No commentary.
@@ -84,17 +84,17 @@ extension UniqueListCoordinator {
         }
     }
 
-    internal func finalizeSuccess(state: GenerationState, startTime: Date) {
+    func finalizeSuccess(state: GenerationState, startTime: Date) {
         let elapsed = Date().timeIntervalSince(startTime)
         logger("✅ Success in \(state.passCount) pass (\(String(format: "%.2f", elapsed))s)")
         // Store diagnostics on success as well, so dupRate etc. are available
         storeDiagnostics(state: state, targetCount: state.targetCount, success: true)
     }
 
-    internal func executeBackfill(
+    func executeBackfill(
         query: String,
         targetCount: Int,
-        state: inout GenerationState
+        state: inout GenerationState,
     ) async throws {
         if useGuidedBackfill {
             if hybridSwitchEnabled {
@@ -109,10 +109,10 @@ extension UniqueListCoordinator {
 
     // MARK: - Hybrid Backfill (DEBUG heuristic)
 
-    internal func executeHybridBackfill(
+    func executeHybridBackfill(
         query: String,
         targetCount: Int,
-        state: inout GenerationState
+        state: inout GenerationState,
     ) async throws {
         var backfillRound = 0
         var consecutiveNoProgress = 0
@@ -120,7 +120,7 @@ extension UniqueListCoordinator {
         var attemptedBudgetBump = false
         var unguidedRounds = 0
 
-        while state.ordered.count < targetCount && backfillRound < Defaults.maxPasses {
+        while state.ordered.count < targetCount, backfillRound < Defaults.maxPasses {
             backfillRound += 1
             state.passCount += 1
 
@@ -133,7 +133,7 @@ extension UniqueListCoordinator {
                     query: query,
                     targetCount: targetCount,
                     backfillRound: backfillRound,
-                    state: &state
+                    state: &state,
                 )
 
                 // Progress + dup-rate for this round
@@ -147,9 +147,11 @@ extension UniqueListCoordinator {
                     before: beforeUnique,
                     current: afterUnique,
                     consecutiveNoProgress: &consecutiveNoProgress,
-                    circuitBreakerTriggered: &state.circuitBreakerTriggered
+                    circuitBreakerTriggered: &state.circuitBreakerTriggered,
                 )
-                if state.circuitBreakerTriggered { break }
+                if state.circuitBreakerTriggered {
+                    break
+                }
 
                 // Hybrid decision with budget bump before switching
                 if roundDupRate >= hybridDupThreshold || consecutiveNoProgress >= 2 {
@@ -165,13 +167,13 @@ extension UniqueListCoordinator {
                             targetCount: targetCount,
                             backfillRound: backfillRound,
                             state: &state,
-                            maxTokOverride: boosted
+                            maxTokOverride: boosted,
                         )
                         // After bump, do not immediately switch; allow loop to reassess
                     } else {
                         let dupStr = String(format: "%.2f", roundDupRate)
                         logger(
-                            "🔀 [Hybrid] Switching to unguided (dupRate=\(dupStr), noProgress=\(consecutiveNoProgress))"
+                            "🔀 [Hybrid] Switching to unguided (dupRate=\(dupStr), noProgress=\(consecutiveNoProgress))",
                         )
                         switchedToUnguided = true
                     }
@@ -182,14 +184,14 @@ extension UniqueListCoordinator {
                     query: query,
                     targetCount: targetCount,
                     state: &state,
-                    isGuided: true
+                    isGuided: true,
                 )
             } else {
                 // Unguided round (bounded)
                 try await executeUnguidedBackfillRound(
                     query: query,
                     targetCount: targetCount,
-                    state: &state
+                    state: &state,
                 )
                 unguidedRounds += 1
                 if unguidedRounds >= 2 {
@@ -202,16 +204,18 @@ extension UniqueListCoordinator {
                     before: beforeUnique,
                     current: afterUnique,
                     consecutiveNoProgress: &consecutiveNoProgress,
-                    circuitBreakerTriggered: &state.circuitBreakerTriggered
+                    circuitBreakerTriggered: &state.circuitBreakerTriggered,
                 )
-                if state.circuitBreakerTriggered { break }
+                if state.circuitBreakerTriggered {
+                    break
+                }
 
                 // Greedy last-mile (unguided)
                 try await executeGreedyLastMileIfNeeded(
                     query: query,
                     targetCount: targetCount,
                     state: &state,
-                    isGuided: false
+                    isGuided: false,
                 )
             }
         }
@@ -219,21 +223,21 @@ extension UniqueListCoordinator {
 
     // MARK: - Guided Backfill
 
-    internal func executeGuidedBackfill(
+    func executeGuidedBackfill(
         query: String,
         targetCount: Int,
-        state: inout GenerationState
+        state: inout GenerationState,
     ) async throws {
         var backfillRound = 0
         var consecutiveNoProgress = 0
 
-        while state.ordered.count < targetCount && backfillRound < Defaults.maxPasses {
+        while state.ordered.count < targetCount, backfillRound < Defaults.maxPasses {
             backfillRound += 1
             state.backfillRoundsTotal += 1
             state.passCount += 1
 
             let before = state.ordered.count
-            if guidedBudgetBumpFirst && backfillRound == 1 {
+            if guidedBudgetBumpFirst, backfillRound == 1 {
                 // Proactively use a larger token budget for the first guided backfill round
                 let deltaNeed = targetCount - state.ordered.count
                 let delta = calculateGuidedBackfillDelta(deltaNeed: deltaNeed, targetCount: targetCount)
@@ -245,14 +249,14 @@ extension UniqueListCoordinator {
                     targetCount: targetCount,
                     backfillRound: backfillRound,
                     state: &state,
-                    maxTokOverride: boosted
+                    maxTokOverride: boosted,
                 )
             } else {
                 try await executeGuidedBackfillRound(
                     query: query,
                     targetCount: targetCount,
                     backfillRound: backfillRound,
-                    state: &state
+                    state: &state,
                 )
             }
 
@@ -260,25 +264,27 @@ extension UniqueListCoordinator {
                 before: before,
                 current: state.ordered.count,
                 consecutiveNoProgress: &consecutiveNoProgress,
-                circuitBreakerTriggered: &state.circuitBreakerTriggered
+                circuitBreakerTriggered: &state.circuitBreakerTriggered,
             )
 
-            if state.circuitBreakerTriggered { break }
+            if state.circuitBreakerTriggered {
+                break
+            }
 
             try await executeGreedyLastMileIfNeeded(
                 query: query,
                 targetCount: targetCount,
                 state: &state,
-                isGuided: true
+                isGuided: true,
             )
         }
     }
 
-    internal func executeGuidedBackfillRound(
+    func executeGuidedBackfillRound(
         query: String,
         targetCount: Int,
         backfillRound: Int,
-        state: inout GenerationState
+        state: inout GenerationState,
     ) async throws {
         let deltaNeed = targetCount - state.ordered.count
         let delta = calculateGuidedBackfillDelta(deltaNeed: deltaNeed, targetCount: targetCount)
@@ -287,13 +293,13 @@ extension UniqueListCoordinator {
         let avoid = Array(state.seen)
         logger(
             "🔄 [Pass \(state.passCount)] Guided Backfill: need \(deltaNeed), " +
-            "requesting \(delta), avoiding \(avoid.count) items"
+                "requesting \(delta), avoiding \(avoid.count) items",
         )
 
         let avoidComponents = buildGuidedAvoidList(
             avoid: avoid,
             dupFrequency: state.dupFrequency,
-            backfillRound: backfillRound
+            backfillRound: backfillRound,
         )
 
         let promptFill = buildGuidedBackfillPrompt(
@@ -301,7 +307,7 @@ extension UniqueListCoordinator {
             delta: delta,
             avoidSample: avoidComponents.avoidSample,
             coverageNote: avoidComponents.coverageNote,
-            offenderNote: avoidComponents.offenderNote
+            offenderNote: avoidComponents.offenderNote,
         )
 
         let before = state.ordered.count
@@ -311,12 +317,12 @@ extension UniqueListCoordinator {
                 FMClient.GenerateParameters(
                     prompt: promptFill,
                     profile: .topP(0.92),
-                    initialSeed: UInt64.random(in: 0...UInt64.max),
+                    initialSeed: UInt64.random(in: 0 ... UInt64.max),
                     temperature: Defaults.tempDiverse,
                     maxTokens: maxTok,
-                    maxRetries: 5
+                    maxRetries: 5,
                 ),
-                telemetry: &state.localTelemetry
+                telemetry: &state.localTelemetry,
             )
             // Pre-normalization, pre-dedup
             let rawJoined = rawItemsFill.joined(separator: "\n• ")
@@ -343,7 +349,7 @@ extension UniqueListCoordinator {
                 targetCount: targetCount,
                 deltaNeed: deltaNeed,
                 avoidSample: avoidComponents.avoidSample,
-                state: &state
+                state: &state,
             )
         }
 
@@ -351,12 +357,12 @@ extension UniqueListCoordinator {
     }
 
     // Guided backfill with a maxTokens override used by hybrid budget bump
-    internal func executeGuidedBackfillRoundWithOverride(
+    func executeGuidedBackfillRoundWithOverride(
         query: String,
         targetCount: Int,
         backfillRound: Int,
         state: inout GenerationState,
-        maxTokOverride: Int
+        maxTokOverride: Int,
     ) async throws {
         let deltaNeed = targetCount - state.ordered.count
         let delta = calculateGuidedBackfillDelta(deltaNeed: deltaNeed, targetCount: targetCount)
@@ -365,7 +371,7 @@ extension UniqueListCoordinator {
         let avoidComponents = buildGuidedAvoidList(
             avoid: avoid,
             dupFrequency: state.dupFrequency,
-            backfillRound: backfillRound
+            backfillRound: backfillRound,
         )
 
         let promptFill = buildGuidedBackfillPrompt(
@@ -373,7 +379,7 @@ extension UniqueListCoordinator {
             delta: delta,
             avoidSample: avoidComponents.avoidSample,
             coverageNote: avoidComponents.coverageNote,
-            offenderNote: avoidComponents.offenderNote
+            offenderNote: avoidComponents.offenderNote,
         )
 
         let before = state.ordered.count
@@ -382,12 +388,12 @@ extension UniqueListCoordinator {
                 FMClient.GenerateParameters(
                     prompt: promptFill,
                     profile: .topP(0.92),
-                    initialSeed: UInt64.random(in: 0...UInt64.max),
+                    initialSeed: UInt64.random(in: 0 ... UInt64.max),
                     temperature: Defaults.tempDiverse,
                     maxTokens: maxTokOverride,
-                    maxRetries: 5
+                    maxRetries: 5,
                 ),
-                telemetry: &state.localTelemetry
+                telemetry: &state.localTelemetry,
             )
             state.absorb(itemsFill, logger: logger)
         } catch {
@@ -401,12 +407,12 @@ extension UniqueListCoordinator {
                 targetCount: targetCount,
                 deltaNeed: deltaNeed,
                 avoidSample: avoidComponents.avoidSample,
-                state: &state
+                state: &state,
             )
         }
     }
 
-    internal func calculateGuidedBackfillDelta(deltaNeed: Int, targetCount: Int) -> Int {
+    func calculateGuidedBackfillDelta(deltaNeed: Int, targetCount: Int) -> Int {
         let deltaA = Int(ceil(Double(deltaNeed) * 1.5))
         let deltaB = Int(ceil(Defaults.minBackfillFrac * Double(targetCount)))
         return max(deltaA, deltaB)
@@ -421,8 +427,9 @@ extension UniqueListCoordinator {
     private func buildGuidedAvoidList(
         avoid: [String],
         dupFrequency: [String: Int],
-        backfillRound: Int
-    ) -> GuidedAvoidListComponents {
+        backfillRound: Int,
+    )
+    -> GuidedAvoidListComponents {
         let sampleSize = 40
         let offset = (backfillRound - 1) * 20
         let startIdx = offset % max(1, avoid.count)
@@ -430,9 +437,9 @@ extension UniqueListCoordinator {
 
         var avoidSampleKeys: [String] = []
         if endIdx <= avoid.count {
-            avoidSampleKeys = Array(avoid[startIdx..<endIdx])
+            avoidSampleKeys = Array(avoid[startIdx ..< endIdx])
         } else {
-            avoidSampleKeys = Array(avoid[startIdx..<avoid.count])
+            avoidSampleKeys = Array(avoid[startIdx ..< avoid.count])
             let remaining = sampleSize - avoidSampleKeys.count
             avoidSampleKeys += Array(avoid.prefix(remaining))
         }
@@ -446,7 +453,7 @@ extension UniqueListCoordinator {
         let avoidSample = avoidSampleKeys.map { "\"\($0)\"" }.joined(separator: ", ")
         let coverageNote = avoid.count > sampleSize
             ? "\n  Showing \(avoidSampleKeys.count) of \(avoid.count) forbidden items " +
-              "(rotating sample, pass \(backfillRound))"
+            "(rotating sample, pass \(backfillRound))"
             : ""
         let offenderNote = !topOffenders.isEmpty ?
             "\n  Most repeated: [\(topOffenders)]" : ""
@@ -454,20 +461,21 @@ extension UniqueListCoordinator {
         return GuidedAvoidListComponents(
             avoidSample: avoidSample,
             coverageNote: coverageNote,
-            offenderNote: offenderNote
+            offenderNote: offenderNote,
         )
     }
 
-    internal func buildGuidedBackfillPrompt(
+    func buildGuidedBackfillPrompt(
         query: String,
         delta: Int,
         avoidSample: String,
         coverageNote: String,
-        offenderNote: String
-    ) -> String {
+        offenderNote: String,
+    )
+    -> String {
         switch promptStyle {
         case .strict:
-            return """
+            """
             Return ONLY a JSON object matching the schema.
             Task: \(query). Produce \(delta) distinct items.
 
@@ -477,7 +485,7 @@ extension UniqueListCoordinator {
             Generate NEW items that are NOT in the forbidden list above.
             """
         case .minimal:
-            return """
+            """
             Return a JSON object matching the schema.
             Task: \(query). Provide \(delta) new, concrete items with good variety.
             Exclude items whose normalized keys appear in this sample: [\(avoidSample)]\(coverageNote)\(offenderNote)
@@ -486,12 +494,12 @@ extension UniqueListCoordinator {
         }
     }
 
-    internal func retryGuidedBackfill(
+    func retryGuidedBackfill(
         query: String,
         targetCount: Int,
         deltaNeed: Int,
         avoidSample: String,
-        state: inout GenerationState
+        state: inout GenerationState,
     ) async throws {
         do {
             let retryDelta = min(deltaNeed * 2, Int(ceil(Double(targetCount) * 0.5)))
@@ -517,12 +525,12 @@ extension UniqueListCoordinator {
                 FMClient.GenerateParameters(
                     prompt: promptRetry,
                     profile: .topK(50),
-                    initialSeed: UInt64.random(in: 0...UInt64.max),
+                    initialSeed: UInt64.random(in: 0 ... UInt64.max),
                     temperature: 0.9,
                     maxTokens: max(1536, retryDelta * 25),
-                    maxRetries: 5
+                    maxRetries: 5,
                 ),
-                telemetry: &state.localTelemetry
+                telemetry: &state.localTelemetry,
             )
             let rawRetryJoined = rawItemsRetry.joined(separator: "\n• ")
             logger("📥 Raw (Guided retry pass \(state.passCount)) model items (pre-placeholder):\n• \(rawRetryJoined)")
@@ -545,15 +553,15 @@ extension UniqueListCoordinator {
 
     // MARK: - Unguided Backfill
 
-    internal func executeUnguidedBackfill(
+    func executeUnguidedBackfill(
         query: String,
         targetCount: Int,
-        state: inout GenerationState
+        state: inout GenerationState,
     ) async throws {
         var backfillRound = 0
         var consecutiveNoProgress = 0
 
-        while state.ordered.count < targetCount && backfillRound < Defaults.maxPasses {
+        while state.ordered.count < targetCount, backfillRound < Defaults.maxPasses {
             backfillRound += 1
             state.backfillRoundsTotal += 1
             state.passCount += 1
@@ -562,37 +570,39 @@ extension UniqueListCoordinator {
             try await executeUnguidedBackfillRound(
                 query: query,
                 targetCount: targetCount,
-                state: &state
+                state: &state,
             )
 
             handleCircuitBreaker(
                 before: before,
                 current: state.ordered.count,
                 consecutiveNoProgress: &consecutiveNoProgress,
-                circuitBreakerTriggered: &state.circuitBreakerTriggered
+                circuitBreakerTriggered: &state.circuitBreakerTriggered,
             )
 
-            if state.circuitBreakerTriggered { break }
+            if state.circuitBreakerTriggered {
+                break
+            }
 
             try await executeGreedyLastMileIfNeeded(
                 query: query,
                 targetCount: targetCount,
                 state: &state,
-                isGuided: false
+                isGuided: false,
             )
         }
     }
 
-    internal func executeUnguidedBackfillRound(
+    func executeUnguidedBackfillRound(
         query: String,
         targetCount: Int,
-        state: inout GenerationState
+        state: inout GenerationState,
     ) async throws {
         let deltaNeed = targetCount - state.ordered.count
         let params = calculateUnguidedBackfillParams(
             deltaNeed: deltaNeed,
             targetCount: targetCount,
-            query: query
+            query: query,
         )
 
         logger("🔄 [Pass \(state.passCount)] Unguided Backfill: need \(deltaNeed), requesting \(params.delta)")
@@ -608,22 +618,22 @@ extension UniqueListCoordinator {
                 FMClient.GenerateTextArrayParameters(
                     prompt: promptFill,
                     profile: .topK(40),
-                    initialSeed: UInt64.random(in: 0...UInt64.max),
+                    initialSeed: UInt64.random(in: 0 ... UInt64.max),
                     temperature: 0.6,
                     maxTokens: params.maxTok,
-                    maxRetries: 3
+                    maxRetries: 3,
                 ),
-                telemetry: &state.localTelemetry
+                telemetry: &state.localTelemetry,
             )
             let rawFillJoined = rawItemsFill.joined(separator: "\n• ")
             logger(
-                "📥 Raw (Unguided backfill pass \(state.passCount)) model items (pre-placeholder):\n• \(rawFillJoined)"
+                "📥 Raw (Unguided backfill pass \(state.passCount)) model items (pre-placeholder):\n• \(rawFillJoined)",
             )
             let placeholdersRemoved = rawItemsFill.count - filterPlaceholders(rawItemsFill).count
             let itemsFill = filterPlaceholders(rawItemsFill)
             let fillJoined = itemsFill.joined(separator: "\n• ")
             logger(
-                "📝 Unguided backfill (pass \(state.passCount)) returned \(itemsFill.count) items:\n• \(fillJoined)"
+                "📝 Unguided backfill (pass \(state.passCount)) returned \(itemsFill.count) items:\n• \(fillJoined)",
             )
             let kept = state.ordered.count
             state.absorb(itemsFill, logger: logger)
@@ -643,7 +653,7 @@ extension UniqueListCoordinator {
                 targetCount: targetCount,
                 deltaByBudget: params.deltaByBudget,
                 avoidJSON: avoidJSON,
-                state: &state
+                state: &state,
             )
         }
 
@@ -659,8 +669,9 @@ extension UniqueListCoordinator {
     private func calculateUnguidedBackfillParams(
         deltaNeed: Int,
         targetCount: Int,
-        query: String
-    ) -> UnguidedBackfillParams {
+        query: String,
+    )
+    -> UnguidedBackfillParams {
         let budget = 3500
         let backfillAvgTPI = 20
         let promptFillBase = "Generate NEW items for: \(query). Do NOT include any with norm_keys in:"
@@ -674,10 +685,10 @@ extension UniqueListCoordinator {
         return UnguidedBackfillParams(delta: delta, maxTok: maxTok, deltaByBudget: deltaByBudget)
     }
 
-    internal func buildUnguidedBackfillPrompt(query: String, delta: Int, avoidJSON: String) -> String {
+    func buildUnguidedBackfillPrompt(query: String, delta: Int, avoidJSON: String) -> String {
         switch promptStyle {
         case .strict:
-            return """
+            """
             Generate EXACTLY \(delta) NEW unique items for: \(query).
             Do NOT include any with norm_keys in:
             [\(avoidJSON)]
@@ -687,7 +698,7 @@ extension UniqueListCoordinator {
             Include all \(delta) items in your response.
             """
         case .minimal:
-            return """
+            """
             Generate \(delta) new, concrete items for: \(query).
             Exclude any whose normalized keys appear in:
             [\(avoidJSON)]
@@ -697,12 +708,12 @@ extension UniqueListCoordinator {
         }
     }
 
-    internal func retryUnguidedBackfill(
+    func retryUnguidedBackfill(
         query: String,
         targetCount: Int,
         deltaByBudget: Int,
         avoidJSON: String,
-        state: inout GenerationState
+        state: inout GenerationState,
     ) async throws {
         do {
             let retryCount = min((targetCount - state.ordered.count) * 5, deltaByBudget)
@@ -717,16 +728,16 @@ extension UniqueListCoordinator {
                 FMClient.GenerateTextArrayParameters(
                     prompt: promptRetry,
                     profile: .topK(40),
-                    initialSeed: UInt64.random(in: 0...UInt64.max),
+                    initialSeed: UInt64.random(in: 0 ... UInt64.max),
                     temperature: 0.55,
                     maxTokens: max(1536, retryCount * 30),
-                    maxRetries: 3
+                    maxRetries: 3,
                 ),
-                telemetry: &state.localTelemetry
+                telemetry: &state.localTelemetry,
             )
             let rawRetryJoinedU = rawItemsRetry.joined(separator: "\n• ")
             logger(
-                "📥 Raw (Unguided retry pass \(state.passCount)) model items (pre-placeholder):\n• \(rawRetryJoinedU)"
+                "📥 Raw (Unguided retry pass \(state.passCount)) model items (pre-placeholder):\n• \(rawRetryJoinedU)",
             )
             let placeholdersRemovedRetry = rawItemsRetry.count - filterPlaceholders(rawItemsRetry).count
             let itemsRetry = filterPlaceholders(rawItemsRetry)
@@ -746,19 +757,27 @@ extension UniqueListCoordinator {
     }
 
     // Domain-agnostic placeholder filter: remove obvious enumerated placeholders
-    internal func filterPlaceholders(_ items: [String]) -> [String] {
+    func filterPlaceholders(_ items: [String]) -> [String] {
         // Detect groups like "<prefix> A..J" or "<prefix> 1..10" that repeat with only suffix difference
-        struct Key: Hashable { let prefix: String; let kind: String }
+        struct Key: Hashable { let prefix: String
+            let kind: String
+        }
         var groups: [Key: [Int]] = [:] // store suffix ranks to estimate breadth
         let letterRegex = try? NSRegularExpression(pattern: #"^(.{2,}?)\s([A-Z])$"#)
         let digitRegex = try? NSRegularExpression(pattern: #"^(.{2,}?)\s([0-9]{1,2})$"#)
 
         func match(_ re: NSRegularExpression?, _ s: String) -> (String, Int)? {
-            guard let re else { return nil }
+            guard let re else {
+                return nil
+            }
             let ns = s as NSString
             let range = NSRange(location: 0, length: ns.length)
-            guard let m = re.firstMatch(in: s, range: range) else { return nil }
-            guard m.numberOfRanges >= 3 else { return nil }
+            guard let m = re.firstMatch(in: s, range: range) else {
+                return nil
+            }
+            guard m.numberOfRanges >= 3 else {
+                return nil
+            }
             let pfx = ns.substring(with: m.range(at: 1))
             let suf = ns.substring(with: m.range(at: 2))
             if re == letterRegex {
@@ -767,7 +786,9 @@ extension UniqueListCoordinator {
                     return (pfx, Int(ch.value - 64))
                 }
             } else {
-                if let val = Int(suf) { return (pfx, val) }
+                if let val = Int(suf) {
+                    return (pfx, val)
+                }
             }
             return nil
         }
@@ -792,23 +813,29 @@ extension UniqueListCoordinator {
             }
         }
 
-        if bad.isEmpty { return items }
+        if bad.isEmpty {
+            return items
+        }
 
         return items.filter { s in
             let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
-            if let (p, _) = match(letterRegex, t), bad.contains(p + "|letter") { return false }
-            if let (p, _) = match(digitRegex, t), bad.contains(p + "|digit") { return false }
+            if let (p, _) = match(letterRegex, t), bad.contains(p + "|letter") {
+                return false
+            }
+            if let (p, _) = match(digitRegex, t), bad.contains(p + "|digit") {
+                return false
+            }
             return true
         }
     }
 
     // MARK: - Shared Backfill Helpers
 
-    internal func handleCircuitBreaker(
+    func handleCircuitBreaker(
         before: Int,
         current: Int,
         consecutiveNoProgress: inout Int,
-        circuitBreakerTriggered: inout Bool
+        circuitBreakerTriggered: inout Bool,
     ) {
         if current == before {
             consecutiveNoProgress += 1
@@ -821,13 +848,15 @@ extension UniqueListCoordinator {
         }
     }
 
-    internal func executeGreedyLastMileIfNeeded(
+    func executeGreedyLastMileIfNeeded(
         query: String,
         targetCount: Int,
         state: inout GenerationState,
-        isGuided: Bool
+        isGuided: Bool,
     ) async throws {
-        guard (1...2).contains(targetCount - state.ordered.count) else { return }
+        guard (1 ... 2).contains(targetCount - state.ordered.count) else {
+            return
+        }
 
         do {
             let remaining = targetCount - state.ordered.count
@@ -846,9 +875,9 @@ extension UniqueListCoordinator {
                         initialSeed: nil,
                         temperature: 0.0,
                         maxTokens: 512,
-                        maxRetries: 5
+                        maxRetries: 5,
                     ),
-                    telemetry: &state.localTelemetry
+                    telemetry: &state.localTelemetry,
                 )
                 state.absorb(greedyItems, logger: logger)
             } else {
@@ -865,9 +894,9 @@ extension UniqueListCoordinator {
                         initialSeed: nil,
                         temperature: 0.0,
                         maxTokens: 512,
-                        maxRetries: 3
+                        maxRetries: 3,
                     ),
-                    telemetry: &state.localTelemetry
+                    telemetry: &state.localTelemetry,
                 )
                 state.absorb(greedyItems, logger: logger)
             }
@@ -877,7 +906,7 @@ extension UniqueListCoordinator {
         }
     }
 
-    internal func captureFailureReason(_ reason: String) {
+    func captureFailureReason(_ reason: String) {
         if lastRunFailureReason == nil {
             lastRunFailureReason = reason
         }

@@ -2,6 +2,8 @@ import Foundation
 import Testing
 @testable import TiercadeCore
 
+// MARK: - FormattersTests
+
 @Suite("Formatters")
 struct FormattersTests {
     @Test("Export formatter applies tier metadata and locale-sensitive date")
@@ -11,11 +13,11 @@ struct FormattersTests {
         let items: Items = [
             "S": [Item(id: "alpha", name: "Alpha"), Item(id: "beta", name: "Beta")],
             "A": [Item(id: "gamma", name: "Gamma")],
-            "unranked": [Item(id: "delta", name: "Delta")]
+            "unranked": [Item(id: "delta", name: "Delta")],
         ]
         let config: TierConfig = [
             "S": TierConfigEntry(name: "S", colorHex: "#FF0000", description: "Elite"),
-            "A": TierConfigEntry(name: "A", colorHex: "#00FF00", description: "Great")
+            "A": TierConfigEntry(name: "A", colorHex: "#00FF00", description: "Great"),
         ]
 
         let expectedDate = mediumDateString(for: date, locale: locale)
@@ -25,7 +27,7 @@ struct FormattersTests {
             themeName: "Neon",
             tiers: items,
             tierConfig: config,
-            locale: locale
+            locale: locale,
         )
 
         #expect(export.contains("🗝️ My Tier List - Test Group"))
@@ -44,21 +46,21 @@ struct FormattersTests {
                 name: "Alpha",
                 seasonString: "1",
                 status: "Active",
-                description: "Leading contender"
+                description: "Leading contender",
             ),
             Item(
                 id: "beta",
                 name: "Beta",
                 seasonNumber: 2,
                 status: "Retired",
-                description: nil
-            )
+                description: nil,
+            ),
         ]
         let entry = TierConfigEntry(name: "S", colorHex: "#FF0000", description: "Elite status")
         let summary = AnalysisFormatter.generateTierAnalysis(
             tierName: "S",
             tierInfo: entry,
-            items: items
+            items: items,
         )
 
         #expect(summary.contains("S Tier Analysis - Elite status"))

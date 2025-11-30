@@ -1,41 +1,17 @@
 import SwiftUI
 import TiercadeCore
 
+// MARK: - TierMoveSheet
+
 /// Unified tier move sheet for both single and batch move operations
 /// Works across all platforms (tvOS, iOS, iPadOS, macOS)
-internal struct TierMoveSheet: View {
+struct TierMoveSheet: View {
+
+    // MARK: Internal
+
     @Bindable var app: AppState
-    @Environment(\.dismiss) private var dismiss
-    #if os(iOS) || os(tvOS)
-    @Environment(\.editMode) private var editMode
-    #endif
-    @FocusState private var focusedTier: String?
-    @Namespace private var focusScope
 
-    private var isBatchMode: Bool {
-        app.batchQuickMoveActive
-    }
-
-    private var title: String {
-        if isBatchMode {
-            return "\(app.selection.count) Item\(app.selection.count == 1 ? "" : "s")"
-        } else if let item = app.overlays.quickMoveTarget ?? app.quickRankTarget {
-            return item.name ?? item.id
-        }
-        return "Move Item"
-    }
-
-    private var allTiers: [String] {
-        app.tierOrder + [TierIdentifier.unranked.rawValue]
-    }
-
-    private var currentTier: String? {
-        guard !isBatchMode,
-              let item = app.overlays.quickMoveTarget ?? app.quickRankTarget else { return nil }
-        return app.currentTier(of: item.id)
-    }
-
-    internal var body: some View {
+    var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 // Header
@@ -60,7 +36,7 @@ internal struct TierMoveSheet: View {
                                 itemCount: app.tiers[tierName]?.count ?? 0,
                                 isCurrentTier: !isBatchMode && currentTier == tierName,
                                 isFocused: focusedTier == tierName,
-                                action: { moveTo(tierName) }
+                                action: { moveTo(tierName) },
                             )
                             .focused($focusedTier, equals: tierName)
                             .accessibilityIdentifier("TierMove_\(tierName)")
@@ -80,7 +56,7 @@ internal struct TierMoveSheet: View {
                                     itemCount: app.tiers[tierName]?.count ?? 0,
                                     isCurrentTier: !isBatchMode && currentTier == tierName,
                                     isFocused: focusedTier == tierName,
-                                    action: { moveTo(tierName) }
+                                    action: { moveTo(tierName) },
                                 )
                                 .focused($focusedTier, equals: tierName)
                                 .accessibilityIdentifier("TierMove_\(tierName)")
@@ -103,7 +79,7 @@ internal struct TierMoveSheet: View {
                                 itemCount: app.tiers[tierName]?.count ?? 0,
                                 isCurrentTier: !isBatchMode && currentTier == tierName,
                                 isFocused: focusedTier == tierName,
-                                action: { moveTo(tierName) }
+                                action: { moveTo(tierName) },
                             )
                             .focused($focusedTier, equals: tierName)
                             .accessibilityIdentifier("TierMove_\(tierName)")
@@ -128,7 +104,7 @@ internal struct TierMoveSheet: View {
             .background(backgroundColor)
             .navigationTitle("Move to Tier")
             #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.inline)
             #endif
             #if os(iOS) || os(macOS)
             .toolbar {
@@ -154,9 +130,119 @@ internal struct TierMoveSheet: View {
             }
             #endif
             .accessibilityElement(children: .contain)
-            .accessibilityAddTraits(.isModal)
+                .accessibilityAddTraits(.isModal)
         }
     }
+
+    // MARK: Private
+
+    @Environment(\.dismiss) private var dismiss
+    #if os(iOS) || os(tvOS)
+    @Environment(\.editMode) private var editMode
+    #endif
+    @FocusState private var focusedTier: String?
+    @Namespace private var focusScope
+
+    private var isBatchMode: Bool {
+        app.batchQuickMoveActive
+    }
+
+    private var title: String {
+        if isBatchMode {
+            return "\(app.selection.count) Item\(app.selection.count == 1 ? "" : "s")"
+        } else if let item = app.overlays.quickMoveTarget ?? app.quickRankTarget {
+            return item.name ?? item.id
+        }
+        return "Move Item"
+    }
+
+    private var allTiers: [String] {
+        app.tierOrder + [TierIdentifier.unranked.rawValue]
+    }
+
+    private var currentTier: String? {
+        guard
+            !isBatchMode,
+            let item = app.overlays.quickMoveTarget ?? app.quickRankTarget
+        else {
+            return nil
+        }
+        return app.currentTier(of: item.id)
+    }
+
+    // MARK: - Layout Helpers
+
+    private var defaultFocusTier: String? {
+        #if os(iOS) || os(tvOS)
+        if let editMode, editMode.wrappedValue == .active, !isBatchMode {
+            return allTiers.first
+        }
+        #endif
+
+        if isBatchMode {
+            return allTiers.first
+        }
+
+        if
+            let currentTier,
+            let firstAlternative = allTiers.first(where: { $0 != currentTier })
+        {
+            return firstAlternative
+        }
+
+        return allTiers.first
+    }
+
+    private var horizontalPadding: CGFloat {
+        #if os(tvOS)
+        return TVMetrics.overlayPadding
+        #else
+        return 20
+        #endif
+    }
+
+    private var topPadding: CGFloat {
+        #if os(tvOS)
+        return TVMetrics.overlayPadding * 0.6
+        #else
+        return 20
+        #endif
+    }
+
+    private var tierSpacing: CGFloat {
+        #if os(tvOS)
+        return TVMetrics.buttonSpacing
+        #else
+        return 12
+        #endif
+    }
+
+    private var titleFont: Font {
+        #if os(tvOS)
+        return .title
+        #else
+        return .title2
+        #endif
+    }
+
+    private var subtitleFont: Font {
+        #if os(tvOS)
+        return .headline
+        #else
+        return .subheadline
+        #endif
+    }
+
+    private var backgroundColor: Color {
+        Palette.bg
+    }
+
+    #if os(tvOS)
+    private var useCompactNoScrollLayout: Bool {
+        // Show all tiers without scroll in common cases (≤ 8 tiers)
+        allTiers.count <= 8
+    }
+    #endif
 
     // MARK: - Subviews
 
@@ -220,8 +306,6 @@ internal struct TierMoveSheet: View {
     }
     #endif
 
-    // MARK: - Actions
-
     private func moveTo(_ tierName: String) {
         // Handle both QuickMove and QuickRank
         if app.overlays.quickMoveTarget != nil {
@@ -232,82 +316,14 @@ internal struct TierMoveSheet: View {
         dismiss()
     }
 
-    // MARK: - Layout Helpers
-
-    private var defaultFocusTier: String? {
-        #if os(iOS) || os(tvOS)
-        if let editMode, editMode.wrappedValue == .active, !isBatchMode {
-            return allTiers.first
-        }
-        #endif
-
-        if isBatchMode {
-            return allTiers.first
-        }
-
-        if let currentTier,
-           let firstAlternative = allTiers.first(where: { $0 != currentTier }) {
-            return firstAlternative
-        }
-
-        return allTiers.first
-    }
-
-    private var horizontalPadding: CGFloat {
-        #if os(tvOS)
-        return TVMetrics.overlayPadding
-        #else
-        return 20
-        #endif
-    }
-
-    private var topPadding: CGFloat {
-        #if os(tvOS)
-        return TVMetrics.overlayPadding * 0.6
-        #else
-        return 20
-        #endif
-    }
-
-    private var tierSpacing: CGFloat {
-        #if os(tvOS)
-        return TVMetrics.buttonSpacing
-        #else
-        return 12
-        #endif
-    }
-
-    private var titleFont: Font {
-        #if os(tvOS)
-        return .title
-        #else
-        return .title2
-        #endif
-    }
-
-    private var subtitleFont: Font {
-        #if os(tvOS)
-        return .headline
-        #else
-        return .subheadline
-        #endif
-    }
-
-    private var backgroundColor: Color {
-        Palette.bg
-    }
-
-    #if os(tvOS)
-    private var useCompactNoScrollLayout: Bool {
-        // Show all tiers without scroll in common cases (≤ 8 tiers)
-        allTiers.count <= 8
-    }
-    #endif
 }
 
-// MARK: - Tier Move Row
+// MARK: - TierMoveRow
 
 private struct TierMoveRow: View {
+
+    // MARK: Internal
+
     let tierName: String
     let displayLabel: String
     let tierColor: Color
@@ -315,10 +331,6 @@ private struct TierMoveRow: View {
     let isCurrentTier: Bool
     let isFocused: Bool
     let action: () -> Void
-
-    #if os(tvOS)
-    @Environment(\.isFocused) private var isEnvironmentFocused
-    #endif
 
     var body: some View {
         Button {
@@ -336,8 +348,8 @@ private struct TierMoveRow: View {
                     // Tier label (in tier color - Hybrid design)
                     Text(displayLabel)
                         .font(labelFont)
-                        .fontWeight(.heavy)  // Bolder for prominence
-                        .foregroundStyle(tierColor)  // Colored text instead of primary
+                        .fontWeight(.heavy) // Bolder for prominence
+                        .foregroundStyle(tierColor) // Colored text instead of primary
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
@@ -374,19 +386,32 @@ private struct TierMoveRow: View {
                 .padding(.vertical, rowVerticalPadding)
             }
             .frame(maxWidth: .infinity)
-            .background(rowBackground)  // Includes tier-tinted background
+            .background(rowBackground) // Includes tier-tinted background
             .overlay(rowBorder)
             .contentShape(Rectangle())
         }
         .buttonStyle(TierMoveRowButtonStyle(
             tierColor: tierColor,
-            isCurrentTier: isCurrentTier
+            isCurrentTier: isCurrentTier,
         ))
         .disabled(isCurrentTier)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityHint(isCurrentTier ? "Already in this tier" : "Select to move")
         .accessibilityAddTraits(isCurrentTier ? [.isButton, .isSelected] : .isButton)
     }
+
+    // MARK: Private
+
+    #if os(tvOS)
+    @Environment(\.isFocused) private var isEnvironmentFocused
+    #endif
+
+    // MARK: - Visual Constants
+
+    private let focusedBackgroundOpacity: Double = 0.18
+    private let unfocusedBackgroundOpacity: Double = 0.12
+    private let currentTierBorderOpacity: Double = 0.8
+    private let defaultBorderOpacity: Double = 0.35
 
     // MARK: - Layout Helpers
 
@@ -450,43 +475,6 @@ private struct TierMoveRow: View {
         #endif
     }
 
-    // MARK: - Visual Constants
-
-    private let focusedBackgroundOpacity: Double = 0.18
-    private let unfocusedBackgroundOpacity: Double = 0.12
-    private let currentTierBorderOpacity: Double = 0.8
-    private let defaultBorderOpacity: Double = 0.35
-
-    @ViewBuilder
-    private var rowBackground: some View {
-        #if os(tvOS)
-        RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
-            .fill(tierColor.opacity(isFocused ? focusedBackgroundOpacity : unfocusedBackgroundOpacity))
-            .background(
-                RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
-                    .fill(Palette.bg.opacity(0.6))
-            )
-        #else
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(tierColor.opacity(unfocusedBackgroundOpacity))
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Palette.cardBackground)
-            )
-        #endif
-    }
-
-    @ViewBuilder
-    private var rowBorder: some View {
-        #if os(tvOS)
-        RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
-            .strokeBorder(borderColor, lineWidth: borderWidth)
-        #else
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .strokeBorder(borderColor, lineWidth: 2)
-        #endif
-    }
-
     private var borderColor: Color {
         #if os(tvOS)
         if isFocused {
@@ -506,14 +494,45 @@ private struct TierMoveRow: View {
 
     private var accessibilityLabel: String {
         if isCurrentTier {
-            return "Current tier: \(displayLabel), \(itemCount) item\(itemCount == 1 ? "" : "s")"
+            "Current tier: \(displayLabel), \(itemCount) item\(itemCount == 1 ? "" : "s")"
         } else {
-            return "Move to \(displayLabel), \(itemCount) item\(itemCount == 1 ? "" : "s")"
+            "Move to \(displayLabel), \(itemCount) item\(itemCount == 1 ? "" : "s")"
         }
     }
+
+    @ViewBuilder
+    private var rowBackground: some View {
+        #if os(tvOS)
+        RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
+            .fill(tierColor.opacity(isFocused ? focusedBackgroundOpacity : unfocusedBackgroundOpacity))
+            .background(
+                RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
+                    .fill(Palette.bg.opacity(0.6)),
+            )
+        #else
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .fill(tierColor.opacity(unfocusedBackgroundOpacity))
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Palette.cardBackground),
+            )
+        #endif
+    }
+
+    @ViewBuilder
+    private var rowBorder: some View {
+        #if os(tvOS)
+        RoundedRectangle(cornerRadius: TVMetrics.overlayCornerRadius, style: .continuous)
+            .strokeBorder(borderColor, lineWidth: borderWidth)
+        #else
+        RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .strokeBorder(borderColor, lineWidth: 2)
+        #endif
+    }
+
 }
 
-// MARK: - Button Style
+// MARK: - TierMoveRowButtonStyle
 
 private struct TierMoveRowButtonStyle: ButtonStyle {
     let tierColor: Color
@@ -523,13 +542,13 @@ private struct TierMoveRowButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed && !isCurrentTier ? 0.98 : 1.0)
             .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
-            #if os(tvOS)
+        #if os(tvOS)
             .focusEffectDisabled(false)
-            #endif
+        #endif
     }
 }
 
-// MARK: - Previews
+// MARK: - TierMoveSheetPreview
 
 @MainActor
 private struct TierMoveSheetPreview: View {
@@ -537,8 +556,10 @@ private struct TierMoveSheetPreview: View {
 
     init() {
         // Seed a simple preview scenario: use the first available item if any.
-        if let firstTier = appState.tierOrder.first,
-           let firstItem = appState.tiers[firstTier]?.first {
+        if
+            let firstTier = appState.tierOrder.first,
+            let firstItem = appState.tiers[firstTier]?.first
+        {
             appState.overlays.quickMoveTarget = firstItem
         }
     }

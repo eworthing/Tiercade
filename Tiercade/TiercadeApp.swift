@@ -1,13 +1,6 @@
-//
-//  TiercadeApp.swift
-//  Tiercade
-//
-//  Created by PL on 9/14/25.
-//
-
-import SwiftUI
-import SwiftData
 import Foundation
+import SwiftData
+import SwiftUI
 
 #if canImport(FoundationModels)
 import FoundationModels
@@ -15,9 +8,8 @@ import FoundationModels
 
 // Boot logging for acceptance test diagnostics
 private let acceptanceTestFlag = "-runAcceptanceTests"
-private let bootLogURL: URL = {
-    FileManager.default.temporaryDirectory.appendingPathComponent("tiercade_acceptance_boot.log")
-}()
+private let bootLogURL: URL = FileManager.default.temporaryDirectory
+    .appendingPathComponent("tiercade_acceptance_boot.log")
 
 private func bootLog(_ s: String) {
     let line = "[\(ISO8601DateFormatter().string(from: Date()))] \(s)\n"
@@ -39,13 +31,12 @@ private func bootLog(_ s: String) {
     print(s)
 }
 
+// MARK: - TiercadeApp
+
 @main
 struct TiercadeApp: App {
-    @AppStorage("ui.theme") private var themeRaw: String = ThemePreference.system.rawValue
-    private let modelContainer: ModelContainer
-    // swiftlint:disable:next private_swiftui_state - internal for TiercadeApp+Debug extension
-    @State var appState: AppState
-    @State private var kicked = false
+
+    // MARK: Lifecycle
 
     init() {
         let args = ProcessInfo.processInfo.arguments
@@ -65,18 +56,19 @@ struct TiercadeApp: App {
                 TierDraftOverride.self,
                 TierDraftMedia.self,
                 TierDraftAudit.self,
-                TierDraftCollabMember.self
+                TierDraftCollabMember.self,
             )
         } catch {
             fatalError("Failed to initialize model container: \(error.localizedDescription)")
         }
-        modelContainer = container
+        self.modelContainer = container
         _appState = State(initialValue: AppState(modelContext: container.mainContext))
     }
 
-    private var preferredScheme: ColorScheme? {
-        ThemePreference(rawValue: themeRaw)?.colorScheme
-    }
+    // MARK: Internal
+
+    // swiftlint:disable:next private_swiftui_state - internal for TiercadeApp+Debug extension
+    @State var appState: AppState
 
     var body: some Scene {
         WindowGroup {
@@ -94,15 +86,28 @@ struct TiercadeApp: App {
         }
         .modelContainer(modelContainer)
         #if os(macOS)
-        .commands {
-            TiercadeCommands(appState: appState)
-        }
+            .commands {
+                TiercadeCommands(appState: appState)
+            }
         #endif
+    }
+
+    // MARK: Private
+
+    @AppStorage("ui.theme") private var themeRaw: String = ThemePreference.system.rawValue
+    @State private var kicked = false
+
+    private let modelContainer: ModelContainer
+
+    private var preferredScheme: ColorScheme? {
+        ThemePreference(rawValue: themeRaw)?.colorScheme
     }
 
     @MainActor
     private func maybeRunAcceptance() async {
-        guard !kicked else { return }
+        guard !kicked else {
+            return
+        }
         kicked = true
 
         let args = ProcessInfo.processInfo.arguments

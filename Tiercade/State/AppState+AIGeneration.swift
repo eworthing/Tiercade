@@ -1,6 +1,6 @@
 import Foundation
-import SwiftUI
 import Observation
+import SwiftUI
 import TiercadeCore
 
 #if canImport(FoundationModels)
@@ -10,7 +10,7 @@ import FoundationModels
 // MARK: - AI Item Generation State
 
 @MainActor
-internal extension AppState {
+extension AppState {
     // MARK: - Generation
 
     /// Generate items using Apple Intelligence.
@@ -33,7 +33,7 @@ internal extension AppState {
         let request = AIGenerationRequest(
             description: description,
             itemCount: count,
-            timestamp: Date()
+            timestamp: Date(),
         )
 
         guard request.isValid else {
@@ -58,7 +58,7 @@ internal extension AppState {
                     useGuidedBackfill: true,
                     hybridSwitchEnabled: false,
                     guidedBudgetBumpFirst: false,
-                    promptStyle: .strict
+                    promptStyle: .strict,
                 )
 
                 let items: [String]
@@ -77,7 +77,7 @@ internal extension AppState {
                 showToast(
                     type: .success,
                     title: "Success",
-                    message: "Generated \(items.count) items"
+                    message: "Generated \(items.count) items",
                 )
                 #else
                 throw AIGenerationError.platformNotSupported
@@ -87,7 +87,7 @@ internal extension AppState {
                 showToast(
                     type: .error,
                     title: "Generation Failed",
-                    message: error.userMessage
+                    message: error.userMessage,
                 )
                 aiGeneration.aiGeneratedCandidates = []
             } catch {
@@ -96,7 +96,7 @@ internal extension AppState {
                 showToast(
                     type: .error,
                     title: "Generation Failed",
-                    message: "An unexpected error occurred. Please try again."
+                    message: "An unexpected error occurred. Please try again.",
                 )
                 aiGeneration.aiGeneratedCandidates = []
             }
@@ -139,7 +139,7 @@ internal extension AppState {
     /// - Note: Shows toast with import count and duplicate count
     /// - Note: Automatically dismisses overlay after successful import
     func importSelectedCandidates(into draft: TierProjectDraft) {
-        let selected = aiGeneration.aiGeneratedCandidates.filter { $0.isSelected }
+        let selected = aiGeneration.aiGeneratedCandidates.filter(\.isSelected)
 
         guard !selected.isEmpty else {
             showToast(type: .warning, title: "No Selection", message: "Please select items to import")
@@ -162,7 +162,7 @@ internal extension AppState {
                 subtitle: "",
                 summary: "",
                 slug: "item-\(UUID().uuidString)",
-                ordinal: draft.items.count
+                ordinal: draft.items.count,
             )
             item.project = draft
             draft.items.append(item)
@@ -175,14 +175,14 @@ internal extension AppState {
             showToast(
                 type: .success,
                 title: "Imported",
-                message: "Added \(uniqueCandidates.count) items (\(skippedCount) duplicates skipped)"
+                message: "Added \(uniqueCandidates.count) items (\(skippedCount) duplicates skipped)",
             )
             print("⚠️ [AIGeneration] Skipped \(skippedCount) duplicate items during import")
         } else {
             showToast(
                 type: .success,
                 title: "Success",
-                message: "Imported \(uniqueCandidates.count) items"
+                message: "Imported \(uniqueCandidates.count) items",
             )
         }
 

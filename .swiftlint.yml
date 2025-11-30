@@ -1,104 +1,197 @@
+# .swiftlint.yml
+# Tiercade SwiftLint configuration (LLM-oriented, Swift 6)
+# Consensus config from Claude + ChatGPT analysis (2025-11-30)
+
+included:
+  - Tiercade
+  - TiercadeTests
+  - TiercadeUITests
+  - TiercadeCore/Sources
+  - TiercadeCore/Tests
+
 excluded:
   - build
+  - DerivedData
+  - .build
   - TiercadeCore/.build
   - TiercadeCore/.swiftpm
-  - TiercadeCore/Package.swift
-  - TiercadeCore/Tests
-  - TiercadeCore/Sources                  # Core logic has intentional force unwraps in sorting comparisons
-  - TiercadeTests                         # Test files legitimately use force unwraps
-  - TiercadeUITests
-  - referencedocs
   - node_modules
+  - referencedocs
+  - "**/*.generated.swift"
 
-# MARK: - Complexity Thresholds
+# MARK: - SwiftFormat Owns Layout (Disable All Style Rules)
+
+disabled_rules:
+  # Whitespace/layout - SwiftFormat handles
+  - trailing_whitespace
+  - vertical_whitespace
+  - vertical_whitespace_between_cases
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
+  - leading_whitespace
+  - closure_end_indentation
+  - closure_parameter_position
+  - indentation_width
+  - trailing_newline
+  - trailing_semicolon
+
+  # Spacing/punctuation - SwiftFormat handles
+  - colon
+  - comma
+  - trailing_comma
+  - no_space_in_method_call
+  - operator_usage_whitespace
+  - comment_spacing
+  - switch_case_alignment
+  - statement_position
+  - attributes
+  - opening_brace
+  - closing_brace
+  - multiline_arguments
+  - multiline_parameters
+  - multiline_function_chains
+  - multiline_literal_brackets
+
+  # Noise reduction - deployment_target fires on every @available matching min target
+  - deployment_target
+
+  # Project-specific
+  - explicit_acl
+  - todo
+  - blanket_disable_command
+  - identifier_name
+  - type_name
+  - multiple_closures_with_trailing_closure
+
+# MARK: - Safety & Concurrency Rules (Opt-In)
+
+opt_in_rules:
+  # Swift 6 Concurrency
+  - unhandled_throwing_task
+  # Note: async_without_await disabled - triggers on protocol conformance requirements
+
+  # SwiftUI Best Practices
+  - private_swiftui_state
+
+  # Safety (crash/retain prevention)
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+  - weak_delegate
+  - unowned_variable_capture
+
+  # Accessibility
+  - accessibility_label_for_image
+  - accessibility_trait_for_button
+
+  # Performance
+  - empty_count
+  - empty_string
+  - first_where
+  - last_where
+  - sorted_first_last
+  - reduce_into
+  - contains_over_first_not_nil
+  - contains_over_filter_count
+  - contains_over_filter_is_empty
+  - flatmap_over_map_reduce
+
+  # Modern Swift idioms
+  - shorthand_optional_binding
+  - toggle_bool
+  - joined_default_parameter
+  - redundant_nil_coalescing
+  - identical_operands
+  - yoda_condition
+  # Note: discouraged_optional_boolean/collection disabled - many intentional optional APIs
+  - overridden_super_call
+
+# MARK: - Analyzer Rules (CI Only)
+
+analyzer_rules:
+  - unused_declaration
+  - unused_import
+
+# MARK: - Metrics (LLM-friendly bounds)
 
 cyclomatic_complexity:
-  warning: 8
-  error: 12
+  warning: 10
+  error: 15
+  ignores_case_statements: true
 
-# Length limits aligned with AGENTS.md targets (overlays <~400, views <~600)
-file_length:
-  warning: 600
-  error: 800
-  ignore_comment_only_lines: true
+function_body_length:
+  warning: 50
+  error: 80
+  ignores_comments: true
+  ignores_empty_lines: true
 
 type_body_length:
   warning: 400
   error: 500
 
-function_body_length:
-  warning: 50
-  error: 80
+file_length:
+  warning: 600
+  error: 800
+  ignore_comment_only_lines: true
+
+function_parameter_count:
+  warning: 6
+  error: 8
+  ignores_default_parameters: true
+
+nesting:
+  type_level: 2
+  function_level: 4
+  check_nesting_in_closures_and_statements: true
 
 line_length:
   warning: 120
-  error: 200
+  error: 180
   ignores_comments: true
   ignores_urls: true
 
-# MARK: - Identifier Configuration
+# MARK: - Severity Overrides
 
-identifier_name:
-  min_length:
-    warning: 1
-    error: 1
-  validates_start_with_lowercase: false
-  excluded:
-    - L1
-    - L2
-    - Lbg
-    - Lw
-    - Lk
+force_cast:
+  severity: error
 
-# Function parameter count suppression policy (see commit d910b22):
-# - Acceptable: Helper functions with 8+ params where parameter objects would obscure intent
-# - Prefer: Extract parameter objects (see RetryState pattern in ca46798)
-# - REQUIRED: Document reasoning inline for future reviewers when suppressing
+force_try:
+  severity: error
 
-# MARK: - Disabled Rules
+force_unwrapping:
+  severity: warning
 
-# High noise-to-signal ratio for this codebase:
-disabled_rules:
-  - explicit_acl                          # Generated 1,469 warnings; Swift's implicit internal is sufficient for app code
-  - explicit_top_level_acl                # Generated 41 warnings; adds churn without catching real bugs in practice
+# MARK: - Deployment Targets (OS 26)
 
-# MARK: - Opt-In Rules
+deployment_target:
+  iOS_deployment_target: 26.0
+  macOS_deployment_target: 26.0
+  tvOS_deployment_target: 26.0
 
-# Safety, concurrency, and modern Swift patterns:
-opt_in_rules:
-  # Swift 6 Concurrency (catches async bugs)
-  - unhandled_throwing_task               # Flag throwing tasks without error handling
+# MARK: - Custom Rules (LLM Mistake Prevention)
 
-  # SwiftUI Best Practices
-  - private_swiftui_state                 # Apple recommends @State always be private
+custom_rules:
+  no_print_statements:
+    regex: '^\s*print\s*\('
+    message: "Remove print() before committing; use unified logging instead."
+    severity: warning
+    excluded:
+      - ".*Tests.*"
+      - ".*AppleIntelligence.*"
+      - ".*Debug.*"
 
-  # Safety (crash/retain prevention)
-  - force_unwrapping                      # Discourage dangerous ! unwraps
-  - implicitly_unwrapped_optional         # Discourage Type! declarations
-  - weak_delegate                         # Prevent delegate retain cycles
-  - unowned_variable_capture              # Catch crash-prone unowned captures in closures
+  avoid_force_unwrap_after_await:
+    regex: 'await[^\n]*!'
+    message: "Avoid force-unwrapping results of async calls."
+    severity: warning
 
-  # Accessibility (tvOS VoiceOver support per AGENTS.md)
-  - accessibility_label_for_image         # Images need labels or .accessibilityHidden(true)
-  - accessibility_trait_for_button        # Buttons need proper accessibility traits
+  task_self_capture:
+    regex: 'Task\s*\{[^}]*\bself\.'
+    message: "Consider [weak self] or verify actor isolation for Task closures."
+    severity: warning
 
-  # Modern Swift Patterns (performance/clarity)
-  - empty_count                           # isEmpty over count == 0
-  - first_where                           # first(where:) over filter().first
-  - shorthand_optional_binding            # Swift 5.7+ if let foo syntax
+  prefer_mainactor_over_dispatch:
+    regex: 'DispatchQueue\.main\.async'
+    message: "Prefer @MainActor or MainActor.run in Swift Concurrency."
+    severity: warning
 
-# MARK: - Analyzer Rules
-
-# NOTE: These only run with 'swiftlint analyze' (requires compilation).
-# Without CI, run manually: swiftlint analyze --compiler-log-path build.log
-analyzer_rules:
-  - unused_declaration                    # Flag dead code after refactors
-  - unused_import                         # Remove unused imports
-
-# MARK: - Staged for Future
-
-# Large initial diff risk - enable after targeted cleanup:
-#   - explicit_self                       # Clearer capture semantics in async code
-#   - sorted_imports                      # Diff hygiene (low value for solo dev)
-#   - redundant_type_annotation           # Eliminate duplicate typing
-#   - prefer_self_type_over_type_of_self  # Swift 6 idioms
+reporter: xcode

@@ -15,8 +15,10 @@ import AppKit
 import UIKit
 #endif
 
+// MARK: - AIChatOverlay
+
 @MainActor
-internal struct AIChatOverlay: View {
+struct AIChatOverlay: View {
     @Environment(AppState.self) var app: AppState
     @Bindable var ai: AIGenerationState
     @State private var inputText = ""
@@ -33,7 +35,7 @@ internal struct AIChatOverlay: View {
     @State private var useMinimalPrompt = false
     #endif
 
-    internal var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             header
             messagesSection
@@ -46,21 +48,21 @@ internal struct AIChatOverlay: View {
         .shadow(radius: 20)
         .onAppear { isInputFocused = true }
         #if os(tvOS)
-        .focusSection()
-        .onExitCommand { app.closeAIChat() }
+            .focusSection()
+            .onExitCommand { app.closeAIChat() }
         #endif
-        .sheet(isPresented: $showImagePreview) {
-            if let generatedImage {
-                ImagePreviewSheet(image: generatedImage, onDismiss: { showImagePreview = false })
+            .sheet(isPresented: $showImagePreview) {
+                if let generatedImage {
+                    ImagePreviewSheet(image: generatedImage, onDismiss: { showImagePreview = false })
+                }
             }
-        }
         #if DEBUG && os(macOS)
-        .sheet(isPresented: $showTestSuitePicker) {
-            TestSuitePickerSheet(onSelectSuite: { suiteId in
-                showTestSuitePicker = false
-                runUnifiedTestSuite(suiteId: suiteId)
-            }, onDismiss: { showTestSuitePicker = false })
-        }
+            .sheet(isPresented: $showTestSuitePicker) {
+                TestSuitePickerSheet(onSelectSuite: { suiteId in
+                    showTestSuitePicker = false
+                    runUnifiedTestSuite(suiteId: suiteId)
+                }, onDismiss: { showTestSuitePicker = false })
+            }
         #endif
     }
 
@@ -206,9 +208,15 @@ internal struct AIChatOverlay: View {
         let max = AIGenerationState.maxContextTokens
         let percentage = Double(current) / Double(max)
         let color: Color = {
-            if percentage < 0.5 { return .green }
-            if percentage < 0.75 { return .yellow }
-            if percentage < 0.9 { return .orange }
+            if percentage < 0.5 {
+                return .green
+            }
+            if percentage < 0.75 {
+                return .yellow
+            }
+            if percentage < 0.9 {
+                return .orange
+            }
             return .red
         }()
 
@@ -233,14 +241,18 @@ internal struct AIChatOverlay: View {
                 .padding()
             }
             .onChange(of: ai.messages.count) { _, _ in
-                guard let last = ai.messages.last else { return }
+                guard let last = ai.messages.last else {
+                    return
+                }
                 withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
             }
             #if DEBUG
             .onChange(of: ai.testConsoleMessages.count) { _, _ in
-                guard let last = ai.testConsoleMessages.last else { return }
-                withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
-            }
+                    guard let last = ai.testConsoleMessages.last else {
+                        return
+                    }
+                    withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                }
             #endif
         }
     }
@@ -260,12 +272,14 @@ internal struct AIChatOverlay: View {
         } else {
             ForEach(allMessages) { message in
                 HStack {
-                    if message.isUser { Spacer(minLength: 0) }
+                    if message.isUser {
+                        Spacer(minLength: 0)
+                    }
                     HStack(spacing: 8) {
                         Text(message.content)
                             .font(.body)
                             .foregroundStyle(.primary)
-                            #if !os(tvOS)
+                        #if !os(tvOS)
                             .textSelection(.enabled)
                         #endif
 
@@ -285,10 +299,12 @@ internal struct AIChatOverlay: View {
                     .background(
                         message.isUser
                             ? Color.purple.opacity(0.25)
-                            : Color.white.opacity(0.08)
+                            : Color.white.opacity(0.08),
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 14))
-                    if !message.isUser { Spacer(minLength: 0) }
+                    if !message.isUser {
+                        Spacer(minLength: 0)
+                    }
                 }
                 .id(message.id)
             }
@@ -382,7 +398,9 @@ internal struct AIChatOverlay: View {
 
     private func send() {
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else {
+            return
+        }
         inputText = ""
         Task { await ai.sendMessage(trimmed) }
     }
@@ -401,7 +419,9 @@ internal struct AIChatOverlay: View {
 
     private func generateImage() {
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else {
+            return
+        }
 
         #if canImport(ImagePlayground)
         guard #available(iOS 18.4, macOS 15.4, *) else {
@@ -419,7 +439,7 @@ internal struct AIChatOverlay: View {
         #endif
     }
 
-    internal func runUnifiedTests() {
+    func runUnifiedTests() {
         #if DEBUG && canImport(FoundationModels)
         print("🧪 [UnifiedTest] Sparkles button clicked!")
 
@@ -434,21 +454,21 @@ internal struct AIChatOverlay: View {
         #endif
     }
 
-    internal func showUnifiedTestsUnavailable() {
+    func showUnifiedTestsUnavailable() {
         ai.messages.append(AIChatMessage(
             content: "⚠️ Unified tests require iOS 26.0+ or macOS 26.0+",
-            isUser: false
+            isUser: false,
         ))
     }
 
-    internal func runCoordinatorExperiments() {
+    func runCoordinatorExperiments() {
         #if DEBUG && canImport(FoundationModels)
         print("🔧 [Coordinator] Experiments button clicked!")
 
         if #available(iOS 26.0, macOS 26.0, *) {
             ai.messages.append(AIChatMessage(
                 content: "🔧 Starting Coordinator Experiments (baseline)…",
-                isUser: false
+                isUser: false,
             ))
 
             Task {
@@ -463,20 +483,20 @@ internal struct AIChatOverlay: View {
                         "\(report.successfulRuns)/\(report.totalRuns) passed. Report saved to temp directory."
                     ai.messages.append(AIChatMessage(
                         content: summary,
-                        isUser: false
+                        isUser: false,
                     ))
                 }
             }
         } else {
             ai.messages.append(AIChatMessage(
                 content: "⚠️ Coordinator experiments require iOS 26.0+ or macOS 26.0+",
-                isUser: false
+                isUser: false,
             ))
         }
         #endif
     }
 
-    internal func runAcceptanceTests() {
+    func runAcceptanceTests() {
         #if DEBUG && canImport(FoundationModels)
         print("🧪 [AcceptanceTest] Checkmark button clicked!")
 
@@ -488,14 +508,14 @@ internal struct AIChatOverlay: View {
         #endif
     }
 
-    internal func showAcceptanceTestsUnavailable() {
+    func showAcceptanceTestsUnavailable() {
         ai.messages.append(AIChatMessage(
             content: "⚠️ Acceptance tests require iOS 26.0+ or macOS 26.0+",
-            isUser: false
+            isUser: false,
         ))
     }
 
-    internal func runPilotTests() {
+    func runPilotTests() {
         #if DEBUG && canImport(FoundationModels)
         print("🧪 [PilotTest] Chart button clicked!")
 
@@ -507,14 +527,14 @@ internal struct AIChatOverlay: View {
         #endif
     }
 
-    internal func showPilotTestsUnavailable() {
+    func showPilotTestsUnavailable() {
         ai.messages.append(AIChatMessage(
             content: "⚠️ Pilot tests require iOS 26.0+ or macOS 26.0+",
-            isUser: false
+            isUser: false,
         ))
     }
 
-    internal func runPromptTests() {
+    func runPromptTests() {
         #if DEBUG
         print("🧪 [Test] Flask button clicked!")
 
@@ -539,11 +559,11 @@ internal struct AIChatOverlay: View {
                     Prompt text:
                     \(best.promptText)
                     """,
-                    isUser: false
+                    isUser: false,
                 ))
                 app.showSuccessToast(
                     "Found Solution!",
-                    message: "Prompt #\(best.promptNumber) works!"
+                    message: "Prompt #\(best.promptNumber) works!",
                 )
                 print("\n✅ BEST PROMPT:")
                 print(best.promptText)
@@ -553,24 +573,25 @@ internal struct AIChatOverlay: View {
                     😔 All \(results.count) prompts failed - duplicates still occur \
                     with every variation tested.
                     """,
-                    isUser: false
+                    isUser: false,
                 ))
                 app.showErrorToast(
                     "No Solution",
-                    message: "All prompts still produce duplicates"
+                    message: "All prompts still produce duplicates",
                 )
             }
         }
         #else
         ai.messages.append(AIChatMessage(
             content: "⚠️ FoundationModels framework not available at compile time on this platform.",
-            isUser: false
+            isUser: false,
         ))
         print("🧪 [Test] FoundationModels not available at compile time")
         #endif
         #endif
     }
 }
+
 // swiftlint:enable type_body_length
 
 // MARK: - Test Suite Picker Sheet
@@ -578,6 +599,9 @@ internal struct AIChatOverlay: View {
 #if DEBUG && os(macOS)
 @MainActor
 private struct TestSuitePickerSheet: View {
+
+    // MARK: Internal
+
     struct TestSuiteInfo {
         let id: String
         let name: String
@@ -588,31 +612,6 @@ private struct TestSuitePickerSheet: View {
 
     let onSelectSuite: (String) -> Void
     let onDismiss: () -> Void
-
-    private let testSuites: [TestSuiteInfo] = [
-        TestSuiteInfo(id: "quick-smoke", name: "Quick Smoke Test",
-                      description: "Fast validation (1-2 min)", duration: 60, runs: 4),
-        TestSuiteInfo(id: "n50-validation", name: "N=50 Validation",
-                      description: "Validate N=50 generation (2 min)", duration: 120, runs: 8),
-        TestSuiteInfo(id: "n50-focused", name: "N=50 Focused",
-                      description: "Unified N=50 (24 runs)", duration: 180, runs: 24),
-        TestSuiteInfo(id: "standard-prompt-test", name: "Standard Prompt Test",
-                      description: "Baseline prompt testing (8 min)", duration: 480, runs: 8),
-        TestSuiteInfo(id: "hybrid-switch-eval", name: "Hybrid Switch Evaluation",
-                      description: "Guided vs. unguided at N=50/150", duration: 900, runs: 48),
-        TestSuiteInfo(id: "temperature-ramp-study", name: "Temperature Ramp Study",
-                      description: "Diversity vs. JSON validity", duration: 600, runs: 32),
-        TestSuiteInfo(id: "lenient-parse-stress", name: "Lenient Parse Stress Test",
-                      description: "Unguided parsing at large N", duration: 480, runs: 8),
-        TestSuiteInfo(id: "seed-rotation-study", name: "Seed Rotation Study",
-                      description: "Variance across seed set", duration: 720, runs: 40),
-        TestSuiteInfo(id: "diversity-comparison", name: "Diversity Comparison",
-                      description: "Compare diversity strategies (10 min)", duration: 600, runs: 72),
-        TestSuiteInfo(id: "enhanced-pilot", name: "Enhanced Pilot Test",
-                      description: "Multi-dimensional testing (15 min)", duration: 900, runs: 192),
-        TestSuiteInfo(id: "full-acceptance", name: "Full Acceptance Test",
-                      description: "Comprehensive suite (30 min)", duration: 1800, runs: 432)
-    ]
 
     var body: some View {
         VStack(spacing: 0) {
@@ -674,6 +673,88 @@ private struct TestSuitePickerSheet: View {
         .frame(width: 500, height: 400)
     }
 
+    // MARK: Private
+
+    private let testSuites: [TestSuiteInfo] = [
+        TestSuiteInfo(
+            id: "quick-smoke",
+            name: "Quick Smoke Test",
+            description: "Fast validation (1-2 min)",
+            duration: 60,
+            runs: 4,
+        ),
+        TestSuiteInfo(
+            id: "n50-validation",
+            name: "N=50 Validation",
+            description: "Validate N=50 generation (2 min)",
+            duration: 120,
+            runs: 8,
+        ),
+        TestSuiteInfo(
+            id: "n50-focused",
+            name: "N=50 Focused",
+            description: "Unified N=50 (24 runs)",
+            duration: 180,
+            runs: 24,
+        ),
+        TestSuiteInfo(
+            id: "standard-prompt-test",
+            name: "Standard Prompt Test",
+            description: "Baseline prompt testing (8 min)",
+            duration: 480,
+            runs: 8,
+        ),
+        TestSuiteInfo(
+            id: "hybrid-switch-eval",
+            name: "Hybrid Switch Evaluation",
+            description: "Guided vs. unguided at N=50/150",
+            duration: 900,
+            runs: 48,
+        ),
+        TestSuiteInfo(
+            id: "temperature-ramp-study",
+            name: "Temperature Ramp Study",
+            description: "Diversity vs. JSON validity",
+            duration: 600,
+            runs: 32,
+        ),
+        TestSuiteInfo(
+            id: "lenient-parse-stress",
+            name: "Lenient Parse Stress Test",
+            description: "Unguided parsing at large N",
+            duration: 480,
+            runs: 8,
+        ),
+        TestSuiteInfo(
+            id: "seed-rotation-study",
+            name: "Seed Rotation Study",
+            description: "Variance across seed set",
+            duration: 720,
+            runs: 40,
+        ),
+        TestSuiteInfo(
+            id: "diversity-comparison",
+            name: "Diversity Comparison",
+            description: "Compare diversity strategies (10 min)",
+            duration: 600,
+            runs: 72,
+        ),
+        TestSuiteInfo(
+            id: "enhanced-pilot",
+            name: "Enhanced Pilot Test",
+            description: "Multi-dimensional testing (15 min)",
+            duration: 900,
+            runs: 192,
+        ),
+        TestSuiteInfo(
+            id: "full-acceptance",
+            name: "Full Acceptance Test",
+            description: "Comprehensive suite (30 min)",
+            duration: 1800,
+            runs: 432,
+        ),
+    ]
+
     private func formatDuration(_ seconds: Int) -> String {
         if seconds < 60 {
             return "\(seconds)s"
@@ -689,7 +770,7 @@ private struct TestSuitePickerSheet: View {
 }
 #endif
 
-// MARK: - Previews
+// MARK: - AIChatOverlayPreview
 
 @MainActor
 private struct AIChatOverlayPreview: View {

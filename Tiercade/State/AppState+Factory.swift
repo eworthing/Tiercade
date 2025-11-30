@@ -1,6 +1,6 @@
 import SwiftData
 
-internal extension AppState {
+extension AppState {
     /// Convenience initializer used by previews and tests to spin up an in-memory store.
     /// Default behaviour mirrors the production container but avoids disk persistence.
     @MainActor
@@ -21,7 +21,7 @@ internal extension AppState {
                 TierDraftMedia.self,
                 TierDraftAudit.self,
                 TierDraftCollabMember.self,
-                configurations: configuration
+                configurations: configuration,
             )
         } catch {
             fatalError("Failed to create in-memory model container: \(error)")

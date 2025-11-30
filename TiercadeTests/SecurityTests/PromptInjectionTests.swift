@@ -1,5 +1,5 @@
-import Testing
 import Foundation
+import Testing
 @testable import Tiercade
 
 /// Security tests for AI prompt injection prevention
@@ -30,8 +30,8 @@ struct PromptInjectionTests {
         let sanitized = PromptValidator.sanitize(input)
         // Whitespace gets normalized to single spaces
         #expect(sanitized.contains(" "))
-        #expect(!sanitized.contains("\t"))  // Normalized
-        #expect(!sanitized.contains("\n"))  // Normalized
+        #expect(!sanitized.contains("\t")) // Normalized
+        #expect(!sanitized.contains("\n")) // Normalized
     }
 
     // MARK: - Excessive Punctuation Limiting
@@ -41,7 +41,7 @@ struct PromptInjectionTests {
         let input = "URGENT!!!!!! READ THIS!!!!!"
         let sanitized = PromptValidator.sanitize(input)
         #expect(!sanitized.contains("!!!"))
-        #expect(sanitized.contains("!!"))  // Max 2
+        #expect(sanitized.contains("!!")) // Max 2
     }
 
     @Test("Limits excessive periods")
@@ -49,7 +49,7 @@ struct PromptInjectionTests {
         let input = "End of sentence........ More text"
         let sanitized = PromptValidator.sanitize(input)
         #expect(!sanitized.contains("..."))
-        #expect(sanitized.contains(".."))  // Max 2
+        #expect(sanitized.contains("..")) // Max 2
     }
 
     @Test("Limits excessive question marks")
@@ -57,7 +57,7 @@ struct PromptInjectionTests {
         let input = "What?????? Where??????"
         let sanitized = PromptValidator.sanitize(input)
         #expect(!sanitized.contains("???"))
-        #expect(sanitized.contains("??"))  // Max 2
+        #expect(sanitized.contains("??")) // Max 2
     }
 
     // MARK: - Length Truncation

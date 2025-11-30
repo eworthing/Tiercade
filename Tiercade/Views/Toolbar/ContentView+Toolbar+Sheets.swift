@@ -8,21 +8,21 @@ import TiercadeCore
 // MARK: - Sheet Presentations for Toolbar
 
 #if os(iOS)
-internal struct TiersDocument: FileDocument {
-    internal static var readableContentTypes: [UTType] { [.json] }
-    internal var tiers: Items = [:]
+struct TiersDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
+    var tiers: Items = [:]
 
-    internal init() {}
-    internal init(tiers: Items) { self.tiers = tiers }
+    init() {}
+    init(tiers: Items) { self.tiers = tiers }
 
-    internal init(configuration: ReadConfiguration) throws {
+    init(configuration: ReadConfiguration) throws {
         guard let data = configuration.file.regularFileContents else {
             throw CocoaError(.fileReadCorruptFile)
         }
-        tiers = try JSONDecoder().decode(Items.self, from: data)
+        self.tiers = try JSONDecoder().decode(Items.self, from: data)
     }
 
-    internal func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+    func fileWrapper(configuration _: WriteConfiguration) throws -> FileWrapper {
         let data = try JSONEncoder().encode(tiers)
         return .init(regularFileWithContents: data)
     }
@@ -30,7 +30,7 @@ internal struct TiersDocument: FileDocument {
 #endif
 
 #if os(iOS)
-internal struct BottomToolbarSheets: ToolbarContent {
+struct BottomToolbarSheets: ToolbarContent {
     @Bindable var app: AppState
     @Binding var exportText: String
     @Binding var showingSettings: Bool
@@ -44,7 +44,7 @@ internal struct BottomToolbarSheets: ToolbarContent {
     @Binding var showingLoadDialog: Bool
     @Binding var saveFileName: String
 
-    internal var body: some ToolbarContent {
+    var body: some ToolbarContent {
         ToolbarItem(placement: .bottomBar) {
             EmptyView()
                 .sheet(isPresented: $showingSettings) {
@@ -54,35 +54,35 @@ internal struct BottomToolbarSheets: ToolbarContent {
                     ExportFormatSheetView(
                         coordinator: app,
                         exportFormat: selectedExportFormat,
-                        isPresented: $showingExportFormatSheet
+                        isPresented: $showingExportFormatSheet,
                     )
                 }
                 .fileExporter(
                     isPresented: $exportingJSON,
                     document: jsonDoc,
                     contentType: .json,
-                    defaultFilename: "tiers.json"
+                    defaultFilename: "tiers.json",
                 ) { result in
                     switch result {
                     case let .failure(error):
                         app.showToast(
                             type: .error,
                             title: "JSON Export Failed",
-                            message: error.localizedDescription
+                            message: error.localizedDescription,
                         )
                     case .success:
                         app.showToast(
                             type: .success,
                             title: "JSON Export Complete",
-                            message: "File saved successfully"
+                            message: "File saved successfully",
                         )
                     }
                 }
                 .fileImporter(
                     isPresented: $importingJSON,
-                    allowedContentTypes: [.json]
+                    allowedContentTypes: [.json],
                 ) { result in
-                    if case .success(let url) = result {
+                    if case let .success(url) = result {
                         Task {
                             do {
                                 try await app.importFromJSON(url: url)
@@ -90,7 +90,7 @@ internal struct BottomToolbarSheets: ToolbarContent {
                                 app.showToast(
                                     type: .error,
                                     title: "Import Failed",
-                                    message: error.localizedDescription
+                                    message: error.localizedDescription,
                                 )
                             }
                         }
@@ -98,9 +98,9 @@ internal struct BottomToolbarSheets: ToolbarContent {
                 }
                 .fileImporter(
                     isPresented: $showingImportSheet,
-                    allowedContentTypes: [.commaSeparatedText, .text]
+                    allowedContentTypes: [.commaSeparatedText, .text],
                 ) { result in
-                    if case .success(let url) = result {
+                    if case let .success(url) = result {
                         Task {
                             do {
                                 try await app.importFromCSV(url: url)
@@ -108,7 +108,7 @@ internal struct BottomToolbarSheets: ToolbarContent {
                                 app.showToast(
                                     type: .error,
                                     title: "Import Failed",
-                                    message: error.localizedDescription
+                                    message: error.localizedDescription,
                                 )
                             }
                         }
@@ -117,19 +117,21 @@ internal struct BottomToolbarSheets: ToolbarContent {
                 .alert("Save Tier List", isPresented: $showingSaveDialog) {
                     TextField("File Name", text: $saveFileName)
                     Button("Save") {
-                        guard !saveFileName.isEmpty else { return }
+                        guard !saveFileName.isEmpty else {
+                            return
+                        }
                         do {
                             try app.saveToFile(named: saveFileName)
                             app.showToast(
                                 type: .success,
                                 title: "Save Complete",
-                                message: "Saved \(saveFileName).json"
+                                message: "Saved \(saveFileName).json",
                             )
                         } catch {
                             app.showToast(
                                 type: .error,
                                 title: "Save Failed",
-                                message: error.localizedDescription
+                                message: error.localizedDescription,
                             )
                         }
                     }
@@ -140,7 +142,7 @@ internal struct BottomToolbarSheets: ToolbarContent {
                 .alert("Load Tier List", isPresented: $showingLoadDialog) {
                     ForEach(app.getAvailableSaveFiles(), id: \.self) { fileName in
                         Button(fileName) {
-                            if app.loadFromFile(named: fileName) { }
+                            if app.loadFromFile(named: fileName) {}
                         }
                     }
                     Button("Cancel", role: .cancel) {}
@@ -153,32 +155,34 @@ internal struct BottomToolbarSheets: ToolbarContent {
 #endif
 
 #if !os(iOS)
-internal struct MacAndTVToolbarSheets: ToolbarContent {
+struct MacAndTVToolbarSheets: ToolbarContent {
     @Bindable var app: AppState
     @Binding var showingSaveDialog: Bool
     @Binding var showingLoadDialog: Bool
     @Binding var saveFileName: String
     @Binding var showingSettings: Bool
 
-    internal var body: some ToolbarContent {
+    var body: some ToolbarContent {
         ToolbarItem(placement: .automatic) {
             EmptyView()
                 .alert("Save Tier List", isPresented: $showingSaveDialog) {
                     TextField("File Name", text: $saveFileName)
                     Button("Save") {
-                        guard !saveFileName.isEmpty else { return }
+                        guard !saveFileName.isEmpty else {
+                            return
+                        }
                         do {
                             try app.saveToFile(named: saveFileName)
                             app.showToast(
                                 type: .success,
                                 title: "Save Complete",
-                                message: "Saved \(saveFileName).json"
+                                message: "Saved \(saveFileName).json",
                             )
                         } catch {
                             app.showToast(
                                 type: .error,
                                 title: "Save Failed",
-                                message: error.localizedDescription
+                                message: error.localizedDescription,
                             )
                         }
                     }
@@ -189,7 +193,7 @@ internal struct MacAndTVToolbarSheets: ToolbarContent {
                 .alert("Load Tier List", isPresented: $showingLoadDialog) {
                     ForEach(app.getAvailableSaveFiles(), id: \.self) { fileName in
                         Button(fileName) {
-                            if app.loadFromFile(named: fileName) { }
+                            if app.loadFromFile(named: fileName) {}
                         }
                     }
                     Button("Cancel", role: .cancel) {}

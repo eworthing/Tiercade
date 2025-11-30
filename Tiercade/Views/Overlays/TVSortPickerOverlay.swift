@@ -2,20 +2,14 @@ import SwiftUI
 import TiercadeCore
 
 #if os(tvOS)
-internal struct TVSortPickerOverlay: View {
+struct TVSortPickerOverlay: View {
+
+    // MARK: Internal
+
     @Bindable var app: AppState
     @Binding var isPresented: Bool
-    @FocusState private var focusedOption: FocusOption?
 
-    private enum FocusOption: Hashable {
-        case custom
-        case alphabeticalAsc
-        case alphabeticalDesc
-        case attribute(String, Bool) // key, ascending
-        case close
-    }
-
-    internal var body: some View {
+    var body: some View {
         VStack(spacing: 28) {
             // Title
             Text("Sort Mode")
@@ -40,7 +34,7 @@ internal struct TVSortPickerOverlay: View {
                         action: {
                             app.setGlobalSortMode(.custom)
                             isPresented = false
-                        }
+                        },
                     )
                     .focused($focusedOption, equals: .custom)
 
@@ -48,13 +42,15 @@ internal struct TVSortPickerOverlay: View {
                     SortOptionButton(
                         title: "A → Z",
                         isSelected: {
-                            if case .alphabetical(let asc) = app.globalSortMode, asc { return true }
+                            if case let .alphabetical(asc) = app.globalSortMode, asc {
+                                return true
+                            }
                             return false
                         }(),
                         action: {
                             app.setGlobalSortMode(.alphabetical(ascending: true))
                             isPresented = false
-                        }
+                        },
                     )
                     .focused($focusedOption, equals: .alphabeticalAsc)
 
@@ -62,13 +58,15 @@ internal struct TVSortPickerOverlay: View {
                     SortOptionButton(
                         title: "Z → A",
                         isSelected: {
-                            if case .alphabetical(let asc) = app.globalSortMode, !asc { return true }
+                            if case let .alphabetical(asc) = app.globalSortMode, !asc {
+                                return true
+                            }
                             return false
                         }(),
                         action: {
                             app.setGlobalSortMode(.alphabetical(ascending: false))
                             isPresented = false
-                        }
+                        },
                     )
                     .focused($focusedOption, equals: .alphabeticalDesc)
 
@@ -85,14 +83,18 @@ internal struct TVSortPickerOverlay: View {
                                 SortOptionButton(
                                     title: "\(key.capitalized) ↑",
                                     isSelected: {
-                                        if case .byAttribute(let k, let asc, _) = app.globalSortMode,
-                                           k == key, asc { return true }
+                                        if
+                                            case let .byAttribute(k, asc, _) = app.globalSortMode,
+                                            k == key, asc
+                                        {
+                                            return true
+                                        }
                                         return false
                                     }(),
                                     action: {
                                         app.setGlobalSortMode(.byAttribute(key: key, ascending: true, type: type))
                                         isPresented = false
-                                    }
+                                    },
                                 )
                                 .focused($focusedOption, equals: .attribute(key, true))
 
@@ -100,14 +102,18 @@ internal struct TVSortPickerOverlay: View {
                                 SortOptionButton(
                                     title: "\(key.capitalized) ↓",
                                     isSelected: {
-                                        if case .byAttribute(let k, let asc, _) = app.globalSortMode,
-                                           k == key, !asc { return true }
+                                        if
+                                            case let .byAttribute(k, asc, _) = app.globalSortMode,
+                                            k == key, !asc
+                                        {
+                                            return true
+                                        }
                                         return false
                                     }(),
                                     action: {
                                         app.setGlobalSortMode(.byAttribute(key: key, ascending: false, type: type))
                                         isPresented = false
-                                    }
+                                    },
                                 )
                                 .focused($focusedOption, equals: .attribute(key, false))
                             }
@@ -140,14 +146,27 @@ internal struct TVSortPickerOverlay: View {
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
     }
+
+    // MARK: Private
+
+    private enum FocusOption: Hashable {
+        case custom
+        case alphabeticalAsc
+        case alphabeticalDesc
+        case attribute(String, Bool) // key, ascending
+        case close
+    }
+
+    @FocusState private var focusedOption: FocusOption?
+
 }
 
 private struct SortOptionButton: View {
-    internal let title: String
-    internal let isSelected: Bool
-    internal let action: () -> Void
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
 
-    internal var body: some View {
+    var body: some View {
         Button(action: action) {
             HStack(spacing: 16) {
                 Text(title)
@@ -172,8 +191,8 @@ private struct SortOptionButton: View {
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .stroke(
                         isSelected ? Palette.brand.opacity(0.9) : Color.white.opacity(0.3),
-                        lineWidth: isSelected ? 3 : 2
-                    )
+                        lineWidth: isSelected ? 3 : 2,
+                    ),
             )
         }
         .buttonStyle(.tvRemote(.secondary))

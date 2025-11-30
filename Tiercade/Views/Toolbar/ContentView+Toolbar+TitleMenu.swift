@@ -7,7 +7,7 @@ import TiercadeCore
 extension ToolbarView {
     // iOS title menu content (tap navigation title to reveal)
     @ViewBuilder
-    internal var titleMenuContent: some View {
+    var titleMenuContent: some View {
         Button {
             app.startHeadToHead()
         } label: {
@@ -21,7 +21,7 @@ extension ToolbarView {
         } label: {
             Label(
                 app.showingAnalysis ? "Hide Analysis" : "Show Analysis",
-                systemImage: app.showingAnalysis ? "chart.bar.fill" : "chart.bar"
+                systemImage: app.showingAnalysis ? "chart.bar.fill" : "chart.bar",
             )
         }
         .disabled(!app.canShowAnalysis && !app.showingAnalysis)
@@ -39,7 +39,7 @@ extension ToolbarView {
             Section {
                 Label(
                     "Current: \(app.globalSortMode.displayName)",
-                    systemImage: "checkmark.circle"
+                    systemImage: "checkmark.circle",
                 )
             }
 
@@ -51,7 +51,7 @@ extension ToolbarView {
             } label: {
                 Label(
                     "Manual Order",
-                    systemImage: app.globalSortMode.isCustom ? "checkmark" : ""
+                    systemImage: app.globalSortMode.isCustom ? "checkmark" : "",
                 )
             }
 
@@ -60,7 +60,9 @@ extension ToolbarView {
                 app.setGlobalSortMode(.alphabetical(ascending: true))
             } label: {
                 let isSelected = {
-                    if case .alphabetical(let asc) = app.globalSortMode, asc { return true }
+                    if case let .alphabetical(asc) = app.globalSortMode, asc {
+                        return true
+                    }
                     return false
                 }()
                 Label("A → Z", systemImage: isSelected ? "checkmark" : "")
@@ -70,7 +72,9 @@ extension ToolbarView {
                 app.setGlobalSortMode(.alphabetical(ascending: false))
             } label: {
                 let isSelected = {
-                    if case .alphabetical(let asc) = app.globalSortMode, !asc { return true }
+                    if case let .alphabetical(asc) = app.globalSortMode, !asc {
+                        return true
+                    }
                     return false
                 }()
                 Label("Z → A", systemImage: isSelected ? "checkmark" : "")
@@ -88,8 +92,12 @@ extension ToolbarView {
                                 app.setGlobalSortMode(.byAttribute(key: key, ascending: true, type: type))
                             } label: {
                                 let isSelected = {
-                                    if case .byAttribute(let k, let asc, _) = app.globalSortMode,
-                                       k == key, asc { return true }
+                                    if
+                                        case let .byAttribute(k, asc, _) = app.globalSortMode,
+                                        k == key, asc
+                                    {
+                                        return true
+                                    }
                                     return false
                                 }()
                                 Label("\(key.capitalized) ↑", systemImage: isSelected ? "checkmark" : "")
@@ -99,8 +107,12 @@ extension ToolbarView {
                                 app.setGlobalSortMode(.byAttribute(key: key, ascending: false, type: type))
                             } label: {
                                 let isSelected = {
-                                    if case .byAttribute(let k, let asc, _) = app.globalSortMode,
-                                       k == key, !asc { return true }
+                                    if
+                                        case let .byAttribute(k, asc, _) = app.globalSortMode,
+                                        k == key, !asc
+                                    {
+                                        return true
+                                    }
                                     return false
                                 }()
                                 Label("\(key.capitalized) ↓", systemImage: isSelected ? "checkmark" : "")
@@ -119,7 +131,7 @@ extension ToolbarView {
                 } label: {
                     Label(
                         density.displayName,
-                        systemImage: app.cardDensityPreference == density ? "checkmark" : ""
+                        systemImage: app.cardDensityPreference == density ? "checkmark" : "",
                     )
                 }
             }

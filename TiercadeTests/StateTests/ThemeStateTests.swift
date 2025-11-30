@@ -25,7 +25,7 @@ struct ThemeStateTests {
             colorC: "#00FF00",
             colorD: "#0088FF",
             colorF: "#0000FF",
-            unrankedColorHex: "#888888"
+            unrankedColorHex: "#888888",
         )
     }
 
@@ -99,12 +99,12 @@ struct ThemeStateTests {
         let bundledTheme = TierTheme(
             slug: "bundled",
             displayName: "Bundled",
-            shortDescription: "Bundled theme"
+            shortDescription: "Bundled theme",
         )
         let customTheme = TierTheme(
             slug: "custom",
             displayName: "Custom",
-            shortDescription: "Custom theme"
+            shortDescription: "Custom theme",
         )
 
         await catalog.mockThemes(bundled: [bundledTheme], custom: [customTheme])

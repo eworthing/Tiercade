@@ -1,12 +1,9 @@
-//
-//  Styles.swift
-//  Tiercade
-//
-
 import SwiftUI
 
-internal struct CardStyle: ViewModifier {
-    internal func body(content: Content) -> some View {
+// MARK: - CardStyle
+
+struct CardStyle: ViewModifier {
+    func body(content: Content) -> some View {
         content
             .padding(Metrics.grid * 1.5)
             .background(Palette.surface)
@@ -16,10 +13,12 @@ internal struct CardStyle: ViewModifier {
     }
 }
 
-internal extension View { func card() -> some View { modifier(CardStyle()) } }
+extension View { func card() -> some View { modifier(CardStyle()) } }
 
-internal struct PanelStyle: ViewModifier {
-    internal func body(content: Content) -> some View {
+// MARK: - PanelStyle
+
+struct PanelStyle: ViewModifier {
+    func body(content: Content) -> some View {
         content
             .padding(Metrics.grid * 2)
             .background(Palette.surface)
@@ -28,12 +27,14 @@ internal struct PanelStyle: ViewModifier {
     }
 }
 
-internal extension View { func panel() -> some View { modifier(PanelStyle()) } }
+extension View { func panel() -> some View { modifier(PanelStyle()) } }
 
-internal struct PrimaryButtonStyle: ButtonStyle {
+// MARK: - PrimaryButtonStyle
+
+struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    internal func makeBody(configuration: Configuration) -> some View {
+    func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(TypeScale.label)
             .padding(.horizontal, Metrics.grid * 2).padding(.vertical, Metrics.grid * 1.25)
@@ -45,18 +46,20 @@ internal struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
-internal struct GhostButtonStyle: ButtonStyle {
-    @Environment(\.isFocused) internal var isFocused: Bool
+// MARK: - GhostButtonStyle
+
+struct GhostButtonStyle: ButtonStyle {
+    @Environment(\.isFocused) var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    internal func makeBody(configuration: Configuration) -> some View {
+    func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(TypeScale.label)
             .padding(.horizontal, Metrics.grid * 2).padding(.vertical, Metrics.grid * 1.25)
             .background(
                 isFocused
                     ? Palette.brand.opacity(0.32)
-                    : Palette.surfHi.opacity(0.85)
+                    : Palette.surfHi.opacity(0.85),
             )
             .foregroundColor(.white)
             .cornerRadius(Metrics.rSm)
@@ -65,18 +68,20 @@ internal struct GhostButtonStyle: ButtonStyle {
     }
 }
 
-internal struct CardButtonStyle: ButtonStyle {
-    @Environment(\.isFocused) internal var isFocused: Bool
+// MARK: - CardButtonStyle
+
+struct CardButtonStyle: ButtonStyle {
+    @Environment(\.isFocused) var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    internal func makeBody(configuration: Configuration) -> some View {
+    func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect((configuration.isPressed || isFocused) ? 1.15 : 1.0)
             .shadow(
                 color: (configuration.isPressed || isFocused) ? Palette.brand.opacity(0.55) : Color.black.opacity(0.1),
                 radius: (configuration.isPressed || isFocused) ? 20 : 6,
                 x: 0,
-                y: (configuration.isPressed || isFocused) ? 12 : 4
+                y: (configuration.isPressed || isFocused) ? 12 : 4,
             )
             .animation(reduceMotion ? nil : Motion.emphasis, value: configuration.isPressed || isFocused)
     }
@@ -90,18 +95,21 @@ private func get(_ isPressed: Bool) -> Color {
     #endif
 }
 
-internal struct TVRemoteButtonStyle: ButtonStyle {
-    internal enum Role {
+// MARK: - TVRemoteButtonStyle
+
+struct TVRemoteButtonStyle: ButtonStyle {
+
+    // MARK: Internal
+
+    enum Role {
         case primary
         case secondary
         case list
     }
 
-    internal var role: Role = .primary
-    @Environment(\.isFocused) private var isFocused: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion: Bool
+    var role: Role = .primary
 
-    internal func makeBody(configuration: Configuration) -> some View {
+    func makeBody(configuration: Configuration) -> some View {
         let palette = palette(for: role, isPressed: configuration.isPressed, isFocused: isFocused)
         let scale = scale(for: configuration.isPressed, isFocused: isFocused)
         let borderWidth = isFocused ? palette.focusedBorderWidth : palette.baseBorderWidth
@@ -120,47 +128,52 @@ internal struct TVRemoteButtonStyle: ButtonStyle {
             .glassEffect(Glass.regular.tint(palette.tint).interactive(), in: Capsule())
             .overlay(
                 Capsule()
-                    .stroke(palette.border, lineWidth: borderWidth)
+                    .stroke(palette.border, lineWidth: borderWidth),
             )
             .shadow(
                 color: palette.shadow,
                 radius: palette.shadowRadius(isFocused: isFocused),
                 x: 0,
-                y: palette.shadowYOffset(isFocused: isFocused)
+                y: palette.shadowYOffset(isFocused: isFocused),
             )
             .scaleEffect(scale)
             .animation(animationFocus, value: isFocused)
             .animation(animationPress, value: configuration.isPressed)
     }
 
+    // MARK: Private
+
+    @Environment(\.isFocused) private var isFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion: Bool
+
     private func font(for role: Role) -> Font {
         switch role {
-        case .primary: return .title3.weight(.semibold)
-        case .secondary: return .headline.weight(.semibold)
-        case .list: return .body.weight(.semibold)
+        case .primary: .title3.weight(.semibold)
+        case .secondary: .headline.weight(.semibold)
+        case .list: .body.weight(.semibold)
         }
     }
 
     private func horizontalPadding(for role: Role) -> CGFloat {
         switch role {
-        case .primary: return 26
-        case .secondary: return 22
-        case .list: return 20
+        case .primary: 26
+        case .secondary: 22
+        case .list: 20
         }
     }
 
     private func verticalPadding(for role: Role) -> CGFloat {
         switch role {
-        case .primary: return 14
-        case .secondary: return 12
-        case .list: return 10
+        case .primary: 14
+        case .secondary: 12
+        case .list: 10
         }
     }
 
     private func palette(for role: Role, isPressed: Bool, isFocused: Bool) -> TVGlassButtonPalette {
         switch role {
         case .primary:
-            return TVGlassButtonPalette(
+            TVGlassButtonPalette(
                 tint: Color.white.opacity(min(0.26 + boost(isPressed, isFocused), 0.48)),
                 border: Color.white.opacity(isFocused ? 0.92 : 0.5),
                 foreground: .white,
@@ -168,10 +181,10 @@ internal struct TVRemoteButtonStyle: ButtonStyle {
                 baseBorderWidth: 1.6,
                 focusedBorderWidth: 3.0,
                 shadowRadiusFocused: 18,
-                shadowYOffsetFocused: 4
+                shadowYOffsetFocused: 4,
             )
         case .secondary:
-            return TVGlassButtonPalette(
+            TVGlassButtonPalette(
                 tint: Color.white.opacity(min(0.18 + boost(isPressed, isFocused) * 0.85, 0.34)),
                 border: Color.white.opacity(isFocused ? 0.7 : 0.38),
                 foreground: .white,
@@ -179,10 +192,10 @@ internal struct TVRemoteButtonStyle: ButtonStyle {
                 baseBorderWidth: 1.4,
                 focusedBorderWidth: 2.6,
                 shadowRadiusFocused: 14,
-                shadowYOffsetFocused: 3
+                shadowYOffsetFocused: 3,
             )
         case .list:
-            return TVGlassButtonPalette(
+            TVGlassButtonPalette(
                 tint: Color.white.opacity(min(0.16 + boost(isPressed, isFocused) * 0.75, 0.28)),
                 border: Color.white.opacity(isFocused ? 0.52 : 0.28),
                 foreground: .white,
@@ -190,14 +203,18 @@ internal struct TVRemoteButtonStyle: ButtonStyle {
                 baseBorderWidth: 1.2,
                 focusedBorderWidth: 2.4,
                 shadowRadiusFocused: 10,
-                shadowYOffsetFocused: 2
+                shadowYOffsetFocused: 2,
             )
         }
     }
 
     private func scale(for isPressed: Bool, isFocused: Bool) -> CGFloat {
-        if isPressed { return 0.97 }
-        if isFocused { return 1.06 }
+        if isPressed {
+            return 0.97
+        }
+        if isFocused {
+            return 1.06
+        }
         return 1.0
     }
 
@@ -206,11 +223,13 @@ internal struct TVRemoteButtonStyle: ButtonStyle {
     }
 }
 
-internal extension ButtonStyle where Self == TVRemoteButtonStyle {
+extension ButtonStyle where Self == TVRemoteButtonStyle {
     static func tvRemote(_ role: TVRemoteButtonStyle.Role = .primary) -> TVRemoteButtonStyle {
         TVRemoteButtonStyle(role: role)
     }
 }
+
+// MARK: - TVGlassButtonPalette
 
 private struct TVGlassButtonPalette {
     let tint: Color

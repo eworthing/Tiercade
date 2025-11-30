@@ -1,15 +1,17 @@
 import SwiftUI
 import TiercadeCore
 
-// MARK: - Tier Details Sheet
+// MARK: - TierDetailsSheet
 
-internal struct TierDetailsSheet: View {
+struct TierDetailsSheet: View {
+
+    // MARK: Internal
+
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
     @Bindable var tier: TierDraftTier
-    @Environment(\.dismiss) private var dismiss
 
-    internal var body: some View {
+    var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -29,7 +31,7 @@ internal struct TierDetailsSheet: View {
                             set: { newValue in
                                 tier.label = newValue
                                 appState.markDraftEdited(draft)
-                            }
+                            },
                         ))
                         #if !os(tvOS)
                         .textFieldStyle(.roundedBorder)
@@ -40,7 +42,7 @@ internal struct TierDetailsSheet: View {
                             set: { newValue in
                                 tier.tierId = newValue
                                 appState.markDraftEdited(draft)
-                            }
+                            },
                         ))
                         #if !os(tvOS)
                         .textFieldStyle(.roundedBorder)
@@ -51,7 +53,7 @@ internal struct TierDetailsSheet: View {
                             set: { newValue in
                                 tier.colorHex = newValue
                                 appState.markDraftEdited(draft)
-                            }
+                            },
                         ))
                         #if !os(tvOS)
                         .textFieldStyle(.roundedBorder)
@@ -65,13 +67,13 @@ internal struct TierDetailsSheet: View {
 
                         Toggle("Locked", isOn: Binding(
                             get: { tier.locked },
-                            set: { _ in appState.toggleLock(tier, in: draft) }
+                            set: { _ in appState.toggleLock(tier, in: draft) },
                         ))
                         .toggleStyle(.switch)
 
                         Toggle("Collapsed", isOn: Binding(
                             get: { tier.collapsed },
-                            set: { _ in appState.toggleCollapse(tier, in: draft) }
+                            set: { _ in appState.toggleCollapse(tier, in: draft) },
                         ))
                         .toggleStyle(.switch)
                     }
@@ -93,18 +95,26 @@ internal struct TierDetailsSheet: View {
             }
         }
     }
+
+    // MARK: Private
+
+    @Environment(\.dismiss) private var dismiss
+
 }
 
-// MARK: - Item Details Sheet
+// MARK: - ItemDetailsSheet
 
-internal struct ItemDetailsSheet: View {
+struct ItemDetailsSheet: View {
+
+    // MARK: Internal
+
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
     @Bindable var item: TierDraftItem
-    internal let currentTier: TierDraftTier?
-    @Environment(\.dismiss) private var dismiss
 
-    internal var body: some View {
+    let currentTier: TierDraftTier?
+
+    var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -118,7 +128,7 @@ internal struct ItemDetailsSheet: View {
                             set: { newValue in
                                 item.title = newValue
                                 appState.markDraftEdited(draft)
-                            }
+                            },
                         ))
                         #if !os(tvOS)
                         .textFieldStyle(.roundedBorder)
@@ -129,7 +139,7 @@ internal struct ItemDetailsSheet: View {
                             set: { newValue in
                                 item.subtitle = newValue
                                 appState.markDraftEdited(draft)
-                            }
+                            },
                         ))
                         #if !os(tvOS)
                         .textFieldStyle(.roundedBorder)
@@ -170,7 +180,7 @@ internal struct ItemDetailsSheet: View {
                             set: { newValue in
                                 item.itemId = newValue
                                 appState.markDraftEdited(draft)
-                            }
+                            },
                         ))
 
                         TextField("Slug", text: Binding(
@@ -178,7 +188,7 @@ internal struct ItemDetailsSheet: View {
                             set: { newValue in
                                 item.slug = newValue
                                 appState.markDraftEdited(draft)
-                            }
+                            },
                         ))
 
                         TextField("Summary", text: Binding(
@@ -186,9 +196,9 @@ internal struct ItemDetailsSheet: View {
                             set: { newValue in
                                 item.summary = newValue
                                 appState.markDraftEdited(draft)
-                            }
+                            },
                         ), axis: .vertical)
-                        .lineLimit(2...4)
+                            .lineLimit(2 ... 4)
 
                         Text("Rating: \(Int(item.rating ?? 50))")
                             .font(.caption)
@@ -199,7 +209,7 @@ internal struct ItemDetailsSheet: View {
                             set: { newValue in
                                 item.hidden = newValue
                                 appState.markDraftEdited(draft)
-                            }
+                            },
                         ))
                         .toggleStyle(.switch)
                     }
@@ -211,7 +221,7 @@ internal struct ItemDetailsSheet: View {
                                 set: { newValue in
                                     item.itemId = newValue
                                     appState.markDraftEdited(draft)
-                                }
+                                },
                             ))
                             .textFieldStyle(.roundedBorder)
 
@@ -220,7 +230,7 @@ internal struct ItemDetailsSheet: View {
                                 set: { newValue in
                                     item.slug = newValue
                                     appState.markDraftEdited(draft)
-                                }
+                                },
                             ))
                             .textFieldStyle(.roundedBorder)
 
@@ -229,10 +239,10 @@ internal struct ItemDetailsSheet: View {
                                 set: { newValue in
                                     item.summary = newValue
                                     appState.markDraftEdited(draft)
-                                }
+                                },
                             ), axis: .vertical)
-                            .lineLimit(2...4)
-                            .textFieldStyle(.roundedBorder)
+                                .lineLimit(2 ... 4)
+                                .textFieldStyle(.roundedBorder)
 
                             VStack(alignment: .leading) {
                                 Text("Rating: \(Int(item.rating ?? 50))")
@@ -242,8 +252,8 @@ internal struct ItemDetailsSheet: View {
                                     set: { newValue in
                                         item.rating = newValue
                                         appState.markDraftEdited(draft)
-                                    }
-                                ), in: 0...100, step: 1)
+                                    },
+                                ), in: 0 ... 100, step: 1)
                             }
 
                             Toggle("Hide from library", isOn: Binding(
@@ -251,7 +261,7 @@ internal struct ItemDetailsSheet: View {
                                 set: { newValue in
                                     item.hidden = newValue
                                     appState.markDraftEdited(draft)
-                                }
+                                },
                             ))
                             .toggleStyle(.switch)
                         }
@@ -271,16 +281,23 @@ internal struct ItemDetailsSheet: View {
             }
         }
     }
-}
 
-// MARK: - Project Settings Sheet
+    // MARK: Private
 
-internal struct ProjectSettingsSheet: View {
-    @Bindable var appState: AppState
-    @Bindable var draft: TierProjectDraft
     @Environment(\.dismiss) private var dismiss
 
-    internal var body: some View {
+}
+
+// MARK: - ProjectSettingsSheet
+
+struct ProjectSettingsSheet: View {
+
+    // MARK: Internal
+
+    @Bindable var appState: AppState
+    @Bindable var draft: TierProjectDraft
+
+    var body: some View {
         NavigationStack {
             Form {
                 Section("Project Information") {
@@ -288,13 +305,13 @@ internal struct ProjectSettingsSheet: View {
                         .onChange(of: draft.title) { appState.markDraftEdited(draft) }
 
                     TextField("Description", text: $draft.summary, prompt: Text("Short description"), axis: .vertical)
-                        .lineLimit(2...4)
+                        .lineLimit(2 ... 4)
                         .onChange(of: draft.summary) { appState.markDraftEdited(draft) }
                 }
 
                 Section("Display Options") {
                     #if !os(tvOS)
-                    Stepper(value: $draft.schemaVersion, in: 1...9) {
+                    Stepper(value: $draft.schemaVersion, in: 1 ... 9) {
                         Text("Schema Version: \(draft.schemaVersion)")
                     }
                     .onChange(of: draft.schemaVersion) { appState.markDraftEdited(draft) }
@@ -364,4 +381,9 @@ internal struct ProjectSettingsSheet: View {
             }
         }
     }
+
+    // MARK: Private
+
+    @Environment(\.dismiss) private var dismiss
+
 }

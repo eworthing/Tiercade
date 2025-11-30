@@ -32,7 +32,10 @@ struct HeadToHeadVarianceAnalysis {
         var summary: String {
             """
             \(scenario):
-              Tau: \(String(format: "%.3f", meanTau)) ± \(String(format: "%.3f", stdTau)) [\(String(format: "%.3f", minTau)), \(String(format: "%.3f", maxTau))]
+              Tau: \(String(format: "%.3f", meanTau)) ± \(String(format: "%.3f", stdTau)) [\(String(
+                  format: "%.3f",
+                  minTau,
+              )), \(String(format: "%.3f", maxTau))]
               Accuracy: \(String(format: "%.1f%%", meanAccuracy * 100)) ± \(String(format: "%.1f%%", stdAccuracy * 100))
               Churn: \(String(format: "%.1f%%", meanChurn * 100))
             """
@@ -45,19 +48,20 @@ struct HeadToHeadVarianceAnalysis {
         comparisonsPerItem: Int,
         tierCount: Int,
         noiseLevel: Double,
-        iterations: Int = 100
-    ) -> MonteCarloResults {
+        iterations: Int = 100,
+    )
+    -> MonteCarloResults {
         var tauValues: [Double] = []
         var accuracyValues: [Double] = []
         var churnValues: [Double] = []
 
-        for _ in 0..<iterations {
+        for _ in 0 ..< iterations {
             let config = HeadToHeadSimulations.SimulationConfig(
                 poolSize: poolSize,
                 comparisonsPerItem: comparisonsPerItem,
                 tierCount: tierCount,
                 noiseLevel: noiseLevel,
-                scenario: .zipf
+                scenario: .zipf,
             )
 
             let metrics = HeadToHeadSimulations.runSimulation(config: config)
@@ -83,7 +87,7 @@ struct HeadToHeadVarianceAnalysis {
             meanAccuracy: meanAcc,
             stdAccuracy: stdAcc,
             meanChurn: meanChurn,
-            iterations: iterations
+            iterations: iterations,
         )
     }
 
@@ -107,7 +111,7 @@ struct HeadToHeadVarianceAnalysis {
                 comparisonsPerItem: budget,
                 tierCount: 5,
                 noiseLevel: 0.10,
-                iterations: 100
+                iterations: 100,
             )
             results.append(result)
             print(result.summary)
@@ -122,12 +126,13 @@ struct HeadToHeadVarianceAnalysis {
         for (idx, result) in results.enumerated() {
             let budget = budgets[idx]
             let efficiency = result.meanTau / Double(budget)
-            print(String(format: "%-12s %10.3f %10.3f %9.1f%% %10.3f",
+            print(String(
+                format: "%-12s %10.3f %10.3f %9.1f%% %10.3f",
                 result.scenario,
                 result.meanTau,
                 result.stdTau,
                 result.meanAccuracy * 100,
-                efficiency
+                efficiency,
             ))
         }
 
@@ -165,7 +170,7 @@ struct HeadToHeadVarianceAnalysis {
                 comparisonsPerItem: 4,
                 tierCount: 5,
                 noiseLevel: noise,
-                iterations: 100
+                iterations: 100,
             )
             results.append(result)
             print(result.summary)
@@ -178,12 +183,13 @@ struct HeadToHeadVarianceAnalysis {
         print(String(repeating: "-", count: 80))
 
         for result in results {
-            print(String(format: "%-12s %10.3f %10.3f %9.1f%% %9.1f%%",
+            print(String(
+                format: "%-12s %10.3f %10.3f %9.1f%% %9.1f%%",
                 result.scenario,
                 result.meanTau,
                 result.stdTau,
                 result.meanAccuracy * 100,
-                result.meanChurn * 100
+                result.meanChurn * 100,
             ))
         }
 
@@ -219,7 +225,7 @@ struct HeadToHeadVarianceAnalysis {
                 comparisonsPerItem: 4,
                 tierCount: tierCount,
                 noiseLevel: 0.10,
-                iterations: 100
+                iterations: 100,
             )
             results.append(result)
             print(result.summary)
@@ -234,12 +240,13 @@ struct HeadToHeadVarianceAnalysis {
         for (idx, result) in results.enumerated() {
             let poolSize = poolSizes[idx]
             let totalComp = poolSize * 4
-            print(String(format: "%-12s %10.3f %10.3f %9.1f%% %12d",
+            print(String(
+                format: "%-12s %10.3f %10.3f %9.1f%% %12d",
                 result.scenario,
                 result.meanTau,
                 result.stdTau,
                 result.meanAccuracy * 100,
-                totalComp
+                totalComp,
             ))
         }
 
@@ -267,7 +274,7 @@ struct HeadToHeadVarianceAnalysis {
             comparisonsPerItem: 5,
             tierCount: 5,
             noiseLevel: 0.05,
-            iterations: 100
+            iterations: 100,
         )
 
         print("\n" + result.summary)
@@ -277,15 +284,15 @@ struct HeadToHeadVarianceAnalysis {
         print(String(repeating: "-", count: 80))
 
         let tauGrade = result.meanTau >= 0.70 ? "✅ Excellent" :
-                       result.meanTau >= 0.60 ? "✅ Good" :
-                       result.meanTau >= 0.50 ? "⚠️ Acceptable" : "❌ Poor"
+            result.meanTau >= 0.60 ? "✅ Good" :
+            result.meanTau >= 0.50 ? "⚠️ Acceptable" : "❌ Poor"
 
         let varianceGrade = result.stdTau < 0.10 ? "✅ Low variance" :
-                           result.stdTau < 0.15 ? "✅ Acceptable variance" : "⚠️ High variance"
+            result.stdTau < 0.15 ? "✅ Acceptable variance" : "⚠️ High variance"
 
         let accuracyGrade = result.meanAccuracy >= 0.60 ? "✅ Excellent" :
-                           result.meanAccuracy >= 0.50 ? "✅ Good" :
-                           result.meanAccuracy >= 0.40 ? "⚠️ Acceptable" : "❌ Poor"
+            result.meanAccuracy >= 0.50 ? "✅ Good" :
+            result.meanAccuracy >= 0.40 ? "⚠️ Acceptable" : "❌ Poor"
 
         print("Mean Tau: \(String(format: "%.3f", result.meanTau)) - \(tauGrade)")
         print("Variance: \(String(format: "%.3f", result.stdTau)) - \(varianceGrade)")
@@ -313,7 +320,7 @@ struct HeadToHeadVarianceAnalysis {
             ("Small pool (10 items)", 10, 3),
             ("Medium pool (20 items)", 20, 4),
             ("Large pool (30 items)", 30, 5),
-            ("XL pool (50 items)", 50, 6)
+            ("XL pool (50 items)", 50, 6),
         ]
 
         var adaptiveResults: [MonteCarloResults] = []
@@ -330,7 +337,7 @@ struct HeadToHeadVarianceAnalysis {
                 comparisonsPerItem: adaptiveBudget,
                 tierCount: tierCount,
                 noiseLevel: 0.10,
-                iterations: 100
+                iterations: 100,
             )
             adaptiveResults.append(adaptive)
 
@@ -342,7 +349,7 @@ struct HeadToHeadVarianceAnalysis {
                 comparisonsPerItem: 3,
                 tierCount: tierCount,
                 noiseLevel: 0.10,
-                iterations: 100
+                iterations: 100,
             )
             fixedResults.append(fixed)
         }
@@ -358,11 +365,12 @@ struct HeadToHeadVarianceAnalysis {
             let fixed = fixedResults[idx]
             let improvement = ((adaptive.meanTau - fixed.meanTau) / fixed.meanTau) * 100
 
-            print(String(format: "%-20s %12.3f %12.3f %11.1f%%",
+            print(String(
+                format: "%-20s %12.3f %12.3f %11.1f%%",
                 String(name.prefix(20)),
                 adaptive.meanTau,
                 fixed.meanTau,
-                improvement
+                improvement,
             ))
         }
 
@@ -370,12 +378,16 @@ struct HeadToHeadVarianceAnalysis {
 
         // Validate that adaptive budgets improve performance for larger pools
         // Medium pool (20 items): 4 comp/item should beat 3 comp/item
-        #expect(adaptiveResults[1].meanTau > fixedResults[1].meanTau,
-                "Adaptive budget (4) should outperform fixed (3) for 20-item pools")
+        #expect(
+            adaptiveResults[1].meanTau > fixedResults[1].meanTau,
+            "Adaptive budget (4) should outperform fixed (3) for 20-item pools",
+        )
 
         // Large pool (30 items): 5 comp/item should significantly beat 3 comp/item
-        #expect(adaptiveResults[2].meanTau > fixedResults[2].meanTau,
-                "Adaptive budget (5) should outperform fixed (3) for 30-item pools")
+        #expect(
+            adaptiveResults[2].meanTau > fixedResults[2].meanTau,
+            "Adaptive budget (5) should outperform fixed (3) for 30-item pools",
+        )
 
         print("✅ CONCLUSION: Adaptive budgets validated for medium and large pools")
     }

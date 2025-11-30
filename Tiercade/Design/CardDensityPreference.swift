@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-internal enum CardDensityPreference: String, CaseIterable, Identifiable, Codable, Sendable {
+enum CardDensityPreference: String, CaseIterable, Identifiable, Codable, Sendable {
     case ultraMicro
     case micro
     case tight
@@ -9,117 +9,122 @@ internal enum CardDensityPreference: String, CaseIterable, Identifiable, Codable
     case standard
     case expanded
 
-    internal var id: String { rawValue }
+    // MARK: Internal
 
-    internal var displayName: String {
+    var id: String { rawValue }
+
+    var displayName: String {
         switch self {
         case .ultraMicro:
-            return "Ultra Micro"
+            "Ultra Micro"
         case .micro:
-            return "Micro"
+            "Micro"
         case .tight:
-            return "Tight"
+            "Tight"
         case .compact:
-            return "Compact"
+            "Compact"
         case .standard:
-            return "Standard"
+            "Standard"
         case .expanded:
-            return "Expanded"
+            "Expanded"
         }
     }
 
-    internal var detailDescription: String {
+    var detailDescription: String {
         switch self {
         case .ultraMicro:
-            return "Image-only posters"
+            "Image-only posters"
         case .micro:
-            return "Ultra tight cards with minimal text"
+            "Ultra tight cards with minimal text"
         case .tight:
-            return "Packs a few more cards"
+            "Packs a few more cards"
         case .compact:
-            return "Shows more cards per row"
+            "Shows more cards per row"
         case .standard:
-            return "Balanced card size"
+            "Balanced card size"
         case .expanded:
-            return "Largest cards for visibility"
+            "Largest cards for visibility"
         }
     }
 
-    internal var symbolName: String {
+    var symbolName: String {
         switch self {
         case .ultraMicro:
-            return "square.grid.4x3.fill"
+            "square.grid.4x3.fill"
         case .micro:
-            return "square.grid.3x3.fill"
+            "square.grid.3x3.fill"
         case .tight:
-            return "rectangle.grid.3x2.fill"
+            "rectangle.grid.3x2.fill"
         case .compact:
-            return "rectangle.grid.3x2"
+            "rectangle.grid.3x2"
         case .standard:
-            return "rectangle.grid.2x2"
+            "rectangle.grid.2x2"
         case .expanded:
-            return "rectangle.grid.2x2.fill"
+            "rectangle.grid.2x2.fill"
         }
     }
 
-    internal var focusTooltip: String {
+    var focusTooltip: String {
         switch self {
         case .ultraMicro:
-            return "Ultra Micro Cards"
+            "Ultra Micro Cards"
         case .micro:
-            return "Micro Cards"
+            "Micro Cards"
         case .tight:
-            return "Tight Cards"
+            "Tight Cards"
         case .compact:
-            return "Compact Cards"
+            "Compact Cards"
         case .standard:
-            return "Standard Cards"
+            "Standard Cards"
         case .expanded:
-            return "Expanded Cards"
+            "Expanded Cards"
         }
     }
 
-    internal var toastMessage: String {
+    var toastMessage: String {
         switch self {
         case .ultraMicro:
-            return "Ultra Micro card layout enabled"
+            "Ultra Micro card layout enabled"
         case .micro:
-            return "Micro card layout enabled"
+            "Micro card layout enabled"
         case .tight:
-            return "Tight card layout enabled"
+            "Tight card layout enabled"
         case .compact:
-            return "Compact card layout enabled"
+            "Compact card layout enabled"
         case .standard:
-            return "Standard card layout enabled"
+            "Standard card layout enabled"
         case .expanded:
-            return "Expanded card layout enabled"
+            "Expanded card layout enabled"
         }
     }
 
-    internal func next() -> CardDensityPreference {
+    var sizeRank: Int {
+        switch self {
+        case .ultraMicro: 0
+        case .micro: 1
+        case .tight: 2
+        case .compact: 3
+        case .standard: 4
+        case .expanded: 5
+        }
+    }
+
+    var showsOnCardText: Bool {
+        switch self {
+        case .ultraMicro:
+            false
+        default:
+            true
+        }
+    }
+
+    func next() -> CardDensityPreference {
         let all = CardDensityPreference.allCases
-        guard let currentIndex = all.firstIndex(of: self) else { return .ultraMicro }
+        guard let currentIndex = all.firstIndex(of: self) else {
+            return .ultraMicro
+        }
         let nextIndex = all.index(after: currentIndex)
         return nextIndex < all.endIndex ? all[nextIndex] : all.first ?? .ultraMicro
     }
 
-    internal var sizeRank: Int {
-        switch self {
-        case .ultraMicro: return 0
-        case .micro: return 1
-        case .tight: return 2
-        case .compact: return 3
-        case .standard: return 4
-        case .expanded: return 5
-        }
-    }
-
-    internal var showsOnCardText: Bool {
-        switch self {
-        case .ultraMicro:
-            return false
-        default:
-            return true
-        }
-    }
 }

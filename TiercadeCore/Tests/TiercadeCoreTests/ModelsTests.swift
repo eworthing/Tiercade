@@ -30,16 +30,25 @@ struct ModelsTests {
             rating: nil,
             media: nil,
             hidden: nil,
-            additional: ["season": .number(7.0)]
+            additional: ["season": .number(7.0)],
         )
 
         let project = Project(
             schemaVersion: 1,
             projectId: "test",
-            tiers: [Project.Tier(id: "S", label: "S", color: nil, order: 0, locked: nil, collapsed: nil, rules: nil, itemIds: ["alpha"])],
+            tiers: [Project.Tier(
+                id: "S",
+                label: "S",
+                color: nil,
+                order: 0,
+                locked: nil,
+                collapsed: nil,
+                rules: nil,
+                itemIds: ["alpha"],
+            )],
             items: ["alpha": item],
             overrides: ["alpha": override],
-            audit: Project.Audit(createdAt: .distantPast, updatedAt: .distantPast)
+            audit: Project.Audit(createdAt: .distantPast, updatedAt: .distantPast),
         )
 
         let resolved = ModelResolver.resolveTiers(from: project)

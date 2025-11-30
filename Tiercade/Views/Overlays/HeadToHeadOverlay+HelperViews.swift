@@ -1,14 +1,17 @@
 import SwiftUI
 import TiercadeCore
 
-internal struct HeadToHeadProgressDial: View {
-    internal let progress: Double
-    internal let label: String
-    internal let accentColor: Color
+// MARK: - HeadToHeadProgressDial
 
-    private var clampedProgress: Double { min(max(progress, 0), 1) }
+struct HeadToHeadProgressDial: View {
 
-    internal var body: some View {
+    // MARK: Internal
+
+    let progress: Double
+    let label: String
+    let accentColor: Color
+
+    var body: some View {
         ZStack {
             Circle()
                 .stroke(Color.white.opacity(0.12), lineWidth: 14)
@@ -18,9 +21,9 @@ internal struct HeadToHeadProgressDial: View {
                 .stroke(
                     AngularGradient(
                         gradient: Gradient(colors: [Palette.brand, accentColor, Palette.brand]),
-                        center: .center
+                        center: .center,
                     ),
-                    style: StrokeStyle(lineWidth: 14, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 14, lineCap: .round),
                 )
                 .rotationEffect(.degrees(-90))
 
@@ -39,32 +42,37 @@ internal struct HeadToHeadProgressDial: View {
         .accessibilityValue(label)
     }
 
+    // MARK: Private
+
+    private var clampedProgress: Double { min(max(progress, 0), 1) }
+
     private var symbolName: String {
         switch clampedProgress {
-        case 0..<0.25:
-            return "gauge.low"
-        case 0.25..<0.75:
-            return "gauge.medium"
+        case 0 ..< 0.25:
+            "gauge.low"
+        case 0.25 ..< 0.75:
+            "gauge.medium"
         default:
-            return "gauge.high"
+            "gauge.high"
         }
     }
 }
 
-internal struct HeadToHeadCandidateCard: View {
+// MARK: - HeadToHeadCandidateCard
+
+struct HeadToHeadCandidateCard: View {
+
+    // MARK: Internal
+
     enum AlignmentHint { case leading, trailing }
 
-    internal let item: Item
-    internal let accentColor: Color
-    internal let alignment: AlignmentHint
-    internal let action: () -> Void
-    internal var compact: Bool = false
+    let item: Item
+    let accentColor: Color
+    let alignment: AlignmentHint
+    let action: () -> Void
+    var compact: Bool = false
 
-    @ScaledMetric(relativeTo: .title) private var cardWidth = ScaledDimensions.candidateCardWidth
-    @ScaledMetric(relativeTo: .title) private var cardMinHeight = ScaledDimensions.candidateCardMinHeight
-    @ScaledMetric(relativeTo: .title) private var thumbnailHeight = ScaledDimensions.candidateThumbnailHeight
-
-    internal var body: some View {
+    var body: some View {
         Button(action: action) {
             VStack(alignment: .center, spacing: Metrics.grid * 2) {
                 thumbnail
@@ -84,6 +92,30 @@ internal struct HeadToHeadCandidateCard: View {
         .accessibilityHint(item.description ?? "Choose this contender")
     }
 
+    // MARK: Private
+
+    @ScaledMetric(relativeTo: .title) private var cardWidth = ScaledDimensions.candidateCardWidth
+    @ScaledMetric(relativeTo: .title) private var cardMinHeight = ScaledDimensions.candidateCardMinHeight
+    @ScaledMetric(relativeTo: .title) private var thumbnailHeight = ScaledDimensions.candidateThumbnailHeight
+
+    private var candidateTitleFont: Font {
+        #if os(tvOS)
+        // Candidate name: use primary body size on tvOS
+        return TypeScale.body
+        #else
+        return TypeScale.h3
+        #endif
+    }
+
+    private var candidateDescriptionFont: Font {
+        #if os(tvOS)
+        // Description: secondary body size on tvOS
+        return TypeScale.bodySmall
+        #else
+        return TypeScale.body
+        #endif
+    }
+
     private var thumbnail: some View {
         RoundedRectangle(cornerRadius: 16, style: .continuous)
             .fill(Color.clear)
@@ -96,8 +128,10 @@ internal struct HeadToHeadCandidateCard: View {
 
     @ViewBuilder
     private var thumbnailContent: some View {
-        if let asset = item.imageUrl ?? item.videoUrl,
-           let url = URLValidator.allowedMediaURL(from: asset) {
+        if
+            let asset = item.imageUrl ?? item.videoUrl,
+            let url = URLValidator.allowedMediaURL(from: asset)
+        {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .empty:
@@ -106,7 +140,7 @@ internal struct HeadToHeadCandidateCard: View {
                             ProgressView()
                                 .tint(.white.opacity(0.6))
                         }
-                case .success(let image):
+                case let .success(image):
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -133,11 +167,11 @@ internal struct HeadToHeadCandidateCard: View {
                 LinearGradient(
                     colors: [
                         accentColor.opacity(0.3),
-                        accentColor.opacity(0.15)
+                        accentColor.opacity(0.15),
                     ],
                     startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                    endPoint: .bottomTrailing,
+                ),
             )
     }
 
@@ -172,40 +206,24 @@ internal struct HeadToHeadCandidateCard: View {
         .frame(maxWidth: cardWidth - (Metrics.grid * 3))
     }
 
-    private var candidateTitleFont: Font {
-        #if os(tvOS)
-        // Candidate name: use primary body size on tvOS
-        return TypeScale.body
-        #else
-        return TypeScale.h3
-        #endif
-    }
-
-    private var candidateDescriptionFont: Font {
-        #if os(tvOS)
-        // Description: secondary body size on tvOS
-        return TypeScale.bodySmall
-        #else
-        return TypeScale.body
-        #endif
-    }
-
     private var backgroundShape: some View {
         RoundedRectangle(cornerRadius: 30, style: .continuous)
             .fill(Color.white.opacity(0.08))
             .overlay(
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .stroke(accentColor.opacity(0.4), lineWidth: 1.6)
+                    .stroke(accentColor.opacity(0.4), lineWidth: 1.6),
             )
     }
 }
 
-internal struct HeadToHeadPassTile: View {
-    internal let action: () -> Void
+// MARK: - HeadToHeadPassTile
+
+struct HeadToHeadPassTile: View {
+    let action: () -> Void
 
     @ScaledMetric(relativeTo: .title2) private var tileSize = ScaledDimensions.passTileSize
 
-    internal var body: some View {
+    var body: some View {
         Button(action: action) {
             VStack(spacing: Metrics.grid * 2) {
                 Image(systemName: "arrow.uturn.left.circle")
@@ -231,31 +249,18 @@ internal struct HeadToHeadPassTile: View {
             .fill(Color.white.opacity(0.1))
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(Color.white.opacity(0.26), lineWidth: 1.4)
+                    .stroke(Color.white.opacity(0.26), lineWidth: 1.4),
             )
     }
 }
 
-internal struct HeadToHeadCompletionPanel: View {
-    @ScaledMetric(relativeTo: .body) private var textMaxWidth = ScaledDimensions.textContentMaxWidth
+// MARK: - HeadToHeadCompletionPanel
 
-    private var titleFont: Font {
-        #if os(tvOS)
-        return TypeScale.body
-        #else
-        return TypeScale.h3
-        #endif
-    }
+struct HeadToHeadCompletionPanel: View {
 
-    private var bodyFont: Font {
-        #if os(tvOS)
-        return TypeScale.bodySmall
-        #else
-        return TypeScale.body
-        #endif
-    }
+    // MARK: Internal
 
-    internal var body: some View {
+    var body: some View {
         VStack(spacing: Metrics.grid * 2) {
             Image(systemName: "crown.fill")
                 .imageScale(TypeScale.IconScale.large)
@@ -277,17 +282,40 @@ internal struct HeadToHeadCompletionPanel: View {
                 .fill(Color.white.opacity(0.08))
                 .overlay(
                     RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .stroke(Color.white.opacity(0.22), lineWidth: 1.4)
-                )
+                        .stroke(Color.white.opacity(0.22), lineWidth: 1.4),
+                ),
         )
         .accessibilityIdentifier("HeadToHeadOverlay_Complete")
     }
+
+    // MARK: Private
+
+    @ScaledMetric(relativeTo: .body) private var textMaxWidth = ScaledDimensions.textContentMaxWidth
+
+    private var titleFont: Font {
+        #if os(tvOS)
+        return TypeScale.body
+        #else
+        return TypeScale.h3
+        #endif
+    }
+
+    private var bodyFont: Font {
+        #if os(tvOS)
+        return TypeScale.bodySmall
+        #else
+        return TypeScale.body
+        #endif
+    }
+
 }
 
-internal struct HeadToHeadPhaseBadge: View {
-    internal let phase: HeadToHeadPhase
+// MARK: - HeadToHeadPhaseBadge
 
-    internal var body: some View {
+struct HeadToHeadPhaseBadge: View {
+    let phase: HeadToHeadPhase
+
+    var body: some View {
         Label {
             Text(phaseLabel)
                 .font(TypeScale.footnote)
@@ -303,23 +331,25 @@ internal struct HeadToHeadPhaseBadge: View {
 
     private var phaseLabel: String {
         switch phase {
-        case .quick: return "Quick pass"
-        case .refinement: return "Refinement"
+        case .quick: "Quick pass"
+        case .refinement: "Refinement"
         }
     }
 
     private var phaseIcon: String {
         switch phase {
-        case .quick: return "bolt.fill"
-        case .refinement: return "sparkles"
+        case .quick: "bolt.fill"
+        case .refinement: "sparkles"
         }
     }
 }
 
-internal struct HeadToHeadMetricTile: View {
-    internal let title: String
-    internal let value: String
-    internal let footnote: String?
+// MARK: - HeadToHeadMetricTile
+
+struct HeadToHeadMetricTile: View {
+    let title: String
+    let value: String
+    let footnote: String?
 
     private var valueFont: Font {
         #if os(tvOS)
@@ -330,7 +360,7 @@ internal struct HeadToHeadMetricTile: View {
         #endif
     }
 
-    internal var body: some View {
+    var body: some View {
         VStack(alignment: .leading, spacing: Metrics.grid * 0.5) {
             Text(title.uppercased())
                 .font(TypeScale.footnote)
@@ -350,22 +380,27 @@ internal struct HeadToHeadMetricTile: View {
     }
 }
 
-// MARK: - Control Bar
+// MARK: - HeadToHeadControlBar
 
-internal struct HeadToHeadControlBar: View {
-    internal let focusAnchor: FocusState<HeadToHeadFocusAnchor?>.Binding
-    internal let canSkip: Bool
-    internal let onCancel: () -> Void
-    internal let onSkip: () -> Void
-    internal let onFinish: () -> Void
+struct HeadToHeadControlBar: View {
 
-    internal var body: some View {
+    // MARK: Internal
+
+    let focusAnchor: FocusState<HeadToHeadFocusAnchor?>.Binding
+    let canSkip: Bool
+    let onCancel: () -> Void
+    let onSkip: () -> Void
+    let onFinish: () -> Void
+
+    var body: some View {
         #if os(tvOS)
         tvOSLayout
         #else
         pointerLayout
         #endif
     }
+
+    // MARK: Private
 
     #if os(tvOS)
     private var tvOSLayout: some View {
@@ -442,12 +477,12 @@ internal struct HeadToHeadControlBar: View {
     }
 }
 
-// MARK: - Metric Model
+// MARK: - HeadToHeadMetric
 
-internal struct HeadToHeadMetric: Identifiable {
-    internal let title: String
-    internal let value: String
-    internal let caption: String?
+struct HeadToHeadMetric: Identifiable {
+    let title: String
+    let value: String
+    let caption: String?
 
-    internal var id: String { title }
+    var id: String { title }
 }

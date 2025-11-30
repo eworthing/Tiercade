@@ -1,11 +1,12 @@
 import SwiftUI
 import TiercadeCore
 
-// MARK: - Sidebar (filters/summary)
-internal struct SidebarView: View {
+// MARK: - SidebarView
+
+struct SidebarView: View {
     @Environment(AppState.self) var app
-    internal let tierOrder: [String]
-    internal var body: some View {
+    let tierOrder: [String]
+    var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("Tier List").font(.largeTitle.bold())
@@ -30,9 +31,13 @@ internal struct SidebarView: View {
     }
 }
 
-internal struct SidebarSearchView: View {
-    @Environment(AppState.self) private var app
-    internal var body: some View {
+// MARK: - SidebarSearchView
+
+struct SidebarSearchView: View {
+
+    // MARK: Internal
+
+    var body: some View {
         @Bindable var state = app
         VStack(alignment: .leading, spacing: 8) {
             Text("Search & Filter").font(.headline)
@@ -60,33 +65,48 @@ internal struct SidebarSearchView: View {
                     }
                     .buttonStyle(GhostButtonStyle())
                     #if !os(tvOS)
-                    .controlSize(.small)
+                        .controlSize(.small)
                     #endif
-                    .background(
-                        state.activeFilter == filter ? Color.accentColor.opacity(0.2) : Color.clear
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(
-                                state.activeFilter == filter ? Color.accentColor : Color.clear,
-                                lineWidth: 2
-                            )
-                    )
+                        .background(
+                            state.activeFilter == filter ? Color.accentColor.opacity(0.2) : Color.clear,
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(
+                                    state.activeFilter == filter ? Color.accentColor : Color.clear,
+                                    lineWidth: 2,
+                                ),
+                        )
                 }
             }
         }
     }
+
+    // MARK: Private
+
+    @Environment(AppState.self) private var app
 }
 
-internal struct SidebarStatsView: View {
+// MARK: - SidebarStatsView
+
+struct SidebarStatsView: View {
     @Environment(AppState.self) var app
-    internal let tierOrder: [String]
-    internal var body: some View {
+    let tierOrder: [String]
+    var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Statistics").font(.headline)
-            HStack { Text("Total:"); Spacer(); Text("\(app.allItems().count)").bold() }
-            HStack { Text("Ranked:"); Spacer(); Text("\(app.rankedCount())").bold() }
-            HStack { Text("Unranked:"); Spacer(); Text("\(app.unrankedCount())").bold() }
+            HStack { Text("Total:")
+                Spacer()
+                Text("\(app.allItems().count)").bold()
+            }
+            HStack { Text("Ranked:")
+                Spacer()
+                Text("\(app.rankedCount())").bold()
+            }
+            HStack { Text("Unranked:")
+                Spacer()
+                Text("\(app.unrankedCount())").bold()
+            }
             if !app.searchQuery.isEmpty {
                 HStack {
                     Text("Filtered:")
@@ -100,10 +120,12 @@ internal struct SidebarStatsView: View {
     }
 }
 
-internal struct SidebarTierListView: View {
+// MARK: - SidebarTierListView
+
+struct SidebarTierListView: View {
     @Environment(AppState.self) var app
-    internal let tierOrder: [String]
-    internal var body: some View {
+    let tierOrder: [String]
+    var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(tierOrder, id: \.self) { t in
@@ -120,12 +142,15 @@ internal struct SidebarTierListView: View {
     }
 }
 
-// MARK: - Persistence Status
-internal struct PersistenceStatusView: View {
-    @Bindable var app: AppState
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+// MARK: - PersistenceStatusView
 
-    internal var body: some View {
+struct PersistenceStatusView: View {
+
+    // MARK: Internal
+
+    @Bindable var app: AppState
+
+    var body: some View {
         VStack(alignment: .trailing, spacing: 4) {
             if let fileName = app.persistence.currentFileName {
                 Text(fileName)
@@ -165,4 +190,9 @@ internal struct PersistenceStatusView: View {
         .animation(reduceMotion ? nil : Animation.easeInOut(duration: 0.2), value: app.persistence.hasUnsavedChanges)
         .animation(reduceMotion ? nil : Animation.easeInOut(duration: 0.2), value: app.persistence.currentFileName)
     }
+
+    // MARK: Private
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
 }

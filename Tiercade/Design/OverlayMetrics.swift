@@ -1,15 +1,21 @@
 import Foundation
 
+// MARK: - OverlayMetrics
+
 /// Design tokens for overlay dimensions and spacing
 public enum OverlayMetrics {
     // MARK: - Quick Move Overlay
+
     public static let quickMoveMinWidth: CGFloat = 960
     public static let quickMoveMinWidthNonTVOS: CGFloat = 860
 
     // MARK: - Theme Library Overlay
+
     public static let themeGridMaxHeight: CGFloat = 640
     public static let themeContainerMaxWidth: CGFloat = 1180
 }
+
+// MARK: - OpacityTokens
 
 /// Design tokens for opacity values throughout the app
 public enum OpacityTokens {
@@ -28,6 +34,8 @@ public enum OpacityTokens {
     /// Tint opacity when element is unfocused
     public static let unfocusedTint: Double = 0.24
 }
+
+// MARK: - SpacingTokens
 
 /// Design tokens for spacing and padding
 public enum SpacingTokens {

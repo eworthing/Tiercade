@@ -1,17 +1,15 @@
-import SwiftUI
 import Observation
+import SwiftUI
 
-internal struct SettingsView: View {
+// MARK: - SettingsView
+
+struct SettingsView: View {
+
+    // MARK: Internal
+
     @Bindable var app: AppState
-    @AppStorage("ui.theme") private var themeRaw: String = ThemePreference.system.rawValue
-    @Environment(\.dismiss) private var dismiss
 
-    private var theme: ThemePreference {
-        get { ThemePreference(rawValue: themeRaw) ?? .system }
-        set { themeRaw = newValue.rawValue }
-    }
-
-    internal var body: some View {
+    var body: some View {
         NavigationStack {
             List {
                 Section("Appearance") {
@@ -27,7 +25,7 @@ internal struct SettingsView: View {
                         CardDensityOptionRow(
                             option: option,
                             isSelected: app.cardDensityPreference == option,
-                            onSelect: { app.setCardDensityPreference(option) }
+                            onSelect: { app.setCardDensityPreference(option) },
                         )
                         .listRowInsets(EdgeInsets(top: 12, leading: 32, bottom: 12, trailing: 32))
                         .listRowBackground(Color.clear)
@@ -45,17 +43,30 @@ internal struct SettingsView: View {
             .listStyle(.plain)
             .navigationTitle("Settings")
             #if os(tvOS)
-            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { CloseButton(dismiss: dismiss) } }
+                .toolbar { ToolbarItem(placement: .navigationBarTrailing) { CloseButton(dismiss: dismiss) } }
             #endif
         }
     }
+
+    // MARK: Private
+
+    @AppStorage("ui.theme") private var themeRaw: String = ThemePreference.system.rawValue
+    @Environment(\.dismiss) private var dismiss
+
+    private var theme: ThemePreference {
+        get { ThemePreference(rawValue: themeRaw) ?? .system }
+        set { themeRaw = newValue.rawValue }
+    }
+
 }
 
-private struct SettingsOptionLabel: View {
-    internal let title: String
-    internal let isSelected: Bool
+// MARK: - SettingsOptionLabel
 
-    internal var body: some View {
+private struct SettingsOptionLabel: View {
+    let title: String
+    let isSelected: Bool
+
+    var body: some View {
         HStack {
             Text(title)
                 .font(.headline)
@@ -70,11 +81,13 @@ private struct SettingsOptionLabel: View {
     }
 }
 
-private struct SettingsInfoRow: View {
-    internal let title: String
-    internal let value: String
+// MARK: - SettingsInfoRow
 
-    internal var body: some View {
+private struct SettingsInfoRow: View {
+    let title: String
+    let value: String
+
+    var body: some View {
         HStack {
             Text(title)
             Spacer()
@@ -88,25 +101,27 @@ private struct SettingsInfoRow: View {
 
 #if os(tvOS)
 private struct CloseButton: View {
-    internal let dismiss: DismissAction
+    let dismiss: DismissAction
 
-    internal var body: some View {
+    var body: some View {
         Button("Done") { dismiss() }
             .buttonStyle(.tvRemote(.secondary))
     }
 }
 #endif
 
-private extension ThemePreference {
-    var displayName: String { rawValue.capitalized }
+extension ThemePreference {
+    fileprivate var displayName: String { rawValue.capitalized }
 }
 
-private struct CardDensityOptionRow: View {
-    internal let option: CardDensityPreference
-    internal let isSelected: Bool
-    internal let onSelect: () -> Void
+// MARK: - CardDensityOptionRow
 
-    internal var body: some View {
+private struct CardDensityOptionRow: View {
+    let option: CardDensityPreference
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 16) {
                 Image(systemName: option.symbolName)
@@ -143,8 +158,8 @@ private struct CardDensityOptionRow: View {
     }
 }
 
-private extension SettingsView {
-    var versionString: String {
+extension SettingsView {
+    private var versionString: String {
         let bundle = Bundle.main
         let short = bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         let build = bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String
@@ -156,11 +171,13 @@ private extension SettingsView {
     }
 }
 
+// MARK: - ThemeOptionRow
+
 private struct ThemeOptionRow: View {
-    internal let option: ThemePreference
+    let option: ThemePreference
     @Binding var selectionRaw: String
 
-    internal var body: some View {
+    var body: some View {
         Button {
             selectionRaw = option.rawValue
         } label: {

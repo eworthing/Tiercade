@@ -1,18 +1,21 @@
-import SwiftUI
 import Foundation
+import SwiftUI
 import TiercadeCore
 
 // MARK: - Thumbnail View
 
-internal struct ThumbnailView: View {
-    internal let item: Item
+struct ThumbnailView: View {
+
+    // MARK: Internal
+
+    let item: Item
     #if os(tvOS)
-    internal let layout: TVCardLayout
+    let layout: TVCardLayout
     #else
-    internal let layout: PlatformCardLayout
+    let layout: PlatformCardLayout
     #endif
 
-    internal var body: some View {
+    var body: some View {
         #if os(tvOS)
         RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous)
             .fill(Color.clear)
@@ -22,8 +25,8 @@ internal struct ThumbnailView: View {
                     .clipShape(
                         RoundedRectangle(
                             cornerRadius: max(layout.cornerRadius - 4, 8),
-                            style: .continuous
-                        )
+                            style: .continuous,
+                        ),
                     )
             }
         #else
@@ -33,21 +36,25 @@ internal struct ThumbnailView: View {
             .overlay {
                 thumbnailContent
                     .clipShape(
-                        RoundedRectangle(cornerRadius: layout.thumbnailCornerRadius, style: .continuous)
+                        RoundedRectangle(cornerRadius: layout.thumbnailCornerRadius, style: .continuous),
                     )
             }
         #endif
     }
 
+    // MARK: Private
+
     @ViewBuilder
     private var thumbnailContent: some View {
-        if let asset = item.imageUrl ?? item.videoUrl,
-           let url = URLValidator.allowedMediaURL(from: asset) {
+        if
+            let asset = item.imageUrl ?? item.videoUrl,
+            let url = URLValidator.allowedMediaURL(from: asset)
+        {
             AsyncImage(url: url) { phase in
                 switch phase {
                 case .empty:
                     ProgressView()
-                case .success(let image):
+                case let .success(image):
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
@@ -73,8 +80,8 @@ internal struct ThumbnailView: View {
                     LinearGradient(
                         colors: [Palette.brand, Palette.brand.opacity(0.7)],
                         startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                        endPoint: .bottomTrailing,
+                    ),
                 )
                 .overlay(
                     Image(systemName: "wand.and.stars")
@@ -82,13 +89,13 @@ internal struct ThumbnailView: View {
                             .system(
                                 size: min(
                                     layout.thumbnailSize.width,
-                                    layout.thumbnailSize.height
+                                    layout.thumbnailSize.height,
                                 ) * 0.32,
-                                weight: .semibold
-                            )
+                                weight: .semibold,
+                            ),
                         )
                         .accessibilityHidden(true)
-                        .foregroundStyle(Palette.textOnAccent.opacity(0.78))
+                        .foregroundStyle(Palette.textOnAccent.opacity(0.78)),
                 )
         } else {
             RoundedRectangle(cornerRadius: max(layout.cornerRadius - 4, 8), style: .continuous)
@@ -99,7 +106,7 @@ internal struct ThumbnailView: View {
                         .foregroundColor(Palette.textOnAccent)
                         .multilineTextAlignment(.center)
                         .minimumScaleFactor(0.7)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, 12),
                 )
         }
         #else
@@ -108,8 +115,8 @@ internal struct ThumbnailView: View {
                 LinearGradient(
                     colors: [Palette.brand, Palette.brand.opacity(0.75)],
                     startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                    endPoint: .bottomTrailing,
+                ),
             )
             .overlay(
                 Text(String((item.name ?? item.id).prefix(18)))
@@ -117,7 +124,7 @@ internal struct ThumbnailView: View {
                     .foregroundColor(Palette.textOnAccent)
                     .multilineTextAlignment(.center)
                     .minimumScaleFactor(0.75)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, 12),
             )
         #endif
     }

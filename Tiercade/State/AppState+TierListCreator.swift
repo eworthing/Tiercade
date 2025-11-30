@@ -1,11 +1,11 @@
 import Foundation
-import SwiftUI
-import SwiftData
 import os
+import SwiftData
+import SwiftUI
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     enum TierListWizardContext: Equatable, Sendable {
         case create
         case edit(TierListHandle)
@@ -47,7 +47,7 @@ internal extension AppState {
             showToast(
                 type: .error,
                 title: "Unable to Edit",
-                message: "This tier list could not be loaded. It may have been deleted or corrupted."
+                message: "This tier list could not be loaded. It may have been deleted or corrupted.",
             )
             return
         }
@@ -70,7 +70,7 @@ internal extension AppState {
                         """
                         Failed to decode stored projectData for handle \(handle.id, privacy: .public): \
                         \(error.localizedDescription, privacy: .public)
-                        """
+                        """,
                     )
                 }
             }
@@ -89,7 +89,7 @@ internal extension AppState {
             tierId: tierId,
             label: "Tier \(nextIndex + 1)",
             colorHex: TierListCreatorPalette.color(for: nextIndex),
-            order: nextIndex
+            order: nextIndex,
         )
         tier.project = draft
         draft.tiers.append(tier)
@@ -98,7 +98,9 @@ internal extension AppState {
     }
 
     func delete(_ tier: TierDraftTier, from draft: TierProjectDraft) {
-        guard let index = draft.tiers.firstIndex(where: { $0.identifier == tier.identifier }) else { return }
+        guard let index = draft.tiers.firstIndex(where: { $0.identifier == tier.identifier }) else {
+            return
+        }
         draft.tiers.remove(at: index)
         for item in draft.items where item.tier?.identifier == tier.identifier {
             item.tier = nil
@@ -112,7 +114,9 @@ internal extension AppState {
             return
         }
         let destination = max(0, min(currentIndex + direction, draft.tiers.count - 1))
-        guard destination != currentIndex else { return }
+        guard destination != currentIndex else {
+            return
+        }
         var ordered = orderedTiers(for: draft)
         ordered.remove(at: currentIndex)
         ordered.insert(tier, at: destination)
@@ -137,7 +141,7 @@ internal extension AppState {
         let item = TierDraftItem(
             itemId: identifier,
             title: "New Item",
-            slug: identifier
+            slug: identifier,
         )
         item.project = draft
         draft.items.append(item)
@@ -146,14 +150,18 @@ internal extension AppState {
     }
 
     func delete(_ item: TierDraftItem, from draft: TierProjectDraft) {
-        guard let index = draft.items.firstIndex(where: { $0.identifier == item.identifier }) else { return }
+        guard let index = draft.items.firstIndex(where: { $0.identifier == item.identifier }) else {
+            return
+        }
         draft.items.remove(at: index)
         markDraftEdited(draft)
     }
 
     func assign(_ item: TierDraftItem, to tier: TierDraftTier?, in draft: TierProjectDraft) {
-        if let previous = item.tier,
-           let previousIndex = previous.items.firstIndex(where: { $0.identifier == item.identifier }) {
+        if
+            let previous = item.tier,
+            let previousIndex = previous.items.firstIndex(where: { $0.identifier == item.identifier })
+        {
             previous.items.remove(at: previousIndex)
         }
         item.tier = tier
@@ -177,7 +185,9 @@ internal extension AppState {
 
     func updateTag(_ tag: String, for item: TierDraftItem, isAdding: Bool) {
         if isAdding {
-            guard item.tags.contains(tag) == false else { return }
+            guard item.tags.contains(tag) == false else {
+                return
+            }
             item.tags.append(tag)
         } else {
             item.tags.removeAll { $0 == tag }

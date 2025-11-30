@@ -3,9 +3,11 @@ import SwiftUI
 import Accessibility
 #endif
 
-internal enum FocusUtils {
+// MARK: - FocusUtils
+
+enum FocusUtils {
     @MainActor
-    internal static func seedFocus() {
+    static func seedFocus() {
         #if os(tvOS)
         Task { @MainActor in
             AccessibilityNotification.ScreenChanged().post()

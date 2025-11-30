@@ -1,7 +1,7 @@
 import Foundation
-import SwiftData
 import Observation
 import os
+import SwiftData
 
 /// Consolidated state for tier list persistence and file management
 ///
@@ -12,7 +12,19 @@ import os
 /// - File I/O coordination
 @MainActor
 @Observable
-internal final class PersistenceState {
+final class PersistenceState {
+
+    // MARK: Lifecycle
+
+    // MARK: - Initialization
+
+    init(persistenceStore: TierPersistenceStore) {
+        self.persistenceStore = persistenceStore
+        Logger.persistence.info("PersistenceState initialized")
+    }
+
+    // MARK: Internal
+
     // MARK: - Auto-Save State
 
     /// Whether there are unsaved changes to the current tier list
@@ -45,32 +57,28 @@ internal final class PersistenceState {
     /// Current file name (for save/load operations)
     var currentFileName: String?
 
-    // MARK: - Dependencies
-
-    private let persistenceStore: TierPersistenceStore
-
-    // MARK: - Initialization
-
-    internal init(persistenceStore: TierPersistenceStore) {
-        self.persistenceStore = persistenceStore
-        Logger.persistence.info("PersistenceState initialized")
+    /// Check if the persistence store is available
+    var isStoreAvailable: Bool {
+        persistenceStore.isAvailable
     }
 
     // MARK: - State Management
 
     /// Mark that changes have been made and need saving
-    internal func markUnsaved() {
+    func markUnsaved() {
         hasUnsavedChanges = true
     }
 
     /// Mark that all changes have been saved
-    internal func markSaved() {
+    func markSaved() {
         hasUnsavedChanges = false
         lastSavedTime = Date()
     }
 
-    /// Check if the persistence store is available
-    internal var isStoreAvailable: Bool {
-        persistenceStore.isAvailable
-    }
+    // MARK: Private
+
+    // MARK: - Dependencies
+
+    private let persistenceStore: TierPersistenceStore
+
 }

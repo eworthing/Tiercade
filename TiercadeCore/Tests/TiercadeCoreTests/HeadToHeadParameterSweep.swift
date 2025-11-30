@@ -26,21 +26,21 @@ struct HeadToHeadParameterSweep {
             zQuick: 1.0,
             zStd: 1.28,
             frontierWidth: 2,
-            comparisonsPerItem: 3
+            comparisonsPerItem: 3,
         )
 
         static let proposedFromResearch = ParameterSet(
-            zQuick: 1.5,        // Higher confidence for quick phase
-            zStd: 1.96,         // 95% confidence (research recommendation)
-            frontierWidth: 3,   // Wider boundary sampling
-            comparisonsPerItem: 4  // Slightly more comparisons
+            zQuick: 1.5, // Higher confidence for quick phase
+            zStd: 1.96, // 95% confidence (research recommendation)
+            frontierWidth: 3, // Wider boundary sampling
+            comparisonsPerItem: 4, // Slightly more comparisons
         )
 
         static let conservative = ParameterSet(
             zQuick: 1.96,
             zStd: 1.96,
             frontierWidth: 4,
-            comparisonsPerItem: 5
+            comparisonsPerItem: 5,
         )
 
         var description: String {
@@ -55,15 +55,15 @@ struct HeadToHeadParameterSweep {
         let paramSets = [
             ("Current", ParameterSet.current),
             ("Research", ParameterSet.proposedFromResearch),
-            ("Conservative", ParameterSet.conservative)
+            ("Conservative", ParameterSet.conservative),
         ]
 
         let config = HeadToHeadSimulations.SimulationConfig(
             poolSize: 30,
-            comparisonsPerItem: 3,  // Will be overridden per param set
+            comparisonsPerItem: 3, // Will be overridden per param set
             tierCount: 6,
             noiseLevel: 0.1,
-            scenario: .clustered(4)
+            scenario: .clustered(4),
         )
 
         print("\n" + String(repeating: "=", count: 80))
@@ -82,7 +82,7 @@ struct HeadToHeadParameterSweep {
                 comparisonsPerItem: params.comparisonsPerItem,
                 tierCount: config.tierCount,
                 noiseLevel: config.noiseLevel,
-                scenario: config.scenario
+                scenario: config.scenario,
             )
 
             let metrics = HeadToHeadSimulations.runSimulation(config: testConfig)
@@ -101,10 +101,10 @@ struct HeadToHeadParameterSweep {
         print("\n" + String(repeating: "=", count: 80))
 
         // Find best performer by weighted score
-        let weighted = results.map { (name, metrics) -> (String, Double) in
-            let score = metrics.kendallsTau * 0.5 +  // 50% weight on correlation
-                       metrics.tierAccuracy * 0.3 +   // 30% weight on tier placement
-                       (1.0 - metrics.quickToFinalChurn) * 0.2  // 20% weight on stability
+        let weighted = results.map { name, metrics -> (String, Double) in
+            let score = metrics.kendallsTau * 0.5 + // 50% weight on correlation
+                metrics.tierAccuracy * 0.3 + // 30% weight on tier placement
+                (1.0 - metrics.quickToFinalChurn) * 0.2 // 20% weight on stability
             return (name, score)
         }
 
@@ -131,7 +131,7 @@ struct HeadToHeadParameterSweep {
                 comparisonsPerItem: budget,
                 tierCount: 5,
                 noiseLevel: 0.15,
-                scenario: .zipf
+                scenario: .zipf,
             )
 
             let metrics = HeadToHeadSimulations.runSimulation(config: config)
@@ -163,7 +163,7 @@ struct HeadToHeadParameterSweep {
                 comparisonsPerItem: 3,
                 tierCount: 5,
                 noiseLevel: noise,
-                scenario: .zipf
+                scenario: .zipf,
             )
 
             let metrics = HeadToHeadSimulations.runSimulation(config: config)
@@ -191,9 +191,9 @@ struct HeadToHeadParameterSweep {
             let config = HeadToHeadSimulations.SimulationConfig(
                 poolSize: poolSize,
                 comparisonsPerItem: 3,
-                tierCount: min(6, poolSize / 2),  // Adaptive tier count
+                tierCount: min(6, poolSize / 2), // Adaptive tier count
                 noiseLevel: 0.1,
-                scenario: .zipf
+                scenario: .zipf,
             )
 
             let metrics = HeadToHeadSimulations.runSimulation(config: config)
@@ -221,7 +221,7 @@ struct HeadToHeadParameterSweep {
             ("Zipf (Power-law)", .zipf),
             ("2 Clusters", .clustered(2)),
             ("4 Clusters", .clustered(4)),
-            ("Bimodal", .bimodal)
+            ("Bimodal", .bimodal),
         ]
 
         for (name, scenario) in scenarios {
@@ -230,7 +230,7 @@ struct HeadToHeadParameterSweep {
                 comparisonsPerItem: 3,
                 tierCount: 6,
                 noiseLevel: 0.1,
-                scenario: scenario
+                scenario: scenario,
             )
 
             let metrics = HeadToHeadSimulations.runSimulation(config: config)
@@ -259,13 +259,13 @@ struct HeadToHeadParameterSweep {
         var tierAccuracyValues: [Double] = []
         var churnValues: [Double] = []
 
-        for _ in 0..<runs {
+        for _ in 0 ..< runs {
             let config = HeadToHeadSimulations.SimulationConfig(
                 poolSize: 20,
                 comparisonsPerItem: 3,
                 tierCount: 5,
                 noiseLevel: 0.1,
-                scenario: .zipf
+                scenario: .zipf,
             )
 
             let metrics = HeadToHeadSimulations.runSimulation(config: config)
@@ -279,14 +279,17 @@ struct HeadToHeadParameterSweep {
         let tauStd = sqrt(tauValues.map { pow($0 - tauMean, 2) }.reduce(0, +) / Double(tauValues.count))
 
         let accMean = tierAccuracyValues.reduce(0, +) / Double(tierAccuracyValues.count)
-        let accStd = sqrt(tierAccuracyValues.map { pow($0 - accMean, 2) }.reduce(0, +) / Double(tierAccuracyValues.count))
+        let accStd = sqrt(tierAccuracyValues.map { pow($0 - accMean, 2) }
+            .reduce(0, +) / Double(tierAccuracyValues.count))
 
         let churnMean = churnValues.reduce(0, +) / Double(churnValues.count)
         let churnStd = sqrt(churnValues.map { pow($0 - churnMean, 2) }.reduce(0, +) / Double(churnValues.count))
 
         print("\nKendall's Tau:")
         print("  Mean: \(String(format: "%.3f", tauMean)) ± \(String(format: "%.3f", tauStd))")
-        print("  Range: [\(String(format: "%.3f", tauValues.min() ?? 0)), \(String(format: "%.3f", tauValues.max() ?? 0))]")
+        print(
+            "  Range: [\(String(format: "%.3f", tauValues.min() ?? 0)), \(String(format: "%.3f", tauValues.max() ?? 0))]",
+        )
 
         print("\nTier Accuracy:")
         print("  Mean: \(String(format: "%.1f%%", accMean * 100)) ± \(String(format: "%.1f%%", accStd * 100))")

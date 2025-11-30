@@ -1,21 +1,13 @@
-//
-//  VibrantDesign.swift
-//  Tiercade
-//
-//  A vibrant, punchy HDR-friendly design system for tvOS and all targets.
-//  Core surface and text colors now live in `Palette` (DesignTokens.swift); this file
-//  focuses on focus effects and tier-specific helpers.
-//
-
 import SwiftUI
 
 // MARK: - Color helpers (Display P3 aware)
+
 // Note: Using consolidated ColorUtilities for hex parsing and contrast calculations
 
 extension Color {
     /// Wide-gamut aware color from hex string in RGBA format (#RRGGBB or #RRGGBBAA).
     /// This is a convenience wrapper around ColorUtilities for backward compatibility.
-    internal static func wideGamut(_ rgbaHex: String) -> Color {
+    static func wideGamut(_ rgbaHex: String) -> Color {
         ColorUtilities.color(hex: rgbaHex)
     }
 }
@@ -27,36 +19,43 @@ private func chipTextColor(forHex hex: String) -> Color {
     ColorUtilities.accessibleTextColor(onBackground: hex)
 }
 
-// MARK: - Tier enum
+// MARK: - Tier
 
-internal enum Tier: String, CaseIterable, Identifiable {
-    case s, a, b, c, d, f, unranked
+enum Tier: String, CaseIterable, Identifiable {
+    case s
+    case a
+    case b
+    case c
+    case d
+    case f
+    case unranked
 
-    internal var id: String { rawValue }
-    internal var letter: String { rawValue.uppercased() }
-    internal var hex: String {
+    var id: String { rawValue }
+    var letter: String { rawValue.uppercased() }
+    var hex: String {
         switch self {
-        case .s: return "#FF0037"
-        case .a: return "#FFA000"
-        case .b: return "#00EC57"
-        case .c: return "#00D9FE"
-        case .d: return "#1E3A8A"
-        case .f: return "#808080"
-        case .unranked: return "#6B7280"
+        case .s: "#FF0037"
+        case .a: "#FFA000"
+        case .b: "#00EC57"
+        case .c: "#00D9FE"
+        case .d: "#1E3A8A"
+        case .f: "#808080"
+        case .unranked: "#6B7280"
         }
     }
-    internal var color: Color {
+
+    var color: Color {
         Color.wideGamut(hex)
     }
 }
 
-// MARK: - Tier Badge View
+// MARK: - TierBadgeView
 
 /// Legacy tier badge using hardcoded Tier enum (SABCDF only)
 /// Prefer DynamicTierBadgeView for custom tier color support
-internal struct TierBadgeView: View {
-    internal let tier: Tier
-    internal var body: some View {
+struct TierBadgeView: View {
+    let tier: Tier
+    var body: some View {
         Text(tier.letter)
             .font(.headline.weight(.bold))
             .foregroundStyle(chipTextColor(forHex: tier.hex))
@@ -64,22 +63,24 @@ internal struct TierBadgeView: View {
             .padding(.vertical, 4)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(tier.color)
+                    .fill(tier.color),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1),
             )
             .accessibilityLabel("Tier \(tier.letter)")
     }
 }
 
-/// Dynamic tier badge that respects custom tier colors and labels
-internal struct DynamicTierBadgeView: View {
-    internal let label: String
-    internal let colorHex: String
+// MARK: - DynamicTierBadgeView
 
-    internal var body: some View {
+/// Dynamic tier badge that respects custom tier colors and labels
+struct DynamicTierBadgeView: View {
+    let label: String
+    let colorHex: String
+
+    var body: some View {
         Text(label)
             .font(.headline.weight(.bold))
             .foregroundStyle(chipTextColor(forHex: colorHex))
@@ -87,25 +88,25 @@ internal struct DynamicTierBadgeView: View {
             .padding(.vertical, 4)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color.wideGamut(colorHex))
+                    .fill(Color.wideGamut(colorHex)),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1),
             )
             .accessibilityLabel("Tier \(label)")
     }
 }
 
-// MARK: - Punchy Focus Effect
+// MARK: - PunchyFocusStyle
 
-internal struct PunchyFocusStyle: ViewModifier {
-    internal let tier: Tier
-    internal var cornerRadius: CGFloat = 12
+struct PunchyFocusStyle: ViewModifier {
+    let tier: Tier
+    var cornerRadius: CGFloat = 12
     @Environment(\.isFocused) private var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    internal func body(content: Content) -> some View {
+    func body(content: Content) -> some View {
         #if os(tvOS)
         // Strong, TV-friendly focus treatment: larger scale, bright dual ring, and accent glow
         let outerRing = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -129,28 +130,28 @@ internal struct PunchyFocusStyle: ViewModifier {
             .shadow(color: tier.color.opacity(isFocused ? 0.30 : 0.0), radius: isFocused ? 30 : 0, x: 0, y: 0)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(isFocused ? 0.16 : 0.0), lineWidth: 2)
+                    .stroke(Color.white.opacity(isFocused ? 0.16 : 0.0), lineWidth: 2),
             )
             .animation(reduceMotion ? nil : Motion.spring, value: isFocused)
         #endif
     }
 }
 
-internal extension View {
+extension View {
     func punchyFocus(tier: Tier, cornerRadius: CGFloat = 12) -> some View {
         modifier(PunchyFocusStyle(tier: tier, cornerRadius: cornerRadius))
     }
 }
 
-// MARK: - Color-Based Punchy Focus Effect (for custom tier colors)
+// MARK: - PunchyFocusStyleDynamic
 
-internal struct PunchyFocusStyleDynamic: ViewModifier {
-    internal let color: Color
-    internal var cornerRadius: CGFloat = 12
+struct PunchyFocusStyleDynamic: ViewModifier {
+    let color: Color
+    var cornerRadius: CGFloat = 12
     @Environment(\.isFocused) private var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    internal func body(content: Content) -> some View {
+    func body(content: Content) -> some View {
         #if os(tvOS)
         // Strong, TV-friendly focus treatment matching PunchyFocusStyle but with dynamic color
         let outerRing = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -174,26 +175,26 @@ internal struct PunchyFocusStyleDynamic: ViewModifier {
             .shadow(color: color.opacity(isFocused ? 0.30 : 0.0), radius: isFocused ? 30 : 0, x: 0, y: 0)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(isFocused ? 0.16 : 0.0), lineWidth: 2)
+                    .stroke(Color.white.opacity(isFocused ? 0.16 : 0.0), lineWidth: 2),
             )
             .animation(reduceMotion ? nil : Motion.spring, value: isFocused)
         #endif
     }
 }
 
-internal extension View {
+extension View {
     /// Apply focus effect with a dynamic color (supports custom tier colors)
     func punchyFocus(color: Color, cornerRadius: CGFloat = 12) -> some View {
         modifier(PunchyFocusStyleDynamic(color: color, cornerRadius: cornerRadius))
     }
 }
 
-// MARK: - Example Card (for previews and adoption reference)
+// MARK: - VibrantCardView
 
-internal struct VibrantCardView: View {
-    internal var tier: Tier = .s
+struct VibrantCardView: View {
+    var tier: Tier = .s
 
-    internal var body: some View {
+    var body: some View {
         Button(action: {}, label: {
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -203,7 +204,7 @@ internal struct VibrantCardView: View {
                         // Poster placeholder
                         RoundedRectangle(cornerRadius: 8, style: .continuous)
                             .fill(Color.white.opacity(0.06))
-                            .frame(width: 160, height: 200)
+                            .frame(width: 160, height: 200),
                     )
 
                 TierBadgeView(tier: tier)
@@ -217,11 +218,15 @@ internal struct VibrantCardView: View {
 }
 
 #Preview("VibrantCard iOS") {
-    ZStack { Palette.appBackground.ignoresSafeArea(); VibrantCardView(tier: .s) }
+    ZStack { Palette.appBackground.ignoresSafeArea()
+        VibrantCardView(tier: .s)
+    }
 }
 
 #if os(tvOS)
 #Preview("VibrantCard tvOS") {
-    ZStack { Palette.appBackground.ignoresSafeArea(); VibrantCardView(tier: .a) }
+    ZStack { Palette.appBackground.ignoresSafeArea()
+        VibrantCardView(tier: .a)
+    }
 }
 #endif

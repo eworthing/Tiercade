@@ -4,10 +4,10 @@ import Foundation
 import FoundationModels
 #endif
 
-// MARK: - Feature Flags
+// MARK: - UniqueListGenerationFlags
 
 /// Feature flags for unique list generation (POC)
-internal enum UniqueListGenerationFlags {
+enum UniqueListGenerationFlags {
     /// EXPERIMENTAL: Enable the Generate → Dedup → Fill architecture for list requests
     /// When false, falls back to simple client-side deduplication
     ///
@@ -34,21 +34,21 @@ internal enum UniqueListGenerationFlags {
     nonisolated(unsafe) static var verboseLogging = false
 }
 
-// MARK: - Configuration Defaults
+// MARK: - Defaults
 
-internal enum Defaults {
+enum Defaults {
     nonisolated static let maxPasses = 3
-    nonisolated static let pass1OverGen = 1.6      // M = ceil(1.6 * N)
-    nonisolated static let minBackfillFrac = 0.4    // backfill delta floor
+    nonisolated static let pass1OverGen = 1.6 // M = ceil(1.6 * N)
+    nonisolated static let minBackfillFrac = 0.4 // backfill delta floor
     nonisolated static let tempDiverse = 0.8
     nonisolated static let tempControlled = 0.7
     nonisolated static let conservativeContextBudget = 3500
 }
 
-// MARK: - Normalization Configuration
+// MARK: - NormConfig
 
-internal struct NormConfig {
-    internal static let pluralExceptions: Set<String> = [
+enum NormConfig {
+    static let pluralExceptions: Set<String> = [
         // Words ending in "ss"
         "bass", "glass", "chess", "success", "process", "class", "mass", "news",
         "dress", "stress", "mess", "loss", "boss", "cross", "pass", "grass",
@@ -56,39 +56,43 @@ internal struct NormConfig {
         // Words ending in "es" that don't pluralize simply
         "analysis", "basis", "crisis", "hypothesis", "diagnosis", "thesis",
         // Irregular plurals
-        "person", "child", "man", "woman", "foot", "tooth", "mouse", "goose"
+        "person", "child", "man", "woman", "foot", "tooth", "mouse", "goose",
     ]
 
     // Precompiled regex patterns
-    internal static let reMarks: NSRegularExpression = {
+    static let reMarks: NSRegularExpression = {
         do {
             return try NSRegularExpression(pattern: "[™®©]")
         } catch {
             fatalError("Invalid regex pattern for trademark symbols: \(error)")
         }
     }()
-    internal static let reBrackets: NSRegularExpression = {
+
+    static let reBrackets: NSRegularExpression = {
         do {
             return try NSRegularExpression(pattern: #"\s*[\(\[][^\)\]]*[\)\]]"#)
         } catch {
             fatalError("Invalid regex pattern for brackets: \(error)")
         }
     }()
-    internal static let reLeadArticles: NSRegularExpression = {
+
+    static let reLeadArticles: NSRegularExpression = {
         do {
             return try NSRegularExpression(pattern: #"^(the|a|an)\s+"#, options: [.caseInsensitive])
         } catch {
             fatalError("Invalid regex pattern for leading articles: \(error)")
         }
     }()
-    internal static let rePunct: NSRegularExpression = {
+
+    static let rePunct: NSRegularExpression = {
         do {
             return try NSRegularExpression(pattern: #"[[:punct:]]+"#)
         } catch {
             fatalError("Invalid regex pattern for punctuation: \(error)")
         }
     }()
-    internal static let reWs: NSRegularExpression = {
+
+    static let reWs: NSRegularExpression = {
         do {
             return try NSRegularExpression(pattern: #"\s+"#)
         } catch {
@@ -106,8 +110,10 @@ extension String {
 
         func stripArticles(_ text: String) -> String {
             var result = text.trimmingCharacters(in: .whitespaces)
-            while let firstWord = result.split(separator: " ").first,
-                  articles.contains(firstWord.lowercased()) {
+            while
+                let firstWord = result.split(separator: " ").first,
+                articles.contains(firstWord.lowercased())
+            {
                 result.removeFirst(firstWord.count)
                 result = result.trimmingCharacters(in: .whitespaces)
             }
@@ -115,7 +121,7 @@ extension String {
         }
 
         // Split on delimiters that start new segments (colon, hyphen)
-        let withSpacedHyphens = self.replacingOccurrences(of: "-", with: " ")
+        let withSpacedHyphens = replacingOccurrences(of: "-", with: " ")
         let segments = withSpacedHyphens.split(separator: ":").map { stripArticles(String($0)) }
         return segments.joined(separator: ":")
     }
@@ -129,7 +135,7 @@ extension String {
             in: s,
             options: [],
             range: NSRange(s.startIndex..., in: s),
-            withTemplate: ""
+            withTemplate: "",
         )
 
         // Map & to and
@@ -140,7 +146,7 @@ extension String {
             in: s,
             options: [],
             range: NSRange(s.startIndex..., in: s),
-            withTemplate: ""
+            withTemplate: "",
         )
 
         // Recursive article removal with delimiter awareness
@@ -151,7 +157,7 @@ extension String {
             in: s,
             options: [],
             range: NSRange(s.startIndex..., in: s),
-            withTemplate: " "
+            withTemplate: " ",
         )
 
         // Collapse whitespace
@@ -159,11 +165,13 @@ extension String {
             in: s,
             options: [],
             range: NSRange(s.startIndex..., in: s),
-            withTemplate: " "
+            withTemplate: " ",
         ).trimmingCharacters(in: .whitespacesAndNewlines)
 
         // Optional plural trimming
-        guard UniqueListGenerationFlags.pluralTrimEnabled else { return s }
+        guard UniqueListGenerationFlags.pluralTrimEnabled else {
+            return s
+        }
         var parts = s.split(separator: " ").map(String.init)
         if var last = parts.last, last.count > 4 {
             if !NormConfig.pluralExceptions.contains(last) {
@@ -181,12 +189,14 @@ extension String {
 
 // MARK: - Array Token Budgeting Extension
 
-extension Array where Element == String {
+extension [String] {
     /// Chunk array by token budget for avoid-list management
-    internal func chunkedByTokenBudget(
+    func chunkedByTokenBudget(
         maxTokens: Int,
-        estimate: (String) -> Int = { ($0.count + 3) / 4 }
-    ) -> [[String]] {
+        estimate: (String) -> Int = { ($0.count + 3) / 4 },
+    )
+        -> [[String]]
+    {
         var chunks: [[String]] = []
         var current: [String] = []
         var tally = 0
@@ -221,7 +231,7 @@ extension GenerationOptions {
         .init(
             sampling: .random(top: k, seed: seed),
             temperature: temp,
-            maximumResponseTokens: maxTok
+            maximumResponseTokens: maxTok,
         )
     }
 
@@ -230,7 +240,7 @@ extension GenerationOptions {
         .init(
             sampling: .random(probabilityThreshold: p, seed: seed),
             temperature: temp,
-            maximumResponseTokens: maxTok
+            maximumResponseTokens: maxTok,
         )
     }
 
@@ -239,7 +249,7 @@ extension GenerationOptions {
         .init(
             sampling: .greedy,
             temperature: 0,
-            maximumResponseTokens: 256
+            maximumResponseTokens: 256,
         )
     }
 
@@ -260,20 +270,20 @@ extension GenerationOptions {
 #if canImport(FoundationModels)
 @available(iOS 26.0, macOS 26.0, *)
 @Generable
-internal struct UniqueListResponse: Decodable {
+struct UniqueListResponse: Decodable {
     var items: [String]
 }
 #endif
 
-// MARK: - Telemetry Structures
+// MARK: - RunEnv
 
-internal struct RunEnv: Codable {
+struct RunEnv: Codable {
     let osVersionString: String
     let osVersion: String
     let hasTopP: Bool
     let deploymentTag: String?
 
-    internal init(deploymentTag: String? = nil) {
+    init(deploymentTag: String? = nil) {
         self.osVersionString = ProcessInfo.processInfo.operatingSystemVersionString
 
         let v = ProcessInfo.processInfo.operatingSystemVersion
@@ -289,7 +299,9 @@ internal struct RunEnv: Codable {
     }
 }
 
-internal struct RunMetrics: Codable {
+// MARK: - RunMetrics
+
+struct RunMetrics: Codable {
     let passAtN: Bool
     let uniqueAtN: Int
     let jsonStrictSuccess: Bool
@@ -305,44 +317,49 @@ internal struct RunMetrics: Codable {
 // MARK: - Decoder Profile
 
 #if canImport(FoundationModels)
-@available(iOS 26.0, macOS 26.0, *)
 /// Profile that preserves sampling strategy across retries
-internal enum DecoderProfile {
+@available(iOS 26.0, macOS 26.0, *)
+enum DecoderProfile {
     case greedy
     case topK(Int)
     case topP(Double)
 
-    internal func options(seed: UInt64?, temp: Double?, maxTok: Int?) -> GenerationOptions {
-        switch self {
-        case .greedy:
-            return GenerationOptions(sampling: .greedy, temperature: temp, maximumResponseTokens: maxTok)
-        case .topK(let k):
-            return GenerationOptions(
-                sampling: .random(top: k, seed: seed),
-                temperature: temp,
-                maximumResponseTokens: maxTok
-            )
-        case .topP(let p):
-            return GenerationOptions(
-                sampling: .random(probabilityThreshold: p, seed: seed),
-                temperature: temp,
-                maximumResponseTokens: maxTok
-            )
-        }
-    }
+    // MARK: Internal
 
     var description: String {
         switch self {
-        case .greedy: return "greedy"
-        case .topK(let k): return "topK:\(k)"
-        case .topP(let p): return "topP:\(p)"
+        case .greedy: "greedy"
+        case let .topK(k): "topK:\(k)"
+        case let .topP(p): "topP:\(p)"
         }
     }
+
+    func options(seed: UInt64?, temp: Double?, maxTok: Int?) -> GenerationOptions {
+        switch self {
+        case .greedy:
+            GenerationOptions(sampling: .greedy, temperature: temp, maximumResponseTokens: maxTok)
+        case let .topK(k):
+            GenerationOptions(
+                sampling: .random(top: k, seed: seed),
+                temperature: temp,
+                maximumResponseTokens: maxTok,
+            )
+        case let .topP(p):
+            GenerationOptions(
+                sampling: .random(probabilityThreshold: p, seed: seed),
+                temperature: temp,
+                maximumResponseTokens: maxTok,
+            )
+        }
+    }
+
 }
 #endif
 
+// MARK: - AttemptMetrics
+
 /// Per-attempt telemetry for diagnostics
-internal struct AttemptMetrics: Codable {
+struct AttemptMetrics: Codable {
     let attemptIndex: Int
     let seed: UInt64?
     let sampling: String
@@ -352,8 +369,10 @@ internal struct AttemptMetrics: Codable {
     let elapsedSec: Double?
 }
 
+// MARK: - RunTelemetry
+
 /// Full run telemetry for export
-internal struct RunTelemetry: Codable {
+struct RunTelemetry: Codable {
     let testId: String
     let query: String
     let targetN: Int
@@ -375,13 +394,15 @@ internal struct RunTelemetry: Codable {
     let circuitBreakerTriggered: Bool?
     let passCount: Int?
     let failureReason: String?
-    let topDuplicates: [String: Int]?  // Top 5 duplicate items with counts
+    let topDuplicates: [String: Int]? // Top 5 duplicate items with counts
 }
 
 /// Export telemetry to JSONL
 @MainActor
 func exportTelemetryToJSONL(_ records: [RunTelemetry], to path: String? = nil) {
-    guard !records.isEmpty else { return }
+    guard !records.isEmpty else {
+        return
+    }
 
     // Use sandbox temp directory for security
     let defaultPath = FileManager.default.temporaryDirectory
@@ -389,7 +410,7 @@ func exportTelemetryToJSONL(_ records: [RunTelemetry], to path: String? = nil) {
     let targetPath = path ?? defaultPath
 
     let encoder = JSONEncoder()
-    encoder.outputFormatting = []  // Compact JSON for JSONL
+    encoder.outputFormatting = [] // Compact JSON for JSONL
 
     do {
         let fileURL = URL(fileURLWithPath: targetPath)
@@ -400,7 +421,7 @@ func exportTelemetryToJSONL(_ records: [RunTelemetry], to path: String? = nil) {
             if let size = (attrs[.size] as? NSNumber)?.intValue, size > 10_000_000 {
                 let backupPath = targetPath.replacingOccurrences(
                     of: ".jsonl",
-                    with: "_\(Date().timeIntervalSince1970).jsonl"
+                    with: "_\(Date().timeIntervalSince1970).jsonl",
                 )
                 try? FileManager.default.moveItem(atPath: targetPath, toPath: backupPath)
                 print("📊 Rotated telemetry log (>10MB) to: \(backupPath)")
@@ -418,7 +439,7 @@ func exportTelemetryToJSONL(_ records: [RunTelemetry], to path: String? = nil) {
             #if os(macOS)
             try? FileManager.default.setAttributes(
                 [.posixPermissions: 0o600],
-                ofItemAtPath: targetPath
+                ofItemAtPath: targetPath,
             )
             #endif
             fileHandle = try FileHandle(forWritingTo: fileURL)

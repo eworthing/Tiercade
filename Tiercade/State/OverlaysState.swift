@@ -1,7 +1,7 @@
 import Foundation
-import SwiftUI
 import Observation
 import os
+import SwiftUI
 import TiercadeCore
 
 /// Consolidated state for modal/overlay routing and visibility
@@ -14,7 +14,19 @@ import TiercadeCore
 /// - Computed overlay state (active overlay, background focus blocking)
 @MainActor
 @Observable
-internal final class OverlaysState {
+final class OverlaysState {
+    // MARK: - Overlay Type
+
+    enum OverlayType {
+        case detail
+        case quickMove
+        case themePicker
+        case themeCreator
+        case tierListCreator
+        case tierListBrowser
+        case analytics
+    }
+
     // MARK: - Item Detail & Quick Move
 
     /// Currently selected item for detail view (if any)
@@ -47,38 +59,40 @@ internal final class OverlaysState {
     // MARK: - Computed State
 
     /// The currently active overlay type (if any)
-    internal var activeOverlay: OverlayType? {
-        if detailItem != nil { return .detail }
-        if quickMoveTarget != nil { return .quickMove }
-        if showThemePicker { return .themePicker }
-        if showThemeCreator { return .themeCreator }
-        if showTierListCreator { return .tierListCreator }
-        if showTierListBrowser { return .tierListBrowser }
-        if showAnalyticsSidebar { return .analytics }
+    var activeOverlay: OverlayType? {
+        if detailItem != nil {
+            return .detail
+        }
+        if quickMoveTarget != nil {
+            return .quickMove
+        }
+        if showThemePicker {
+            return .themePicker
+        }
+        if showThemeCreator {
+            return .themeCreator
+        }
+        if showTierListCreator {
+            return .tierListCreator
+        }
+        if showTierListBrowser {
+            return .tierListBrowser
+        }
+        if showAnalyticsSidebar {
+            return .analytics
+        }
         return nil
     }
 
     /// Whether any overlay is currently blocking background focus
-    internal var blocksBackgroundFocus: Bool {
+    var blocksBackgroundFocus: Bool {
         activeOverlay != nil
-    }
-
-    // MARK: - Overlay Type
-
-    internal enum OverlayType {
-        case detail
-        case quickMove
-        case themePicker
-        case themeCreator
-        case tierListCreator
-        case tierListBrowser
-        case analytics
     }
 
     // MARK: - Methods
 
     /// Dismisses all active overlays
-    internal func dismissAllOverlays() {
+    func dismissAllOverlays() {
         detailItem = nil
         quickMoveTarget = nil
         showThemePicker = false
@@ -90,72 +104,72 @@ internal final class OverlaysState {
     }
 
     /// Shows the detail overlay for the given item
-    internal func showDetail(_ item: Item) {
+    func showDetail(_ item: Item) {
         detailItem = item
     }
 
     /// Dismisses the detail overlay
-    internal func dismissDetail() {
+    func dismissDetail() {
         detailItem = nil
     }
 
     /// Shows the quick move overlay for the given item
-    internal func showQuickMove(_ item: Item) {
+    func showQuickMove(_ item: Item) {
         quickMoveTarget = item
     }
 
     /// Dismisses the quick move overlay
-    internal func dismissQuickMove() {
+    func dismissQuickMove() {
         quickMoveTarget = nil
     }
 
     /// Presents the tier list creator
-    internal func presentTierListCreator() {
+    func presentTierListCreator() {
         showTierListCreator = true
     }
 
     /// Dismisses the tier list creator
-    internal func dismissTierListCreator() {
+    func dismissTierListCreator() {
         showTierListCreator = false
     }
 
     /// Presents the tier list browser
-    internal func presentTierListBrowser() {
+    func presentTierListBrowser() {
         showTierListBrowser = true
     }
 
     /// Dismisses the tier list browser
-    internal func dismissTierListBrowser() {
+    func dismissTierListBrowser() {
         showTierListBrowser = false
     }
 
     /// Presents the theme picker
-    internal func presentThemePicker() {
+    func presentThemePicker() {
         showThemePicker = true
     }
 
     /// Dismisses the theme picker
-    internal func dismissThemePicker() {
+    func dismissThemePicker() {
         showThemePicker = false
     }
 
     /// Presents the theme creator
-    internal func presentThemeCreator() {
+    func presentThemeCreator() {
         showThemeCreator = true
     }
 
     /// Dismisses the theme creator
-    internal func dismissThemeCreator() {
+    func dismissThemeCreator() {
         showThemeCreator = false
     }
 
     /// Presents the analytics sidebar
-    internal func presentAnalytics() {
+    func presentAnalytics() {
         showAnalyticsSidebar = true
     }
 
     /// Dismisses the analytics sidebar
-    internal func dismissAnalytics() {
+    func dismissAnalytics() {
         showAnalyticsSidebar = false
     }
 }

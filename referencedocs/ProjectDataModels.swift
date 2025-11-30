@@ -1,30 +1,58 @@
 // ProjectDataModels.swift - Swift 6 Codable models for Tiercade project schema (offline v1, cloud-ready)
 import Foundation
 
+// MARK: - JSONValue
+
 public enum JSONValue: Codable, Equatable {
-    case string(String), number(Double), bool(Bool), array([JSONValue]), object([String: JSONValue]), null
+    case string(String)
+    case number(Double)
+    case bool(Bool)
+    case array([JSONValue])
+    case object([String: JSONValue])
+    case null
     public init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
-        if c.decodeNil() { self = .null; return }
-        if let b = try? c.decode(Bool.self) { self = .bool(b); return }
-        if let n = try? c.decode(Double.self) { self = .number(n); return }
-        if let s = try? c.decode(String.self) { self = .string(s); return }
-        if let a = try? c.decode([JSONValue].self) { self = .array(a); return }
-        if let o = try? c.decode([String: JSONValue].self) { self = .object(o); return }
+        if c.decodeNil() {
+            self = .null
+            return
+        }
+        if let b = try? c.decode(Bool.self) {
+            self = .bool(b)
+            return
+        }
+        if let n = try? c.decode(Double.self) {
+            self = .number(n)
+            return
+        }
+        if let s = try? c.decode(String.self) {
+            self = .string(s)
+            return
+        }
+        if let a = try? c.decode([JSONValue].self) {
+            self = .array(a)
+            return
+        }
+        if let o = try? c.decode([String: JSONValue].self) {
+            self = .object(o)
+            return
+        }
         throw DecodingError.dataCorruptedError(in: c, debugDescription: "Unknown JSON value")
     }
+
     public func encode(to encoder: Encoder) throws {
         var c = encoder.singleValueContainer()
         switch self {
-        case .string(let s): try c.encode(s)
-        case .number(let n): try c.encode(n)
-        case .bool(let b): try c.encode(b)
-        case .array(let a): try c.encode(a)
-        case .object(let o): try c.encode(o)
+        case let .string(s): try c.encode(s)
+        case let .number(n): try c.encode(n)
+        case let .bool(b): try c.encode(b)
+        case let .array(a): try c.encode(a)
+        case let .object(o): try c.encode(o)
         case .null: try c.encodeNil()
         }
     }
 }
+
+// MARK: - Audit
 
 public struct Audit: Codable, Equatable {
     public var createdAt: Date
@@ -33,11 +61,13 @@ public struct Audit: Codable, Equatable {
     public var updatedBy: String?
 }
 
+// MARK: - Media
+
 public struct Media: Codable, Equatable, Identifiable {
     public enum Kind: String, Codable { case image, gif, video, audio }
     public var id: String
     public var kind: Kind
-    public var uri: String     // v1 uses file:// URLs; schema allows http(s) for future cloud
+    public var uri: String // v1 uses file:// URLs; schema allows http(s) for future cloud
     public var mime: String
     public var w: Double?
     public var h: Double?
@@ -48,6 +78,8 @@ public struct Media: Codable, Equatable, Identifiable {
     public var attribution: [String: String]?
     public var additional: [String: JSONValue]?
 }
+
+// MARK: - Item
 
 public struct Item: Codable, Equatable, Identifiable {
     public var id: String
@@ -65,15 +97,19 @@ public struct Item: Codable, Equatable, Identifiable {
     public var additional: [String: JSONValue]?
 }
 
+// MARK: - ItemOverride
+
 public struct ItemOverride: Codable, Equatable {
     public var displayTitle: String?
     public var notes: String?
     public var tags: [String]?
     public var rating: Double?
-    public var media: [Media]?    // replace policy in v1
+    public var media: [Media]? // replace policy in v1
     public var hidden: Bool?
     public var additional: [String: JSONValue]?
 }
+
+// MARK: - Tier
 
 public struct Tier: Codable, Equatable, Identifiable {
     public var id: String
@@ -87,19 +123,25 @@ public struct Tier: Codable, Equatable, Identifiable {
     public var additional: [String: JSONValue]?
 }
 
+// MARK: - Links
+
 public struct Links: Codable, Equatable {
-    public var visibility: String?   // public|unlisted|private (metadata only in v1)
+    public var visibility: String? // public|unlisted|private (metadata only in v1)
     public var shareUrl: String?
     public var embedHtml: String?
     public var stateUrl: String?
     public var additional: [String: JSONValue]?
 }
 
+// MARK: - Storage
+
 public struct Storage: Codable, Equatable {
-    public var mode: String?     // "local" (default) | "cloud"
+    public var mode: String? // "local" (default) | "cloud"
     public var remote: [String: JSONValue]? // provider/baseUrl/bucket/pathPrefix/auth...
     public var additional: [String: JSONValue]?
 }
+
+// MARK: - Settings
 
 public struct Settings: Codable, Equatable {
     public var theme: String?
@@ -110,16 +152,22 @@ public struct Settings: Codable, Equatable {
     public var additional: [String: JSONValue]?
 }
 
+// MARK: - Member
+
 public struct Member: Codable, Equatable {
     public var userId: String
     public var role: String
     public var additional: [String: JSONValue]?
 }
 
+// MARK: - Collaboration
+
 public struct Collaboration: Codable, Equatable {
     public var members: [Member]?
     public var additional: [String: JSONValue]?
 }
+
+// MARK: - Project
 
 public struct Project: Codable, Equatable {
     public var schemaVersion: Int
@@ -130,12 +178,14 @@ public struct Project: Codable, Equatable {
     public var items: [String: Item]
     public var overrides: [String: ItemOverride]?
     public var links: Links?
-    public var storage: Storage?      // optional, future cloud-ready
+    public var storage: Storage? // optional, future cloud-ready
     public var settings: Settings?
     public var collab: Collaboration?
     public var audit: Audit
     public var additional: [String: JSONValue]?
 }
+
+// MARK: - ProjectValidation
 
 public enum ProjectValidation {
     public static func validateOfflineV1(_ project: Project) throws {
@@ -143,12 +193,14 @@ public enum ProjectValidation {
             throw NSError(
                 domain: "Tiercade",
                 code: 1001,
-                userInfo: [NSLocalizedDescriptionKey: "v1 is offline-only (storage.mode must be 'local' or omitted)."]
+                userInfo: [NSLocalizedDescriptionKey: "v1 is offline-only (storage.mode must be 'local' or omitted)."],
             )
         }
 
         func isFileURL(_ value: String?) -> Bool {
-            guard let value else { return true }
+            guard let value else {
+                return true
+            }
             return value.lowercased().hasPrefix("file://")
         }
 
@@ -158,7 +210,7 @@ public enum ProjectValidation {
                     throw NSError(
                         domain: "Tiercade",
                         code: 1002,
-                        userInfo: [NSLocalizedDescriptionKey: "Media URIs must be file:// in offline v1."]
+                        userInfo: [NSLocalizedDescriptionKey: "Media URIs must be file:// in offline v1."],
                     )
                 }
             }
@@ -170,7 +222,7 @@ public enum ProjectValidation {
                     throw NSError(
                         domain: "Tiercade",
                         code: 1003,
-                        userInfo: [NSLocalizedDescriptionKey: "Override media URIs must be file:// in offline v1."]
+                        userInfo: [NSLocalizedDescriptionKey: "Override media URIs must be file:// in offline v1."],
                     )
                 }
             }

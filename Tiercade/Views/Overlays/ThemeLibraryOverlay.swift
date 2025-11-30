@@ -1,30 +1,14 @@
 import SwiftUI
 import TiercadeCore
 
+// MARK: - ThemeLibraryOverlay
+
 @MainActor
-internal struct ThemeLibraryOverlay: View {
-    @Environment(AppState.self) private var appState
-    @Namespace private var glassNamespace
-    @FocusState private var focusedThemeID: TierTheme.ID?
-    #if !os(tvOS)
-    @FocusState private var overlayHasFocus: Bool
-    #endif
+struct ThemeLibraryOverlay: View {
 
-    private var columns: [GridItem] {
-        let spacing = platformCardSpacing
-        return [
-            GridItem(
-                .flexible(minimum: 300, maximum: 420),
-                spacing: spacing
-            ),
-            GridItem(
-                .flexible(minimum: 300, maximum: 420),
-                spacing: spacing
-            )
-        ]
-    }
+    // MARK: Internal
 
-    internal var body: some View {
+    var body: some View {
         ZStack {
             scrim
             overlayContent
@@ -40,27 +24,55 @@ internal struct ThemeLibraryOverlay: View {
         }
         #if !os(tvOS)
         .onChange(of: overlayHasFocus) { _, newValue in
-            guard !newValue else { return }
+            guard !newValue else {
+                return
+            }
             Task { @MainActor in
                 try? await Task.sleep(for: FocusWorkarounds.reassertDelay)
-                guard appState.overlays.showThemePicker else { return }
+                guard appState.overlays.showThemePicker else {
+                    return
+                }
                 overlayHasFocus = true
             }
         }
         #endif
     }
+
+    // MARK: Private
+
+    @Environment(AppState.self) private var appState
+    @Namespace private var glassNamespace
+    @FocusState private var focusedThemeID: TierTheme.ID?
+    #if !os(tvOS)
+    @FocusState private var overlayHasFocus: Bool
+    #endif
+
+    private var columns: [GridItem] {
+        let spacing = platformCardSpacing
+        return [
+            GridItem(
+                .flexible(minimum: 300, maximum: 420),
+                spacing: spacing,
+            ),
+            GridItem(
+                .flexible(minimum: 300, maximum: 420),
+                spacing: spacing,
+            ),
+        ]
+    }
+
 }
 
 // MARK: - Layout
 
-private extension ThemeLibraryOverlay {
-    var scrim: some View {
+extension ThemeLibraryOverlay {
+    private var scrim: some View {
         Palette.bg.opacity(0.6)
             .ignoresSafeArea()
             .onTapGesture { appState.dismissThemePicker() }
     }
 
-    var overlayContent: some View {
+    private var overlayContent: some View {
         VStack {
             chrome
         }
@@ -69,33 +81,45 @@ private extension ThemeLibraryOverlay {
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
         #if os(tvOS)
-        .focusSection()
-        .defaultFocus($focusedThemeID, defaultFocusID)
-        .onExitCommand { appState.dismissThemePicker() }
-        .onMoveCommand(perform: handleMoveCommand)
+            .focusSection()
+            .defaultFocus($focusedThemeID, defaultFocusID)
+            .onExitCommand { appState.dismissThemePicker() }
+            .onMoveCommand(perform: handleMoveCommand)
         #else
-        .focusable()
-        .focused($overlayHasFocus)
-        .onKeyPress(.upArrow) { handleDirectionalInput(.up); return .handled }
-        .onKeyPress(.downArrow) { handleDirectionalInput(.down); return .handled }
-        .onKeyPress(.leftArrow) { handleDirectionalInput(.left); return .handled }
-        .onKeyPress(.rightArrow) { handleDirectionalInput(.right); return .handled }
-        .onKeyPress(.space) { activateFocusedTheme(); return .handled }
-        .onKeyPress(.return) { activateFocusedTheme(); return .handled }
+            .focusable()
+            .focused($overlayHasFocus)
+            .onKeyPress(.upArrow) { handleDirectionalInput(.up)
+                return .handled
+            }
+            .onKeyPress(.downArrow) { handleDirectionalInput(.down)
+                return .handled
+            }
+            .onKeyPress(.leftArrow) { handleDirectionalInput(.left)
+                return .handled
+            }
+            .onKeyPress(.rightArrow) { handleDirectionalInput(.right)
+                return .handled
+            }
+            .onKeyPress(.space) { activateFocusedTheme()
+                return .handled
+            }
+            .onKeyPress(.return) { activateFocusedTheme()
+                return .handled
+            }
         #endif
-        .onChange(of: appState.theme.availableThemes) { ensureValidFocus() }
-        .onChange(of: appState.theme.selectedTheme.id) { assignFocusToSelectedTheme() }
+            .onChange(of: appState.theme.availableThemes) { ensureValidFocus() }
+                .onChange(of: appState.theme.selectedTheme.id) { assignFocusToSelectedTheme() }
     }
 
     @ViewBuilder
-    var chrome: some View {
+    private var chrome: some View {
         VStack(spacing: 0) {
             // Apply glass to header chrome only
             header
                 .background(
                     tvGlassContainer {
                         Color.clear
-                    }
+                    },
                 )
 
             Divider().opacity(0.18)
@@ -111,23 +135,23 @@ private extension ThemeLibraryOverlay {
                 .background(
                     tvGlassContainer {
                         Color.clear
-                    }
+                    },
                 )
         }
         .frame(maxWidth: 1180)
         .padding(.vertical, platformOverlayPadding / 2)
         .background(
             RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
-                .fill(Palette.bg.opacity(0.85))
+                .fill(Palette.bg.opacity(0.85)),
         )
         .overlay(
             RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
-                .stroke(Palette.stroke, lineWidth: 1)
+                .stroke(Palette.stroke, lineWidth: 1),
         )
         .shadow(color: Palette.bg.opacity(0.35), radius: 32, y: 18)
     }
 
-    var header: some View {
+    fileprivate var header: some View {
         HStack(alignment: .center, spacing: platformButtonSpacing) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Theme Library")
@@ -148,18 +172,18 @@ private extension ThemeLibraryOverlay {
             }
             .accessibilityIdentifier("ThemePicker_Create")
             #if swift(>=6.0)
-            .buttonStyle(.glass)
+                .buttonStyle(.glass)
             #else
-            .buttonStyle(.borderedProminent)
+                .buttonStyle(.borderedProminent)
             #endif
-            .controlSize(.large)
+                .controlSize(.large)
 
             Button("Close", role: .close) {
                 appState.dismissThemePicker()
             }
             .accessibilityIdentifier("ThemePicker_Close")
             #if !os(tvOS)
-            .keyboardShortcut(.cancelAction)
+                .keyboardShortcut(.cancelAction)
             #endif
             #if swift(>=6.0)
             .buttonStyle(.glass)
@@ -172,7 +196,7 @@ private extension ThemeLibraryOverlay {
         .padding(.vertical, platformOverlayPadding / 1.5)
     }
 
-    var grid: some View {
+    private var grid: some View {
         ScrollView(.vertical, showsIndicators: false) {
             LazyVGrid(columns: columns, spacing: platformCardSpacing) {
                 ForEach(appState.theme.availableThemes) { theme in
@@ -181,7 +205,7 @@ private extension ThemeLibraryOverlay {
                         tint: tint(for: theme),
                         isSelected: appState.theme.selectedTheme.id == theme.id,
                         isCustom: appState.isCustomTheme(theme),
-                        namespace: glassNamespace
+                        namespace: glassNamespace,
                     ) {
                         appState.applyTheme(theme)
                     }
@@ -195,7 +219,7 @@ private extension ThemeLibraryOverlay {
         .frame(maxHeight: 640)
     }
 
-    var footer: some View {
+    private var footer: some View {
         HStack(spacing: platformButtonSpacing) {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -206,11 +230,11 @@ private extension ThemeLibraryOverlay {
             }
             .accessibilityIdentifier("ThemePicker_Reset")
             #if swift(>=6.0)
-            .buttonStyle(.glass)
+                .buttonStyle(.glass)
             #else
-            .buttonStyle(.bordered)
+                .buttonStyle(.bordered)
             #endif
-            .controlSize(.large)
+                .controlSize(.large)
 
             Spacer()
 
@@ -232,26 +256,32 @@ private extension ThemeLibraryOverlay {
 
 // MARK: - Focus helpers
 
-private extension ThemeLibraryOverlay {
+extension ThemeLibraryOverlay {
 
     #if os(tvOS)
-    func handleMoveCommand(_ direction: MoveCommandDirection) {
-        guard let mapped = DirectionalMove(moveCommand: direction) else { return }
+    fileprivate func handleMoveCommand(_ direction: MoveCommandDirection) {
+        guard let mapped = DirectionalMove(moveCommand: direction) else {
+            return
+        }
         handleDirectionalInput(mapped)
     }
     #endif
 
-    func handleDirectionalInput(_ move: DirectionalMove) {
+    private func handleDirectionalInput(_ move: DirectionalMove) {
         #if !os(tvOS)
         overlayHasFocus = true
         #endif
         let themes = appState.theme.availableThemes
-        guard !themes.isEmpty else { return }
+        guard !themes.isEmpty else {
+            return
+        }
         let columnCount = max(columns.count, 1)
         let currentId = focusedThemeID ?? defaultFocusID
 
-        guard let currentId,
-              let currentIndex = themes.firstIndex(where: { $0.id == currentId }) else {
+        guard
+            let currentId,
+            let currentIndex = themes.firstIndex(where: { $0.id == currentId })
+        else {
             assignFocus(defaultFocusID)
             return
         }
@@ -260,7 +290,7 @@ private extension ThemeLibraryOverlay {
             move: move,
             currentIndex: currentIndex,
             themeCount: themes.count,
-            columnCount: columnCount
+            columnCount: columnCount,
         )
 
         if targetIndex != currentIndex, themes.indices.contains(targetIndex) {
@@ -272,26 +302,27 @@ private extension ThemeLibraryOverlay {
         move: DirectionalMove,
         currentIndex: Int,
         themeCount: Int,
-        columnCount: Int
-    ) -> Int {
+        columnCount: Int,
+    )
+    -> Int {
         switch move {
         case .left:
-            return handleLeftMove(currentIndex: currentIndex)
+            handleLeftMove(currentIndex: currentIndex)
         case .right:
-            return handleRightMove(currentIndex: currentIndex, themeCount: themeCount)
+            handleRightMove(currentIndex: currentIndex, themeCount: themeCount)
         case .up:
-            return handleUpMove(currentIndex: currentIndex, columnCount: columnCount)
+            handleUpMove(currentIndex: currentIndex, columnCount: columnCount)
         case .down:
-            return handleDownMove(currentIndex: currentIndex, themeCount: themeCount, columnCount: columnCount)
+            handleDownMove(currentIndex: currentIndex, themeCount: themeCount, columnCount: columnCount)
         }
     }
 
     private func handleLeftMove(currentIndex: Int) -> Int {
-        return currentIndex > 0 ? currentIndex - 1 : currentIndex
+        currentIndex > 0 ? currentIndex - 1 : currentIndex
     }
 
     private func handleRightMove(currentIndex: Int, themeCount: Int) -> Int {
-        return currentIndex + 1 < themeCount ? currentIndex + 1 : currentIndex
+        currentIndex + 1 < themeCount ? currentIndex + 1 : currentIndex
     }
 
     private func handleUpMove(currentIndex: Int, columnCount: Int) -> Int {
@@ -309,21 +340,25 @@ private extension ThemeLibraryOverlay {
         return currentIndex
     }
 
-    func activateFocusedTheme() {
+    private func activateFocusedTheme() {
         let themes = appState.theme.availableThemes
-        guard let id = focusedThemeID ?? defaultFocusID,
-              let theme = themes.first(where: { $0.id == id }) else { return }
+        guard
+            let id = focusedThemeID ?? defaultFocusID,
+            let theme = themes.first(where: { $0.id == id })
+        else {
+            return
+        }
         appState.applyTheme(theme)
     }
 
-    func handleAppear() {
+    private func handleAppear() {
         assignFocusToSelectedTheme()
         #if !os(tvOS)
         overlayHasFocus = true
         #endif
     }
 
-    func assignFocusToSelectedTheme() {
+    private func assignFocusToSelectedTheme() {
         if let target = appState.theme.availableThemes.first(where: { $0.id == appState.theme.selectedTheme.id }) {
             assignFocus(target.id)
         } else {
@@ -331,7 +366,7 @@ private extension ThemeLibraryOverlay {
         }
     }
 
-    func ensureValidFocus() {
+    private func ensureValidFocus() {
         guard let current = focusedThemeID else {
             assignFocus(defaultFocusID)
             return
@@ -343,20 +378,20 @@ private extension ThemeLibraryOverlay {
         }
     }
 
-    func assignFocus(_ id: TierTheme.ID?) {
+    private func assignFocus(_ id: TierTheme.ID?) {
         Task { @MainActor in
             focusedThemeID = id
         }
     }
 
-    var defaultFocusID: TierTheme.ID? {
+    private var defaultFocusID: TierTheme.ID? {
         if appState.theme.availableThemes.contains(where: { $0.id == appState.theme.selectedTheme.id }) {
             return appState.theme.selectedTheme.id
         }
         return appState.theme.availableThemes.first?.id
     }
 
-    func tint(for theme: TierTheme) -> Color {
+    fileprivate func tint(for theme: TierTheme) -> Color {
         if let first = theme.rankedTiers.first {
             return ColorUtilities.color(hex: first.colorHex)
         }
@@ -369,8 +404,8 @@ private extension ThemeLibraryOverlay {
 
 // MARK: - Platform metrics
 
-private extension ThemeLibraryOverlay {
-    var platformOverlayPadding: CGFloat {
+extension ThemeLibraryOverlay {
+    private var platformOverlayPadding: CGFloat {
         #if os(tvOS)
         TVMetrics.overlayPadding
         #else
@@ -378,7 +413,7 @@ private extension ThemeLibraryOverlay {
         #endif
     }
 
-    var platformOverlayCornerRadius: CGFloat {
+    private var platformOverlayCornerRadius: CGFloat {
         #if os(tvOS)
         TVMetrics.overlayCornerRadius
         #else
@@ -386,7 +421,7 @@ private extension ThemeLibraryOverlay {
         #endif
     }
 
-    var platformCardSpacing: CGFloat {
+    private var platformCardSpacing: CGFloat {
         #if os(tvOS)
         TVMetrics.cardSpacing
         #else
@@ -394,7 +429,7 @@ private extension ThemeLibraryOverlay {
         #endif
     }
 
-    var platformButtonSpacing: CGFloat {
+    private var platformButtonSpacing: CGFloat {
         #if os(tvOS)
         TVMetrics.buttonSpacing
         #else
@@ -403,20 +438,20 @@ private extension ThemeLibraryOverlay {
     }
 }
 
-// MARK: - Tile
+// MARK: - ThemeLibraryTile
 
 private struct ThemeLibraryTile: View {
-    internal let theme: TierTheme
-    internal let tint: Color
-    internal let isSelected: Bool
-    internal let isCustom: Bool
-    internal let namespace: Namespace.ID
-    internal let action: () -> Void
 
-    @Environment(\.isFocused) private var isFocused
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    // MARK: Internal
 
-    internal var body: some View {
+    let theme: TierTheme
+    let tint: Color
+    let isSelected: Bool
+    let isCustom: Bool
+    let namespace: Namespace.ID
+    let action: () -> Void
+
+    var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 20) {
                 header
@@ -428,33 +463,38 @@ private struct ThemeLibraryTile: View {
         .buttonStyle(.plain)
         .focusable(interactions: .activate)
         #if swift(>=6.0)
-        .glassEffect(
-            Glass.regular.tint(tint.opacity(0.5)).interactive(),
-            in: RoundedRectangle(cornerRadius: 24, style: .continuous)
-        )
-        .glassEffectID(theme.id, in: namespace)
+            .glassEffect(
+                Glass.regular.tint(tint.opacity(0.5)).interactive(),
+                in: RoundedRectangle(cornerRadius: 24, style: .continuous),
+            )
+            .glassEffectID(theme.id, in: namespace)
         #else
-        .background(
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
-        .fill(.ultraThinMaterial)
-        )
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(.ultraThinMaterial),
+            )
         #endif
-        .overlay(alignment: .topTrailing) {
-            if isSelected {
-                SelectedBadge()
-                    .padding(12)
-            }
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(borderColor, lineWidth: borderWidth)
-        )
-        .shadow(color: shadowColor, radius: shadowRadius, y: shadowOffset)
-        .scaleEffect(scale)
-        .animation(reduceMotion ? nil : Motion.focus, value: isFocused)
-        .accessibilityLabel(theme.displayName)
-        .accessibilityHint(accessibilityHint)
+            .overlay(alignment: .topTrailing) {
+                    if isSelected {
+                        SelectedBadge()
+                            .padding(12)
+                    }
+                }
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(borderColor, lineWidth: borderWidth),
+                )
+                .shadow(color: shadowColor, radius: shadowRadius, y: shadowOffset)
+                .scaleEffect(scale)
+                .animation(reduceMotion ? nil : Motion.focus, value: isFocused)
+                .accessibilityLabel(theme.displayName)
+                .accessibilityHint(accessibilityHint)
     }
+
+    // MARK: Private
+
+    @Environment(\.isFocused) private var isFocused
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var borderColor: Color {
         isFocused ? tint.opacity(0.95) : .clear
@@ -527,10 +567,10 @@ private struct ThemeLibraryTile: View {
                 Text(label(for: tier))
                     .font(.headline.weight(.bold))
                     .foregroundStyle(
-                        ColorUtilities.accessibleTextColor(onBackground: tier.colorHex)
+                        ColorUtilities.accessibleTextColor(onBackground: tier.colorHex),
                     )
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    .minimumScaleFactor(0.6),
             )
     }
 
@@ -539,27 +579,31 @@ private struct ThemeLibraryTile: View {
     }
 }
 
-private struct ThemeStatusBadge: View {
-    internal let text: String
-    internal let tint: Color
-    internal let textColor: Color
+// MARK: - ThemeStatusBadge
 
-    internal var body: some View {
+private struct ThemeStatusBadge: View {
+    let text: String
+    let tint: Color
+    let textColor: Color
+
+    var body: some View {
         Text(text)
             .font(TypeScale.label.weight(.semibold))
             .foregroundStyle(textColor)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
             .background(
-                Capsule().fill(tint)
+                Capsule().fill(tint),
             )
     }
 }
 
+// MARK: - SelectedBadge
+
 private struct SelectedBadge: View {
     @Environment(AppState.self) private var app: AppState
 
-    internal var body: some View {
+    var body: some View {
         let successColor = Palette.tierColor("B", from: app.tierColors)
         Image(systemName: "checkmark.circle.fill")
             .font(.title2.weight(.bold))
@@ -568,13 +612,13 @@ private struct SelectedBadge: View {
             .background(
                 Circle()
                     .fill(successColor.gradient)
-                    .shadow(color: successColor.opacity(0.35), radius: 12, y: 6)
+                    .shadow(color: successColor.opacity(0.35), radius: 12, y: 6),
             )
             .accessibilityHidden(true)
     }
 }
 
-// MARK: - Previews
+// MARK: - ThemeLibraryOverlayPreview
 
 @MainActor
 private struct ThemeLibraryOverlayPreview: View {

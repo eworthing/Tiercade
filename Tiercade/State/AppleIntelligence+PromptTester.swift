@@ -5,6 +5,9 @@ import FoundationModels
 
 @MainActor
 class SystemPromptTester {
+
+    // MARK: Internal
+
     struct TestResult {
         let promptNumber: Int
         let promptText: String
@@ -19,7 +22,9 @@ class SystemPromptTester {
         let normalizedItems: [String]
     }
 
-    internal static func testPrompts(onProgress: @MainActor @escaping (String) -> Void) async -> [TestResult] {
+    struct TimeoutError: Error, Sendable {}
+
+    static func testPrompts(onProgress: @MainActor @escaping (String) -> Void) async -> [TestResult] {
         let testQuery = "What are the top 25 most popular animated series"
         var results: [TestResult] = []
 
@@ -31,7 +36,7 @@ class SystemPromptTester {
             let result = await testSinglePrompt(
                 promptNumber: index + 1,
                 systemPrompt: prompt,
-                testQuery: testQuery
+                testQuery: testQuery,
             )
 
             results.append(result)
@@ -50,10 +55,13 @@ class SystemPromptTester {
         return results
     }
 
-    nonisolated private static func withTimeout<T: Sendable>(
+    // MARK: Private
+
+    private nonisolated static func withTimeout<T: Sendable>(
         seconds: TimeInterval,
-        operation: @Sendable @escaping () async throws -> T
-    ) async throws -> T {
+        operation: @Sendable @escaping () async throws -> T,
+    ) async throws
+    -> T {
         try await withThrowingTaskGroup(of: T.self) { group in
             group.addTask {
                 try await operation()
@@ -73,13 +81,12 @@ class SystemPromptTester {
         }
     }
 
-    struct TimeoutError: Error, Sendable {}
-
     private static func testSinglePrompt(
         promptNumber: Int,
         systemPrompt: String,
-        testQuery: String
-    ) async -> TestResult {
+        testQuery: String,
+    ) async
+    -> TestResult {
         do {
             let responseContent = try await executePromptGeneration(systemPrompt: systemPrompt, testQuery: testQuery)
             print("🧪   ✅ Generation completed successfully")
@@ -88,7 +95,7 @@ class SystemPromptTester {
                 promptNumber: promptNumber,
                 systemPrompt: systemPrompt,
                 responseContent: responseContent,
-                analysis: analysis
+                analysis: analysis,
             )
         } catch is TimeoutError {
             return buildTimeoutTestResult(promptNumber: promptNumber, systemPrompt: systemPrompt)
@@ -103,9 +110,9 @@ class SystemPromptTester {
 
         // Explicit generation options for reproducibility and control
         let opts = GenerationOptions(
-            sampling: .random(top: 50, seed: UInt64.random(in: 0...UInt64.max)),
+            sampling: .random(top: 50, seed: UInt64.random(in: 0 ... UInt64.max)),
             temperature: 0.8,
-            maximumResponseTokens: 1200
+            maximumResponseTokens: 1200,
         )
 
         print("🧪   ⏱️ Starting generation with 60s timeout...")
@@ -120,8 +127,9 @@ class SystemPromptTester {
         promptNumber: Int,
         systemPrompt: String,
         responseContent: String,
-        analysis: DuplicateAnalysisResult
-    ) -> TestResult {
+        analysis: DuplicateAnalysisResult,
+    )
+    -> TestResult {
         TestResult(
             promptNumber: promptNumber,
             promptText: systemPrompt,
@@ -133,7 +141,7 @@ class SystemPromptTester {
             wasJsonParsed: analysis.wasJsonParsed,
             response: responseContent,
             parsedItems: analysis.parsedItems,
-            normalizedItems: analysis.normalizedItems
+            normalizedItems: analysis.normalizedItems,
         )
     }
 
@@ -150,7 +158,7 @@ class SystemPromptTester {
             wasJsonParsed: false,
             response: "TIMEOUT: Generation took longer than 60 seconds",
             parsedItems: [],
-            normalizedItems: []
+            normalizedItems: [],
         )
     }
 
@@ -167,7 +175,7 @@ class SystemPromptTester {
             wasJsonParsed: false,
             response: "ERROR: \(error.localizedDescription)",
             parsedItems: [],
-            normalizedItems: []
+            normalizedItems: [],
         )
     }
 }

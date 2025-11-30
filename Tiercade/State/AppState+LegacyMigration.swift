@@ -1,17 +1,9 @@
-//
-//  AppState+LegacyMigration.swift
-//  Tiercade
-//
-//  Created by AI Assistant on 9/30/25.
-//  Migration utilities for legacy save file formats
-//
-
 import Foundation
 import SwiftUI
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
 
     /// Save file structure for migration
     private struct AppSaveFile: Codable {
@@ -79,7 +71,7 @@ internal extension AppState {
     /// Migrate flat item array (legacy export format)
     private func migrateFlatItemStructure(_ items: [[String: Any]]) throws -> Items {
         var migratedTiers: Items = [
-            "S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": []
+            "S": [], "A": [], "B": [], "C": [], "D": [], "F": [], "unranked": [],
         ]
 
         for itemDict in items {
@@ -115,7 +107,7 @@ internal extension AppState {
         let saveData = AppSaveFile(
             tiers: tiers,
             createdDate: Date(),
-            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.0-migrated"
+            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.0-migrated",
         )
 
         let encoder = JSONEncoder()
@@ -128,7 +120,9 @@ internal extension AppState {
 
     /// Check if a file needs migration
     func needsMigration(at url: URL) -> Bool {
-        guard let data = try? Data(contentsOf: url) else { return false }
+        guard let data = try? Data(contentsOf: url) else {
+            return false
+        }
 
         // If it decodes as modern format, no migration needed
         if (try? JSONDecoder().decode(AppSaveFile.self, from: data)) != nil {
@@ -159,25 +153,25 @@ internal extension AppState {
         var errorDescription: String? {
             switch self {
             case .unrecognizedFormat:
-                return "Unrecognized save file format. Please contact support with your backup file."
-            case .missingRequiredField(let field):
-                return "Save file is missing required field: \(field)"
+                "Unrecognized save file format. Please contact support with your backup file."
+            case let .missingRequiredField(field):
+                "Save file is missing required field: \(field)"
             case .corruptedData:
-                return "Save file data is corrupted and cannot be migrated."
+                "Save file data is corrupted and cannot be migrated."
             }
         }
     }
 }
 
-// MARK: - Migration Helper View
+// MARK: - LegacyMigrationView
 
-internal struct LegacyMigrationView: View {
+struct LegacyMigrationView: View {
+
+    // MARK: Internal
+
     @Bindable var app: AppState
-    let fileURL: URL
-    @Environment(\.dismiss) private var dismiss
 
-    @State private var isLoading = false
-    @State private var migrationError: Error?
+    let fileURL: URL
 
     var body: some View {
         VStack(spacing: 20) {
@@ -223,6 +217,13 @@ internal struct LegacyMigrationView: View {
         .cornerRadius(16)
         .shadow(radius: 20)
     }
+
+    // MARK: Private
+
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var isLoading = false
+    @State private var migrationError: Error?
 
     private func performMigration() async {
         isLoading = true

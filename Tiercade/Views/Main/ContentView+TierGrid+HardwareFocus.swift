@@ -1,5 +1,5 @@
-import SwiftUI
 import Foundation
+import SwiftUI
 import TiercadeCore
 
 #if !os(tvOS)
@@ -10,23 +10,25 @@ extension TierGridView {
         let layout: PlatformCardLayout
     }
 
-    internal var navigationTierSequence: [String] {
+    var navigationTierSequence: [String] {
         var sequence = tierOrder
         sequence.append("unranked")
         return sequence
     }
 
-    internal func seedHardwareFocus() {
+    func seedHardwareFocus() {
         let snapshot = currentSnapshot()
         guard !snapshot.isEmpty else {
             hardwareFocus = nil
             lastHardwareFocus = nil
             return
         }
-        if let existing = hardwareFocus,
-           snapshot.contains(where: {
-            $0.tier == existing.tier && $0.items.contains(where: { $0.id == existing.itemID })
-           }) {
+        if
+            let existing = hardwareFocus,
+            snapshot.contains(where: {
+                $0.tier == existing.tier && $0.items.contains(where: { $0.id == existing.itemID })
+            })
+        {
             lastHardwareFocus = existing
             return
         }
@@ -36,15 +38,17 @@ extension TierGridView {
         }
     }
 
-    internal func ensureHardwareFocusValid() {
+    func ensureHardwareFocusValid() {
         let snapshot = currentSnapshot()
         guard !snapshot.isEmpty else {
             hardwareFocus = nil
             lastHardwareFocus = nil
             return
         }
-        if let focus = hardwareFocus,
-           snapshot.contains(where: { $0.tier == focus.tier && $0.items.contains(where: { $0.id == focus.itemID }) }) {
+        if
+            let focus = hardwareFocus,
+            snapshot.contains(where: { $0.tier == focus.tier && $0.items.contains(where: { $0.id == focus.itemID }) })
+        {
             lastHardwareFocus = focus
             return
         }
@@ -54,7 +58,7 @@ extension TierGridView {
         }
     }
 
-    internal func handleDirectionalInput(_ move: DirectionalMove) {
+    func handleDirectionalInput(_ move: DirectionalMove) {
         gridHasFocus = true
         let snapshot = currentSnapshot()
         guard !snapshot.isEmpty else {
@@ -64,42 +68,53 @@ extension TierGridView {
         }
 
         let activeFocus = hardwareFocus ?? defaultHardwareFocus(for: snapshot)
-        guard let focus = activeFocus else { return }
+        guard let focus = activeFocus else {
+            return
+        }
 
-        guard let next = focusAfter(focus, move: move, snapshot: snapshot) else { return }
+        guard let next = focusAfter(focus, move: move, snapshot: snapshot) else {
+            return
+        }
         hardwareFocus = next
         lastHardwareFocus = next
     }
 
-    internal func currentSnapshot() -> [TierSnapshot] {
+    func currentSnapshot() -> [TierSnapshot] {
         navigationTierSequence.compactMap { tier in
             let items = app.filteredItems(for: tier)
-            guard !items.isEmpty else { return nil }
+            guard !items.isEmpty else {
+                return nil
+            }
             let layout = PlatformCardLayoutProvider.layout(
                 for: items.count,
                 preference: app.cardDensityPreference,
-                horizontalSizeClass: horizontalSizeClass
+                horizontalSizeClass: horizontalSizeClass,
             )
             return TierSnapshot(tier: tier, items: items, layout: layout)
         }
     }
 
-    internal func defaultHardwareFocus(for snapshot: [TierSnapshot]) -> CardFocus? {
-        if let cached = lastHardwareFocus,
-           snapshot.contains(where: {
-            $0.tier == cached.tier && $0.items.contains(where: { $0.id == cached.itemID })
-           }) {
+    func defaultHardwareFocus(for snapshot: [TierSnapshot]) -> CardFocus? {
+        if
+            let cached = lastHardwareFocus,
+            snapshot.contains(where: {
+                $0.tier == cached.tier && $0.items.contains(where: { $0.id == cached.itemID })
+            })
+        {
             return cached
         }
-        guard let firstTier = snapshot.first, let firstItem = firstTier.items.first else { return nil }
+        guard let firstTier = snapshot.first, let firstItem = firstTier.items.first else {
+            return nil
+        }
         return CardFocus(tier: firstTier.tier, itemID: firstItem.id)
     }
 
-    internal func focusAfter(
+    func focusAfter(
         _ current: CardFocus,
         move: DirectionalMove,
-        snapshot: [TierSnapshot]
-    ) -> CardFocus? {
+        snapshot: [TierSnapshot],
+    )
+    -> CardFocus? {
         guard let tierIndex = snapshot.firstIndex(where: { $0.tier == current.tier }) else {
             return defaultHardwareFocus(for: snapshot)
         }
@@ -115,7 +130,7 @@ extension TierGridView {
                 tier: current.tier,
                 tierIndex: tierIndex,
                 tierData: tierData,
-                snapshot: snapshot
+                snapshot: snapshot,
             )
         case .right:
             return focusRight(
@@ -123,21 +138,21 @@ extension TierGridView {
                 tier: current.tier,
                 tierIndex: tierIndex,
                 tierData: tierData,
-                snapshot: snapshot
+                snapshot: snapshot,
             )
         case .up:
             return focusUp(
                 from: currentIndex,
                 tierIndex: tierIndex,
                 tierData: tierData,
-                snapshot: snapshot
+                snapshot: snapshot,
             )
         case .down:
             return focusDown(
                 from: currentIndex,
                 tierIndex: tierIndex,
                 tierData: tierData,
-                snapshot: snapshot
+                snapshot: snapshot,
             )
         @unknown default:
             return current
@@ -149,8 +164,9 @@ extension TierGridView {
         tier: String,
         tierIndex: Int,
         tierData: TierSnapshot,
-        snapshot: [TierSnapshot]
-    ) -> CardFocus {
+        snapshot: [TierSnapshot],
+    )
+    -> CardFocus {
         if currentIndex > 0 {
             return CardFocus(tier: tier, itemID: tierData.items[currentIndex - 1].id)
         } else if tierIndex > 0 {
@@ -168,8 +184,9 @@ extension TierGridView {
         tier: String,
         tierIndex: Int,
         tierData: TierSnapshot,
-        snapshot: [TierSnapshot]
-    ) -> CardFocus {
+        snapshot: [TierSnapshot],
+    )
+    -> CardFocus {
         if currentIndex + 1 < tierData.items.count {
             return CardFocus(tier: tier, itemID: tierData.items[currentIndex + 1].id)
         } else if tierIndex + 1 < snapshot.count {
@@ -186,8 +203,9 @@ extension TierGridView {
         from currentIndex: Int,
         tierIndex: Int,
         tierData: TierSnapshot,
-        snapshot: [TierSnapshot]
-    ) -> CardFocus {
+        snapshot: [TierSnapshot],
+    )
+    -> CardFocus {
         let columns = max(1, tierData.layout.gridColumns.count)
         let targetIndex = currentIndex - columns
 
@@ -208,8 +226,9 @@ extension TierGridView {
         from currentIndex: Int,
         tierIndex: Int,
         tierData: TierSnapshot,
-        snapshot: [TierSnapshot]
-    ) -> CardFocus {
+        snapshot: [TierSnapshot],
+    )
+    -> CardFocus {
         let columns = max(1, tierData.layout.gridColumns.count)
         let targetIndex = currentIndex + columns
 
@@ -225,8 +244,10 @@ extension TierGridView {
         return CardFocus(tier: tierData.tier, itemID: tierData.items[currentIndex].id)
     }
 
-    internal func item(for focus: CardFocus, in snapshot: [TierSnapshot]) -> Item? {
-        guard let tierData = snapshot.first(where: { $0.tier == focus.tier }) else { return nil }
+    func item(for focus: CardFocus, in snapshot: [TierSnapshot]) -> Item? {
+        guard let tierData = snapshot.first(where: { $0.tier == focus.tier }) else {
+            return nil
+        }
         return tierData.items.first(where: { $0.id == focus.itemID })
     }
 }

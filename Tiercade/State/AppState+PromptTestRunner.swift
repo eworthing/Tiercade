@@ -4,7 +4,7 @@ import Foundation
 import FoundationModels
 
 @MainActor
-internal extension AppState {
+extension AppState {
     /// Run the enhanced prompt testing framework
     func runEnhancedPromptTests() {
         Task {
@@ -22,7 +22,7 @@ internal extension AppState {
                 showToast(
                     type: .info,
                     title: "Tests Complete",
-                    message: "\(results.count) prompts tested. Check Documents folder for detailed logs."
+                    message: "\(results.count) prompts tested. Check Documents folder for detailed logs.",
                 )
             }
         }

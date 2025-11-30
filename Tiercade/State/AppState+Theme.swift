@@ -3,7 +3,7 @@ import TiercadeCore
 
 // MARK: - Theme Management
 
-internal extension AppState {
+extension AppState {
     /// Applies the selected theme to all tiers
     func applyTheme(_ theme: TierTheme) {
         self.theme.selectedTheme = theme
@@ -22,7 +22,7 @@ internal extension AppState {
     /// Resets all tier colors to use the selected theme
     func resetToThemeColors() {
         applyCurrentTheme()
-        showSuccessToast("Colors reset to '\(self.theme.selectedTheme.displayName)' theme")
+        showSuccessToast("Colors reset to '\(theme.selectedTheme.displayName)' theme")
     }
 
     /// Toggles the theme picker overlay visibility

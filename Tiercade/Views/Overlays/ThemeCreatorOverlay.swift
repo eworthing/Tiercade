@@ -1,6 +1,8 @@
 import SwiftUI
 
-internal enum FocusField: Hashable {
+// MARK: - FocusField
+
+enum FocusField: Hashable {
     case name
     case description
     case tier(UUID)
@@ -10,38 +12,40 @@ internal enum FocusField: Hashable {
     case cancel
 }
 
-internal struct ThemeCreatorOverlay: View {
-    @Bindable var appState: AppState
-    internal let draft: ThemeDraft
+// MARK: - ThemeCreatorOverlay
 
-    @FocusState internal var focusedElement: FocusField?
+struct ThemeCreatorOverlay: View {
+    @Bindable var appState: AppState
+    let draft: ThemeDraft
+
+    @FocusState var focusedElement: FocusField?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var focusNamespace
     @State private var paletteFocusIndex: Int = 0
     @State private var showAdvancedPicker = false
     #if !os(tvOS)
-    @FocusState internal var overlayHasFocus: Bool
+    @FocusState var overlayHasFocus: Bool
     #endif
 
-    internal let paletteColumns = 6
-    internal static let paletteHexes: [String] = [
+    let paletteColumns = 6
+    static let paletteHexes: [String] = [
         "#F97316", "#FACC15", "#4ADE80", "#22D3EE", "#818CF8", "#C084FC",
         "#F472B6", "#F43F5E", "#FB7185", "#FF9F0A", "#FFD60A", "#64D2FF",
         "#30D158", "#5AC8FA", "#BF5AF2", "#FF2D55", "#FF453A", "#FF3B30",
-        "#FF6B6B", "#34D399", "#0EA5E9", "#2563EB", "#9333EA", "#DB2777"
+        "#FF6B6B", "#34D399", "#0EA5E9", "#2563EB", "#9333EA", "#DB2777",
     ]
 
-    internal var body: some View {
+    var body: some View {
         ZStack {
             Color.black.opacity(0.75)
                 .ignoresSafeArea()
-                .accessibilityHidden(true)  // Dimmer is tap-to-dismiss; explicit close button exists in header
+                .accessibilityHidden(true) // Dimmer is tap-to-dismiss; explicit close button exists in header
                 .onTapGesture { dismiss(returnToPicker: true) }
 
             VStack(spacing: 0) {
                 header
                     .padding(Metrics.cardPadding)
-                    .tvGlassRounded(0)  // Glass on header chrome only
+                    .tvGlassRounded(0) // Glass on header chrome only
 
                 Divider().opacity(0.15)
 
@@ -53,101 +57,113 @@ internal struct ThemeCreatorOverlay: View {
 
                 footer
                     .padding(Metrics.cardPadding)
-                    .tvGlassRounded(0)  // Glass on footer chrome only
+                    .tvGlassRounded(0) // Glass on footer chrome only
             }
             .frame(maxWidth: 1160, maxHeight: 880)
             .background(
                 Color.black.opacity(0.7),
-                in: RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
+                in: RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous),
             )
             .overlay(
                 RoundedRectangle(cornerRadius: platformOverlayCornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(0.16), lineWidth: 1.4)
+                    .stroke(Color.white.opacity(0.16), lineWidth: 1.4),
             )
             .shadow(color: Color.black.opacity(0.42), radius: 32, y: 18)
             .accessibilityElement(children: .contain)
             .accessibilityAddTraits(.isModal)
             #if os(tvOS)
-            .focusSection()
-            .focusScope(focusNamespace)
-            .defaultFocus($focusedElement, .tier(draft.activeTierID))
+                .focusSection()
+                .focusScope(focusNamespace)
+                .defaultFocus($focusedElement, .tier(draft.activeTierID))
             #endif
-            .onAppear {
-                paletteFocusIndex = paletteIndex(for: draft.activeTier?.colorHex)
-                focusedElement = .tier(draft.activeTierID)
-                FocusUtils.seedFocus()
-            }
-            .onDisappear {
-                focusedElement = nil
-            }
+                .onAppear {
+                    paletteFocusIndex = paletteIndex(for: draft.activeTier?.colorHex)
+                    focusedElement = .tier(draft.activeTierID)
+                    FocusUtils.seedFocus()
+                }
+                .onDisappear {
+                    focusedElement = nil
+                }
             #if os(tvOS)
-            .onExitCommand { dismiss(returnToPicker: true) }
+                .onExitCommand { dismiss(returnToPicker: true) }
             #endif
             #if os(tvOS)
-            .onMoveCommand(perform: handleMoveCommand)
+                .onMoveCommand(perform: handleMoveCommand)
             #else
-            .focusable()
-            .focused($overlayHasFocus)
-            .onKeyPress(.upArrow) { handleDirectionalMove(.up); return .handled }
-            .onKeyPress(.downArrow) { handleDirectionalMove(.down); return .handled }
-            .onKeyPress(.leftArrow) { handleDirectionalMove(.left); return .handled }
-            .onKeyPress(.rightArrow) { handleDirectionalMove(.right); return .handled }
-            .onKeyPress(.space) { handlePrimaryAction(); return .handled }
-            .onKeyPress(.return) { handlePrimaryAction(); return .handled }
+                .focusable()
+                .focused($overlayHasFocus)
+                .onKeyPress(.upArrow) { handleDirectionalMove(.up)
+                    return .handled
+                }
+                .onKeyPress(.downArrow) { handleDirectionalMove(.down)
+                    return .handled
+                }
+                .onKeyPress(.leftArrow) { handleDirectionalMove(.left)
+                    return .handled
+                }
+                .onKeyPress(.rightArrow) { handleDirectionalMove(.right)
+                    return .handled
+                }
+                .onKeyPress(.space) { handlePrimaryAction()
+                    return .handled
+                }
+                .onKeyPress(.return) { handlePrimaryAction()
+                    return .handled
+                }
             #endif
-            .sheet(isPresented: $showAdvancedPicker) {
-                #if os(tvOS)
-                if let activeTier = draft.activeTier {
-                    TVColorPickerView(
-                        selection: Binding(
-                            get: { ColorUtilities.color(hex: activeTier.colorHex) },
-                            set: { newColor in
-                                if let hex = newColor.toHex() {
-                                    appState.assignColorToActiveTier(hex)
-                                }
-                            }
-                        ),
-                        title: "Custom Color for \(activeTier.name)"
-                    )
-                }
-                #else
-                if let activeTier = draft.activeTier {
-                    VStack(spacing: 20) {
-                        Text("Choose Color for \(activeTier.name)")
-                            .font(.headline)
-                            .padding(.top)
-
-                        ColorPicker(
-                            "Select a color",
-                            selection: Binding(
-                                get: { ColorUtilities.color(hex: activeTier.colorHex) },
-                                set: { newColor in
-                                    if let hex = newColor.toHex() {
-                                        appState.assignColorToActiveTier(hex)
-                                    }
-                                }
-                            ),
-                            supportsOpacity: false
-                        )
-                        .labelsHidden()
-                        .padding()
-
-                        Text(activeTier.colorHex)
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundStyle(.secondary)
-
-                        Button("Done") {
-                            showAdvancedPicker = false
+                .sheet(isPresented: $showAdvancedPicker) {
+                        #if os(tvOS)
+                        if let activeTier = draft.activeTier {
+                            TVColorPickerView(
+                                selection: Binding(
+                                    get: { ColorUtilities.color(hex: activeTier.colorHex) },
+                                    set: { newColor in
+                                        if let hex = newColor.toHex() {
+                                            appState.assignColorToActiveTier(hex)
+                                        }
+                                    },
+                                ),
+                                title: "Custom Color for \(activeTier.name)",
+                            )
                         }
-                        .buttonStyle(.borderedProminent)
-                        .padding(.bottom)
+                        #else
+                        if let activeTier = draft.activeTier {
+                            VStack(spacing: 20) {
+                                Text("Choose Color for \(activeTier.name)")
+                                    .font(.headline)
+                                    .padding(.top)
+
+                                ColorPicker(
+                                    "Select a color",
+                                    selection: Binding(
+                                        get: { ColorUtilities.color(hex: activeTier.colorHex) },
+                                        set: { newColor in
+                                            if let hex = newColor.toHex() {
+                                                appState.assignColorToActiveTier(hex)
+                                            }
+                                        },
+                                    ),
+                                    supportsOpacity: false,
+                                )
+                                .labelsHidden()
+                                .padding()
+
+                                Text(activeTier.colorHex)
+                                    .font(.system(.body, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+
+                                Button("Done") {
+                                    showAdvancedPicker = false
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .padding(.bottom)
+                            }
+                            .padding(.horizontal)
+                            .presentationDetents([.medium])
+                            .presentationDragIndicator(.visible)
+                        }
+                        #endif
                     }
-                    .padding(.horizontal)
-                    .presentationDetents([.medium])
-                    .presentationDragIndicator(.visible)
-                }
-                #endif
-            }
         }
         #if os(tvOS)
         .persistentSystemOverlays(.hidden)
@@ -162,7 +178,7 @@ internal struct ThemeCreatorOverlay: View {
 
 // MARK: - Core Actions
 
-internal extension ThemeCreatorOverlay {
+extension ThemeCreatorOverlay {
     func dismiss(returnToPicker: Bool) {
         appState.cancelThemeCreation(returnToThemePicker: returnToPicker)
     }
@@ -176,8 +192,8 @@ internal extension ThemeCreatorOverlay {
 
 // MARK: - Views
 
-private extension ThemeCreatorOverlay {
-    var header: some View {
+extension ThemeCreatorOverlay {
+    private var header: some View {
         HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Create Custom Theme")
@@ -195,7 +211,7 @@ private extension ThemeCreatorOverlay {
         .tvGlassRounded(0)
     }
 
-    var content: some View {
+    private var content: some View {
         HStack(alignment: .top, spacing: 32) {
             VStack(alignment: .leading, spacing: 28) {
                 formSection
@@ -211,7 +227,7 @@ private extension ThemeCreatorOverlay {
         .padding(.vertical, 32)
     }
 
-    var formSection: some View {
+    private var formSection: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Details")
                 .font(.headline)
@@ -225,12 +241,12 @@ private extension ThemeCreatorOverlay {
                 }
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 2),
                 )
                 .focused($focusedElement, equals: .name)
                 .submitLabel(.done)
                 .accessibilityIdentifier("ThemeCreator_NameField")
-                #if os(tvOS)
+            #if os(tvOS)
                 .focusEffectDisabled(false)
             #endif
 
@@ -243,19 +259,19 @@ private extension ThemeCreatorOverlay {
                 }
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(Color.white.opacity(0.3), lineWidth: 2)
+                        .stroke(Color.white.opacity(0.3), lineWidth: 2),
                 )
                 .focused($focusedElement, equals: .description)
                 .submitLabel(.done)
                 .accessibilityIdentifier("ThemeCreator_DescriptionField")
                 .foregroundStyle(.secondary)
-                #if os(tvOS)
+            #if os(tvOS)
                 .focusEffectDisabled(false)
             #endif
         }
     }
 
-    var tierList: some View {
+    private var tierList: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Tiers")
                 .font(.headline)
@@ -281,7 +297,7 @@ private extension ThemeCreatorOverlay {
         }
     }
 
-    func tierRow(for tier: ThemeTierDraft) -> some View {
+    private func tierRow(for tier: ThemeTierDraft) -> some View {
         let isActive = tier.id == draft.activeTierID
         let background = RoundedRectangle(cornerRadius: 14, style: .continuous)
 
@@ -292,7 +308,7 @@ private extension ThemeCreatorOverlay {
                 .overlay(
                     Text(tier.name)
                         .fontWeight(.bold)
-                        .foregroundStyle(ColorUtilities.accessibleTextColor(onBackground: tier.colorHex))
+                        .foregroundStyle(ColorUtilities.accessibleTextColor(onBackground: tier.colorHex)),
                 )
 
             VStack(alignment: .leading, spacing: 4) {
@@ -319,14 +335,14 @@ private extension ThemeCreatorOverlay {
             background
                 .stroke(
                     isActive ? Color.accentColor : Color.white.opacity(0.08),
-                    lineWidth: isActive ? 2.5 : 1
-                )
+                    lineWidth: isActive ? 2.5 : 1,
+                ),
         )
         .scaleEffect(isActive ? 1.04 : 1.0)
         .animation(reduceMotion ? nil : Motion.emphasis, value: isActive)
     }
 
-    var paletteSection: some View {
+    private var paletteSection: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
@@ -355,7 +371,7 @@ private extension ThemeCreatorOverlay {
 
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: 18), count: paletteColumns),
-                spacing: 18
+                spacing: 18,
             ) {
                 ForEach(Self.paletteHexes.indices, id: \.self) { index in
                     let hex = Self.paletteHexes[index]
@@ -373,7 +389,7 @@ private extension ThemeCreatorOverlay {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    func paletteButton(for hex: String, index: Int) -> some View {
+    private func paletteButton(for hex: String, index: Int) -> some View {
         let isFocusedColor = focusedElement == .palette(index)
         let isApplied = draft.activeTier?.colorHex.uppercased() == ThemeDraft.normalizeHex(hex)
         let background = RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -403,7 +419,7 @@ private extension ThemeCreatorOverlay {
                             .clipShape(Capsule())
                             .foregroundStyle(Color.white.opacity(0.9))
                     }
-                    .padding(10)
+                    .padding(10),
                 )
         }
         .buttonStyle(.plain)
@@ -413,13 +429,13 @@ private extension ThemeCreatorOverlay {
             color: .black.opacity(isFocusedColor ? 0.45 : 0.25),
             radius: isFocusedColor ? 16 : 8,
             x: 0,
-            y: isFocusedColor ? 12 : 6
+            y: isFocusedColor ? 12 : 6,
         )
         .animation(reduceMotion ? nil : Motion.focus, value: isFocusedColor)
         .accessibilityIdentifier("ThemeCreator_Palette_\(index)")
     }
 
-    var footer: some View {
+    private var footer: some View {
         HStack(spacing: platformButtonSpacing) {
             Button(role: .cancel) { dismiss(returnToPicker: true) } label: {
                 Label("Cancel", systemImage: "arrow.backward")
@@ -429,7 +445,7 @@ private extension ThemeCreatorOverlay {
             .focused($focusedElement, equals: .cancel)
             .accessibilityIdentifier("ThemeCreator_FooterCancel")
             #if !os(tvOS)
-            .keyboardShortcut(.cancelAction)
+                .keyboardShortcut(.cancelAction)
             #endif
 
             Spacer()
@@ -443,7 +459,7 @@ private extension ThemeCreatorOverlay {
             .disabled(nameBinding.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             .accessibilityIdentifier("ThemeCreator_Save")
             #if !os(tvOS)
-            .keyboardShortcut(.defaultAction)
+                .keyboardShortcut(.defaultAction)
             #endif
         }
         .padding(platformOverlayPadding)
@@ -453,22 +469,24 @@ private extension ThemeCreatorOverlay {
         }
     }
 
-    var nameBinding: Binding<String> {
+    private var nameBinding: Binding<String> {
         Binding(
             get: { appState.theme.themeDraft?.displayName ?? draft.displayName },
-            set: { appState.updateThemeDraftName($0) }
+            set: { appState.updateThemeDraftName($0) },
         )
     }
 
-    var descriptionBinding: Binding<String> {
+    private var descriptionBinding: Binding<String> {
         Binding(
             get: { appState.theme.themeDraft?.shortDescription ?? draft.shortDescription },
-            set: { appState.updateThemeDraftDescription($0) }
+            set: { appState.updateThemeDraftDescription($0) },
         )
     }
 
-    func paletteIndexPrivate(for hex: String?) -> Int {
-        guard let hex else { return 0 }
+    private func paletteIndexPrivate(for hex: String?) -> Int {
+        guard let hex else {
+            return 0
+        }
         let normalized = ThemeDraft.normalizeHex(hex)
         return Self.paletteHexes.firstIndex { ThemeDraft.normalizeHex($0) == normalized } ?? 0
     }
@@ -476,7 +494,7 @@ private extension ThemeCreatorOverlay {
 
 // MARK: - Focus State Accessors (for extension access)
 
-internal extension ThemeCreatorOverlay {
+extension ThemeCreatorOverlay {
     var currentFocusedElement: FocusField? { focusedElement }
     var currentPaletteFocusIndex: Int { paletteFocusIndex }
 
@@ -501,8 +519,8 @@ internal extension ThemeCreatorOverlay {
 
 // MARK: - Platform metrics
 
-private extension ThemeCreatorOverlay {
-    var platformOverlayCornerRadius: CGFloat {
+extension ThemeCreatorOverlay {
+    private var platformOverlayCornerRadius: CGFloat {
         #if os(tvOS)
         TVMetrics.overlayCornerRadius
         #else
@@ -510,7 +528,7 @@ private extension ThemeCreatorOverlay {
         #endif
     }
 
-    var platformOverlayPadding: CGFloat {
+    private var platformOverlayPadding: CGFloat {
         #if os(tvOS)
         TVMetrics.overlayPadding
         #else
@@ -518,7 +536,7 @@ private extension ThemeCreatorOverlay {
         #endif
     }
 
-    var platformButtonSpacing: CGFloat {
+    private var platformButtonSpacing: CGFloat {
         #if os(tvOS)
         TVMetrics.buttonSpacing
         #else

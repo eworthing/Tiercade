@@ -4,7 +4,7 @@ import Foundation
 ///
 /// These values control how large prompts are split into smaller chunks to stay
 /// within FoundationModels context limits while maximizing batch efficiency.
-internal enum AIChunkingLimits {
+enum AIChunkingLimits {
     /// Token budget per prompt chunk (800 tokens).
     ///
     /// **Purpose:**

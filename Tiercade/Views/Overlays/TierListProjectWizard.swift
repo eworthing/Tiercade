@@ -1,27 +1,18 @@
 import SwiftUI
 import TiercadeCore
 
-// MARK: - Compact Tabbed Creator
+// MARK: - TierListProjectWizard
 
-internal struct TierListProjectWizard: View {
+struct TierListProjectWizard: View {
+
+    // MARK: Internal
+
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
-    internal let context: AppState.TierListWizardContext
-    @Environment(\.dismiss) private var dismiss
 
-    @State private var selectedTab = 0
-    #if os(tvOS)
-    @Namespace private var toolbarFocusNamespace
-    @Namespace private var tabFocusNamespace
-    #endif
+    let context: AppState.TierListWizardContext
 
-    // Sheet presentations for item/tier editing
-    @State private var showingTierDetailsSheet = false
-    @State private var showingItemDetailsSheet = false
-    @State private var selectedTierID: UUID?
-    @State private var selectedItemID: UUID?
-
-    internal var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             toolbarSection
             contentSection
@@ -40,14 +31,85 @@ internal struct TierListProjectWizard: View {
         }
         #else
         .fullScreenCover(isPresented: $showingItemDetailsSheet) {
-            if let item = currentItem {
-                LargeItemEditorView(appState: appState, draft: draft, item: item)
+                if let item = currentItem {
+                    LargeItemEditorView(appState: appState, draft: draft, item: item)
+                }
             }
-        }
         #endif
         #if os(tvOS)
         .onExitCommand { dismiss() }
         #endif
+    }
+
+    // MARK: Private
+
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var selectedTab = 0
+    #if os(tvOS)
+    @Namespace private var toolbarFocusNamespace
+    @Namespace private var tabFocusNamespace
+    #endif
+
+    // Sheet presentations for item/tier editing
+    @State private var showingTierDetailsSheet = false
+    @State private var showingItemDetailsSheet = false
+    @State private var selectedTierID: UUID?
+    @State private var selectedItemID: UUID?
+
+    private var displayedTitle: String {
+        let trimmed = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch context {
+        case .create:
+            return trimmed.isEmpty ? "New Tier List" : trimmed
+        case let .edit(handle):
+            let base = trimmed.isEmpty ? handle.displayName : trimmed
+            guard base.isEmpty == false else {
+                return "Edit Tier List"
+            }
+            return "Edit \(base)"
+        }
+    }
+
+    private var primaryActionTitle: String {
+        switch context {
+        case .create: "Save"
+        case .edit: "Update"
+        }
+    }
+
+    private var primaryActionSymbol: String {
+        switch context {
+        case .create: "checkmark.circle"
+        case .edit: "arrow.triangle.2.circlepath"
+        }
+    }
+
+    private var secondaryActionTitle: String {
+        switch context {
+        case .create: "Publish"
+        case .edit: "Republish"
+        }
+    }
+
+    private var secondaryActionSymbol: String {
+        "paperplane.fill"
+    }
+
+    // MARK: - Helpers
+
+    private var currentTier: TierDraftTier? {
+        guard let id = selectedTierID else {
+            return nil
+        }
+        return draft.tiers.first { $0.identifier == id }
+    }
+
+    private var currentItem: TierDraftItem? {
+        guard let id = selectedItemID else {
+            return nil
+        }
+        return draft.items.first { $0.identifier == id }
     }
 
     // MARK: - Sections
@@ -72,25 +134,25 @@ internal struct TierListProjectWizard: View {
         TabView(selection: $selectedTab) {
             SettingsWizardPage(appState: appState, draft: draft)
                 .tag(0)
-                #if os(tvOS)
+            #if os(tvOS)
                 .focusSection()
             #endif
 
             SchemaWizardPage(appState: appState, draft: draft)
                 .tag(1)
-                #if os(tvOS)
+            #if os(tvOS)
                 .focusSection()
             #endif
 
             ItemsWizardPage(appState: appState, draft: draft)
                 .tag(2)
-                #if os(tvOS)
+            #if os(tvOS)
                 .focusSection()
             #endif
 
             TiersWizardPage(appState: appState, draft: draft)
                 .tag(3)
-                #if os(tvOS)
+            #if os(tvOS)
                 .focusSection()
             #endif
         }
@@ -121,10 +183,10 @@ internal struct TierListProjectWizard: View {
                         Task { await appState.saveTierListDraft(action: .save) }
                     } label: {
                         Label(primaryActionTitle, systemImage: primaryActionSymbol)
-                            #if os(tvOS)
+                        #if os(tvOS)
                             .labelStyle(.iconOnly)
                         #else
-                        .labelStyle(.titleAndIcon)
+                            .labelStyle(.titleAndIcon)
                         #endif
                     }
                     #if os(tvOS)
@@ -139,10 +201,10 @@ internal struct TierListProjectWizard: View {
                         Task { await appState.saveTierListDraft(action: .publish) }
                     } label: {
                         Label(secondaryActionTitle, systemImage: secondaryActionSymbol)
-                            #if os(tvOS)
+                        #if os(tvOS)
                             .labelStyle(.iconOnly)
                         #else
-                        .labelStyle(.titleAndIcon)
+                            .labelStyle(.titleAndIcon)
                         #endif
                     }
                     #if os(tvOS)
@@ -157,10 +219,10 @@ internal struct TierListProjectWizard: View {
                         dismiss()
                     } label: {
                         Label("Close", systemImage: "xmark.circle.fill")
-                            #if os(tvOS)
+                        #if os(tvOS)
                             .labelStyle(.iconOnly)
                         #else
-                        .labelStyle(.titleAndIcon)
+                            .labelStyle(.titleAndIcon)
                         #endif
                     }
                     #if os(tvOS)
@@ -186,8 +248,8 @@ internal struct TierListProjectWizard: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
             #if os(tvOS)
-            // Scope default focus for tab buttons when declaring prefersDefaultFocus
-            .focusScope(tabFocusNamespace)
+                // Scope default focus for tab buttons when declaring prefersDefaultFocus
+                    .focusScope(tabFocusNamespace)
             #endif
 
             Divider()
@@ -212,76 +274,30 @@ internal struct TierListProjectWizard: View {
             .background(
                 selectedTab == index
                     ? Palette.brand.opacity(0.25)
-                    : Palette.surface.opacity(0.35)
+                    : Palette.surface.opacity(0.35),
             )
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
         #if os(tvOS)
-        .prefersDefaultFocus(index == selectedTab, in: tabFocusNamespace)
+            .prefersDefaultFocus(index == selectedTab, in: tabFocusNamespace)
         #endif
-        .accessibilityIdentifier("Tab_\(title)")
+            .accessibilityIdentifier("Tab_\(title)")
     }
 
-    private var displayedTitle: String {
-        let trimmed = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        switch context {
-        case .create:
-            return trimmed.isEmpty ? "New Tier List" : trimmed
-        case .edit(let handle):
-            let base = trimmed.isEmpty ? handle.displayName : trimmed
-            guard base.isEmpty == false else { return "Edit Tier List" }
-            return "Edit \(base)"
-        }
-    }
-
-    private var primaryActionTitle: String {
-        switch context {
-        case .create: return "Save"
-        case .edit: return "Update"
-        }
-    }
-
-    private var primaryActionSymbol: String {
-        switch context {
-        case .create: return "checkmark.circle"
-        case .edit: return "arrow.triangle.2.circlepath"
-        }
-    }
-
-    private var secondaryActionTitle: String {
-        switch context {
-        case .create: return "Publish"
-        case .edit: return "Republish"
-        }
-    }
-
-    private var secondaryActionSymbol: String {
-        return "paperplane.fill"
-    }
-
-    // MARK: - Helpers
-
-    private var currentTier: TierDraftTier? {
-        guard let id = selectedTierID else { return nil }
-        return draft.tiers.first { $0.identifier == id }
-    }
-
-    private var currentItem: TierDraftItem? {
-        guard let id = selectedItemID else { return nil }
-        return draft.items.first { $0.identifier == id }
-    }
 }
 
-// MARK: - Large Item Editor
+// MARK: - LargeItemEditorView
 
-internal struct LargeItemEditorView: View {
+struct LargeItemEditorView: View {
+
+    // MARK: Internal
+
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
     @Bindable var item: TierDraftItem
-    @Environment(\.dismiss) private var dismiss
 
-    internal var body: some View {
+    var body: some View {
         NavigationStack {
             Form {
                 Section("Basic Information") {
@@ -290,11 +306,11 @@ internal struct LargeItemEditorView: View {
                         set: { newValue in
                             item.title = newValue
                             appState.markDraftEdited(draft)
-                        }
+                        },
                     ))
                     .font(.title3)
                     #if !os(tvOS)
-                    .textFieldStyle(.roundedBorder)
+                        .textFieldStyle(.roundedBorder)
                     #endif
 
                     TextField("Subtitle", text: Binding(
@@ -302,7 +318,7 @@ internal struct LargeItemEditorView: View {
                         set: { newValue in
                             item.subtitle = newValue
                             appState.markDraftEdited(draft)
-                        }
+                        },
                     ))
                     #if !os(tvOS)
                     .textFieldStyle(.roundedBorder)
@@ -313,11 +329,11 @@ internal struct LargeItemEditorView: View {
                         set: { newValue in
                             item.summary = newValue
                             appState.markDraftEdited(draft)
-                        }
+                        },
                     ), axis: .vertical)
-                    .lineLimit(3...6)
+                        .lineLimit(3 ... 6)
                     #if !os(tvOS)
-                    .textFieldStyle(.roundedBorder)
+                        .textFieldStyle(.roundedBorder)
                     #endif
                 }
 
@@ -328,7 +344,7 @@ internal struct LargeItemEditorView: View {
                             if let tier = draft.tiers.first(where: { $0.identifier == newTierID }) {
                                 appState.assign(item, to: tier, in: draft)
                             }
-                        }
+                        },
                     )) {
                         Text("Unassigned").tag(UUID())
                         ForEach(appState.orderedTiers(for: draft)) { tier in
@@ -349,7 +365,7 @@ internal struct LargeItemEditorView: View {
                         set: { newValue in
                             item.itemId = newValue
                             appState.markDraftEdited(draft)
-                        }
+                        },
                     ))
                     #if !os(tvOS)
                     .textFieldStyle(.roundedBorder)
@@ -360,7 +376,7 @@ internal struct LargeItemEditorView: View {
                         set: { newValue in
                             item.slug = newValue
                             appState.markDraftEdited(draft)
-                        }
+                        },
                     ))
                     #if !os(tvOS)
                     .textFieldStyle(.roundedBorder)
@@ -375,8 +391,8 @@ internal struct LargeItemEditorView: View {
                             set: { newValue in
                                 item.rating = newValue
                                 appState.markDraftEdited(draft)
-                            }
-                        ), in: 0...100, step: 1)
+                            },
+                        ), in: 0 ... 100, step: 1)
                     }
                     #else
                     Text("Rating: \(Int(item.rating ?? 50))")
@@ -389,21 +405,26 @@ internal struct LargeItemEditorView: View {
                         set: { newValue in
                             item.hidden = newValue
                             appState.markDraftEdited(draft)
-                        }
+                        },
                     ))
                 }
             }
             .navigationTitle("Edit Item")
             #if os(iOS)
-            .navigationBarTitleDisplayMode(.large)
+                .navigationBarTitleDisplayMode(.large)
             #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        dismiss()
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") {
+                            dismiss()
+                        }
                     }
                 }
-            }
         }
     }
+
+    // MARK: Private
+
+    @Environment(\.dismiss) private var dismiss
+
 }

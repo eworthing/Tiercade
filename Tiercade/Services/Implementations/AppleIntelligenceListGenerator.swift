@@ -5,16 +5,18 @@ import os
 import FoundationModels
 #endif
 
+// MARK: - AppleIntelligenceListGenerator
+
 /// Apple Intelligence-based list generator (macOS/iOS only)
 ///
 /// Uses FoundationModels APIs to generate unique item lists via LLM.
 /// Platform-gated to systems where FoundationModels is available.
-internal actor AppleIntelligenceListGenerator: UniqueListGenerating {
+actor AppleIntelligenceListGenerator: UniqueListGenerating {
     private let logger = Logger(subsystem: "com.tiercade.ai", category: "ListGenerator")
 
-    internal init() {}
+    init() {}
 
-    internal nonisolated var isAvailable: Bool {
+    nonisolated var isAvailable: Bool {
         #if canImport(FoundationModels)
         if #available(iOS 26.0, macOS 26.0, *) {
             return true
@@ -23,7 +25,7 @@ internal actor AppleIntelligenceListGenerator: UniqueListGenerating {
         return false
     }
 
-    internal func generateUniqueList(topic: String, count: Int) async throws -> [AIGeneratedItemCandidate] {
+    func generateUniqueList(topic: String, count: Int) async throws -> [AIGeneratedItemCandidate] {
         #if canImport(FoundationModels)
         guard #available(iOS 26.0, macOS 26.0, *) else {
             throw AIGenerationError.platformNotSupported

@@ -1,6 +1,6 @@
 import Foundation
-import TiercadeCore
 import os
+import TiercadeCore
 
 extension TierListState {
     /// Validates critical tier system invariants.
@@ -16,7 +16,7 @@ extension TierListState {
     ///
     /// - Returns: Array of violation messages (empty if all invariants hold)
     @MainActor
-    internal func validateTierInvariants() -> [String] {
+    func validateTierInvariants() -> [String] {
         var violations: [String] = []
         let unrankedKey = TierIdentifier.unranked.rawValue
 
@@ -68,7 +68,7 @@ extension TierListState {
     /// #endif
     /// ```
     @MainActor
-    internal func validateAndLog() {
+    func validateAndLog() {
         let violations = validateTierInvariants()
         if !violations.isEmpty {
             Logger.appState.error("Tier validation failed with \(violations.count) violations")

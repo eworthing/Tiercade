@@ -1,23 +1,23 @@
+import os
 import SwiftUI
 import TiercadeCore
-import os
 
 // MARK: - Tiers Wizard Page
 
-internal struct TiersWizardPage: View, WizardPage {
+struct TiersWizardPage: View, WizardPage {
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
     @State private var selectedTierID: UUID?
     @State private var showingTierDetailsSheet = false
 
-    internal let pageTitle = "Tier Assignment"
-    internal let pageDescription = "Review and manage item assignments to tiers"
+    let pageTitle = "Tier Assignment"
+    let pageDescription = "Review and manage item assignments to tiers"
 
     #if os(tvOS)
     @Namespace private var defaultFocusNamespace
     #endif
 
-    internal var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: Metrics.grid * 3) {
@@ -55,7 +55,7 @@ internal struct TiersWizardPage: View, WizardPage {
             .background(
                 Rectangle()
                     .fill(Palette.cardBackground.opacity(0.9))
-                    .overlay(Rectangle().stroke(Palette.stroke, lineWidth: 1))
+                    .overlay(Rectangle().stroke(Palette.stroke, lineWidth: 1)),
             )
         }
         #if os(tvOS)
@@ -75,7 +75,7 @@ internal struct TiersWizardPage: View, WizardPage {
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(Palette.text)
 
-            let assignedCount = draft.items.filter { $0.tier != nil }.count
+            let assignedCount = draft.items.count(where: { $0.tier != nil })
             let totalCount = draft.items.count
             let percentage = totalCount > 0 ? Double(assignedCount) / Double(totalCount) * 100 : 0
 
@@ -99,7 +99,7 @@ internal struct TiersWizardPage: View, WizardPage {
                     Text(String(format: "%.0f%%", percentage))
                         .font(.title.weight(.bold))
                         .foregroundStyle(
-                            percentage == 100 ? Palette.tierColor("B", from: appState.tierColors) : Palette.text
+                            percentage == 100 ? Palette.tierColor("B", from: appState.tierColors) : Palette.text,
                         )
                 }
 
@@ -111,8 +111,8 @@ internal struct TiersWizardPage: View, WizardPage {
                     .fill(Palette.cardBackground)
                     .overlay(
                         RoundedRectangle(cornerRadius: Metrics.rLg, style: .continuous)
-                            .stroke(Palette.stroke, lineWidth: 1)
-                    )
+                            .stroke(Palette.stroke, lineWidth: 1),
+                    ),
             )
         }
     }
@@ -155,8 +155,8 @@ internal struct TiersWizardPage: View, WizardPage {
                 .fill(Palette.cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: Metrics.rLg, style: .continuous)
-                        .stroke(Palette.stroke, lineWidth: 1)
-                )
+                        .stroke(Palette.stroke, lineWidth: 1),
+                ),
         )
     }
 
@@ -169,7 +169,7 @@ internal struct TiersWizardPage: View, WizardPage {
                 .frame(width: 40, height: 40)
                 .overlay(
                     Circle()
-                        .stroke(Palette.stroke.opacity(0.5), lineWidth: 2)
+                        .stroke(Palette.stroke.opacity(0.5), lineWidth: 2),
                 )
 
             VStack(alignment: .leading, spacing: 4) {
@@ -205,8 +205,8 @@ internal struct TiersWizardPage: View, WizardPage {
                 .fill(Palette.cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
-                        .stroke(Palette.stroke, lineWidth: 1)
-                )
+                        .stroke(Palette.stroke, lineWidth: 1),
+                ),
         )
     }
 
@@ -214,8 +214,9 @@ internal struct TiersWizardPage: View, WizardPage {
         _ icon: String,
         label: String,
         role: ButtonRole? = nil,
-        action: @escaping () -> Void
-    ) -> some View {
+        action: @escaping () -> Void,
+    )
+    -> some View {
         Button(role: role, action: action) {
             Image(systemName: icon)
                 .accessibilityLabel(label)
@@ -234,7 +235,9 @@ internal struct TiersWizardPage: View, WizardPage {
     }
 
     private var currentTier: TierDraftTier? {
-        guard let id = selectedTierID else { return nil }
+        guard let id = selectedTierID else {
+            return nil
+        }
         return draft.tiers.first { $0.identifier == id }
     }
 }

@@ -2,6 +2,8 @@ import Foundation
 import Testing
 @testable import TiercadeCore
 
+// MARK: - HeadToHeadLogicTests
+
 @Suite("HeadToHeadLogic")
 struct HeadToHeadLogicTests {
     @Test("Random pair selection rerolls duplicate indices")
@@ -48,20 +50,22 @@ struct HeadToHeadLogicTests {
     }
 }
 
-private extension HeadToHeadLogicTests {
-    func makePool() -> [Item] {
+extension HeadToHeadLogicTests {
+    private func makePool() -> [Item] {
         [
             Item(id: "alpha", name: "Alpha"),
             Item(id: "beta", name: "Beta"),
-            Item(id: "gamma", name: "Gamma")
+            Item(id: "gamma", name: "Gamma"),
         ]
     }
 
-    func pairKey(for pair: (Item, Item)) -> String {
+    private func pairKey(for pair: (Item, Item)) -> String {
         let ids = [pair.0.id, pair.1.id].sorted()
         return ids.joined(separator: "|")
     }
 }
+
+// MARK: - SequenceRNG
 
 private final class SequenceRNG {
     private let values: [Double]

@@ -1,8 +1,8 @@
 import Foundation
-import SwiftUI
 import Observation
-import TiercadeCore
 import os
+import SwiftUI
+import TiercadeCore
 
 #if canImport(FoundationModels)
 import FoundationModels
@@ -20,7 +20,7 @@ import AppIntents
 /// These instructions are used across all AI generation contexts (wizard, chat)
 /// to ensure consistent duplicate prevention behavior.
 @available(iOS 26.0, macOS 26.0, *)
-internal func makeAntiDuplicateInstructions() -> Instructions {
+func makeAntiDuplicateInstructions() -> Instructions {
     Instructions("""
     You are a helpful assistant. Answer questions clearly and concisely.
 
@@ -45,8 +45,9 @@ internal func makeAntiDuplicateInstructions() -> Instructions {
 #endif
 
 // MARK: - Apple Intelligence Chat State (Forwarding to AIGenerationState)
+
 @MainActor
-internal extension AppState {
+extension AppState {
     /// Toggle AI chat overlay visibility
     func toggleAIChat() {
         aiGeneration.toggleAIChat(
@@ -55,7 +56,7 @@ internal extension AppState {
             },
             logEvent: { [weak self] event in
                 self?.logEvent(event)
-            }
+            },
         )
     }
 
@@ -86,28 +87,18 @@ internal extension AppState {
 
 // swiftlint:disable type_body_length function_body_length force_unwrapping
 #if false
+
 // MARK: - Legacy Apple Intelligence Service (DEPRECATED - use AIGenerationState)
+
 // This code is preserved for reference but should not be instantiated
 @MainActor
 @Observable
 final class AppleIntelligenceServiceDeprecated {
-    var messages: [AIChatMessage] = []
-    var isProcessing = false
-    var estimatedTokenCount: Int = 0
 
-    // DEBUG/runtime toggles for advanced list generation (coordinator-based)
-    var useLeadingToolchain: Bool = false
-    var hybridSwitchEnabled: Bool = false
-    var guidedBudgetBumpFirst: Bool = true
-    var showStepByStep: Bool = false
+    // MARK: Internal
+
     // Prompt A/B style for UniqueListCoordinator
     enum PromptAB: String { case strict, minimal }
-    var promptStyle: PromptAB = .strict
-
-    // Last-run context for rating/export
-    var lastGeneratedItems: [String]?
-    var lastRunDiagnosticsJSON: String?
-    var lastUserQuery: String?
 
     static let maxContextTokens = 4096
     static let instructionsTokenEstimate = 100 // Estimated tokens for our strong anti-duplicate instructions
@@ -121,23 +112,71 @@ final class AppleIntelligenceServiceDeprecated {
         #endif
     }
 
-    /// Estimate token count from text (roughly 3-4 chars per token for English)
-    private func estimateTokens(from text: String) -> Int {
-        // Conservative estimate: 3 characters per token
-        return max(1, text.count / 3)
-    }
+    var messages: [AIChatMessage] = []
+    var isProcessing = false
+    var estimatedTokenCount: Int = 0
 
-    /// Update estimated token count based on current messages
-    private func updateTokenEstimate() {
-        var total = Self.instructionsTokenEstimate // System instructions
+    // DEBUG/runtime toggles for advanced list generation (coordinator-based)
+    var useLeadingToolchain: Bool = false
+    var hybridSwitchEnabled: Bool = false
+    var guidedBudgetBumpFirst: Bool = true
+    var showStepByStep: Bool = false
+    var promptStyle: PromptAB = .strict
 
-        for message in messages {
-            total += estimateTokens(from: message.content)
+    // Last-run context for rating/export
+    var lastGeneratedItems: [String]?
+    var lastRunDiagnosticsJSON: String?
+    var lastUserQuery: String?
+
+    /// Send a message to Apple Intelligence
+    func sendMessage(_ text: String) async {
+        // Sanitize user input to mitigate prompt injection attacks
+        let sanitizedText = PromptValidator.sanitize(text)
+
+        lastUserQuery = sanitizedText
+        logSendMessageStart()
+
+        // Append user message immediately (display original for transparency)
+        messages.append(AIChatMessage(content: sanitizedText, isUser: true))
+        updateTokenEstimate()
+
+        isProcessing = true
+        defer {
+            isProcessing = false
+            Logger.aiGeneration.debug("isProcessing set to false")
         }
 
-        estimatedTokenCount = total
-        Logger.aiGeneration.debug("Estimated tokens: \(self.estimatedTokenCount)/\(Self.maxContextTokens)")
+        #if canImport(FoundationModels)
+        // Check model availability and ensure session
+        guard validateModelAvailability() else {
+            return
+        }
+        guard ensureSessionAvailable() else {
+            return
+        }
+
+        // Try advanced list generation if enabled (POC)
+        if await tryAdvancedListGeneration(text: sanitizedText) {
+            return
+        }
+
+        // Standard response path (re-ensure session in case advanced path reset it)
+        _ = ensureSessionAvailable()
+        await executeStandardResponse(text: sanitizedText)
+        Logger.aiGeneration.debug("sendMessage END")
+        #else
+        handleFoundationModelsUnavailable()
+        #endif
     }
+
+    /// Clear all messages
+    func clearHistory() {
+        messages.removeAll()
+        estimatedTokenCount = 0
+        resetSession()
+    }
+
+    // MARK: Private
 
     #if canImport(FoundationModels)
     private var session: LanguageModelSession?
@@ -150,6 +189,24 @@ final class AppleIntelligenceServiceDeprecated {
         }
     }
     #endif
+
+    /// Estimate token count from text (roughly 3-4 chars per token for English)
+    private func estimateTokens(from text: String) -> Int {
+        // Conservative estimate: 3 characters per token
+        max(1, text.count / 3)
+    }
+
+    /// Update estimated token count based on current messages
+    private func updateTokenEstimate() {
+        var total = Self.instructionsTokenEstimate // System instructions
+
+        for message in messages {
+            total += estimateTokens(from: message.content)
+        }
+
+        estimatedTokenCount = total
+        Logger.aiGeneration.debug("Estimated tokens: \(estimatedTokenCount)/\(Self.maxContextTokens)")
+    }
 
     /// Deduplicate numbered list items in response
     private func deduplicateListItems(_ text: String) -> String {
@@ -189,45 +246,10 @@ final class AppleIntelligenceServiceDeprecated {
         return result.joined(separator: "\n")
     }
 
-    /// Send a message to Apple Intelligence
-    func sendMessage(_ text: String) async {
-        // Sanitize user input to mitigate prompt injection attacks
-        let sanitizedText = PromptValidator.sanitize(text)
-
-        lastUserQuery = sanitizedText
-        logSendMessageStart()
-
-        // Append user message immediately (display original for transparency)
-        messages.append(AIChatMessage(content: sanitizedText, isUser: true))
-        updateTokenEstimate()
-
-        isProcessing = true
-        defer {
-            isProcessing = false
-            Logger.aiGeneration.debug("isProcessing set to false")
-        }
-
-        #if canImport(FoundationModels)
-        // Check model availability and ensure session
-        guard validateModelAvailability() else { return }
-        guard ensureSessionAvailable() else { return }
-
-        // Try advanced list generation if enabled (POC)
-        if await tryAdvancedListGeneration(text: sanitizedText) { return }
-
-        // Standard response path (re-ensure session in case advanced path reset it)
-        _ = ensureSessionAvailable()
-        await executeStandardResponse(text: sanitizedText)
-        Logger.aiGeneration.debug("sendMessage END")
-        #else
-        handleFoundationModelsUnavailable()
-        #endif
-    }
-
     private func logSendMessageStart() {
         Logger.aiGeneration.debug("sendMessage START")
-        Logger.aiGeneration.debug("Message count: \(self.messages.count)")
-        Logger.aiGeneration.debug("Estimated tokens: \(self.estimatedTokenCount)")
+        Logger.aiGeneration.debug("Message count: \(messages.count)")
+        Logger.aiGeneration.debug("Estimated tokens: \(estimatedTokenCount)")
     }
 
     #if canImport(FoundationModels)
@@ -241,7 +263,7 @@ final class AppleIntelligenceServiceDeprecated {
         case .available:
             print("🤖 [AI] Model is available ✓")
             return true
-        case .unavailable(let reason):
+        case let .unavailable(reason):
             print("🤖 [AI] ❌ Model unavailable: \(reason)")
             messages.append(AIChatMessage(content: availabilityExplanation(for: reason), isUser: false))
             updateTokenEstimate()
@@ -261,7 +283,7 @@ final class AppleIntelligenceServiceDeprecated {
         }
 
         Logger.aiGeneration.debug("Session exists")
-        Logger.aiGeneration.debug("Session.isResponding: \(self.session!.isResponding)")
+        Logger.aiGeneration.debug("Session.isResponding: \(session!.isResponding)")
         return true
     }
 
@@ -269,8 +291,10 @@ final class AppleIntelligenceServiceDeprecated {
     /// - Returns: true if advanced generation was used and completed, false to fall through to standard path
     private func tryAdvancedListGeneration(text: String) async -> Bool {
         // EXPERIMENTAL: Try advanced list generation if enabled (POC)
-        if #available(iOS 26.0, macOS 26.0, *),
-           UniqueListGenerationFlags.enableAdvancedGeneration {
+        if
+            #available(iOS 26.0, macOS 26.0, *),
+            UniqueListGenerationFlags.enableAdvancedGeneration
+        {
             var detection = detectListRequest(text)
             // If user toggled leading toolchain, default to N=50 when no explicit count
             if useLeadingToolchain, detection.count == nil {
@@ -302,7 +326,9 @@ final class AppleIntelligenceServiceDeprecated {
 
     /// Execute standard response flow using session.respond()
     private func executeStandardResponse(text: String) async {
-        guard let session else { return }
+        guard let session else {
+            return
+        }
 
         do {
             let startTime = Date()
@@ -317,8 +343,8 @@ final class AppleIntelligenceServiceDeprecated {
             let deduplicated = deduplicateListItems(response.content)
             messages.append(AIChatMessage(content: deduplicated, isUser: false))
             updateTokenEstimate()
-            Logger.aiGeneration.debug("Message count after: \(self.messages.count)")
-            Logger.aiGeneration.debug("Estimated tokens after: \(self.estimatedTokenCount)")
+            Logger.aiGeneration.debug("Message count after: \(messages.count)")
+            Logger.aiGeneration.debug("Estimated tokens after: \(estimatedTokenCount)")
         } catch let error as LanguageModelSession.GenerationError {
             await handleGenerationError(error, originalText: text)
         } catch {
@@ -349,7 +375,7 @@ final class AppleIntelligenceServiceDeprecated {
             resetSessionWithSummary()
             messages.append(AIChatMessage(
                 content: "Context window limit reached. Continuing with a fresh session...",
-                isUser: false
+                isUser: false,
             ))
             updateTokenEstimate()
             // Retry the current message with new session
@@ -361,25 +387,25 @@ final class AppleIntelligenceServiceDeprecated {
         // Check for other specific error types
         print("🤖 [AI] Checking error cases...")
         switch error {
-        case .refusal(let refusal, _):
+        case let .refusal(refusal, _):
             print("🤖 [AI] Refusal error: \(refusal)")
             messages.append(
-                AIChatMessage(content: "Request refused: \(String(describing: refusal))", isUser: false)
+                AIChatMessage(content: "Request refused: \(String(describing: refusal))", isUser: false),
             )
         case .rateLimited:
             print("🤖 [AI] Rate limited!")
             messages.append(
-                AIChatMessage(content: "Rate limited. Please wait a moment and try again.", isUser: false)
+                AIChatMessage(content: "Rate limited. Please wait a moment and try again.", isUser: false),
             )
         case .concurrentRequests:
             print("🤖 [AI] Concurrent requests error")
             messages.append(
-                AIChatMessage(content: "Please wait for the current request to complete.", isUser: false)
+                AIChatMessage(content: "Please wait for the current request to complete.", isUser: false),
             )
         default:
             print("🤖 [AI] Other generation error")
             messages.append(
-                AIChatMessage(content: "Generation failed: \(error.localizedDescription)", isUser: false)
+                AIChatMessage(content: "Generation failed: \(error.localizedDescription)", isUser: false),
             )
         }
         updateTokenEstimate()
@@ -399,7 +425,7 @@ final class AppleIntelligenceServiceDeprecated {
         // Platform does not provide FoundationModels (e.g., tvOS)
         messages.append(AIChatMessage(
             content: "Apple Intelligence is not available on this platform.",
-            isUser: false
+            isUser: false,
         ))
         updateTokenEstimate()
     }
@@ -418,13 +444,6 @@ final class AppleIntelligenceServiceDeprecated {
         }
     }
     #endif
-
-    /// Clear all messages
-    func clearHistory() {
-        messages.removeAll()
-        estimatedTokenCount = 0
-        resetSession()
-    }
 
     /// Reset the session (for context window management)
     private func resetSession() {
@@ -452,13 +471,16 @@ final class AppleIntelligenceServiceDeprecated {
     // MARK: - Advanced List Generation (POC)
 
     #if canImport(FoundationModels)
-    @available(iOS 26.0, macOS 26.0, *)
     /// EXPERIMENTAL: Generate unique list using advanced coordinator
     /// Only called when UniqueListGenerationFlags.enableAdvancedGeneration is true
+    @available(iOS 26.0, macOS 26.0, *)
     private func generateUniqueList(query: String, count: Int) async throws -> String {
         guard let session else {
-            throw NSError(domain: "AppleIntelligenceService", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "No active session"])
+            throw NSError(
+                domain: "AppleIntelligenceService",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "No active session"],
+            )
         }
 
         let fm = FMClient(session: session) { message in
@@ -494,12 +516,12 @@ final class AppleIntelligenceServiceDeprecated {
             useGuidedBackfill: true,
             hybridSwitchEnabled: enableHybrid,
             guidedBudgetBumpFirst: bumpFirst,
-            promptStyle: (self.promptStyle == .minimal ? .minimal : .strict)
+            promptStyle: promptStyle == .minimal ? .minimal : .strict,
         )
 
         let items = try await coordinator.uniqueList(query: query, targetCount: count, seed: nil)
         // Capture last-run context for rating/export
-        self.lastGeneratedItems = items
+        lastGeneratedItems = items
         let d = coordinator.getDiagnostics()
         let diagDict: [String: Any?] = [
             "totalGenerated": d.totalGenerated,
@@ -509,11 +531,13 @@ final class AppleIntelligenceServiceDeprecated {
             "circuitBreakerTriggered": d.circuitBreakerTriggered,
             "passCount": d.passCount,
             "failureReason": d.failureReason,
-            "topDuplicates": d.topDuplicates
+            "topDuplicates": d.topDuplicates,
         ]
-        if let data = try? JSONSerialization.data(withJSONObject: diagDict.compactMapValues { $0 }, options: []),
-           let s = String(data: data, encoding: .utf8) {
-            self.lastRunDiagnosticsJSON = s
+        if
+            let data = try? JSONSerialization.data(withJSONObject: diagDict.compactMapValues { $0 }, options: []),
+            let s = String(data: data, encoding: .utf8)
+        {
+            lastRunDiagnosticsJSON = s
         }
 
         // Format as numbered list for chat display
@@ -525,6 +549,7 @@ final class AppleIntelligenceServiceDeprecated {
     }
 
     // MARK: - Ratings
+
     func rateLastRun(upvote: Bool) {
         guard let items = lastGeneratedItems, let query = lastUserQuery else {
             messages.append(AIChatMessage(content: "⚠️ No recent run to rate.", isUser: false))
@@ -536,7 +561,7 @@ final class AppleIntelligenceServiceDeprecated {
             "query": query,
             "items": items,
             "promptStyle": promptStyle.rawValue,
-            "diagnostics": lastRunDiagnosticsJSON ?? "{}"
+            "diagnostics": lastRunDiagnosticsJSON ?? "{}",
         ]
         do {
             let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("ai_quality_ratings.jsonl")
@@ -565,15 +590,17 @@ final class AppleIntelligenceServiceDeprecated {
         let listPatterns = [
             #"(?:give|tell|show|list|name)\s+(?:me\s+)?(\d+)"#,
             #"(\d+)\s+(?:examples?|items?|things?|names?)"#,
-            #"top\s+(\d+)"#
+            #"top\s+(\d+)"#,
         ]
 
         for pattern in listPatterns {
-            if let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
-               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
-               match.numberOfRanges > 1,
-               let countRange = Range(match.range(at: 1), in: text),
-               let count = Int(text[countRange]) {
+            if
+                let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+                let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                match.numberOfRanges > 1,
+                let countRange = Range(match.range(at: 1), in: text),
+                let count = Int(text[countRange])
+            {
                 return (true, count)
             }
         }
@@ -604,7 +631,7 @@ final class AppleIntelligenceServiceDeprecated {
                 throw NSError(
                     domain: "AIGeneration",
                     code: -1,
-                    userInfo: [NSLocalizedDescriptionKey: "No active AI session"]
+                    userInfo: [NSLocalizedDescriptionKey: "No active AI session"],
                 )
             }
 
@@ -615,7 +642,7 @@ final class AppleIntelligenceServiceDeprecated {
                 useGuidedBackfill: true,
                 hybridSwitchEnabled: false,
                 guidedBudgetBumpFirst: false,
-                promptStyle: .strict
+                promptStyle: .strict,
             )
 
             return try await coordinator.uniqueList(query: query, targetCount: count, seed: nil)
@@ -623,7 +650,7 @@ final class AppleIntelligenceServiceDeprecated {
             throw NSError(
                 domain: "AIGeneration",
                 code: -2,
-                userInfo: [NSLocalizedDescriptionKey: "AI generation requires macOS or iOS 26+"]
+                userInfo: [NSLocalizedDescriptionKey: "AI generation requires macOS or iOS 26+"],
             )
         }
     }

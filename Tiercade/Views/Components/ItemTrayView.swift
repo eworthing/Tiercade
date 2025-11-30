@@ -2,14 +2,19 @@ import SwiftUI
 
 import TiercadeCore
 
-internal struct ItemTrayView: View {
-    @Bindable private var app: AppState
-    @State private var showingAdd = false
+// MARK: - ItemTrayView
 
-    internal init(app: AppState) {
+struct ItemTrayView: View {
+
+    // MARK: Lifecycle
+
+    init(app: AppState) {
         self.app = app
     }
-    internal var body: some View {
+
+    // MARK: Internal
+
+    var body: some View {
         VStack(alignment: .leading, spacing: Metrics.grid) {
             HStack {
                 Text("Items").font(TypeScale.h3).foregroundColor(Palette.text)
@@ -20,7 +25,7 @@ internal struct ItemTrayView: View {
             }
 
             TextField("Search items...", text: $app.searchQuery)
-                #if !os(tvOS)
+            #if !os(tvOS)
                 .textFieldStyle(.roundedBorder)
             #endif
 
@@ -41,26 +46,27 @@ internal struct ItemTrayView: View {
                                                     switch phase {
                                                     case .empty:
                                                         ProgressView()
-                                                    case .success(let img):
+                                                    case let .success(img):
                                                         img.resizable().scaledToFill()
                                                     default:
                                                         RoundedRectangle(cornerRadius: Metrics.rSm).fill(Palette.brand)
                                                             .overlay(Text(titleText)
-                                                                        .font(.headline)
-                                                                        .foregroundColor(.white)
-                                                                        .padding(Metrics.grid))
+                                                                .font(.headline)
+                                                                .foregroundColor(.white)
+                                                                .padding(Metrics.grid))
                                                     }
                                                 }
                                                 .clipped()
                                             } else {
                                                 RoundedRectangle(cornerRadius: Metrics.rSm).fill(Palette.brand)
                                                     .overlay(Text(titleText)
-                                                                .font(.headline)
-                                                                .foregroundColor(.white)
-                                                                .padding(Metrics.grid))
+                                                        .font(.headline)
+                                                        .foregroundColor(.white)
+                                                        .padding(Metrics.grid))
                                             }
-                                        }
-                                        , alignment: .bottomLeading)
+                                        },
+                                        alignment: .bottomLeading,
+                                    )
                             }
                             .card()
                         })
@@ -87,17 +93,25 @@ internal struct ItemTrayView: View {
                 .environment(app)
         })
     }
+
+    // MARK: Private
+
+    @Bindable private var app: AppState
+    @State private var showingAdd = false
+
 }
 
+// MARK: - AddItemsView
+
 // Simple modal for adding items
-internal struct AddItemsView: View {
+struct AddItemsView: View {
     @Environment(AppState.self) private var app: AppState
     @Binding var isPresented: Bool
     @State private var name: String = ""
     @State private var id: String = ""
     @State private var season: String = ""
 
-    internal var body: some View {
+    var body: some View {
         NavigationStack {
             Form {
                 Section(header: Text("New Item")) {
@@ -114,10 +128,16 @@ internal struct AddItemsView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
                         let finalId = id.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !finalId.isEmpty else { return }
+                        guard !finalId.isEmpty else {
+                            return
+                        }
                         var attrs: [String: String] = [:]
-                        if !name.isEmpty { attrs["name"] = name }
-                        if !season.isEmpty { attrs["season"] = season }
+                        if !name.isEmpty {
+                            attrs["name"] = name
+                        }
+                        if !season.isEmpty {
+                            attrs["season"] = season
+                        }
                         app.addItem(id: finalId, attributes: attrs.isEmpty ? nil : attrs)
                         isPresented = false
                     }

@@ -8,7 +8,7 @@ import TiercadeCore
 ///
 /// Infrastructure-only protocol for dependency injection.
 /// A concrete implementation can use SwiftData, files, or other storage.
-internal protocol TierPersistenceStore: Sendable {
+protocol TierPersistenceStore: Sendable {
     /// Indicates whether this store is available and ready to use
     var isAvailable: Bool { get }
 }

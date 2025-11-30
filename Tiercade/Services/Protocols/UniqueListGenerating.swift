@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Platform-gated to macOS/iOS where FoundationModels is available.
 /// tvOS implementations should return empty results or throw unsupported errors.
-internal protocol UniqueListGenerating: Sendable {
+protocol UniqueListGenerating: Sendable {
     /// Generate a unique list of items based on a topic
     /// - Parameters:
     ///   - topic: The topic or prompt for list generation

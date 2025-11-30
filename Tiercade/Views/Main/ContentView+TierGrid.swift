@@ -1,15 +1,15 @@
-import SwiftUI
 import Foundation
+import SwiftUI
 import TiercadeCore
 import UniformTypeIdentifiers
 
-// MARK: - Tier grid
-internal struct TierGridView: View {
+// MARK: - TierGridView
+
+struct TierGridView: View {
+
+    // MARK: Internal
+
     @Environment(AppState.self) var app: AppState
-    internal let tierOrder: [String]
-    #if os(iOS)
-    @Environment(\.editMode) private var editMode
-    #endif
     #if !os(tvOS)
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @FocusState var hardwareFocus: CardFocus?
@@ -18,7 +18,9 @@ internal struct TierGridView: View {
     @FocusState var gridHasFocus: Bool
     #endif
 
-    internal var body: some View {
+    let tierOrder: [String]
+
+    var body: some View {
         #if !os(tvOS)
         ZStack {
             ScrollView {
@@ -39,16 +41,24 @@ internal struct TierGridView: View {
             gridHasFocus = true
             seedHardwareFocus()
         }
-        .onKeyPress(.upArrow) { handleDirectionalInput(.up); return .handled }
-        .onKeyPress(.downArrow) { handleDirectionalInput(.down); return .handled }
-        .onKeyPress(.leftArrow) { handleDirectionalInput(.left); return .handled }
-        .onKeyPress(.rightArrow) { handleDirectionalInput(.right); return .handled }
+        .onKeyPress(.upArrow) { handleDirectionalInput(.up)
+            return .handled
+        }
+        .onKeyPress(.downArrow) { handleDirectionalInput(.down)
+            return .handled
+        }
+        .onKeyPress(.leftArrow) { handleDirectionalInput(.left)
+            return .handled
+        }
+        .onKeyPress(.rightArrow) { handleDirectionalInput(.right)
+            return .handled
+        }
         .onChange(of: app.searchQuery) { ensureHardwareFocusValid() }
         .onChange(of: app.activeFilter) { ensureHardwareFocusValid() }
         .onChange(of: app.cardDensityPreference) { ensureHardwareFocusValid() }
         .onChange(of: app.tierOrder) { ensureHardwareFocusValid() }
         .onChange(of: hardwareFocus) { _, _ in gridHasFocus = true }
-        .accessibilityHidden(true)  // Focus management only, not user-actionable
+        .accessibilityHidden(true) // Focus management only, not user-actionable
         .onTapGesture { gridHasFocus = true }
         #else
         ScrollView {
@@ -64,32 +74,28 @@ internal struct TierGridView: View {
         .background(Palette.appBackground.ignoresSafeArea())
         #endif
     }
+
+    // MARK: Private
+
+    #if os(iOS)
+    @Environment(\.editMode) private var editMode
+    #endif
 }
 
-// MARK: - Unranked Section
+// MARK: - UnrankedView
 
-internal struct UnrankedView: View {
-    @Environment(AppState.self) private var app: AppState
-    #if os(tvOS)
-    @FocusState private var focusedItemId: String?
-    #else
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    internal let hardwareFocus: FocusState<CardFocus?>.Binding
-    #endif
+struct UnrankedView: View {
 
-    private var filteredItems: [Item] {
-        app.filteredItems(for: "unranked")
-    }
+    // MARK: Internal
 
-    internal var body: some View {
+    var body: some View {
         if !filteredItems.isEmpty {
             VStack(alignment: .leading, spacing: Metrics.grid) {
                 header
                 #if os(tvOS)
                 let layout = TVMetrics.cardLayout(
                     for: filteredItems.count,
-                    preference: app.cardDensityPreference
+                    preference: app.cardDensityPreference,
                 )
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: layout.interItemSpacing) {
@@ -110,13 +116,13 @@ internal struct UnrankedView: View {
                 let layout = PlatformCardLayoutProvider.layout(
                     for: filteredItems.count,
                     preference: app.cardDensityPreference,
-                    horizontalSizeClass: horizontalSizeClass
+                    horizontalSizeClass: horizontalSizeClass,
                 )
 
                 LazyVGrid(
                     columns: layout.gridColumns,
                     alignment: .leading,
-                    spacing: layout.rowSpacing
+                    spacing: layout.rowSpacing,
                 ) {
                     ForEach(filteredItems, id: \.id) { item in
                         let focusID = CardFocus(tier: "unranked", itemID: item.id)
@@ -139,15 +145,15 @@ internal struct UnrankedView: View {
             }
             .padding(Metrics.grid * 1.5)
             .background(
-                RoundedRectangle(cornerRadius: 12).fill(Palette.cardBackground)
+                RoundedRectangle(cornerRadius: 12).fill(Palette.cardBackground),
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 12).stroke(Palette.stroke, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 12).stroke(Palette.stroke, lineWidth: 1),
             )
             .overlay {
                 DragTargetHighlight(
                     isTarget: app.dragTargetTier == "unranked",
-                    color: Palette.tierColor("unranked", from: app.tierColors)
+                    color: Palette.tierColor("unranked", from: app.tierColors),
                 )
             }
             #if !os(tvOS)
@@ -160,7 +166,7 @@ internal struct UnrankedView: View {
 
                 provider.loadItem(
                     forTypeIdentifier: UTType.text.identifier,
-                    options: nil
+                    options: nil,
                 ) { item, _ in
                     if let data = item as? Data, let id = String(data: data, encoding: .utf8) {
                         Task { @MainActor in
@@ -174,6 +180,21 @@ internal struct UnrankedView: View {
             })
             #endif
         }
+    }
+
+    // MARK: Private
+
+    @Environment(AppState.self) private var app: AppState
+    #if os(tvOS)
+    @FocusState private var focusedItemId: String?
+    #else
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let hardwareFocus: FocusState<CardFocus?>.Binding
+    #endif
+
+    private var filteredItems: [Item] {
+        app.filteredItems(for: "unranked")
     }
 
     private var header: some View {
@@ -198,10 +219,12 @@ internal struct UnrankedView: View {
     /// Handle move command for both single item and block moves in unranked tier
     private func handleUnrankedMoveCommand(for itemId: String, direction: MoveCommandDirection) {
         // Don't reorder if not in custom sort mode - let focus navigate
-        guard app.globalSortMode.isCustom else { return }
+        guard app.globalSortMode.isCustom else {
+            return
+        }
 
         // Check if item is selected and we're in multi-select mode with multiple items
-        if app.isSelected(itemId) && app.selection.count > 1 {
+        if app.isSelected(itemId), app.selection.count > 1 {
             handleUnrankedBlockMove(direction: direction)
         } else {
             // Single item move
@@ -218,16 +241,20 @@ internal struct UnrankedView: View {
 
     /// Handle block move for multi-select in unranked tier
     private func handleUnrankedBlockMove(direction: MoveCommandDirection) {
-        guard let items = app.tiers["unranked"] else { return }
+        guard let items = app.tiers["unranked"] else {
+            return
+        }
 
         // Get indices of all selected items in unranked tier
         let selectedIndices = IndexSet(
             items.enumerated()
                 .filter { app.selection.contains($0.element.id) }
-                .map { $0.offset }
+                .map(\.offset),
         )
 
-        guard !selectedIndices.isEmpty else { return }
+        guard !selectedIndices.isEmpty else {
+            return
+        }
 
         // Calculate destination index based on direction
         let minIndex = selectedIndices.min() ?? 0
@@ -252,13 +279,13 @@ internal struct UnrankedView: View {
 
 // MARK: - Gradient Extension
 
-private extension Gradient {
-    static var tierListBackground: Gradient {
+extension Gradient {
+    fileprivate static var tierListBackground: Gradient {
         .init(colors: [Palette.bg.opacity(0.6), Palette.brand.opacity(0.2)])
     }
 }
 
-// MARK: - Tier Grid Previews
+// MARK: - ContentViewTierGridPreview
 
 @MainActor
 private struct ContentViewTierGridPreview: View {

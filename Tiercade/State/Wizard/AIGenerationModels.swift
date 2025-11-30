@@ -1,6 +1,6 @@
 import Foundation
 
-// MARK: - AI Generation Error
+// MARK: - AIGenerationError
 
 /// Typed errors for AI item generation failures.
 enum AIGenerationError: Error, Sendable {
@@ -17,16 +17,16 @@ enum AIGenerationError: Error, Sendable {
     var userMessage: String {
         switch self {
         case .platformNotSupported:
-            return "AI generation requires macOS 26+ or iOS 26+"
-        case .invalidRequest(let reason):
-            return reason
+            "AI generation requires macOS 26+ or iOS 26+"
+        case let .invalidRequest(reason):
+            reason
         case .generationFailed:
-            return "Failed to generate items. Please try again."
+            "Failed to generate items. Please try again."
         }
     }
 }
 
-// MARK: - AI Generation Request
+// MARK: - AIGenerationRequest
 
 /// Captures user input for an AI item generation request.
 ///
@@ -41,12 +41,12 @@ struct AIGenerationRequest: Sendable {
     /// Validates that the request has a non-empty description and valid count range.
     var isValid: Bool {
         !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        && itemCount >= 5
-        && itemCount <= 100
+            && itemCount >= 5
+            && itemCount <= 100
     }
 }
 
-// MARK: - AI Generated Item Candidate
+// MARK: - AIGeneratedItemCandidate
 
 /// Represents an AI-generated item awaiting user review and selection.
 ///
@@ -56,7 +56,7 @@ struct AIGenerationRequest: Sendable {
 struct AIGeneratedItemCandidate: Identifiable, Hashable, Sendable {
     let id: UUID
     let name: String
-    var isSelected: Bool  // Mutable for toggle operations
+    var isSelected: Bool // Mutable for toggle operations
     let generatedAt: Date
 
     /// Creates a new candidate item with default selected state.

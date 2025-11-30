@@ -3,8 +3,9 @@ import os
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     // MARK: - Loading & Progress
+
     func setLoading(_ loading: Bool, message: String = "") {
         progress.setLoading(loading, message: message)
     }

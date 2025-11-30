@@ -1,7 +1,19 @@
 import Foundation
 
 /// Sanitizes user input before embedding in AI prompts to mitigate prompt injection attacks
-public struct PromptValidator {
+public enum PromptValidator {
+
+    /// Validation errors
+    public enum ValidationError: Error, LocalizedError {
+        case emptyInput
+
+        public var errorDescription: String? {
+            switch self {
+            case .emptyInput:
+                "Topic cannot be empty"
+            }
+        }
+    }
 
     /// Sanitizes user input for safe inclusion in prompts
     /// - Parameter input: Raw user input string
@@ -35,7 +47,7 @@ public struct PromptValidator {
                 in: clean,
                 options: [],
                 range: range,
-                withTemplate: "$1$1"
+                withTemplate: "$1$1",
             )
         }
 
@@ -67,15 +79,4 @@ public struct PromptValidator {
         return sanitized
     }
 
-    /// Validation errors
-    public enum ValidationError: Error, LocalizedError {
-        case emptyInput
-
-        public var errorDescription: String? {
-            switch self {
-            case .emptyInput:
-                return "Topic cannot be empty"
-            }
-        }
-    }
 }

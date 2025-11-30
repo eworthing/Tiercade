@@ -1,7 +1,9 @@
 import Foundation
 
 /// Sorting utilities for tier items
-public struct Sorting {
+public enum Sorting {
+
+    // MARK: Public
 
     // MARK: - Sort Items
 
@@ -14,137 +16,19 @@ public struct Sorting {
         switch mode {
         case .custom:
             // No-op: maintain current order
-            return items
+            items
 
-        case .alphabetical(let ascending):
-            return items.sorted { lhs, rhs in
+        case let .alphabetical(ascending):
+            items.sorted { lhs, rhs in
                 let lhsName = lhs.name ?? lhs.id
                 let rhsName = rhs.name ?? rhs.id
                 let comparison = lhsName.localizedStandardCompare(rhsName)
                 return ascending ? comparison == .orderedAscending : comparison == .orderedDescending
             }
 
-        case .byAttribute(let key, let ascending, let type):
-            return sortByAttribute(items, key: key, ascending: ascending, type: type)
+        case let .byAttribute(key, ascending, type):
+            sortByAttribute(items, key: key, ascending: ascending, type: type)
         }
-    }
-
-    // MARK: - Attribute Sorting
-
-    private static func sortByAttribute(_ items: [Item], key: String, ascending: Bool, type: AttributeType) -> [Item] {
-        items.sorted { lhs, rhs in
-            let result: ComparisonResult
-
-            switch type {
-            case .string:
-                result = compareStringAttribute(lhs, rhs, key: key)
-            case .number:
-                result = compareNumberAttribute(lhs, rhs, key: key)
-            case .bool:
-                result = compareBoolAttribute(lhs, rhs, key: key)
-            case .date:
-                result = compareDateAttribute(lhs, rhs, key: key)
-            }
-
-            // Apply ascending/descending
-            switch result {
-            case .orderedAscending:
-                return ascending
-            case .orderedDescending:
-                return !ascending
-            case .orderedSame:
-                // Stable tiebreaker: by name, then id
-                let nameComp = (lhs.name ?? lhs.id).localizedStandardCompare(rhs.name ?? rhs.id)
-                if nameComp != .orderedSame {
-                    return nameComp == .orderedAscending
-                }
-                return lhs.id < rhs.id
-            }
-        }
-    }
-
-    private static func compareStringAttribute(_ lhs: Item, _ rhs: Item, key: String) -> ComparisonResult {
-        let lhsVal = extractStringValue(from: lhs, key: key)
-        let rhsVal = extractStringValue(from: rhs, key: key)
-
-        // nil values sort last
-        if lhsVal == nil && rhsVal == nil { return .orderedSame }
-        if lhsVal == nil { return .orderedDescending }
-        if rhsVal == nil { return .orderedAscending }
-
-        return lhsVal!.localizedStandardCompare(rhsVal!)
-    }
-
-    private static func compareNumberAttribute(_ lhs: Item, _ rhs: Item, key: String) -> ComparisonResult {
-        let lhsVal = extractNumberValue(from: lhs, key: key)
-        let rhsVal = extractNumberValue(from: rhs, key: key)
-
-        // nil values sort last
-        if lhsVal == nil && rhsVal == nil { return .orderedSame }
-        if lhsVal == nil { return .orderedDescending }
-        if rhsVal == nil { return .orderedAscending }
-
-        if lhsVal! < rhsVal! { return .orderedAscending }
-        if lhsVal! > rhsVal! { return .orderedDescending }
-        return .orderedSame
-    }
-
-    private static func compareBoolAttribute(_ lhs: Item, _ rhs: Item, key: String) -> ComparisonResult {
-        let lhsVal = extractBoolValue(from: lhs, key: key)
-        let rhsVal = extractBoolValue(from: rhs, key: key)
-
-        // nil values sort last
-        if lhsVal == nil && rhsVal == nil { return .orderedSame }
-        if lhsVal == nil { return .orderedDescending }
-        if rhsVal == nil { return .orderedAscending }
-
-        // false < true
-        if !lhsVal! && rhsVal! { return .orderedAscending }
-        if lhsVal! && !rhsVal! { return .orderedDescending }
-        return .orderedSame
-    }
-
-    private static func compareDateAttribute(_ lhs: Item, _ rhs: Item, key: String) -> ComparisonResult {
-        let lhsVal = extractDateValue(from: lhs, key: key)
-        let rhsVal = extractDateValue(from: rhs, key: key)
-
-        // nil values sort last
-        if lhsVal == nil && rhsVal == nil { return .orderedSame }
-        if lhsVal == nil { return .orderedDescending }
-        if rhsVal == nil { return .orderedAscending }
-
-        if lhsVal! < rhsVal! { return .orderedAscending }
-        if lhsVal! > rhsVal! { return .orderedDescending }
-        return .orderedSame
-    }
-
-    // MARK: - Value Extraction
-
-    private static func extractStringValue(from item: Item, key: String) -> String? {
-        switch key {
-        case "name": return item.name
-        case "seasonString": return item.seasonString
-        case "status": return item.status
-        case "description": return item.description
-        default: return nil
-        }
-    }
-
-    private static func extractNumberValue(from item: Item, key: String) -> Double? {
-        switch key {
-        case "seasonNumber": return item.seasonNumber.map(Double.init)
-        default: return nil
-        }
-    }
-
-    private static func extractBoolValue(from item: Item, key: String) -> Bool? {
-        // Currently Item doesn't have bool properties, but we support the pattern
-        return nil
-    }
-
-    private static func extractDateValue(from item: Item, key: String) -> Date? {
-        // Currently Item doesn't have date properties, but we support the pattern
-        return nil
     }
 
     // MARK: - Attribute Discovery
@@ -154,8 +38,10 @@ public struct Sorting {
     /// - Returns: Dictionary of attribute key to inferred type
     public static func discoverSortableAttributes(in allItems: Items) -> [String: AttributeType] {
         // Flatten all items
-        let flatItems = allItems.values.flatMap { $0 }
-        guard !flatItems.isEmpty else { return [:] }
+        let flatItems = allItems.values.flatMap(\.self)
+        guard !flatItems.isEmpty else {
+            return [:]
+        }
 
         let totalCount = flatItems.count
         let threshold = Int(ceil(Double(totalCount) * 0.7))
@@ -192,4 +78,159 @@ public struct Sorting {
 
         return result
     }
+
+    // MARK: Private
+
+    // MARK: - Attribute Sorting
+
+    private static func sortByAttribute(_ items: [Item], key: String, ascending: Bool, type: AttributeType) -> [Item] {
+        items.sorted { lhs, rhs in
+            let result: ComparisonResult = switch type {
+            case .string:
+                compareStringAttribute(lhs, rhs, key: key)
+            case .number:
+                compareNumberAttribute(lhs, rhs, key: key)
+            case .bool:
+                compareBoolAttribute(lhs, rhs, key: key)
+            case .date:
+                compareDateAttribute(lhs, rhs, key: key)
+            }
+
+            // Apply ascending/descending
+            switch result {
+            case .orderedAscending:
+                return ascending
+            case .orderedDescending:
+                return !ascending
+            case .orderedSame:
+                // Stable tiebreaker: by name, then id
+                let nameComp = (lhs.name ?? lhs.id).localizedStandardCompare(rhs.name ?? rhs.id)
+                if nameComp != .orderedSame {
+                    return nameComp == .orderedAscending
+                }
+                return lhs.id < rhs.id
+            }
+        }
+    }
+
+    private static func compareStringAttribute(_ lhs: Item, _ rhs: Item, key: String) -> ComparisonResult {
+        let lhsVal = extractStringValue(from: lhs, key: key)
+        let rhsVal = extractStringValue(from: rhs, key: key)
+
+        // nil values sort last
+        if lhsVal == nil, rhsVal == nil {
+            return .orderedSame
+        }
+        if lhsVal == nil {
+            return .orderedDescending
+        }
+        if rhsVal == nil {
+            return .orderedAscending
+        }
+
+        return lhsVal!.localizedStandardCompare(rhsVal!)
+    }
+
+    private static func compareNumberAttribute(_ lhs: Item, _ rhs: Item, key: String) -> ComparisonResult {
+        let lhsVal = extractNumberValue(from: lhs, key: key)
+        let rhsVal = extractNumberValue(from: rhs, key: key)
+
+        // nil values sort last
+        if lhsVal == nil, rhsVal == nil {
+            return .orderedSame
+        }
+        if lhsVal == nil {
+            return .orderedDescending
+        }
+        if rhsVal == nil {
+            return .orderedAscending
+        }
+
+        if lhsVal! < rhsVal! {
+            return .orderedAscending
+        }
+        if lhsVal! > rhsVal! {
+            return .orderedDescending
+        }
+        return .orderedSame
+    }
+
+    private static func compareBoolAttribute(_ lhs: Item, _ rhs: Item, key: String) -> ComparisonResult {
+        let lhsVal = extractBoolValue(from: lhs, key: key)
+        let rhsVal = extractBoolValue(from: rhs, key: key)
+
+        // nil values sort last
+        if lhsVal == nil, rhsVal == nil {
+            return .orderedSame
+        }
+        if lhsVal == nil {
+            return .orderedDescending
+        }
+        if rhsVal == nil {
+            return .orderedAscending
+        }
+
+        // false < true
+        if !lhsVal!, rhsVal! {
+            return .orderedAscending
+        }
+        if lhsVal!, !rhsVal! {
+            return .orderedDescending
+        }
+        return .orderedSame
+    }
+
+    private static func compareDateAttribute(_ lhs: Item, _ rhs: Item, key: String) -> ComparisonResult {
+        let lhsVal = extractDateValue(from: lhs, key: key)
+        let rhsVal = extractDateValue(from: rhs, key: key)
+
+        // nil values sort last
+        if lhsVal == nil, rhsVal == nil {
+            return .orderedSame
+        }
+        if lhsVal == nil {
+            return .orderedDescending
+        }
+        if rhsVal == nil {
+            return .orderedAscending
+        }
+
+        if lhsVal! < rhsVal! {
+            return .orderedAscending
+        }
+        if lhsVal! > rhsVal! {
+            return .orderedDescending
+        }
+        return .orderedSame
+    }
+
+    // MARK: - Value Extraction
+
+    private static func extractStringValue(from item: Item, key: String) -> String? {
+        switch key {
+        case "name": item.name
+        case "seasonString": item.seasonString
+        case "status": item.status
+        case "description": item.description
+        default: nil
+        }
+    }
+
+    private static func extractNumberValue(from item: Item, key: String) -> Double? {
+        switch key {
+        case "seasonNumber": item.seasonNumber.map(Double.init)
+        default: nil
+        }
+    }
+
+    private static func extractBoolValue(from _: Item, key _: String) -> Bool? {
+        // Currently Item doesn't have bool properties, but we support the pattern
+        nil
+    }
+
+    private static func extractDateValue(from _: Item, key _: String) -> Date? {
+        // Currently Item doesn't have date properties, but we support the pattern
+        nil
+    }
+
 }

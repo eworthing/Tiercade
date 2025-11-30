@@ -1,15 +1,16 @@
 import Foundation
 import SwiftUI
 
+// MARK: - FilterType
+
 // Common UI support types (available regardless of core package presence)
-// MARK: - Filter Types
 public enum FilterType: String, CaseIterable {
     case all = "All"
     case ranked = "Ranked"
     case unranked = "Unranked"
 }
 
-// MARK: - Toast System
+// MARK: - ToastType
 
 enum ToastType {
     case success
@@ -17,32 +18,36 @@ enum ToastType {
     case info
     case warning
 
+    // MARK: Internal
+
     var color: Color {
         switch self {
         case .success:
-            return .green
+            .green
         case .error:
-            return .red
+            .red
         case .info:
-            return .blue
+            .blue
         case .warning:
-            return .orange
+            .orange
         }
     }
 
     var icon: String {
         switch self {
         case .success:
-            return "checkmark.circle.fill"
+            "checkmark.circle.fill"
         case .error:
-            return "xmark.circle.fill"
+            "xmark.circle.fill"
         case .info:
-            return "info.circle.fill"
+            "info.circle.fill"
         case .warning:
-            return "exclamationmark.triangle.fill"
+            "exclamationmark.triangle.fill"
         }
     }
 }
+
+// MARK: - ToastMessage
 
 struct ToastMessage: Identifiable {
     let id = UUID()
@@ -59,7 +64,7 @@ struct ToastMessage: Identifiable {
         message: String? = nil,
         duration: TimeInterval = 3.0,
         actionTitle: String? = nil,
-        action: (() -> Void)? = nil
+        action: (() -> Void)? = nil,
     ) {
         self.type = type
         self.title = title
@@ -82,12 +87,17 @@ struct ToastMessage: Identifiable {
 // core package initializer when mapping from loose dictionaries.
 
 // MARK: - Color helpers
+
 // Note: Basic hex parsing for backward compatibility. Full color utilities in ColorUtilities.swift
 extension Color {
     init?(hex: String) {
         var s = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        if s.hasPrefix("#") { s.removeFirst() }
-        guard s.count == 6, let v = Int(s, radix: 16) else { return nil }
+        if s.hasPrefix("#") {
+            s.removeFirst()
+        }
+        guard s.count == 6, let v = Int(s, radix: 16) else {
+            return nil
+        }
         let r = Double((v >> 16) & 0xFF) / 255.0
         let g = Double((v >> 8) & 0xFF) / 255.0
         let b = Double(v & 0xFF) / 255.0

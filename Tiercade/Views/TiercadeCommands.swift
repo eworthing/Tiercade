@@ -3,10 +3,13 @@ import SwiftUI
 
 /// macOS menu bar commands for Tiercade
 /// Note: Only includes features with proper AppState backing
-internal struct TiercadeCommands: Commands {
-    internal var appState: AppState
+struct TiercadeCommands: Commands {
 
-    internal var body: some Commands {
+    // MARK: Internal
+
+    var appState: AppState
+
+    var body: some Commands {
         // File menu commands
         CommandGroup(replacing: .newItem) {
             Button {
@@ -89,7 +92,7 @@ internal struct TiercadeCommands: Commands {
             } label: {
                 Label(
                     appState.overlays.showThemePicker ? "Hide Themes" : "Show Themes",
-                    systemImage: "paintpalette"
+                    systemImage: "paintpalette",
                 )
             }
             .keyboardShortcut("t", modifiers: [.command, .option])
@@ -100,7 +103,7 @@ internal struct TiercadeCommands: Commands {
             } label: {
                 Label(
                     appState.showingAnalysis ? "Hide Analysis" : "Show Analysis",
-                    systemImage: appState.showingAnalysis ? "chart.bar.fill" : "chart.bar"
+                    systemImage: appState.showingAnalysis ? "chart.bar.fill" : "chart.bar",
                 )
             }
             .keyboardShortcut("a", modifiers: [.command, .option])
@@ -141,6 +144,8 @@ internal struct TiercadeCommands: Commands {
         }
     }
 
+    // MARK: Private
+
     private func exportToFormat(_ format: ExportFormat) async {
         do {
             let (data, filename) = try await appState.exportToFormat(format)
@@ -158,13 +163,13 @@ internal struct TiercadeCommands: Commands {
             appState.showToast(
                 type: .success,
                 title: "Export Complete",
-                message: "Saved to \(fileURL.path)"
+                message: "Saved to \(fileURL.path)",
             )
         } catch {
             appState.showToast(
                 type: .error,
                 title: "Export Failed",
-                message: error.localizedDescription
+                message: error.localizedDescription,
             )
         }
     }

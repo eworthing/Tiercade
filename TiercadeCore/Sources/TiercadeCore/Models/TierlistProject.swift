@@ -1,5 +1,7 @@
 import Foundation
 
+// MARK: - JSONValue
+
 public enum JSONValue: Codable, Equatable, Sendable {
     case string(String)
     case number(Double)
@@ -7,6 +9,8 @@ public enum JSONValue: Codable, Equatable, Sendable {
     case array([JSONValue])
     case object([String: JSONValue])
     case null
+
+    // MARK: Lifecycle
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()
@@ -37,24 +41,28 @@ public enum JSONValue: Codable, Equatable, Sendable {
         throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unknown JSON value")
     }
 
+    // MARK: Public
+
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.singleValueContainer()
         switch self {
-        case .string(let string):
+        case let .string(string):
             try container.encode(string)
-        case .number(let number):
+        case let .number(number):
             try container.encode(number)
-        case .bool(let bool):
+        case let .bool(bool):
             try container.encode(bool)
-        case .array(let array):
+        case let .array(array):
             try container.encode(array)
-        case .object(let object):
+        case let .object(object):
             try container.encode(object)
         case .null:
             try container.encodeNil()
         }
     }
 }
+
+// MARK: - ProjectMediaKind
 
 public enum ProjectMediaKind: String, Codable, Sendable {
     case image
@@ -63,20 +71,11 @@ public enum ProjectMediaKind: String, Codable, Sendable {
     case audio
 }
 
+// MARK: - Project
+
 public struct Project: Codable, Equatable, Sendable {
-    public var schemaVersion: Int
-    public var projectId: String
-    public var title: String?
-    public var description: String?
-    public var tiers: [Tier]
-    public var items: [String: Item]
-    public var overrides: [String: ItemOverride]?
-    public var links: Links?
-    public var storage: Storage?
-    public var settings: Settings?
-    public var collab: Collaboration?
-    public var audit: Audit
-    public var additional: [String: JSONValue]?
+
+    // MARK: Lifecycle
 
     public init(
         schemaVersion: Int,
@@ -91,7 +90,7 @@ public struct Project: Codable, Equatable, Sendable {
         settings: Settings? = nil,
         collab: Collaboration? = nil,
         audit: Audit,
-        additional: [String: JSONValue]? = nil
+        additional: [String: JSONValue]? = nil,
     ) {
         self.schemaVersion = schemaVersion
         self.projectId = projectId
@@ -107,10 +106,27 @@ public struct Project: Codable, Equatable, Sendable {
         self.audit = audit
         self.additional = additional
     }
+
+    // MARK: Public
+
+    public var schemaVersion: Int
+    public var projectId: String
+    public var title: String?
+    public var description: String?
+    public var tiers: [Tier]
+    public var items: [String: Item]
+    public var overrides: [String: ItemOverride]?
+    public var links: Links?
+    public var storage: Storage?
+    public var settings: Settings?
+    public var collab: Collaboration?
+    public var audit: Audit
+    public var additional: [String: JSONValue]?
+
 }
 
-public extension Project {
-    struct Audit: Codable, Equatable, Sendable {
+extension Project {
+    public struct Audit: Codable, Equatable, Sendable {
         public var createdAt: Date
         public var updatedAt: Date
         public var createdBy: String?
@@ -124,19 +140,9 @@ public extension Project {
         }
     }
 
-    struct Media: Codable, Equatable, Identifiable, Sendable {
-        public var id: String
-        public var kind: ProjectMediaKind
-        public var uri: String
-        public var mime: String
-        public var w: Double?
-        public var h: Double?
-        public var durationMs: Double?
-        public var posterUri: String?
-        public var thumbUri: String?
-        public var alt: String?
-        public var attribution: [String: String]?
-        public var additional: [String: JSONValue]?
+    public struct Media: Codable, Equatable, Identifiable, Sendable {
+
+        // MARK: Lifecycle
 
         public init(
             id: String,
@@ -150,7 +156,7 @@ public extension Project {
             thumbUri: String? = nil,
             alt: String? = nil,
             attribution: [String: String]? = nil,
-            additional: [String: JSONValue]? = nil
+            additional: [String: JSONValue]? = nil,
         ) {
             self.id = id
             self.kind = kind
@@ -165,22 +171,27 @@ public extension Project {
             self.attribution = attribution
             self.additional = additional
         }
+
+        // MARK: Public
+
+        public var id: String
+        public var kind: ProjectMediaKind
+        public var uri: String
+        public var mime: String
+        public var w: Double?
+        public var h: Double?
+        public var durationMs: Double?
+        public var posterUri: String?
+        public var thumbUri: String?
+        public var alt: String?
+        public var attribution: [String: String]?
+        public var additional: [String: JSONValue]?
+
     }
 
-    struct Item: Codable, Equatable, Identifiable, Sendable {
-        public var id: String
-        public var title: String
-        public var subtitle: String?
-        public var summary: String?
-        public var slug: String?
-        public var media: [Media]?
-        public var attributes: [String: JSONValue]?
-        public var tags: [String]?
-        public var rating: Double?
-        public var sources: [[String: String]]?
-        public var locale: [String: [String: String]]?
-        public var meta: Audit?
-        public var additional: [String: JSONValue]?
+    public struct Item: Codable, Equatable, Identifiable, Sendable {
+
+        // MARK: Lifecycle
 
         public init(
             id: String,
@@ -195,7 +206,7 @@ public extension Project {
             sources: [[String: String]]? = nil,
             locale: [String: [String: String]]? = nil,
             meta: Audit? = nil,
-            additional: [String: JSONValue]? = nil
+            additional: [String: JSONValue]? = nil,
         ) {
             self.id = id
             self.title = title
@@ -211,9 +222,26 @@ public extension Project {
             self.meta = meta
             self.additional = additional
         }
+
+        // MARK: Public
+
+        public var id: String
+        public var title: String
+        public var subtitle: String?
+        public var summary: String?
+        public var slug: String?
+        public var media: [Media]?
+        public var attributes: [String: JSONValue]?
+        public var tags: [String]?
+        public var rating: Double?
+        public var sources: [[String: String]]?
+        public var locale: [String: [String: String]]?
+        public var meta: Audit?
+        public var additional: [String: JSONValue]?
+
     }
 
-    struct ItemOverride: Codable, Equatable, Sendable {
+    public struct ItemOverride: Codable, Equatable, Sendable {
         public var displayTitle: String?
         public var notes: String?
         public var tags: [String]?
@@ -229,7 +257,7 @@ public extension Project {
             rating: Double? = nil,
             media: [Media]? = nil,
             hidden: Bool? = nil,
-            additional: [String: JSONValue]? = nil
+            additional: [String: JSONValue]? = nil,
         ) {
             self.displayTitle = displayTitle
             self.notes = notes
@@ -241,7 +269,7 @@ public extension Project {
         }
     }
 
-    struct Tier: Codable, Equatable, Identifiable, Sendable {
+    public struct Tier: Codable, Equatable, Identifiable, Sendable {
         public var id: String
         public var label: String
         public var color: String?
@@ -261,7 +289,7 @@ public extension Project {
             collapsed: Bool? = nil,
             rules: [String: JSONValue]? = nil,
             itemIds: [String],
-            additional: [String: JSONValue]? = nil
+            additional: [String: JSONValue]? = nil,
         ) {
             self.id = id
             self.label = label
@@ -275,7 +303,7 @@ public extension Project {
         }
     }
 
-    struct Links: Codable, Equatable, Sendable {
+    public struct Links: Codable, Equatable, Sendable {
         public var visibility: String?
         public var shareUrl: String?
         public var embedHtml: String?
@@ -287,7 +315,7 @@ public extension Project {
             shareUrl: String? = nil,
             embedHtml: String? = nil,
             stateUrl: String? = nil,
-            additional: [String: JSONValue]? = nil
+            additional: [String: JSONValue]? = nil,
         ) {
             self.visibility = visibility
             self.shareUrl = shareUrl
@@ -297,7 +325,7 @@ public extension Project {
         }
     }
 
-    struct Storage: Codable, Equatable, Sendable {
+    public struct Storage: Codable, Equatable, Sendable {
         public var mode: String?
         public var remote: [String: JSONValue]?
         public var additional: [String: JSONValue]?
@@ -309,7 +337,7 @@ public extension Project {
         }
     }
 
-    struct Settings: Codable, Equatable, Sendable {
+    public struct Settings: Codable, Equatable, Sendable {
         public var theme: String?
         public var tierSortOrder: String?
         public var gridSnap: Bool?
@@ -323,7 +351,7 @@ public extension Project {
             gridSnap: Bool? = nil,
             showUnranked: Bool? = nil,
             accessibility: [String: Bool]? = nil,
-            additional: [String: JSONValue]? = nil
+            additional: [String: JSONValue]? = nil,
         ) {
             self.theme = theme
             self.tierSortOrder = tierSortOrder
@@ -334,7 +362,7 @@ public extension Project {
         }
     }
 
-    struct Member: Codable, Equatable, Sendable {
+    public struct Member: Codable, Equatable, Sendable {
         public var userId: String
         public var role: String
         public var additional: [String: JSONValue]?
@@ -346,7 +374,7 @@ public extension Project {
         }
     }
 
-    struct Collaboration: Codable, Equatable, Sendable {
+    public struct Collaboration: Codable, Equatable, Sendable {
         public var members: [Member]?
         public var additional: [String: JSONValue]?
 
@@ -357,13 +385,18 @@ public extension Project {
     }
 }
 
+// MARK: - ProjectValidation
+
 public enum ProjectValidation {
+
+    // MARK: Public
+
     public static func validateOfflineV1(_ project: Project) throws {
         if let mode = project.storage?.mode, mode.lowercased() != "local" {
             throw NSError(
                 domain: "Tiercade",
                 code: 1001,
-                userInfo: [NSLocalizedDescriptionKey: "v1 is offline-only (storage.mode must be 'local' or omitted)."]
+                userInfo: [NSLocalizedDescriptionKey: "v1 is offline-only (storage.mode must be 'local' or omitted)."],
             )
         }
 
@@ -378,19 +411,25 @@ public enum ProjectValidation {
         }
     }
 
+    // MARK: Private
+
     private static func validateMediaCollection(_ media: [Project.Media]?, errorCode: Int) throws {
-        guard let media else { return }
+        guard let media else {
+            return
+        }
         for entry in media where !isFileURL(entry.uri) || !isFileURL(entry.thumbUri) || !isFileURL(entry.posterUri) {
             throw NSError(
                 domain: "Tiercade",
                 code: errorCode,
-                userInfo: [NSLocalizedDescriptionKey: "Media URIs must be file:// in offline v1."]
+                userInfo: [NSLocalizedDescriptionKey: "Media URIs must be file:// in offline v1."],
             )
         }
     }
 
     private static func isFileURL(_ value: String?) -> Bool {
-        guard let value else { return true }
+        guard let value else {
+            return true
+        }
         return value.lowercased().hasPrefix("file://")
     }
 }

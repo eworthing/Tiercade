@@ -1,11 +1,15 @@
 import Foundation
 import TiercadeCore
 
+// MARK: - HeadToHeadPhase
+
 /// Phase of a HeadToHead ranking session
-internal enum HeadToHeadPhase: Sendable {
+enum HeadToHeadPhase: Sendable {
     case quick
     case refinement
 }
+
+// MARK: - HeadToHeadState
 
 /// Consolidated state for HeadToHead ranking mode
 ///
@@ -15,7 +19,7 @@ internal enum HeadToHeadPhase: Sendable {
 /// - Semantic grouping of related properties
 /// - Improved autocomplete (no more `h2h` prefix pollution)
 /// - Self-documenting structure
-internal struct HeadToHeadState: Sendable {
+struct HeadToHeadState: Sendable {
     // MARK: - Session Control
 
     /// Whether a HeadToHead session is currently active
@@ -76,8 +80,6 @@ internal struct HeadToHeadState: Sendable {
     /// Artifacts generated after quick phase (tier assignments, confidence scores)
     var artifacts: HeadToHeadArtifacts?
 
-    // MARK: - Computed Properties
-
     /// Number of pairs that have been skipped
     var skippedCount: Int {
         skippedPairKeys.count
@@ -85,7 +87,9 @@ internal struct HeadToHeadState: Sendable {
 
     /// Quick phase progress (0.0 to 1.0)
     var progress: Double {
-        guard totalComparisons > 0 else { return 0.0 }
+        guard totalComparisons > 0 else {
+            return 0.0
+        }
         return Double(completedComparisons) / Double(totalComparisons)
     }
 
@@ -96,7 +100,9 @@ internal struct HeadToHeadState: Sendable {
 
     /// Refinement phase progress (0.0 to 1.0)
     var refinementProgress: Double {
-        guard refinementTotalComparisons > 0 else { return 0.0 }
+        guard refinementTotalComparisons > 0 else {
+            return 0.0
+        }
         return Double(refinementCompletedComparisons) / Double(refinementTotalComparisons)
     }
 

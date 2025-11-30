@@ -1,20 +1,13 @@
 #if os(tvOS)
-import SwiftUI
-import Observation
 import Charts
+import Observation
+import SwiftUI
 
-internal struct AnalyticsSidebarView: View {
-    @Environment(AppState.self) private var app: AppState
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+struct AnalyticsSidebarView: View {
 
-    @FocusState private var focusedElement: FocusElement?
+    // MARK: Internal
 
-    private enum FocusElement: Hashable {
-        case close
-        case insight(Int)
-    }
-
-    internal var body: some View {
+    var body: some View {
         GeometryReader { proxy in
             let width = proxy.size.width * 0.65
             ZStack(alignment: .trailing) {
@@ -39,23 +32,35 @@ internal struct AnalyticsSidebarView: View {
                 .accessibilityHint("View tier distribution statistics and balance score")
                 .accessibilityAddTraits(.isModal)
                 #if os(tvOS)
-                .focusSection()
-                .defaultFocus($focusedElement, .close)
-                .onAppear { focusedElement = .close }
-                .onDisappear { focusedElement = nil }
-                .onExitCommand { app.closeAnalyticsSidebar() }
+                    .focusSection()
+                    .defaultFocus($focusedElement, .close)
+                    .onAppear { focusedElement = .close }
+                    .onDisappear { focusedElement = nil }
+                    .onExitCommand { app.closeAnalyticsSidebar() }
                 #endif
             }
             .transition(
                 .move(edge: .trailing)
-                    .combined(with: .opacity)
+                    .combined(with: .opacity),
             )
             .animation(
                 reduceMotion ? nil : Animation.easeInOut(duration: 0.35),
-                value: app.overlays.showAnalyticsSidebar
+                value: app.overlays.showAnalyticsSidebar,
             )
         }
     }
+
+    // MARK: Private
+
+    private enum FocusElement: Hashable {
+        case close
+        case insight(Int)
+    }
+
+    @Environment(AppState.self) private var app: AppState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @FocusState private var focusedElement: FocusElement?
 
     @ViewBuilder
     private var sidebarContent: some View {
@@ -132,7 +137,7 @@ internal struct AnalyticsSidebarView: View {
             Chart(distribution) { tier in
                 BarMark(
                     x: .value("Items", tier.count),
-                    y: .value("Tier", tier.tier)
+                    y: .value("Tier", tier.tier),
                 )
                 .foregroundStyle(Palette.tierColor(tier.tierId, from: app.tierColors))
                 .annotation(position: .trailing) {
@@ -191,31 +196,31 @@ internal struct AnalyticsSidebarView: View {
         .background(Palette.surfHi)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         #if os(tvOS)
-        .focused($focusedElement, equals: .insight(index))
+            .focused($focusedElement, equals: .insight(index))
         #endif
     }
 
     private func balanceColor(for score: Double) -> Color {
         switch score {
-        case 80...100:
-            return .green
-        case 60..<80:
-            return .yellow
+        case 80 ... 100:
+            .green
+        case 60 ..< 80:
+            .yellow
         default:
-            return .red
+            .red
         }
     }
 
     private func balanceInterpretation(for score: Double) -> String {
         switch score {
-        case 80...100:
-            return "Well balanced"
-        case 60..<80:
-            return "Moderately balanced"
-        case 40..<60:
-            return "Somewhat unbalanced"
+        case 80 ... 100:
+            "Well balanced"
+        case 60 ..< 80:
+            "Moderately balanced"
+        case 40 ..< 60:
+            "Somewhat unbalanced"
         default:
-            return "Needs rebalancing"
+            "Needs rebalancing"
         }
     }
 

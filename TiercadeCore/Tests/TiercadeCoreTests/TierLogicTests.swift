@@ -2,6 +2,8 @@ import Foundation
 import Testing
 @testable import TiercadeCore
 
+// MARK: - TierLogicTests
+
 @Suite("TierLogic")
 struct TierLogicTests {
     @Test("Move item between tiers updates source and target")
@@ -27,7 +29,7 @@ struct TierLogicTests {
         tiers["S"] = [
             makeItem("s1", name: "First"),
             makeItem("s2", name: "Second"),
-            makeItem("s3", name: "Third")
+            makeItem("s3", name: "Third"),
         ]
 
         let reordered = TierLogic.reorderWithin(tiers, tierName: "S", from: 0, to: 2)
@@ -42,19 +44,19 @@ struct TierLogicTests {
     }
 }
 
-private extension TierLogicTests {
-    func makeSampleTiers() -> Items {
+extension TierLogicTests {
+    private func makeSampleTiers() -> Items {
         [
             "S": [makeItem("sigma", name: "Sigma")],
             "A": [
                 makeItem("alpha", name: "Alpha"),
-                makeItem("beta", name: "Beta")
+                makeItem("beta", name: "Beta"),
             ],
-            "unranked": [makeItem("omega", name: "Omega")]
+            "unranked": [makeItem("omega", name: "Omega")],
         ]
     }
 
-    func makeItem(_ id: String, name: String) -> Item {
+    private func makeItem(_ id: String, name: String) -> Item {
         Item(id: id, name: name)
     }
 }

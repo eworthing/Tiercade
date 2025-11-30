@@ -1,10 +1,3 @@
-//
-//  TiercadeApp+Debug.swift
-//  Tiercade
-//
-//  DEBUG-only test runner functions extracted from TiercadeApp
-//
-
 import SwiftUI
 
 #if DEBUG && canImport(FoundationModels)
@@ -21,7 +14,7 @@ extension TiercadeApp {
             ("-runCoordinatorHybrid", runCoordinatorHybrid),
             ("-runCoordinatorMediumGrid", runCoordinatorMediumGrid),
             ("-runPilotTests", runPilotTests),
-            ("-runDiagnostics", runDiagnostics)
+            ("-runDiagnostics", runDiagnostics),
         ]
 
         for (argument, handler) in testHandlers where CommandLine.arguments.contains(argument) {
@@ -36,8 +29,10 @@ extension TiercadeApp {
         let args = CommandLine.arguments
         var suiteId = "quick-smoke"
 
-        if let flagIndex = args.firstIndex(of: "-runUnifiedTests"),
-           flagIndex + 1 < args.count {
+        if
+            let flagIndex = args.firstIndex(of: "-runUnifiedTests"),
+            flagIndex + 1 < args.count
+        {
             let nextArg = args[flagIndex + 1]
             if !nextArg.hasPrefix("-") {
                 suiteId = nextArg
@@ -129,7 +124,9 @@ extension TiercadeApp {
         for r in report.allResults {
             var v = byBucket[r.nBucket] ?? (0, 0)
             v.total += 1
-            if r.passAtN { v.ok += 1 }
+            if r.passAtN {
+                v.ok += 1
+            }
             byBucket[r.nBucket] = v
         }
         if !byBucket.isEmpty {
@@ -205,7 +202,9 @@ extension TiercadeApp {
                 encoder.dateEncodingStrategy = .iso8601
                 let url = URL(fileURLWithPath: NSTemporaryDirectory())
                     .appendingPathComponent("coordinator_experiments_hybrid_report.json")
-                if let data = try? encoder.encode(report) { try? data.write(to: url) }
+                if let data = try? encoder.encode(report) {
+                    try? data.write(to: url)
+                }
 
                 print("🔧 ========================================")
                 print("🔧 COORDINATOR HYBRID COMPARISON COMPLETE!")
@@ -243,7 +242,9 @@ extension TiercadeApp {
                 encoder.dateEncodingStrategy = .iso8601
                 let url = URL(fileURLWithPath: NSTemporaryDirectory())
                     .appendingPathComponent("coordinator_experiments_medium_grid_report.json")
-                if let data = try? encoder.encode(report) { try? data.write(to: url) }
+                if let data = try? encoder.encode(report) {
+                    try? data.write(to: url)
+                }
 
                 print("🔧 ========================================")
                 print("🔧 COORDINATOR MEDIUM‑N GRID COMPLETE!")
@@ -301,7 +302,7 @@ extension TiercadeApp {
             print("🧪 ========================================")
             print("🧪 Testing complete!")
             print("🧪 Total tests: \(results.count)")
-            print("🧪 Passed: \(results.filter { !$0.hasDuplicates && !$0.insufficient }.count)")
+            print("🧪 Passed: \(results.count(where: { !$0.hasDuplicates && !$0.insufficient }))")
             print("🧪 Log file: /tmp/tiercade_prompt_test_results.txt")
             print("🧪 ========================================")
 
@@ -406,7 +407,7 @@ extension TiercadeApp {
 
         print("🔬 ========================================")
         print("🔬 DIAGNOSTICS COMPLETE!")
-        print("🔬 Successful tests: \(report.results.filter { $0.success }.count)/\(report.results.count)")
+        print("🔬 Successful tests: \(report.results.count(where: { $0.success }))/\(report.results.count)")
         print("🔬 Report saved: /tmp/tiercade_diagnostics_report.json")
         print("🔬 ========================================")
 

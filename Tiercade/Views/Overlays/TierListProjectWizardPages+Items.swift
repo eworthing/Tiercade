@@ -1,10 +1,10 @@
+import os
 import SwiftUI
 import TiercadeCore
-import os
 
 // MARK: - Schema Wizard Page (Item Fields Definition)
 
-internal struct ItemsWizardPage: View, WizardPage {
+struct ItemsWizardPage: View, WizardPage {
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
     @State private var searchQuery: String = ""
@@ -15,8 +15,8 @@ internal struct ItemsWizardPage: View, WizardPage {
     @State private var showingItemEditor = false
     @State private var showAIGenerator = false
 
-    internal let pageTitle = "Items"
-    internal let pageDescription = "Add and configure items for your tier list"
+    let pageTitle = "Items"
+    let pageDescription = "Add and configure items for your tier list"
 
     #if os(tvOS)
     @Namespace private var defaultFocusNamespace
@@ -34,15 +34,15 @@ internal struct ItemsWizardPage: View, WizardPage {
 
         var label: String {
             switch self {
-            case .all: return "All"
-            case .assigned: return "Assigned"
-            case .unassigned: return "Unassigned"
-            case .hidden: return "Hidden"
+            case .all: "All"
+            case .assigned: "Assigned"
+            case .unassigned: "Unassigned"
+            case .hidden: "Hidden"
             }
         }
     }
 
-    internal var body: some View {
+    var body: some View {
         VStack(spacing: 0) {
             searchControls
 
@@ -64,8 +64,8 @@ internal struct ItemsWizardPage: View, WizardPage {
         }
         .background(Palette.bg)
         #if os(tvOS)
-        // Ensure default focus is evaluated within a defined scope
-        .focusScope(defaultFocusNamespace)
+            // Ensure default focus is evaluated within a defined scope
+                .focusScope(defaultFocusNamespace)
         #endif
         #if os(macOS)
         .sheet(isPresented: $showingItemEditor) {
@@ -75,42 +75,42 @@ internal struct ItemsWizardPage: View, WizardPage {
         }
         #else
         .fullScreenCover(isPresented: $showingItemEditor) {
-            if let item = currentItem {
-                LargeItemEditorView(appState: appState, draft: draft, item: item)
-            }
-        }
-        #endif
-        .sheet(isPresented: $showAIGenerator) {
-            #if os(macOS) || os(iOS)
-            AIItemGeneratorOverlay(appState: appState, draft: draft)
-            #else
-            // tvOS: Show informative message
-            VStack(spacing: Metrics.grid * 4) {
-                Image(systemName: "exclamationmark.triangle")
-                    .font(TypeScale.wizardIcon)
-                    .foregroundStyle(.orange)
-                    .accessibilityHidden(true)
-
-                Text("AI Generation Requires macOS or iOS")
-                    .font(.title2)
-                    .multilineTextAlignment(.center)
-
-                Text("Please use the companion iOS or macOS app to generate items with AI.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, Metrics.grid * 8)
-
-                Button("OK") {
-                    showAIGenerator = false
+                if let item = currentItem {
+                    LargeItemEditorView(appState: appState, draft: draft, item: item)
                 }
-                .buttonStyle(.borderedProminent)
             }
-            .padding(Metrics.grid * 8)
-            #endif
-        }
+        #endif
+            .sheet(isPresented: $showAIGenerator) {
+                    #if os(macOS) || os(iOS)
+                    AIItemGeneratorOverlay(appState: appState, draft: draft)
+                    #else
+                    // tvOS: Show informative message
+                    VStack(spacing: Metrics.grid * 4) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .font(TypeScale.wizardIcon)
+                            .foregroundStyle(.orange)
+                            .accessibilityHidden(true)
+
+                        Text("AI Generation Requires macOS or iOS")
+                            .font(.title2)
+                            .multilineTextAlignment(.center)
+
+                        Text("Please use the companion iOS or macOS app to generate items with AI.")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, Metrics.grid * 8)
+
+                        Button("OK") {
+                            showAIGenerator = false
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding(Metrics.grid * 8)
+                    #endif
+                }
         #if os(tvOS)
-        .onAppear { focusedField = .search }
+                .onAppear { focusedField = .search }
         #endif
     }
 
@@ -118,13 +118,13 @@ internal struct ItemsWizardPage: View, WizardPage {
         VStack(spacing: Metrics.grid * 2) {
             TextField("Search items", text: $searchQuery)
                 .font(.title3)
-                #if os(tvOS)
+            #if os(tvOS)
                 .wizardFieldDecoration()
                 .focused($focusedField, equals: .search)
                 .prefersDefaultFocus(true, in: defaultFocusNamespace)
-                #else
+            #else
                 .textFieldStyle(.roundedBorder)
-                #endif
+            #endif
                 .accessibilityIdentifier("Items_SearchField")
 
             Picker("Filter", selection: $itemFilter) {
@@ -176,7 +176,7 @@ internal struct ItemsWizardPage: View, WizardPage {
         .background(
             Rectangle()
                 .fill(Palette.cardBackground.opacity(0.9))
-                .overlay(Rectangle().stroke(Palette.stroke, lineWidth: 1))
+                .overlay(Rectangle().stroke(Palette.stroke, lineWidth: 1)),
         )
     }
 
@@ -199,8 +199,8 @@ internal struct ItemsWizardPage: View, WizardPage {
                 .fill(Palette.cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: Metrics.rLg, style: .continuous)
-                        .stroke(Palette.stroke, lineWidth: 1)
-                )
+                        .stroke(Palette.stroke, lineWidth: 1),
+                ),
         )
     }
 
@@ -279,7 +279,7 @@ internal struct ItemsWizardPage: View, WizardPage {
             .fill(Palette.cardBackground)
             .overlay(
                 RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
-                    .stroke(Palette.stroke, lineWidth: 1)
+                    .stroke(Palette.stroke, lineWidth: 1),
             )
     }
 
@@ -288,25 +288,23 @@ internal struct ItemsWizardPage: View, WizardPage {
     private var filteredItems: [TierDraftItem] {
         let trimmed = searchQuery.trimmingCharacters(in: .whitespaces)
         return draft.items.filter { item in
-            let matchesSearch: Bool
-            if trimmed.isEmpty {
-                matchesSearch = true
+            let matchesSearch: Bool = if trimmed.isEmpty {
+                true
             } else {
-                matchesSearch = item.title.localizedCaseInsensitiveContains(trimmed)
+                item.title.localizedCaseInsensitiveContains(trimmed)
                     || item.itemId.localizedCaseInsensitiveContains(trimmed)
                     || item.slug.localizedCaseInsensitiveContains(trimmed)
             }
 
-            let matchesFilter: Bool
-            switch itemFilter {
+            let matchesFilter: Bool = switch itemFilter {
             case .all:
-                matchesFilter = true
+                true
             case .assigned:
-                matchesFilter = item.tier != nil
+                item.tier != nil
             case .unassigned:
-                matchesFilter = item.tier == nil
+                item.tier == nil
             case .hidden:
-                matchesFilter = item.hidden
+                item.hidden
             }
 
             return matchesSearch && matchesFilter
@@ -320,7 +318,9 @@ internal struct ItemsWizardPage: View, WizardPage {
     }
 
     private var currentItem: TierDraftItem? {
-        guard let id = selectedItemID else { return nil }
+        guard let id = selectedItemID else {
+            return nil
+        }
         return draft.items.first { $0.identifier == id }
     }
 }

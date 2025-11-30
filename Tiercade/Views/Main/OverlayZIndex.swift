@@ -11,7 +11,7 @@ import Foundation
 /// ProgressIndicatorView()
 ///     .zIndex(OverlayZIndex.progress)
 /// ```
-internal enum OverlayZIndex {
+enum OverlayZIndex {
     /// Toast messages (top-most, must be visible above all other UI)
     static let toast: Double = 60
 

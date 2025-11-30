@@ -1,11 +1,11 @@
 import Foundation
-import SwiftUI
-import SwiftData
 import os
+import SwiftData
+import SwiftUI
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     // MARK: - Persistence Helpers
 
     func persistProjectDraft(_ draft: TierProjectDraft) throws -> TierListEntity {
@@ -21,7 +21,7 @@ internal extension AppState {
                 entity: existing,
                 with: draft,
                 projectData: projectData,
-                timestamp: now
+                timestamp: now,
             )
             return existing
         }
@@ -37,7 +37,7 @@ internal extension AppState {
         entity: TierListEntity,
         with draft: TierProjectDraft,
         projectData: Data,
-        timestamp: Date
+        timestamp: Date,
     ) {
         entity.title = draft.title.isEmpty ? "Untitled Project" : draft.title
         entity.subtitle = draft.summary.isEmpty ? nil : draft.summary
@@ -60,8 +60,9 @@ internal extension AppState {
     private func createTierListEntity(
         from draft: TierProjectDraft,
         projectData: Data,
-        now: Date
-    ) -> TierListEntity {
+        now: Date,
+    )
+    -> TierListEntity {
         TierListEntity(
             identifier: draft.projectId,
             title: draft.title.isEmpty ? "Untitled Project" : draft.title,
@@ -78,7 +79,7 @@ internal extension AppState {
             iconSystemName: "square.and.pencil",
             lastOpenedAt: now,
             projectData: projectData,
-            tiers: []
+            tiers: [],
         )
     }
 
@@ -97,15 +98,16 @@ internal extension AppState {
     private func buildTierEntity(
         from tierDraft: TierDraftTier,
         index: Int,
-        listEntity: TierListEntity
-    ) -> TierEntity {
+        listEntity: TierListEntity,
+    )
+    -> TierEntity {
         let tierEntity = TierEntity(
             key: normalizedTierKey(tierDraft.tierId),
             displayName: tierDraft.label,
             colorHex: tierDraft.colorHex,
             order: index,
             isLocked: tierDraft.locked,
-            items: []
+            items: [],
         )
         tierEntity.list = listEntity
 
@@ -121,10 +123,13 @@ internal extension AppState {
     private func buildUnrankedTier(
         for draft: TierProjectDraft,
         order: Int,
-        listEntity: TierListEntity
-    ) -> TierEntity? {
+        listEntity: TierListEntity,
+    )
+    -> TierEntity? {
         let unassigned = draft.items.filter { $0.tier == nil }
-        guard !unassigned.isEmpty else { return nil }
+        guard !unassigned.isEmpty else {
+            return nil
+        }
 
         let unranked = TierEntity(
             key: "unranked",
@@ -132,7 +137,7 @@ internal extension AppState {
             colorHex: "#6B7280",
             order: order,
             isLocked: false,
-            items: []
+            items: [],
         )
         unranked.list = listEntity
 
@@ -146,7 +151,7 @@ internal extension AppState {
 
     private func fetchPersistedDraftEntity(for identifier: UUID) throws -> TierListEntity? {
         let descriptor = FetchDescriptor<TierListEntity>(
-            predicate: #Predicate { $0.identifier == identifier }
+            predicate: #Predicate { $0.identifier == identifier },
         )
         return try modelContext.fetch(descriptor).first
     }
@@ -157,22 +162,28 @@ internal extension AppState {
             itemID: draftItem.itemId,
             name: draftItem.title,
             seasonString: draftItem.attributes["season"].flatMap { value in
-                if case let .string(text) = value { return text }
+                if case let .string(text) = value {
+                    return text
+                }
                 return nil
             },
             seasonNumber: draftItem.attributes["seasonNumber"].flatMap { value in
-                if case let .number(number) = value { return Int(number) }
+                if case let .number(number) = value {
+                    return Int(number)
+                }
                 return nil
             },
             status: draftItem.attributes["status"].flatMap { value in
-                if case let .string(text) = value { return text }
+                if case let .string(text) = value {
+                    return text
+                }
                 return nil
             },
             details: draftItem.summary.isEmpty ? nil : draftItem.summary,
             imageUrl: media?.thumbUri,
             videoUrl: media?.uri,
             position: position,
-            tier: tier
+            tier: tier,
         )
         return entity
     }
@@ -204,7 +215,7 @@ internal extension AppState {
             settings: draft.settings,
             collab: draft.collaboration,
             audit: audit,
-            additional: draft.additional
+            additional: draft.additional,
         )
     }
 
@@ -220,7 +231,7 @@ internal extension AppState {
                 collapsed: tier.collapsed ? true : nil,
                 rules: tier.rules.isEmpty ? nil : tier.rules,
                 itemIds: itemIds,
-                additional: tier.additional.isEmpty ? nil : tier.additional
+                additional: tier.additional.isEmpty ? nil : tier.additional,
             )
         }
     }
@@ -242,7 +253,7 @@ internal extension AppState {
                 sources: item.sources.isEmpty ? nil : item.sources,
                 locale: item.locale.isEmpty ? nil : item.locale,
                 meta: item.meta,
-                additional: item.additional.isEmpty ? nil : item.additional
+                additional: item.additional.isEmpty ? nil : item.additional,
             )
             items[item.itemId] = projectItem
         }
@@ -260,7 +271,7 @@ internal extension AppState {
                 rating: override.rating,
                 media: media.isEmpty ? nil : media,
                 hidden: override.hidden ? true : nil,
-                additional: override.additional.isEmpty ? nil : override.additional
+                additional: override.additional.isEmpty ? nil : override.additional,
             )
         }
         return overrides
@@ -292,13 +303,14 @@ internal extension AppState {
             settings: settings,
             collab: nil,
             audit: audit,
-            additional: nil
+            additional: nil,
         )
     }
 
     private func buildProjectComponents(
-        sortedTiers: [TierEntity]
-    ) -> ([String: Project.Item], [Project.Tier]) {
+        sortedTiers: [TierEntity],
+    )
+    -> ([String: Project.Item], [Project.Tier]) {
         var itemMap: [String: Project.Item] = [:]
         var projectTiers: [Project.Tier] = []
 
@@ -315,7 +327,7 @@ internal extension AppState {
                 collapsed: nil,
                 rules: nil,
                 itemIds: identifiers,
-                additional: nil
+                additional: nil,
             )
             projectTiers.append(tier)
 
@@ -356,14 +368,15 @@ internal extension AppState {
             sources: nil,
             locale: nil,
             meta: nil,
-            additional: nil
+            additional: nil,
         )
     }
 
     private func buildProjectSettingsFromEntity(
         _ entity: TierListEntity,
-        projectTiers: [Project.Tier]
-    ) -> Project.Settings {
+        projectTiers: [Project.Tier],
+    )
+    -> Project.Settings {
         let hasUnranked = projectTiers.contains { $0.id.lowercased() == "unranked" }
         let themeSlug = entity.selectedThemeID.flatMap { TierThemeCatalog.theme(id: $0)?.slug }
 
@@ -374,19 +387,19 @@ internal extension AppState {
             showUnranked: hasUnranked,
             accessibility: [
                 "voiceOver": true,
-                "highContrast": false
-            ]
+                "highContrast": false,
+            ],
         )
     }
 
     private func determineStorageMode(source: TierListSource) -> String {
         switch source {
         case .bundled:
-            return "bundled"
+            "bundled"
         case .file:
-            return "file"
+            "file"
         case .authored:
-            return "local"
+            "local"
         }
     }
 
@@ -395,7 +408,7 @@ internal extension AppState {
             createdAt: entity.createdAt,
             updatedAt: entity.updatedAt,
             createdBy: nil,
-            updatedBy: nil
+            updatedBy: nil,
         )
     }
 
@@ -419,7 +432,7 @@ internal extension AppState {
             settings: settings,
             collab: nil,
             audit: audit,
-            additional: nil
+            additional: nil,
         )
     }
 
@@ -432,8 +445,9 @@ internal extension AppState {
     }
 
     private func buildProjectTiersAndItems(
-        orderedTiers: [String]
-    ) -> ([Project.Tier], [String: Project.Item]) {
+        orderedTiers: [String],
+    )
+    -> ([Project.Tier], [String: Project.Item]) {
         var projectTiers: [Project.Tier] = []
         var projectItems: [String: Project.Item] = [:]
 
@@ -442,7 +456,7 @@ internal extension AppState {
             let tier = buildProjectTierFromMemory(
                 tierId: tierId,
                 index: index,
-                items: resolvedItems
+                items: resolvedItems,
             )
             projectTiers.append(tier)
 
@@ -458,8 +472,9 @@ internal extension AppState {
     private func buildProjectTierFromMemory(
         tierId: String,
         index: Int,
-        items: [Item]
-    ) -> Project.Tier {
+        items: [Item],
+    )
+    -> Project.Tier {
         let label = tierLabels[tierId] ?? tierId
         let color = tierColors[tierId]
         let locked = lockedTiers.contains(tierId) ? true : nil
@@ -474,7 +489,7 @@ internal extension AppState {
             collapsed: nil,
             rules: nil,
             itemIds: identifiers,
-            additional: nil
+            additional: nil,
         )
     }
 
@@ -509,7 +524,7 @@ internal extension AppState {
             sources: nil,
             locale: nil,
             meta: nil,
-            additional: nil
+            additional: nil,
         )
     }
 
@@ -522,8 +537,8 @@ internal extension AppState {
             showUnranked: tiers["unranked"].map { !$0.isEmpty } ?? false,
             accessibility: [
                 "voiceOver": true,
-                "highContrast": false
-            ]
+                "highContrast": false,
+            ],
         )
     }
 
@@ -532,7 +547,7 @@ internal extension AppState {
             createdAt: Date(),
             updatedAt: Date(),
             createdBy: "local-user",
-            updatedBy: "local-user"
+            updatedBy: "local-user",
         )
     }
 
@@ -543,14 +558,18 @@ internal extension AppState {
     }
 }
 
-internal enum TierListCreatorPalette {
+// MARK: - TierListCreatorPalette
+
+enum TierListCreatorPalette {
     private static let colors: [String] = [
         "#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#007AFF", "#AF52DE",
-        "#FF2D55", "#5AC8FA", "#FF9F0A", "#FFD60A"
+        "#FF2D55", "#5AC8FA", "#FF9F0A", "#FFD60A",
     ]
 
     static func color(for index: Int) -> String {
-        guard index >= 0 else { return colors.first ?? "#FF3B30" }
+        guard index >= 0 else {
+            return colors.first ?? "#FF3B30"
+        }
         return colors[index % colors.count]
     }
 }

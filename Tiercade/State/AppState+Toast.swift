@@ -3,7 +3,7 @@ import SwiftUI
 import TiercadeCore
 
 @MainActor
-internal extension AppState {
+extension AppState {
     // MARK: - Toast System
 
     func showToast(type: ToastType, title: String, message: String? = nil, duration: TimeInterval = 3.0) {

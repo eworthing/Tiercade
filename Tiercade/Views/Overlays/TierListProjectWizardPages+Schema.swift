@@ -1,24 +1,24 @@
+import os
 import SwiftUI
 import TiercadeCore
-import os
 
 // MARK: - Schema Wizard Page
 
-internal struct SchemaWizardPage: View, WizardPage {
+struct SchemaWizardPage: View, WizardPage {
     @Bindable var appState: AppState
     @Bindable var draft: TierProjectDraft
     @State private var schemaFields: [SchemaFieldDefinition] = []
     @State private var showingAddField = false
     private let schemaAdditionalKey = "itemSchema"
 
-    internal let pageTitle = "Item Schema"
-    internal let pageDescription = "Define custom fields for your items"
+    let pageTitle = "Item Schema"
+    let pageDescription = "Define custom fields for your items"
 
     #if os(tvOS)
     @Namespace private var defaultFocusNamespace
     #endif
 
-    internal var body: some View {
+    var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Metrics.grid * 3) {
                 headerSection
@@ -85,8 +85,8 @@ internal struct SchemaWizardPage: View, WizardPage {
                                 .fill(Palette.cardBackground)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: Metrics.rLg, style: .continuous)
-                                        .stroke(Palette.stroke, lineWidth: 1)
-                                )
+                                        .stroke(Palette.stroke, lineWidth: 1),
+                                ),
                         )
                         .padding(.horizontal, Metrics.grid * 6)
                     } else {
@@ -113,16 +113,16 @@ internal struct SchemaWizardPage: View, WizardPage {
         .focusScope(defaultFocusNamespace)
         #else
         .sheet(isPresented: $showingAddField) {
-        AddSchemaFieldSheet(onAdd: { field in
-        schemaFields.append(field)
-        persistSchemaChange()
-        })
-        .presentationDetents([.large])
+            AddSchemaFieldSheet(onAdd: { field in
+                schemaFields.append(field)
+                persistSchemaChange()
+            })
+            .presentationDetents([.large])
         }
         #endif
         .onAppear {
-            loadSchema()
-        }
+                loadSchema()
+            }
     }
 
     private var headerSection: some View {
@@ -135,7 +135,7 @@ internal struct SchemaWizardPage: View, WizardPage {
                 """
                 Define what information each item should have. Examples include Year, Genre, Platform, \
                 Developer, or Publisher.
-                """
+                """,
             )
             .font(TypeScale.body)
             .foregroundStyle(Palette.textDim)
@@ -183,8 +183,8 @@ internal struct SchemaWizardPage: View, WizardPage {
                 .fill(Palette.cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
-                        .stroke(Palette.stroke, lineWidth: 1)
-                )
+                        .stroke(Palette.stroke, lineWidth: 1),
+                ),
         )
     }
 
@@ -244,8 +244,8 @@ internal struct SchemaWizardPage: View, WizardPage {
                 .fill(Palette.cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: Metrics.rMd, style: .continuous)
-                        .stroke(Palette.stroke, lineWidth: 1)
-                )
+                        .stroke(Palette.stroke, lineWidth: 1),
+                ),
         )
     }
 

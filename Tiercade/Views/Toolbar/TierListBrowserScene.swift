@@ -1,18 +1,14 @@
 import SwiftUI
 
-internal struct TierListBrowserScene: View {
+// MARK: - TierListBrowserScene
+
+struct TierListBrowserScene: View {
+
+    // MARK: Internal
+
     @Bindable var app: AppState
-    @FocusState private var focus: FocusTarget?
-    #if swift(>=6.0)
-    @Namespace private var glassNamespace
-    #endif
 
-    private let columns: [GridItem] = [
-        GridItem(.flexible(), spacing: 32),
-        GridItem(.flexible(), spacing: 32)
-    ]
-
-    internal var body: some View {
+    var body: some View {
         ZStack {
             // Background dimming (non-interactive)
             Color.black.opacity(0.65)
@@ -48,28 +44,87 @@ internal struct TierListBrowserScene: View {
             .frame(maxWidth: 1680, maxHeight: 920)
             .tvGlassRounded(44)
             #if swift(>=6.0)
-            .glassEffectID("tierListBrowser", in: glassNamespace)
+                .glassEffectID("tierListBrowser", in: glassNamespace)
             #endif
-            .overlay(
-                RoundedRectangle(cornerRadius: 40, style: .continuous)
-                    .stroke(Color.white.opacity(0.14), lineWidth: 1.1)
-            )
-            .shadow(color: .black.opacity(0.38), radius: 32, y: 18)
-            .accessibilityElement(children: .contain)
-            .accessibilityAddTraits(.isModal)
-            .defaultFocus($focus, defaultFocusTarget)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 40, style: .continuous)
+                        .stroke(Color.white.opacity(0.14), lineWidth: 1.1),
+                )
+                .shadow(color: .black.opacity(0.38), radius: 32, y: 18)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isModal)
+                .defaultFocus($focus, defaultFocusTarget)
             #if os(tvOS)
-            .focusSection()
+                .focusSection()
             #endif
-            .onAppear {
-                focus = defaultFocusTarget ?? .close
-            }
+                .onAppear {
+                    focus = defaultFocusTarget ?? .close
+                }
         }
         #if os(tvOS)
         .onExitCommand {
             app.dismissTierListBrowser()
         }
         #endif
+    }
+
+    // MARK: Fileprivate
+
+    fileprivate enum FocusTarget: Hashable {
+        case close
+        case card(String)
+        case edit(String)
+    }
+
+    // MARK: Private
+
+    @FocusState private var focus: FocusTarget?
+    #if swift(>=6.0)
+    @Namespace private var glassNamespace
+    #endif
+
+    private let columns: [GridItem] = [
+        GridItem(.flexible(), spacing: 32),
+        GridItem(.flexible(), spacing: 32),
+    ]
+
+    private var recentHandles: [TierListHandle] {
+        app.persistence.recentTierLists
+    }
+
+    private var bundledHandles: [TierListHandle] {
+        // Show all bundled projects, not just those not in recent
+        app.bundledProjects
+            .map(TierListHandle.init(bundled:))
+    }
+
+    private var containerVerticalPadding: CGFloat {
+        #if os(tvOS)
+        return TVMetrics.overlayPadding * 1.15
+        #else
+        return Metrics.grid * 5
+        #endif
+    }
+
+    private var containerHorizontalPadding: CGFloat {
+        #if os(tvOS)
+        return TVMetrics.overlayPadding * 1.2
+        #else
+        return Metrics.grid * 6
+        #endif
+    }
+
+    private var defaultFocusTarget: FocusTarget? {
+        if let active = app.persistence.activeTierList?.id {
+            return .card(active)
+        }
+        if let firstRecent = recentHandles.first?.id {
+            return .card(firstRecent)
+        }
+        if let firstBundled = bundledHandles.first?.id {
+            return .card(firstBundled)
+        }
+        return .close
     }
 
     private var header: some View {
@@ -111,7 +166,7 @@ internal struct TierListBrowserScene: View {
                     isActive: handle == app.persistence.activeTierList,
                     focusBinding: $focus,
                     openAction: { select(handle) },
-                    editAction: { edit(handle) }
+                    editAction: { edit(handle) },
                 )
             }
         }
@@ -130,61 +185,21 @@ internal struct TierListBrowserScene: View {
         }
     }
 
-    private var recentHandles: [TierListHandle] {
-        app.persistence.recentTierLists
-    }
-
-    private var bundledHandles: [TierListHandle] {
-        // Show all bundled projects, not just those not in recent
-        return app.bundledProjects
-            .map(TierListHandle.init(bundled:))
-    }
-
-    private var containerVerticalPadding: CGFloat {
-        #if os(tvOS)
-        return TVMetrics.overlayPadding * 1.15
-        #else
-        return Metrics.grid * 5
-        #endif
-    }
-
-    private var containerHorizontalPadding: CGFloat {
-        #if os(tvOS)
-        return TVMetrics.overlayPadding * 1.2
-        #else
-        return Metrics.grid * 6
-        #endif
-    }
-
-    private var defaultFocusTarget: FocusTarget? {
-        if let active = app.persistence.activeTierList?.id {
-            return .card(active)
-        }
-        if let firstRecent = recentHandles.first?.id {
-            return .card(firstRecent)
-        }
-        if let firstBundled = bundledHandles.first?.id {
-            return .card(firstBundled)
-        }
-        return .close
-    }
-
-    fileprivate enum FocusTarget: Hashable {
-        case close
-        case card(String)
-        case edit(String)
-    }
 }
 
-private struct TierListCard: View {
-    internal let handle: TierListHandle
-    internal let isActive: Bool
-    internal let focusBinding: FocusState<TierListBrowserScene.FocusTarget?>.Binding
-    internal let openAction: () -> Void
-    internal let editAction: () -> Void
-    @Environment(AppState.self) private var app: AppState
+// MARK: - TierListCard
 
-    internal var body: some View {
+private struct TierListCard: View {
+
+    // MARK: Internal
+
+    let handle: TierListHandle
+    let isActive: Bool
+    let focusBinding: FocusState<TierListBrowserScene.FocusTarget?>.Binding
+    let openAction: () -> Void
+    let editAction: () -> Void
+
+    var body: some View {
         tvGlassContainer(spacing: 18) {
             VStack(alignment: .leading, spacing: 16) {
                 headerRow
@@ -205,10 +220,44 @@ private struct TierListCard: View {
         .tvGlassRounded(28)
         .overlay(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(isActive ? Palette.brand : Color.white.opacity(0.14), lineWidth: isActive ? 2.2 : 1.0)
+                .stroke(isActive ? Palette.brand : Color.white.opacity(0.14), lineWidth: isActive ? 2.2 : 1.0),
         )
         .shadow(color: isActive ? Palette.brand.opacity(0.32) : .clear, radius: isActive ? 14 : 0, y: isActive ? 8 : 0)
         .accessibilityIdentifier("TierListCard_\(handle.id)")
+    }
+
+    // MARK: Private
+
+    @Environment(AppState.self) private var app: AppState
+
+    private var iconName: String {
+        switch handle.source {
+        case .bundled:
+            handle.iconSystemName ?? "square.grid.2x2"
+        case .file:
+            handle.iconSystemName ?? "externaldrive"
+        case .authored:
+            handle.iconSystemName ?? "square.and.pencil"
+        }
+    }
+
+    private var metadataDescription: String {
+        switch handle.source {
+        case .bundled:
+            "Bundled tier list • Offline ready"
+        case .file:
+            "Local save file • Stored on this device"
+        case .authored:
+            "Authored in Tiercade • SwiftData"
+        }
+    }
+
+    private var cardIconBackground: some ShapeStyle {
+        LinearGradient(
+            colors: [Palette.brand.opacity(0.18), Palette.brand.opacity(0.05)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing,
+        )
     }
 
     private var headerRow: some View {
@@ -249,37 +298,37 @@ private struct TierListCard: View {
         HStack(spacing: 12) {
             Button(action: openAction) {
                 Label("Open", systemImage: "list.bullet.rectangle")
-                    #if os(tvOS)
+                #if os(tvOS)
                     .labelStyle(.iconOnly)
-                    #else
+                #else
                     .labelStyle(.titleAndIcon)
-                    #endif
+                #endif
                     .font(.callout.weight(.semibold))
             }
             .focused(focusBinding, equals: .card(handle.id))
             #if os(tvOS)
-            .buttonStyle(.glassProminent)
+                .buttonStyle(.glassProminent)
             #else
-            .buttonStyle(.borderedProminent)
+                .buttonStyle(.borderedProminent)
             #endif
-            .accessibilityIdentifier("TierListCard_Open_\(handle.id)")
+                .accessibilityIdentifier("TierListCard_Open_\(handle.id)")
 
             Button(action: editAction) {
                 Label("Edit", systemImage: "square.and.pencil")
-                    #if os(tvOS)
+                #if os(tvOS)
                     .labelStyle(.iconOnly)
-                    #else
+                #else
                     .labelStyle(.titleAndIcon)
-                    #endif
+                #endif
                     .font(.callout)
             }
             .focused(focusBinding, equals: .edit(handle.id))
             #if os(tvOS)
-            .buttonStyle(.glass)
+                .buttonStyle(.glass)
             #else
-            .buttonStyle(.bordered)
+                .buttonStyle(.bordered)
             #endif
-            .accessibilityIdentifier("TierListCard_Edit_\(handle.id)")
+                .accessibilityIdentifier("TierListCard_Edit_\(handle.id)")
 
             Spacer(minLength: 0)
         }
@@ -288,33 +337,4 @@ private struct TierListCard: View {
         #endif
     }
 
-    private var iconName: String {
-        switch handle.source {
-        case .bundled:
-            return handle.iconSystemName ?? "square.grid.2x2"
-        case .file:
-            return handle.iconSystemName ?? "externaldrive"
-        case .authored:
-            return handle.iconSystemName ?? "square.and.pencil"
-        }
-    }
-
-    private var metadataDescription: String {
-        switch handle.source {
-        case .bundled:
-            return "Bundled tier list • Offline ready"
-        case .file:
-            return "Local save file • Stored on this device"
-        case .authored:
-            return "Authored in Tiercade • SwiftData"
-        }
-    }
-
-    private var cardIconBackground: some ShapeStyle {
-        LinearGradient(
-            colors: [Palette.brand.opacity(0.18), Palette.brand.opacity(0.05)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
 }

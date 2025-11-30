@@ -1,12 +1,14 @@
-import SwiftUI
 import os
+import SwiftUI
 import TiercadeCore
+
+// MARK: - HeadToHeadFocusAnchor
 
 // swiftlint:disable type_body_length
 // HeadToHeadOverlay: Complex overlay with platform-specific presentation, focus management, and adaptive layouts
 // Type body length exception justified - splitting would fragment tightly-coupled presentation logic
 
-internal enum HeadToHeadFocusAnchor: Hashable {
+enum HeadToHeadFocusAnchor: Hashable {
     case primary
     case pass
     case secondary
@@ -14,7 +16,9 @@ internal enum HeadToHeadFocusAnchor: Hashable {
     case cancel
 }
 
-internal struct HeadToHeadOverlay: View {
+// MARK: - HeadToHeadOverlay
+
+struct HeadToHeadOverlay: View {
     @Bindable var app: AppState
     @Namespace private var glassNamespace
     @FocusState private var focusAnchor: HeadToHeadFocusAnchor?
@@ -31,16 +35,17 @@ internal struct HeadToHeadOverlay: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     // MARK: - Scaled Dimensions
+
     @ScaledMetric(relativeTo: .title3) private var progressDialSize = ScaledDimensions.progressDialSize
     @ScaledMetric(relativeTo: .body) private var buttonMinWidthSmall = ScaledDimensions.buttonMinWidthSmall
     @ScaledMetric(relativeTo: .body) private var buttonMinWidthLarge = ScaledDimensions.buttonMinWidthLarge
 
-    internal var body: some View {
+    var body: some View {
         ZStack {
             LinearGradient(
                 colors: [Palette.bg.opacity(0.65), Palette.surfHi.opacity(0.85)],
                 startPoint: .topLeading,
-                endPoint: .bottomTrailing
+                endPoint: .bottomTrailing,
             )
             .ignoresSafeArea()
             .accessibilityHidden(true)
@@ -53,7 +58,7 @@ internal struct HeadToHeadOverlay: View {
                 #else
                 let layoutSize = overlayLayoutSize(
                     availableSize: proxy.size,
-                    safeAreaInsets: proxy.safeAreaInsets
+                    safeAreaInsets: proxy.safeAreaInsets,
                 )
 
                 overlayContent(maxWidth: layoutSize.width, maxHeight: layoutSize.height)
@@ -73,16 +78,16 @@ internal struct HeadToHeadOverlay: View {
             .headToHeadFocusModifiers(
                 focusAnchor: $focusAnchor,
                 defaultFocus: defaultFocus,
-                onAppear: handleAppear
+                onAppear: handleAppear,
             )
             .trackHeadToHeadPairs(
                 app: app,
                 onSync: synchronizeFocus,
-                onDisappear: {}
+                onDisappear: {},
             )
             .headToHeadTVModifiers(
                 app: app,
-                handleMove: handleMoveCommand
+                handleMove: handleMoveCommand,
             )
         #else
         return content
@@ -91,18 +96,18 @@ internal struct HeadToHeadOverlay: View {
             .headToHeadFocusModifiers(
                 focusAnchor: $focusAnchor,
                 defaultFocus: defaultFocus,
-                onAppear: handleAppear
+                onAppear: handleAppear,
             )
             .trackHeadToHeadPairs(
                 app: app,
                 onSync: synchronizeFocus,
-                onDisappear: { overlayHasFocus = false }
+                onDisappear: { overlayHasFocus = false },
             )
             .headToHeadMacOSModifiers(
                 overlayHasFocus: $overlayHasFocus,
                 handleInput: handleDirectionalInput,
                 handleAction: handlePrimaryAction,
-                handleCancel: { app.cancelHeadToHead() }
+                handleCancel: { app.cancelHeadToHead() },
             )
         #endif
     }
@@ -151,8 +156,9 @@ internal struct HeadToHeadOverlay: View {
 
     private func overlayLayoutSize(
         availableSize: CGSize,
-        safeAreaInsets: EdgeInsets
-    ) -> CGSize {
+        safeAreaInsets: EdgeInsets,
+    )
+    -> CGSize {
         let usableWidth = max(availableSize.width - safeAreaInsets.leading - safeAreaInsets.trailing, 0)
         let usableHeight = max(availableSize.height - safeAreaInsets.top - safeAreaInsets.bottom, 0)
 
@@ -268,17 +274,17 @@ internal struct HeadToHeadOverlay: View {
                     HeadToHeadProgressDial(
                         progress: app.headToHead.overallProgress,
                         label: progressLabel,
-                        accentColor: Palette.tierColor("S", from: app.tierColors)
+                        accentColor: Palette.tierColor("S", from: app.tierColors),
                     )
-                        .frame(width: progressDialSize, height: progressDialSize)
-                        .accessibilityIdentifier("HeadToHeadOverlay_Progress")
+                    .frame(width: progressDialSize, height: progressDialSize)
+                    .accessibilityIdentifier("HeadToHeadOverlay_Progress")
 
                     HStack(spacing: Metrics.grid * 2.5) {
                         ForEach(metricTiles, id: \.title) { metric in
                             HeadToHeadMetricTile(
                                 title: metric.title,
                                 value: metric.value,
-                                footnote: metric.caption
+                                footnote: metric.caption,
                             )
                         }
                     }
@@ -288,17 +294,17 @@ internal struct HeadToHeadOverlay: View {
                     HeadToHeadProgressDial(
                         progress: app.headToHead.overallProgress,
                         label: progressLabel,
-                        accentColor: Palette.tierColor("S", from: app.tierColors)
+                        accentColor: Palette.tierColor("S", from: app.tierColors),
                     )
-                        .frame(width: progressDialSize, height: progressDialSize)
-                        .accessibilityIdentifier("HeadToHeadOverlay_Progress")
+                    .frame(width: progressDialSize, height: progressDialSize)
+                    .accessibilityIdentifier("HeadToHeadOverlay_Progress")
 
                     HStack(spacing: Metrics.grid * 2.5) {
                         ForEach(metricTiles, id: \.title) { metric in
                             HeadToHeadMetricTile(
                                 title: metric.title,
                                 value: metric.value,
-                                footnote: metric.caption
+                                footnote: metric.caption,
                             )
                         }
                     }
@@ -313,18 +319,18 @@ internal struct HeadToHeadOverlay: View {
             HeadToHeadMetric(
                 title: "Completed",
                 value: "\(app.headToHead.totalDecidedComparisons)",
-                caption: nil
+                caption: nil,
             ),
             HeadToHeadMetric(
                 title: "Remaining",
                 value: "\(app.headToHead.totalRemainingComparisons)",
-                caption: nil
+                caption: nil,
             ),
             HeadToHeadMetric(
                 title: "Skipped",
                 value: "\(app.headToHead.skippedCount)",
-                caption: nil
-            )
+                caption: nil,
+            ),
         ]
     }
 
@@ -382,12 +388,12 @@ internal struct HeadToHeadOverlay: View {
             .frame(maxWidth: .infinity, alignment: .center)
             .accessibilityIdentifier("HeadToHeadOverlay_Comparison")
             #if DEBUG
-            .onAppear {
-                let modeStr = mode == .wideRow ? "wideRow" : "stacked"
-                Logger.headToHead.debug(
-                    "comparison width=\(width) mode=\(modeStr) min=\(minimumComparisonWidth())"
-                )
-            }
+                .onAppear {
+                    let modeStr = mode == .wideRow ? "wideRow" : "stacked"
+                    Logger.headToHead.debug(
+                        "comparison width=\(width) mode=\(modeStr) min=\(minimumComparisonWidth())",
+                    )
+                }
             #endif
         }
         .frame(minHeight: 0)
@@ -400,7 +406,7 @@ internal struct HeadToHeadOverlay: View {
             accentColor: Palette.brand,
             alignment: .leading,
             action: { app.voteHeadToHead(winner: pair.0) },
-            compact: compact
+            compact: compact,
         )
         .focused($focusAnchor, equals: .primary)
         .accessibilityIdentifier("HeadToHeadOverlay_Primary")
@@ -410,7 +416,7 @@ internal struct HeadToHeadOverlay: View {
             accentColor: Palette.tierColor("S", from: app.tierColors),
             alignment: .trailing,
             action: { app.voteHeadToHead(winner: pair.1) },
-            compact: compact
+            compact: compact,
         )
         .focused($focusAnchor, equals: .secondary)
         .accessibilityIdentifier("HeadToHeadOverlay_Secondary")
@@ -428,7 +434,7 @@ internal struct HeadToHeadOverlay: View {
             canSkip: app.headToHead.currentPair != nil,
             onCancel: { app.cancelHeadToHead() },
             onSkip: { app.skipCurrentHeadToHeadPair() },
-            onFinish: { app.finishHeadToHead() }
+            onFinish: { app.finishHeadToHead() },
         )
     }
 
@@ -473,8 +479,12 @@ internal struct HeadToHeadOverlay: View {
         // Let tvOS manage horizontal focus so HStack navigation feels natural.
         // We only customize vertical moves to steer between the cards and the
         // bottom action row, which the default engine can't infer from layout.
-        guard direction == .up || direction == .down else { return }
-        guard let mapped = DirectionalMove(moveCommand: direction) else { return }
+        guard direction == .up || direction == .down else {
+            return
+        }
+        guard let mapped = DirectionalMove(moveCommand: direction) else {
+            return
+        }
         handleDirectionalInput(mapped)
     }
     #endif
@@ -483,74 +493,81 @@ internal struct HeadToHeadOverlay: View {
         #if !os(tvOS)
         overlayHasFocus = true
         #endif
-        guard let current = focusAnchor else { return }
-        guard let next = nextFocusAnchor(from: current, direction: move) else { return }
+        guard let current = focusAnchor else {
+            return
+        }
+        guard let next = nextFocusAnchor(from: current, direction: move) else {
+            return
+        }
         focusAnchor = next
     }
 
     private func nextFocusAnchor(
         from current: HeadToHeadFocusAnchor,
-        direction: DirectionalMove
-    ) -> HeadToHeadFocusAnchor? {
+        direction: DirectionalMove,
+    )
+    -> HeadToHeadFocusAnchor? {
         switch direction {
-        case .left: return moveLeft(from: current)
-        case .right: return moveRight(from: current)
-        case .up: return moveUp(from: current)
-        case .down: return moveDown(from: current)
+        case .left: moveLeft(from: current)
+        case .right: moveRight(from: current)
+        case .up: moveUp(from: current)
+        case .down: moveDown(from: current)
         }
     }
 
     private func moveLeft(from current: HeadToHeadFocusAnchor) -> HeadToHeadFocusAnchor? {
         switch current {
         case .secondary:
-            return .primary
+            .primary
         case .commit:
             // When a pair is active, move toward the middle Skip button.
             // Otherwise, step to the Cancel action.
-            return app.headToHead.currentPair != nil ? .pass : .cancel
+            app.headToHead.currentPair != nil ? .pass : .cancel
         case .pass:
-            return .cancel
-        default: return nil
+            .cancel
+        default: nil
         }
     }
 
     private func moveRight(from current: HeadToHeadFocusAnchor) -> HeadToHeadFocusAnchor? {
         switch current {
         case .primary:
-            return .secondary
+            .secondary
         case .cancel:
             // With an active pair, move into the middle Skip action.
             // After completion, skip directly to Finish.
-            return app.headToHead.currentPair != nil ? .pass : .commit
+            app.headToHead.currentPair != nil ? .pass : .commit
         case .pass:
-            return .commit
-        default: return nil
+            .commit
+        default: nil
         }
     }
 
     private func moveUp(from current: HeadToHeadFocusAnchor) -> HeadToHeadFocusAnchor? {
         switch current {
-        case .cancel, .pass:
+        case .cancel,
+             .pass:
             // Move back to the primary card when comparisons are active.
-            return app.headToHead.currentPair != nil ? .primary : nil
+            app.headToHead.currentPair != nil ? .primary : nil
         case .commit:
             // The positive action lines up under the secondary card.
-            return app.headToHead.currentPair != nil ? .secondary : nil
+            app.headToHead.currentPair != nil ? .secondary : nil
         default:
-            return nil
+            nil
         }
     }
 
     private func moveDown(from current: HeadToHeadFocusAnchor) -> HeadToHeadFocusAnchor? {
         switch current {
-        case .primary, .secondary:
+        case .primary,
+             .secondary:
             // First vertical step from a card goes to Skip when a pair exists,
             // or directly to Finish when we're in the completion state.
-            return app.headToHead.currentPair != nil ? .pass : .commit
+            app.headToHead.currentPair != nil ? .pass : .commit
         case .pass:
-            return .commit
+            .commit
         default:
-            return nil
+            nil
         }
     }
 
@@ -575,7 +592,7 @@ internal struct HeadToHeadOverlay: View {
     }
 }
 
-// MARK: - Previews
+// MARK: - HeadToHeadOverlayPreview
 
 @MainActor
 private struct HeadToHeadOverlayPreview: View {
@@ -593,4 +610,5 @@ private struct HeadToHeadOverlayPreview: View {
 #Preview("Head-to-Head Overlay") {
     HeadToHeadOverlayPreview()
 }
+
 // swiftlint:enable type_body_length

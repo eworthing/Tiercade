@@ -1,10 +1,33 @@
 import Foundation
-import SwiftUI
-import SwiftData
 import os
+import SwiftData
+import SwiftUI
 import TiercadeCore
 
+// MARK: - CodableTheme
+
 private struct CodableTheme: Codable {
+
+    // MARK: Lifecycle
+
+    init(theme: TierTheme) {
+        self.id = theme.id
+        self.slug = theme.slug
+        self.name = theme.displayName
+        self.description = theme.shortDescription
+        self.tiers = theme.tiers.map { tier in
+            CodableTier(
+                id: tier.id,
+                index: tier.index,
+                name: tier.name,
+                colorHex: tier.colorHex,
+                isUnranked: tier.isUnranked,
+            )
+        }
+    }
+
+    // MARK: Internal
+
     struct CodableTier: Codable {
         let id: UUID
         let index: Int
@@ -19,22 +42,6 @@ private struct CodableTheme: Codable {
     let description: String
     let tiers: [CodableTier]
 
-    internal init(theme: TierTheme) {
-        id = theme.id
-        slug = theme.slug
-        name = theme.displayName
-        description = theme.shortDescription
-        tiers = theme.tiers.map { tier in
-            CodableTier(
-                id: tier.id,
-                index: tier.index,
-                name: tier.name,
-                colorHex: tier.colorHex,
-                isUnranked: tier.isUnranked
-            )
-        }
-    }
-
     func toTheme() -> TierTheme {
         let tierModels = tiers.map { tier in
             TierTheme.Tier(
@@ -42,7 +49,7 @@ private struct CodableTheme: Codable {
                 index: tier.index,
                 name: tier.name,
                 colorHex: tier.colorHex,
-                isUnranked: tier.isUnranked
+                isUnranked: tier.isUnranked,
             )
         }
 
@@ -51,12 +58,12 @@ private struct CodableTheme: Codable {
             slug: slug,
             displayName: name,
             shortDescription: description,
-            tiers: tierModels
+            tiers: tierModels,
         )
     }
 }
 
-internal extension AppState {
+extension AppState {
     // MARK: - SwiftData-backed persistence
 
     func save() throws(PersistenceError) {
@@ -77,12 +84,16 @@ internal extension AppState {
     }
 
     func autoSave() throws(PersistenceError) {
-        guard persistence.hasUnsavedChanges else { return }
+        guard persistence.hasUnsavedChanges else {
+            return
+        }
         try save()
     }
 
     func autoSaveAsync() async {
-        guard persistence.hasUnsavedChanges else { return }
+        guard persistence.hasUnsavedChanges else {
+            return
+        }
         try? save()
     }
 
@@ -105,7 +116,7 @@ internal extension AppState {
         do {
             let artifacts = try buildProjectExportArtifacts(
                 group: "All",
-                themeName: theme.selectedTheme.displayName
+                themeName: theme.selectedTheme.displayName,
             )
             let destination = try fileURLForExport(named: sanitizedName)
             try writeProjectBundle(artifacts, to: destination)
@@ -131,7 +142,7 @@ internal extension AppState {
                 project,
                 action: "Load File",
                 fileName: fileName,
-                undoSnapshot: snapshot
+                undoSnapshot: snapshot,
             )
             showSuccessToast("File Loaded", message: "Loaded \(fileName).tierproj {file}")
             persistCurrentStateToStore()
@@ -185,7 +196,7 @@ internal extension AppState {
         do {
             let descriptor = FetchDescriptor<TierListEntity>(
                 predicate: #Predicate { $0.isActive == true },
-                sortBy: [SortDescriptor(\TierListEntity.updatedAt, order: .reverse)]
+                sortBy: [SortDescriptor(\TierListEntity.updatedAt, order: .reverse)],
             )
 
             if let entity = try modelContext.fetch(descriptor).first {
@@ -194,7 +205,7 @@ internal extension AppState {
             }
 
             let anyDescriptor = FetchDescriptor<TierListEntity>(
-                sortBy: [SortDescriptor(\TierListEntity.updatedAt, order: .reverse)]
+                sortBy: [SortDescriptor(\TierListEntity.updatedAt, order: .reverse)],
             )
             let entity = try modelContext.fetch(anyDescriptor).first
             if let entity {
@@ -218,7 +229,7 @@ internal extension AppState {
             cardDensityRaw: cardDensityPreference.rawValue,
             selectedThemeID: theme.selectedThemeID,
             customThemesData: encodedCustomThemesData(),
-            globalSortModeData: encodedGlobalSortMode()
+            globalSortModeData: encodedGlobalSortMode(),
         )
         modelContext.insert(newEntity)
         persistence.activeTierListEntity = newEntity
@@ -256,7 +267,7 @@ internal extension AppState {
                     displayName: displayName,
                     colorHex: colorHex,
                     order: key == "unranked" ? allTierKeys.count : index,
-                    isLocked: isLocked
+                    isLocked: isLocked,
                 )
                 tierEntity.list = entity
                 entity.tiers.append(tierEntity)
@@ -300,7 +311,7 @@ internal extension AppState {
                     imageUrl: item.imageUrl,
                     videoUrl: item.videoUrl,
                     position: position,
-                    tier: tierEntity
+                    tier: tierEntity,
                 )
                 tierEntity.items.append(newEntity)
             }
@@ -361,7 +372,9 @@ internal extension AppState {
     }
 
     private func decodeCustomThemes(from data: Data?) -> [CodableTheme] {
-        guard let data else { return [] }
+        guard let data else {
+            return []
+        }
         return (try? JSONDecoder().decode([CodableTheme].self, from: data)) ?? []
     }
 
@@ -374,35 +387,37 @@ internal extension AppState {
             status: entity.status,
             description: entity.details,
             imageUrl: entity.imageUrl,
-            videoUrl: entity.videoUrl
+            videoUrl: entity.videoUrl,
         )
     }
 
     // MARK: - Theme & preference restoration
 
     private func restoreTheme(themeID: UUID?) {
-        if let themeID,
-           let foundTheme = self.theme.theme(with: themeID) {
-            self.theme.selectedThemeID = themeID
-            self.theme.selectedTheme = foundTheme
+        if
+            let themeID,
+            let foundTheme = theme.theme(with: themeID)
+        {
+            theme.selectedThemeID = themeID
+            theme.selectedTheme = foundTheme
             return
         }
 
         let fallback = TierThemeCatalog.defaultTheme
-        self.theme.selectedTheme = fallback
-        self.theme.selectedThemeID = fallback.id
+        theme.selectedTheme = fallback
+        theme.selectedThemeID = fallback.id
     }
 
     private func restoreCustomThemes(_ codableThemes: [CodableTheme]) {
         let restored = codableThemes.map { $0.toTheme() }
-        self.theme.customThemes = restored.sorted {
+        theme.customThemes = restored.sorted {
             $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
         }
-        self.theme.customThemeIDs = Set(restored.map(\TierTheme.id))
+        theme.customThemeIDs = Set(restored.map(\TierTheme.id))
     }
 
     func encodedCustomThemesData() -> Data? {
-        try? JSONEncoder().encode(self.theme.customThemes.map(CodableTheme.init))
+        try? JSONEncoder().encode(theme.customThemes.map(CodableTheme.init))
     }
 
     func encodedGlobalSortMode() -> Data? {

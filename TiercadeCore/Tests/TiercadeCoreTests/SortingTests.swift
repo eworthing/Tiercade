@@ -1,5 +1,5 @@
-import Testing
 import Foundation
+import Testing
 @testable import TiercadeCore
 
 @Suite("Sorting Tests")
@@ -12,8 +12,8 @@ struct SortingTests {
         let items = [
             Item(id: "3", name: "Zebra"),
             Item(id: "1", name: "Apple"),
-            Item(id: "2", name: "banana"),  // Test case-insensitive
-            Item(id: "4", name: "cherry")
+            Item(id: "2", name: "banana"), // Test case-insensitive
+            Item(id: "4", name: "cherry"),
         ]
 
         let sorted = Sorting.sortItems(items, by: .alphabetical(ascending: true))
@@ -26,7 +26,7 @@ struct SortingTests {
         let items = [
             Item(id: "1", name: "Apple"),
             Item(id: "2", name: "Banana"),
-            Item(id: "3", name: "Cherry")
+            Item(id: "3", name: "Cherry"),
         ]
 
         let sorted = Sorting.sortItems(items, by: .alphabetical(ascending: false))
@@ -39,15 +39,15 @@ struct SortingTests {
         let items = [
             Item(id: "z-item", name: nil),
             Item(id: "a-item", name: "Apple"),
-            Item(id: "m-item", name: nil)
+            Item(id: "m-item", name: nil),
         ]
 
         let sorted = Sorting.sortItems(items, by: .alphabetical(ascending: true))
 
         // Items with names sort by name, items without names sort by ID
-        #expect(sorted[0].id == "a-item")  // "Apple" comes first
-        #expect(sorted[1].id == "m-item")  // "m-item" ID
-        #expect(sorted[2].id == "z-item")  // "z-item" ID
+        #expect(sorted[0].id == "a-item") // "Apple" comes first
+        #expect(sorted[1].id == "m-item") // "m-item" ID
+        #expect(sorted[2].id == "z-item") // "z-item" ID
     }
 
     @Test("Alphabetical sort is stable (preserves relative order for equal elements)")
@@ -55,7 +55,7 @@ struct SortingTests {
         let items = [
             Item(id: "first", name: "Apple"),
             Item(id: "second", name: "Apple"),
-            Item(id: "third", name: "Apple")
+            Item(id: "third", name: "Apple"),
         ]
 
         let sorted = Sorting.sortItems(items, by: .alphabetical(ascending: true))
@@ -71,7 +71,7 @@ struct SortingTests {
         let items = [
             Item(id: "3", seasonNumber: 5),
             Item(id: "1", seasonNumber: 1),
-            Item(id: "2", seasonNumber: 3)
+            Item(id: "2", seasonNumber: 3),
         ]
 
         let sorted = Sorting.sortItems(items, by: .byAttribute(key: "seasonNumber", ascending: true, type: .number))
@@ -84,7 +84,7 @@ struct SortingTests {
         let items = [
             Item(id: "1", seasonNumber: 1),
             Item(id: "2", seasonNumber: 3),
-            Item(id: "3", seasonNumber: 5)
+            Item(id: "3", seasonNumber: 5),
         ]
 
         let sorted = Sorting.sortItems(items, by: .byAttribute(key: "seasonNumber", ascending: false, type: .number))
@@ -98,7 +98,7 @@ struct SortingTests {
             Item(id: "3", seasonNumber: 5),
             Item(id: "nil1", name: "No Season 1", seasonNumber: nil),
             Item(id: "1", seasonNumber: 1),
-            Item(id: "nil2", name: "No Season 2", seasonNumber: nil)
+            Item(id: "nil2", name: "No Season 2", seasonNumber: nil),
         ]
 
         let sorted = Sorting.sortItems(items, by: .byAttribute(key: "seasonNumber", ascending: true, type: .number))
@@ -115,7 +115,7 @@ struct SortingTests {
         let items = [
             Item(id: "second", name: "Beta", seasonNumber: 1),
             Item(id: "first", name: "Alpha", seasonNumber: 1),
-            Item(id: "third", name: "Gamma", seasonNumber: 1)
+            Item(id: "third", name: "Gamma", seasonNumber: 1),
         ]
 
         let sorted = Sorting.sortItems(items, by: .byAttribute(key: "seasonNumber", ascending: true, type: .number))
@@ -131,7 +131,7 @@ struct SortingTests {
         let items = [
             Item(id: "1", status: "Watching"),
             Item(id: "2", status: "Completed"),
-            Item(id: "3", status: "Plan to Watch")
+            Item(id: "3", status: "Plan to Watch"),
         ]
 
         let sorted = Sorting.sortItems(items, by: .byAttribute(key: "status", ascending: true, type: .string))
@@ -144,7 +144,7 @@ struct SortingTests {
         let items = [
             Item(id: "2", name: "Item B", status: "Active"),
             Item(id: "3", name: "Item C", status: nil),
-            Item(id: "1", name: "Item A", status: "Inactive")
+            Item(id: "1", name: "Item A", status: "Inactive"),
         ]
 
         let sorted = Sorting.sortItems(items, by: .byAttribute(key: "status", ascending: true, type: .string))
@@ -162,7 +162,7 @@ struct SortingTests {
         let items = [
             Item(id: "3"),
             Item(id: "1"),
-            Item(id: "2")
+            Item(id: "2"),
         ]
 
         let sorted = Sorting.sortItems(items, by: .custom)
@@ -178,12 +178,12 @@ struct SortingTests {
             "S": [
                 Item(id: "1", name: "Item 1", status: "Active"),
                 Item(id: "2", name: "Item 2", status: "Completed"),
-                Item(id: "3", name: "Item 3", status: "Active")
+                Item(id: "3", name: "Item 3", status: "Active"),
             ],
             "A": [
                 Item(id: "4", name: "Item 4", status: "Inactive"),
-                Item(id: "5", name: "Item 5")  // Missing status
-            ]
+                Item(id: "5", name: "Item 5"), // Missing status
+            ],
         ]
 
         let discovered = Sorting.discoverSortableAttributes(in: items)
@@ -200,15 +200,15 @@ struct SortingTests {
             "S": [
                 Item(id: "1", name: "Item 1", status: "Active"),
                 Item(id: "2", name: "Item 2", status: "Active"),
-                Item(id: "3", name: "Item 3"),  // No status
-                Item(id: "4", name: "Item 4"),  // No status
-                Item(id: "5", name: "Item 5"),  // No status
-                Item(id: "6", name: "Item 6"),  // No status
-                Item(id: "7", name: "Item 7"),  // No status
-                Item(id: "8", name: "Item 8"),  // No status
-                Item(id: "9", name: "Item 9"),  // No status
-                Item(id: "10", name: "Item 10")  // No status
-            ]
+                Item(id: "3", name: "Item 3"), // No status
+                Item(id: "4", name: "Item 4"), // No status
+                Item(id: "5", name: "Item 5"), // No status
+                Item(id: "6", name: "Item 6"), // No status
+                Item(id: "7", name: "Item 7"), // No status
+                Item(id: "8", name: "Item 8"), // No status
+                Item(id: "9", name: "Item 9"), // No status
+                Item(id: "10", name: "Item 10"), // No status
+            ],
         ]
 
         let discovered = Sorting.discoverSortableAttributes(in: items)
@@ -232,8 +232,8 @@ struct SortingTests {
             "S": [
                 Item(id: "1", name: "A", status: "Active", description: "First"),
                 Item(id: "2", name: "B", status: "Inactive", description: "Second"),
-                Item(id: "3", name: "C", status: "Pending", description: "Third")
-            ]
+                Item(id: "3", name: "C", status: "Pending", description: "Third"),
+            ],
         ]
 
         let discovered = Sorting.discoverSortableAttributes(in: items)
@@ -268,7 +268,8 @@ struct SortingTests {
         #expect(GlobalSortMode.alphabetical(ascending: true).displayName == "A → Z")
         #expect(GlobalSortMode.alphabetical(ascending: false).displayName == "Z → A")
         #expect(GlobalSortMode.byAttribute(key: "status", ascending: true, type: .string).displayName == "Status ↑")
-        #expect(GlobalSortMode.byAttribute(key: "description", ascending: false, type: .string).displayName == "Description ↓")
+        #expect(GlobalSortMode.byAttribute(key: "description", ascending: false, type: .string)
+            .displayName == "Description ↓")
     }
 
     @Test("GlobalSortMode isCustom property returns correct boolean")
