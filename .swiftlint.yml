@@ -178,6 +178,11 @@ custom_rules:
       - ".*Tests.*"
       - ".*AppleIntelligence.*"
       - ".*Debug.*"
+      - ".*AIGeneration.*"
+      - ".*PromptTestRunner.*"
+      - ".*AIChat.*"
+      - ".*TiercadeApp.*"
+      - ".*Toolbar.*"
 
   avoid_force_unwrap_after_await:
     regex: 'await[^\n]*!'

@@ -84,7 +84,7 @@ extension AppState {
                 return
             }
             await withLoadingIndicator(message: "Loading \(project.title)...") {
-                if let entity = (try? fetchEntity(for: handle)) ?? nil {
+                if let entity = try? fetchEntity(for: handle) {
                     applyPersistedTierList(entity)
                 } else {
                     applyBundledProject(project)

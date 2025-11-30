@@ -3,7 +3,7 @@ import Foundation
 #if canImport(FoundationModels) && DEBUG
 import FoundationModels
 
-// swiftlint:disable file_length function_body_length type_body_length cyclomatic_complexity
+// swiftlint:disable file_length function_body_length type_body_length
 // Prototype test framework - comprehensive test orchestration justifies complexity
 
 // MARK: - Generable Types
