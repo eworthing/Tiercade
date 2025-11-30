@@ -154,10 +154,10 @@ final class UnifiedPromptTester {
         debugLog("🧬 GUIDED MODES: \(suite.config.guidedModes)")
         debugLog("")
 
-        // swiftlint:disable:next line_length - Progress message should remain readable as single line
         await MainActor
             .run {
                 onProgress(
+                    // swiftlint:disable:next line_length - Progress message should remain readable as single line
                     "🎯 Test matrix: \(prompts.count) prompts × \(queries.count) queries × \(decoders.count) decoders × \(suite.config.seeds.count) seeds × \(suite.config.guidedModes.count) modes",
                 )
             }
