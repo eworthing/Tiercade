@@ -26,6 +26,7 @@ When working with Apple platforms (iOS, macOS, tvOS, visionOS) or Apple APIs (Sw
 - [Design System](#design-system)
 - [Navigation Patterns](#navigation-patterns)
 - [Build & Test](#build--test)
+- [Linting & Formatting](#linting--formatting)
 - [Tooling & Diagnostics](#tooling--diagnostics)
 - [Data Contracts & Patterns](#data-contracts--patterns)
 - [Debugging Notes](#debugging-notes)
@@ -708,6 +709,195 @@ xcrun llvm-cov report \
 - Validate visuals in the latest tvOS 26 Apple TV 4K (3rd gen) simulator; that environment mirrors the focus halos and Liquid Glass chrome we care about.
 - After builds: Keep simulator open, test focus/dismissal with Siri Remote simulator (or Mac keyboard arrows/Space/ESC)
 - Manual focus sweep: cycle focus with remote/arrow keys to confirm overlays and default focus behave. Capture issues with `/tmp/tiercade_debug.log`.
+
+---
+
+## Linting & Formatting
+
+This project uses **SwiftFormat** and **SwiftLint** with a clear separation of responsibilities, optimized for LLM-assisted development.
+
+### Tool Responsibilities
+
+| Tool | Owns | Config File |
+|------|------|-------------|
+| **SwiftFormat** | Layout, whitespace, wrapping, punctuation, code organization | `.swiftformat` |
+| **SwiftLint** | Semantics, safety, correctness, complexity metrics, custom rules | `.swiftlint.yml` |
+
+**Key principle:** SwiftFormat handles *how code looks*, SwiftLint handles *what code does*. SwiftLint's style rules are disabled to avoid conflicts.
+
+### LLM-Oriented Design Rationale
+
+The configuration prioritizes patterns that make LLM-generated code safer and easier to review:
+
+**Vertical formatting** (`--wraparguments before-first`, `--wrapparameters before-first`):
+```swift
+// ✅ LLM-friendly: each parameter on its own line
+func configure(
+    title: String,
+    subtitle: String,
+    isEnabled: Bool,
+) {
+    // ...
+}
+
+// ❌ Horizontal: harder to diff, easy to miss changes
+func configure(title: String, subtitle: String, isEnabled: Bool) {
+```
+- One parameter per line = cleaner git diffs
+- LLMs can add/remove parameters without reformatting entire signature
+- Easier to spot missing or extra parameters in review
+
+**Trailing commas** (`--trailing-commas always`):
+```swift
+// ✅ Adding a new case only changes one line
+enum State {
+    case loading,
+    case success,
+    case error,  // ← trailing comma
+}
+
+// ❌ Without trailing comma, adding requires modifying previous line
+enum State {
+    case loading,
+    case success,
+    case error  // ← no comma, next addition touches this line too
+}
+```
+- Reduces noise in diffs when appending items
+- Prevents common LLM mistake of forgetting commas
+
+**Explicit self** (`--self init-only`):
+- Removes redundant `self.` in most contexts for cleaner code
+- Keeps `self.` in initializers where it disambiguates parameters from properties
+- **Exception:** Swift 6 strict concurrency requires explicit `self.` in `@autoclosure` contexts (see below)
+
+**Code organization** (`--enable organizeDeclarations`, `--enable markTypes`):
+- Auto-generates `// MARK: -` sections by visibility (Lifecycle, Internal, Private)
+- Consistent structure helps LLMs understand and extend existing types
+- Only triggers on types exceeding thresholds (struct: 40, class: 50, enum: 30 lines)
+
+### Swift 6 Strict Concurrency Gotchas
+
+**Logger `@autoclosure` requires explicit `self.`:**
+
+Swift 6 strict concurrency requires explicit `self.` when capturing properties in `@autoclosure` contexts. This conflicts with SwiftFormat's `redundantSelf` rule.
+
+```swift
+// ❌ BUILD ERROR: Swift 6 strict concurrency
+Logger.app.debug("Count: \(items.count)")  // 'items' needs 'self.'
+
+// ✅ CORRECT: explicit self required
+// swiftformat:disable redundantSelf - Swift 6 requires explicit self in @autoclosure
+Logger.app.debug("Count: \(self.items.count)")
+// swiftformat:enable redundantSelf
+```
+
+**When to use disable comments:**
+- Single-line Logger calls: `// swiftformat:disable:next redundantSelf`
+- Multi-line Logger calls: Use block disable/enable pair
+- This is the **only** case where SwiftFormat disable comments are needed
+
+**Files with known `self.` requirements:**
+- `AppState+HeadToHead.swift` - Logger calls with `self.headToHead.*`
+- `AIGenerationState.swift` - Logger calls with `self.messages`, `self.estimatedTokenCount`
+- `ProgressState.swift` - Logger calls with `self.operationProgress`
+
+### Running the Tools
+
+**SwiftFormat:**
+```bash
+# Check what would change (no modifications)
+swiftformat . --lint
+
+# Apply formatting
+swiftformat .
+
+# Format specific file
+swiftformat Tiercade/State/AppState.swift
+```
+
+**SwiftLint:**
+```bash
+# Run linter (warnings + errors)
+swiftlint lint
+
+# Run with quiet mode (errors only in output)
+swiftlint lint --quiet
+
+# Auto-fix what can be fixed
+swiftlint lint --fix
+
+# Analyze (slower, catches unused code)
+swiftlint analyze
+```
+
+**Pre-commit verification:**
+```bash
+# Ensure both pass before committing
+swiftformat . --lint && swiftlint lint --quiet
+```
+
+### SwiftLint Rule Categories
+
+**Safety rules** (opt-in, prevent crashes):
+- `force_unwrapping`, `force_cast`, `force_try` - crash risks
+- `unhandled_throwing_task` - Swift 6 concurrency safety
+- `weak_delegate`, `unowned_variable_capture` - retain cycle prevention
+
+**Accessibility rules** (opt-in):
+- `accessibility_label_for_image` - images need labels
+- `accessibility_trait_for_button` - buttons need traits
+
+**Performance rules** (opt-in):
+- `empty_count`, `first_where`, `contains_over_filter_count` - O(n) vs O(1)
+- `reduce_into` - avoid unnecessary copies
+
+**Complexity metrics** (LLM-friendly thresholds):
+| Metric | Warning | Error | Rationale |
+|--------|---------|-------|-----------|
+| `cyclomatic_complexity` | 10 | 15 | Keep functions focused |
+| `function_body_length` | 50 | 80 | Fits in LLM context window |
+| `file_length` | 600 | 800 | Manageable review units |
+| `line_length` | 120 | 180 | Readable without scrolling |
+
+**Custom rules** (LLM mistake prevention):
+- `no_print_statements` - Use Logger instead (excluded in test/debug paths)
+- `avoid_force_unwrap_after_await` - Async results need safe unwrapping
+- `task_self_capture` - Verify actor isolation in Task closures
+- `prefer_mainactor_over_dispatch` - Use Swift Concurrency, not GCD
+
+### Disabled Rules (SwiftFormat Handles)
+
+These SwiftLint rules are disabled because SwiftFormat owns formatting:
+- All whitespace rules (`trailing_whitespace`, `vertical_whitespace`, etc.)
+- All punctuation rules (`colon`, `comma`, `trailing_comma`, etc.)
+- All brace/indentation rules (`opening_brace`, `closing_brace`, etc.)
+- Multiline rules (`multiline_arguments`, `multiline_parameters`, etc.)
+
+### Adding New Disable Comments
+
+When you need to disable a rule, use the most targeted approach:
+
+```swift
+// Single line - disable:next
+// swiftlint:disable:next force_unwrapping
+let value = dictionary["key"]!
+
+// Block - disable/enable pair
+// swiftlint:disable force_cast
+let views = subviews as! [CustomView]
+let buttons = buttons as! [CustomButton]
+// swiftlint:enable force_cast
+
+// File-level (use sparingly, at top of file)
+// swiftlint:disable file_length
+```
+
+**Always include a reason:**
+```swift
+// swiftlint:disable:next force_unwrapping - Guaranteed by precondition above
+// swiftformat:disable redundantSelf - Swift 6 requires explicit self in @autoclosure
+```
 
 ---
 
